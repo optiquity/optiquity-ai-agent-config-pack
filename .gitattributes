@@ -1,0 +1,6 @@
+# Pack dashboard rendered board (BD-224): a large, minified, regenerated artifact.
+# Track it (all-three approvals contract, CI Check 86) but never diff or line-merge
+# it — each render is a whole-file overwrite; churn is accepted by design, and a
+# cross-session collision resolves by re-rendering. See
+# maintenance-docs/v11-implementation/BD-224-DASHBOARD-AS-BUILT.md.
+pack-ops/dashboard-approvals/dashboard.html -diff -merge

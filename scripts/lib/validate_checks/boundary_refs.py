@@ -3350,6 +3350,15 @@ _CHECK_OPERATING_DOC_OUT_OF_FAMILY = (
     # no-history protection is supplied by the bespoke C-grammar check (79), NOT
     # the `.md` content gates (it matches no operating-doc family glob).
     "pack-ops/session-state.json",
+    # the BD-224 pack-dashboard rendered board: generated non-doc DATA files (the
+    # HTML board + its reusable spec-fingerprinted shell + the published-URL
+    # record), NOT operating docs — no `.md` content gate applies. dashboard.html
+    # is git-tracked but marked `-diff -merge` (whole-file overwrite; churn by
+    # design). Their tracked-set + shell-spec-sha invariants are enforced by
+    # Checks 86/88, not the operating-doc content gates.
+    "pack-ops/dashboard-approvals/dashboard.html",
+    "pack-ops/dashboard-approvals/dashboard-shell.html",
+    "pack-ops/dashboard-approvals/dashboard-url.txt",
     # the Antigravity plugin manifest (machine config, not an operating doc)
     "project-template/.agents-plugin/optiquity-agents/plugin.json",
 )

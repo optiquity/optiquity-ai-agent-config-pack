@@ -97,8 +97,9 @@ def _git_ls_files(pathspec):
 
 
 # Check 86: the approvals dir is capped at EXACTLY these three tracked files. The
-# legitimate set is sized to precisely three (measure-then-bound; at HEAD the dir
-# is absent, so the tracked set is empty and the guard SKIPs). An EXTRA tracked
+# legitimate set is sized to precisely three (measure-then-bound; when the tracked
+# set is empty — a fresh clone that has not rendered — the guard SKIPs lenient, and
+# when the board is tracked it enforces). An EXTRA tracked
 # file (registry creep) FAILs; a MISSING file (any strict subset of the trio
 # tracked) FAILs — the missing-file teeth ENFORCE the all-three-or-none
 # first-commit atomicity (F12: the first approvals-dir commit MUST stage ALL THREE
@@ -133,8 +134,9 @@ def check_dashboard_approvals_file_cap() -> None:
     measure-then-bound (ci-guard-measure-then-bound): the legitimate set is sized
     to EXACTLY the three names — no allowlist beyond them. Enumeration is
     git-TRACKED (`git ls-files pack-ops/dashboard-approvals/`), never a raw FS
-    walk. At HEAD the dir is absent (0 tracked) so the guard SKIPs; it runs clean
-    against current AND projected three-file state.
+    walk. When the tracked set is empty (a fresh clone that has not rendered) the
+    guard SKIPs (lenient); when the board is tracked it enforces — so it runs clean
+    against BOTH the empty and the present-three-file state.
 
     O(one dir) cost (ci-check-runtime-compounding): one `git ls-files` prefix
     subprocess, O(files in the one dir), no subprocess-per-entry, no whole-tree
@@ -259,8 +261,10 @@ def _git_hash_object(relpath):
 # embedded spec-sha MUST equal `git hash-object pack-ops/DASHBOARD-SPEC-PACK.md`.
 # A mismatch means the spec changed without a re-render (a committed stale shell);
 # an unhashable spec means a declared fingerprint with NO backing — both FAIL loud
-# (fail-loud-delete-old-source). At HEAD the dir/shell is absent so the guard
-# SKIPs (measure-then-bound; runs clean against the projected present-shell state).
+# (fail-loud-delete-old-source). When the tracked set is empty (a fresh clone that
+# has not rendered) the guard SKIPs (measure-then-bound, lenient); when the shell is
+# tracked it enforces — running clean against BOTH the empty and the present-shell
+# state.
 _CHECK_88_SHELL = "pack-ops/dashboard-approvals/dashboard-shell.html"
 _CHECK_88_SPEC = "pack-ops/DASHBOARD-SPEC-PACK.md"
 _CHECK_88_SPEC_SHA_RE = re.compile(r"spec-sha:\s*([0-9a-f]{40,64})")
@@ -285,9 +289,10 @@ def check_dashboard_approvals_spec_shell_sync() -> None:
     declared mapping with no backing FAILs, not only the drift case.
 
     measure-then-bound (ci-guard-measure-then-bound): enumeration is git-TRACKED
-    (`git ls-files` for the shell), never a raw FS walk. At HEAD the dir/shell is
-    absent (0 tracked) so the guard SKIPs; it runs clean against current AND the
-    projected present-shell state.
+    (`git ls-files` for the shell), never a raw FS walk. When the tracked set is
+    empty (a fresh clone that has not rendered) the guard SKIPs (lenient); when the
+    shell is tracked it enforces — so it runs clean against BOTH the empty and the
+    present-shell state.
 
     O(1) cost (ci-check-runtime-compounding): one `git ls-files` (shell tracked?)
     + one shell read + one `git hash-object` (the spec) — no tree scan, no

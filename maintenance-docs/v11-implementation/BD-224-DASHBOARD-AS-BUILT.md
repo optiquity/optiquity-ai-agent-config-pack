@@ -25,7 +25,7 @@ subsystems that shipped under the same BD.
 |---|---|---|
 | Logic-contract SSOT | `pack-ops/DASHBOARD-SPEC-PACK.md` | the build spec (what to render, thinning, floors) — the fingerprinted LOGIC contract |
 | Renderer | `scripts/dashboard-render.py` | the ONE committed realization: `build` / `verify`, state collection, the `CSS`/`JS` shell constants, `assemble_state`, `verify_floor` |
-| Runtime board (untracked) | `pack-ops/dashboard-approvals/` | per-clone render output: `dashboard-shell.html`, `dashboard.html`, `dashboard-url.txt` |
+| Runtime board (tracked, all three) | `pack-ops/dashboard-approvals/` | per-clone render output committed as the all-three approvals set: `dashboard-shell.html`, `dashboard.html`, `dashboard-url.txt`; `dashboard.html` carries `.gitattributes` `-diff -merge` (whole-file overwrite — never diffed or line-merged) |
 | Render+publish skill | `.claude/skills/pack-dashboard/SKILL.md` | the `/pack-dashboard` render → foreground publish → commit flow |
 | CI hygiene guards | `scripts/lib/validate_checks/pack_ops_hygiene.py` | Checks 86 / 87 / 88 (approvals-dir cap, session-config not committed, shell spec-sha sync) |
 | Floor test | `scripts/tests/test-dashboard-render.sh` | proves `verify` BITES on every droppable component |
@@ -210,9 +210,13 @@ non-feature `DEFERRED`/`Audit artifacts`/`Carried over` sub-sections), `agents[]
 three cheap git-TRACKED-state screens (own connected-component module per the FIRM
 own-module-per-new-check convention). All three enumerate via a shared
 `_git_ls_files` helper (one `git ls-files` subprocess, O(one dir), never a raw FS
-walk) and are **SKIP-lenient off a git work tree**. Critically, all three also
-**SKIP while the board is untracked** — at HEAD `pack-ops/dashboard-approvals/`
-is absent, so each guard's tracked set is empty and it passes vacuously:
+walk) and are **SKIP-lenient off a git work tree** (and on a fresh clone that has
+not rendered — an empty tracked set passes vacuously). With the board now
+git-TRACKED as the all-three set (`dashboard.html`, `dashboard-shell.html`,
+`dashboard-url.txt`, committed together — D1), Checks 86 and 88 are **ACTIVE**:
+Check 86 enforces the all-three tracked set and Check 88 verifies the tracked
+shell's `spec-sha`. Check 87 (session-config-not-committed) is board-independent
+and always active:
 
 - **Check 86** (`check_dashboard_approvals_file_cap`) — caps the git-TRACKED
   approvals set at EXACTLY `{dashboard.html, dashboard-url.txt,
@@ -277,10 +281,10 @@ and determinism (byte-identical shell reuse).
 | `scripts/dashboard-render.py` | tracked | The committed renderer; `python3 scripts/dashboard-render.py build` renders + verifies; `verify` re-checks the floor. Pack-side only, never shipped. |
 | `pack-ops/DASHBOARD-SPEC-PACK.md` | tracked | The LOGIC contract; its `git hash-object` is the shell's `spec-sha`. |
 | `.claude/skills/pack-dashboard/SKILL.md` | tracked | The `/pack-dashboard` verb: render → foreground claude.ai publish → commit. |
-| `pack-ops/dashboard-approvals/dashboard.html` | **untracked at HEAD** | The rendered board; regenerated every render; committed only when a user runs the render+commit flow. |
-| `pack-ops/dashboard-approvals/dashboard-shell.html` | **untracked at HEAD** | The spec-fingerprinted reusable shell; regenerated only on a spec change. |
-| `pack-ops/dashboard-approvals/dashboard-url.txt` | **untracked at HEAD** | The recorded claude.ai artifact URL (one line); written on first publish, reused after. |
-| `scripts/lib/validate_checks/pack_ops_hygiene.py` | tracked | Checks 86/87/88 (SKIP-lenient while the board is untracked). |
+| `pack-ops/dashboard-approvals/dashboard.html` | **tracked** | The rendered board; regenerated every render as a whole-file overwrite. Marked `-diff -merge` in `.gitattributes` (BD-224) so git never diffs or line-merges the large minified `#state` line — churn is accepted by design; a cross-session collision resolves by re-rendering. |
+| `pack-ops/dashboard-approvals/dashboard-shell.html` | **tracked** | The spec-fingerprinted reusable shell; regenerated only on a spec change. Normally diffable (small). |
+| `pack-ops/dashboard-approvals/dashboard-url.txt` | **tracked** | The recorded claude.ai artifact URL (one line); written on first publish, reused after. Normally diffable (small). |
+| `scripts/lib/validate_checks/pack_ops_hygiene.py` | tracked | Checks 86/87/88; with the board tracked (D1) Checks 86 (all-three tracked set) + 88 (shell spec-sha) are active; all three stay SKIP-lenient off a git work tree / on a fresh clone that has not rendered. |
 | `scripts/tests/test-dashboard-render.sh` | tracked | The complete-floor test (CI + local). |
 
 **What a pack user does.** Run `/pack-dashboard` (Claude) or `python3
@@ -310,12 +314,20 @@ check — see the Appendix).
   a spawn-driven publish). It derives the Artifact body by stripping the outer
   HTML wrapper each publish; there is no separate body file. On a non-Claude CLI
   the render is the deliverable and there is no publish/URL step.
-- **Untracked-board posture.** At HEAD the approvals dir is absent, so Checks
-  86/87/88 SKIP and the reuse cache is byte-exact but has nothing committed to
-  drift against. The board is per-clone runtime state; keep-vs-remove is a user
-  decision at commit time (the skill's Step 3 commits it only on approval). An
-  adapter must NOT assume a committed board — the guards are written to run clean
-  against BOTH the absent and the present-three-file states.
+- **Tracked-board posture (D1).** The approvals dir is git-TRACKED as the
+  all-three set (`dashboard.html`, `dashboard-shell.html`, `dashboard-url.txt`),
+  so Checks 86 (all-three tracked set) + 88 (shell spec-sha) are active and the
+  reuse cache now has a committed shell to drift-check against. `dashboard.html`
+  is marked `-diff -merge` in `.gitattributes` so its large minified `#state`
+  line is never diffed or line-merged — every render is a whole-file overwrite,
+  storage churn is accepted by design, and a cross-session collision resolves by
+  re-rendering (no merge-driver). The guards stay lenient on a fresh clone that
+  has not rendered (empty tracked set ⇒ SKIP), so they run clean against BOTH the
+  not-yet-rendered and the present-three-file states. Because the board lives
+  under the `pack-ops/` operating-doc tree, the three files are classified in
+  Check 69's `_CHECK_OPERATING_DOC_OUT_OF_FAMILY` as non-doc DATA, so the
+  operating-doc content gates (Check 65 history + the CG-14-prep-b gates) do not
+  apply to them — their invariants are Checks 86/88.
 - **`verify` is a DATA floor, not a render-correctness proof.** It parses `#state`
   and never executes JS, so it catches dropped/mis-shaped DATA and wholesale-dropped
   render tokens, but a subtly-broken-but-present render function is caught only by

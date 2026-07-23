@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<!-- pack-dashboard shell &#183; spec: pack-ops/DASHBOARD-SPEC-PACK.md &#183; spec-sha: 090132bd611f1490a4b9dfd7f3bfa1a365bbf90b -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pack frontier &#8212; Optiquity Config Pack dashboard</title>
+<style>
+*{box-sizing:border-box}
+:root{
+ --bg:#f4f6f9;--surface:#fff;--surface-2:#eef1f6;--surface-3:#e6eaf1;--line:#dbe1ea;
+ --ink:#172231;--ink-mid:#546072;--ink-faint:#8b95a4;
+ --accent:#0e7488;--accent-ink:#0a5768;--accent-soft:#dceef1;
+ --done:#1f9558;--done-soft:#e0f0e6;--active:#b26f0c;--active-soft:#f7ebd7;
+ --pending:#96a0af;--pending-soft:#edf0f4;--blocker:#c0473c;--blocker-soft:#f7e3e0;
+ --gate:#6a51c0;--gate-soft:#ebe6f8;
+ --radius:10px;--fs:15px}
+@media (prefers-color-scheme:dark){:root{
+ --bg:#0d1219;--surface:#151c26;--surface-2:#1a2230;--surface-3:#202a39;--line:#28323f;
+ --ink:#e6ecf3;--ink-mid:#9aa5b4;--ink-faint:#6b7583;
+ --accent:#3cbdcf;--accent-ink:#8fdbe7;--accent-soft:#123039;
+ --done:#43c489;--done-soft:#123026;--active:#e2a83f;--active-soft:#33270f;
+ --pending:#6b7583;--pending-soft:#1c2431;--blocker:#e5786c;--blocker-soft:#331d1a;
+ --gate:#a08ee6;--gate-soft:#241d3a}}
+:root[data-theme="dark"]{
+ --bg:#0d1219;--surface:#151c26;--surface-2:#1a2230;--surface-3:#202a39;--line:#28323f;
+ --ink:#e6ecf3;--ink-mid:#9aa5b4;--ink-faint:#6b7583;
+ --accent:#3cbdcf;--accent-ink:#8fdbe7;--accent-soft:#123039;
+ --done:#43c489;--done-soft:#123026;--active:#e2a83f;--active-soft:#33270f;
+ --pending:#6b7583;--pending-soft:#1c2431;--blocker:#e5786c;--blocker-soft:#331d1a;
+ --gate:#a08ee6;--gate-soft:#241d3a}
+:root[data-theme="light"]{
+ --bg:#f4f6f9;--surface:#fff;--surface-2:#eef1f6;--surface-3:#e6eaf1;--line:#dbe1ea;
+ --ink:#172231;--ink-mid:#546072;--ink-faint:#8b95a4;
+ --accent:#0e7488;--accent-ink:#0a5768;--accent-soft:#dceef1;
+ --done:#1f9558;--done-soft:#e0f0e6;--active:#b26f0c;--active-soft:#f7ebd7;
+ --pending:#96a0af;--pending-soft:#edf0f4;--blocker:#c0473c;--blocker-soft:#f7e3e0;
+ --gate:#6a51c0;--gate-soft:#ebe6f8}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:var(--fs)/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.app{display:flex;min-height:100vh;background:var(--bg)}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+aside{width:248px;min-width:248px;position:sticky;top:0;height:100vh;overflow:auto;background:var(--surface);border-right:1px solid var(--line);padding:18px 14px}
+.brand{font-weight:700;font-size:1.05rem;color:var(--ink);margin-bottom:2px}
+.brand .v{display:block;font-size:.72rem;color:var(--ink-mid);font-weight:500;margin-top:2px}
+.navgroup{margin-top:18px}
+.navgroup h4{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);margin:0 0 6px 4px}
+.navgroup a{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:7px;color:var(--ink-mid);font-size:.86rem}
+.navgroup a:hover{background:var(--surface-2);text-decoration:none}
+.navgroup a.on{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--pending)}
+.dot.done{background:var(--done)}.dot.active{background:var(--active)}.dot.pending{background:var(--pending)}
+.dot.unblocked{background:var(--pending)}.dot.blocker{background:var(--blocker)}
+.dot.deferred,.dot.deprecated,.dot.cancelled{background:var(--ink-faint)}
+main{flex:1;max-width:900px;margin:0 auto;padding:30px 34px 80px}
+.eyebrow{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent-ink);font-weight:700}
+h1{font-size:1.9rem;margin:.1em 0 .3em}
+h2{font-size:1.15rem;margin:1.6em 0 .5em}
+.lede{color:var(--ink-mid);margin:0 0 4px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin:12px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.tile .k{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint)}
+.tile .v{font-size:1.5rem;font-weight:700;margin-top:3px}
+.tile .s{font-size:.76rem;color:var(--ink-mid)}
+.kv{display:grid;grid-template-columns:170px 1fr;gap:6px 14px;font-size:.9rem}
+.kv .k{color:var(--ink-mid)}
+.pill{display:inline-block;padding:1px 9px;border-radius:999px;font-size:.72rem;font-weight:600;white-space:nowrap}
+.pill.done{background:var(--done-soft);color:var(--done)}
+.pill.active{background:var(--active-soft);color:var(--active)}
+.pill.pending{background:var(--pending-soft);color:var(--ink-mid)}
+.pill.unblocked{background:var(--pending-soft);color:var(--pending)}
+.pill.blocker{background:var(--blocker-soft);color:var(--blocker)}
+.pill.neutral{background:var(--pending-soft);color:var(--ink-faint)}
+.pill.accent{background:var(--accent-soft);color:var(--accent-ink)}
+.pill.gate{background:var(--gate-soft);color:var(--gate)}
+.chip{display:inline-block;padding:1px 7px;border-radius:6px;font-size:.68rem;font-weight:600;background:var(--accent-soft);color:var(--accent-ink);margin-left:5px}
+.chip.gate{background:var(--gate-soft);color:var(--gate)}
+.chip.here{background:var(--active-soft);color:var(--active)}
+.chip.fresh{background:var(--done-soft);color:var(--done)}
+.chip.behind{background:var(--surface-3);color:var(--ink-mid)}
+.chip.live{background:var(--active-soft);color:var(--active)}
+.row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row .idx{color:var(--ink-faint);font-variant-numeric:tabular-nums;min-width:22px}
+.row .main{flex:1;min-width:0}
+.row .ttl{font-weight:600}
+.row .note{color:var(--ink-mid);font-size:.83rem}
+.bar{height:8px;border-radius:5px;background:var(--surface-3);overflow:hidden;margin:6px 0}
+.bar>i{display:block;height:100%;background:var(--done)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82em}
+.muted{color:var(--ink-mid)}.faint{color:var(--ink-faint)}
+.disc{font-size:.76rem;color:var(--ink-faint);border-top:1px solid var(--line);margin-top:22px;padding-top:10px}
+.filter{width:100%;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);margin:8px 0 4px}
+.proj{border:2px dashed var(--gate);border-radius:var(--radius);padding:14px 16px;margin:12px 0}
+.proj h3{margin:0 0 6px;color:var(--gate)}
+.step{display:flex;gap:9px;align-items:baseline;padding:4px 0}
+.box{display:inline-flex;width:16px;height:16px;border:1.5px solid var(--ink-faint);border-radius:4px;align-items:center;justify-content:center;font-size:.7rem;flex:none}
+.box.done{background:var(--done-soft);border-color:var(--done);color:var(--done)}
+.sec{margin-top:14px}
+.menu-btn{display:none}
+#scrim{display:none}
+@media(max-width:760px){
+ aside{position:fixed;left:0;top:0;z-index:40;transform:translateX(-100%);transition:transform .2s}
+ body.nav-open aside{transform:none}
+ body.nav-open #scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:30}
+ main{padding:16px 16px 60px}
+ .menu-btn{display:inline-flex;position:sticky;top:8px;z-index:20;margin-bottom:8px;padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);cursor:pointer}
+ .kv{grid-template-columns:1fr}
+}
+</style></head>
+<body><button class="menu-btn" onclick="document.body.classList.toggle('nav-open')">&#9776; Menu</button><div id="scrim" onclick="document.body.classList.remove('nav-open')"></div><div class="app"><aside id="side"></aside><main id="main"></main></div>
+<script type="application/json" id="state">__PACK_DASHBOARD_STATE__</script>
+<script>
+const S=(()=>{try{const t=document.getElementById('state').textContent;
+ if(!t||t.indexOf('__PACK_DASHBOARD_STATE__')>-1)return{};return JSON.parse(t);}catch(e){return{};}})();
+const E=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LBL={done:['Resolved','done'],active:['Active','active'],pending:['Open','pending'],
+ unblocked:['Unblocked','unblocked'],blocker:['Blocked','blocker'],
+ deferred:['Deferred','neutral'],deprecated:['Deprecated','neutral'],cancelled:['Cancelled','neutral']};
+const pill=st=>{const m=LBL[st]||[st,'pending'];return `<span class="pill ${m[1]}">${E(m[0])}</span>`;};
+const dot=st=>`<span class="dot ${st}"></span>`;
+const idHash=id=>'#'+id.toLowerCase();
+const bd=id=>S.bds&&S.bds[id]||{id:id,num:0,title:id,status:'pending',tier:'minimal'};
+const has=v=>v!=null&&v!=='';
+function bar(done,total){const p=total?Math.round(100*done/total):0;
+ return `<div class="bar"><i style="width:${p}%"></i></div><span class="faint">${done} / ${total} &#183; ${p}%</span>`;}
+
+/* ---------- sidebar ---------- */
+function sidebar(){
+ const g=[];
+ g.push(`<div class="brand">&#9670; Pack frontier<span class="v">v${E(S.version||'?')}${S.qualifier?' &#183; '+E(S.qualifier):''}</span></div>`);
+ g.push(`<div class="navgroup"><h4>Frontier</h4>
+  <a href="#landing" data-r="landing">Landing</a>
+  <a href="#frontier" data-r="frontier">Frontier</a>
+  <a href="#grand-plan" data-r="grand-plan">Grand plan</a></div>`);
+ const mo=(S.motion||[]);const act=new Set(S.active||[]);
+ g.push(`<div class="navgroup"><h4>Work items &#183; ${mo.length}</h4>`+
+  mo.map(id=>{const r=bd(id);const st=act.has(id)?'active':r.status;
+   return `<a href="${idHash(id)}" data-r="${id.toLowerCase()}">${dot(st)}<span>${E(id)}</span>${act.has(id)?'<span class="chip here">here</span>':''}</a>`;}).join('')+`</div>`);
+ g.push(`<div class="navgroup"><h4>Reference</h4>
+  <a href="#archive" data-r="archive">Archive &#183; All BDs</a>
+  <a href="#methodology" data-r="methodology">Methodology</a>
+  <a href="#rules" data-r="rules">Pack rules</a>
+  <a href="#deps" data-r="deps">Dependencies</a>
+  <a href="#changelog" data-r="changelog">Recently landed</a>
+  <a href="#metrics" data-r="metrics">Metrics</a>
+  <a href="#help" data-r="help">Help &amp; commands</a></div>`);
+ return g.join('');
+}
+
+/* ---------- pages ---------- */
+function pLanding(){
+ const c=S.counts||{},m=S.metrics||{};
+ return `<div class="eyebrow">Optiquity AI Agent Config Pack</div><h1>Landing</h1>
+ <p class="lede">A live, at-a-glance mirror of pack work &#8212; what is in motion, everything in play, and each backlog item's pipeline.</p>
+ <div class="grid" style="margin-top:14px">
+  <div class="tile"><div class="k">Version</div><div class="v">v${E(S.version||'?')}</div><div class="s">${E(S.qualifier||'')} &#183; ${E(S.date||'')}</div></div>
+  <div class="tile"><div class="k">Open items</div><div class="v">${c.open||0}</div><div class="s">of ${c.total||0} total</div></div>
+  <div class="tile"><div class="k">Resolved</div><div class="v">${m.resolved||0}</div><div class="s">${m.pct||0}% of total</div></div>
+  <div class="tile"><div class="k">Boundary</div><div class="v mono">${E((S.boundary||'&#8212;'))}</div><div class="s">${S.boundaryFresh?'&#10003; fresh':'&#8634; behind'}</div></div>
+ </div>
+ <div class="grid" style="margin-top:6px">
+  ${['frontier|Frontier|the running window + in-flight view','grand-plan|Grand plan|everything in play',
+     'archive|Archive|the permanent BD index','methodology|Methodology|how work moves',
+     'rules|Pack rules|standing rules','help|Help &amp; commands|pack-side commands',
+     'metrics|Metrics|toward launch'].map(x=>{const[r,t,d]=x.split('|');
+     return `<a class="tile" href="#${r}"><div class="v" style="font-size:1.05rem">${t}</div><div class="s">${d}</div></a>`;}).join('')}
+ </div>
+ <h2>Where we are now</h2>${sessionBand()}
+ <div class="card"><strong>In flight now</strong>${
+  (S.active||[]).length?(S.active||[]).map(id=>{const r=bd(id);
+   return `<div class="row"><div class="main"><a class="ttl" href="${idHash(id)}">${E(id)} &#8212; ${E(r.title)}</a> ${pill('active')} ${S.inflight&&S.inflight.dirty?'<span class="chip live">editing now</span>':'<span class="chip">idle</span>'}</div></div>`;}).join('')
+   :'<div class="muted">No active items.</div>'}</div>
+ <div class="card"><strong>Recently resolved</strong>${recentResolved(5)}</div>
+ <div class="disc">Never a source of truth; snapshot at boundary ${E(S.boundary||'&#8212;')}; republished on change.</div>`;
+}
+
+function sessionBand(){
+ const p=S.parallelization||{};
+ const agents=S.agentsRunning||[];
+ return `<div class="card">
+  <div class="kv">
+   <div class="k">Active BDs</div><div>${(S.active||[]).length?(S.active||[]).map(id=>`<a href="${idHash(id)}">${E(id)}</a>`).join(', ')+' '+pill('active'):'<span class="muted">none</span>'}</div>
+   <div class="k">Running agents</div><div>${agents.length?agents.map(a=>`<span class="chip">${E(a.role)}</span> ${E(a.name)}`).join('<br>'):'No agents running.'}</div>
+   <div class="k">Cycle position</div><div>${has(S.cyclePosition)?E(S.cyclePosition):'<span class="muted">&#8212;</span>'}</div>
+   <div class="k">Parallelization</div><div><strong>${E(p.mode||'idle')}</strong>${p.note?' &#8212; '+E(p.note):''}</div>
+   <div class="k">Wave</div><div>${has(S.wave)?E(S.wave):'<span class="muted">&#8212;</span>'}</div>
+   <div class="k">Boundary commit</div><div><span class="mono">${E(S.boundary||'&#8212;')}</span> ${S.boundaryFresh?'<span class="chip fresh">&#10003; fresh</span>':'<span class="chip behind">&#8634; behind</span>'}</div>
+  </div></div>`;
+}
+
+function pFrontier(){
+ const inf=S.inflight||{};const mo=S.motion||[];const act=new Set(S.active||[]);
+ let h=`<div class="eyebrow">In motion &#183; ${mo.length}</div><h1>Frontier ${inf.dirty?'<span class="chip live">editing now</span>':''}</h1>
+ <p class="lede">The merged running-window + in-flight view.</p>
+ <h2>Live session-state band</h2>${sessionBand()}
+ <h2>Running window</h2><div class="card">`;
+ h+=mo.length?mo.map((id,i)=>{const r=bd(id);const st=act.has(id)?'active':r.status;
+   return `<div class="row"><div class="idx">${i+1}</div><div class="main">
+    <a class="ttl" href="${idHash(id)}">${E(id)} &#8212; ${E(r.title)}</a> ${act.has(id)?'<span class="chip here">you are here</span>':''} ${inf.dirty&&act.has(id)?'<span class="chip live">in progress</span>':''}
+    <div class="note">${E((r.type||'').slice(0,90))}</div></div><div>${pill(st)}</div></div>`;}).join(''):'<div class="muted">Window empty.</div>';
+ h+='</div>';
+ const wt=inf.worktrees||{};
+ h+=`<h2>In-flight worktrees</h2><div class="card"><div class="kv">
+  <div class="k">Linked worktrees</div><div>${wt.all||0} total &#183; ${(wt.scoped||[]).length} in-scope</div>
+  <div class="k">Main tree</div><div>${inf.dirty?'<span class="chip live">dirty &#183; '+(inf.files||[]).length+' files</span>':'clean'}</div></div>`;
+ h+=(wt.scoped||[]).map(w=>`<div class="row"><div class="main"><span class="mono">${E(w.branch||'')}</span></div><div>${pill('active')}</div></div>`).join('')||'<div class="muted" style="margin-top:6px">No in-scope linked worktrees.</div>';
+ h+='</div>';
+ const ag=S.agentsRunning||[];
+ h+=`<h2>Running agents</h2><div class="card">${ag.length?ag.map(a=>`<div class="row"><div class="main"><span class="chip">${E(a.role)}</span> <span class="mono">${E(a.name)}</span></div></div>`).join(''):'<div class="muted">No agents running.</div>'}</div>`;
+ h+=`<h2>Decisions &amp; directives</h2><div class="card">${(S.pendingDecisions||[]).length?(S.pendingDecisions||[]).map(d=>`<div class="row"><div class="main">${E(d)}</div></div>`).join(''):'<div class="muted">None on record.</div>'}</div>`;
+ h+=`<div class="disc">Mirrors pack-ops/session-state.json.</div>`;
+ return h;
+}
+
+function pGrand(){
+ const p=S.parallelization||{};const plans=S.plans||{};const mo=S.motion||[];
+ const planned=mo.filter(id=>plans[id]);const awaiting=mo.filter(id=>!plans[id]);
+ let h=`<div class="eyebrow">Everything in play &#183; ${E(p.mode||'idle')}</div><h1>Grand plan</h1>
+ <div class="card"><strong>Sequencing:</strong> <strong>${E(p.mode||'idle')}</strong>${p.note?' &#8212; '+E(p.note):''}</div>
+ <h2>Planned &#183; ${planned.length}</h2>`;
+ h+=planned.map(id=>{const r=bd(id),pl=plans[id];const pr=pl.progress||{};
+  return `<div class="card"><a class="ttl" href="${idHash(id)}">${E(id)} &#8212; ${E(r.title)}</a> ${pill(S.active.includes(id)?'active':r.status)} <span class="chip">${E(pl.sizeTier||'')}</span>
+   ${bar(pr.done||0,pr.total||0)}
+   <div class="sec">${(pl.evidence||[]).slice(0,8).map(ev=>`<div class="step"><span class="box done">&#10003;</span><span><span class="mono chip">${E(ev.sha)}</span> ${E(ev.subject)}</span></div>`).join('')}</div></div>`;}).join('')||'<div class="muted">No planned cards.</div>';
+ h+=`<h2>Awaiting planning &#183; ${awaiting.length}</h2><div class="card">${awaiting.map(id=>{const r=bd(id);return `<div class="row"><div class="main"><a href="${idHash(id)}">${E(id)} &#8212; ${E(r.title)}</a></div><div>${pill(S.active.includes(id)?'active':r.status)}</div></div>`;}).join('')||'<div class="muted">None.</div>'}</div>
+ <div class="disc">Reflects the snapshot; the full index lives on the Archive.</div>`;
+ return h;
+}
+
+const GROUPS=[['active','Active'],['pending','Open'],['unblocked','Unblocked'],['deferred','Deferred'],['done','Resolved'],['deprecated','Deprecated'],['cancelled','Cancelled']];
+function pArchive(){
+ const all=Object.values(S.bds||{});
+ let h=`<div class="eyebrow">Permanent index &#183; ${all.length} items</div><h1>Archive &#183; All BDs</h1>
+ <div class="card"><strong>Recently resolved</strong>${recentResolved(5)}</div>
+ <input class="filter" id="flt" placeholder="Filter by id or title&#8230;" oninput="ARCH_FILTER(this.value)">
+ <div id="arch">`;
+ for(const[st,lab] of GROUPS){
+  const rows=all.filter(r=>r.status===st).sort(
+   st==='done'
+    ? (a,b)=>(b.resolved_date||'').localeCompare(a.resolved_date||'')||b.num-a.num
+    : (a,b)=>b.num-a.num);
+  if(!rows.length)continue;
+  h+=`<h2>${lab} &#183; ${rows.length}</h2><div class="card">`+rows.map(r=>
+   `<div class="row af" data-f="${E((r.id+' '+r.title).toLowerCase())}"><div class="main">
+    <a class="ttl" href="${idHash(r.id)}">${E(r.id)} &#8212; ${E(r.title)}</a> ${r.tier==='full'&&(S.plans||{})[r.id]?'<span class="chip">deep</span>':''} ${(S.active||[]).includes(r.id)?'<span class="chip here">here</span>':''}
+    <div class="note">${E(r.snippet||'')}</div></div><div>${pill(r.status)}</div></div>`).join('')+`</div>`;
+ }
+ h+='</div>';return h;
+}
+window.ARCH_FILTER=v=>{v=(v||'').toLowerCase();document.querySelectorAll('#arch .af').forEach(el=>{el.style.display=el.dataset.f.indexOf(v)>-1?'':'none';});};
+
+function recentResolved(n){
+ const rs=Object.values(S.bds||{}).filter(r=>r.status==='done').sort((a,b)=>(b.resolved_date||'').localeCompare(a.resolved_date||'')||b.num-a.num).slice(0,n);
+ return rs.length?rs.map(r=>`<div class="row"><div class="main"><a href="${idHash(r.id)}">${E(r.id)} &#8212; ${E(r.title)}</a></div><div>${pill('done')}</div></div>`).join(''):'<div class="muted">None.</div>';
+}
+
+function pBD(id){
+ const r=bd(id);const pl=(S.plans||{})[id];const isAct=(S.active||[]).includes(id);
+ const st=isAct?'active':r.status;
+ const dec=(S.pendingDecisions||[]).filter(d=>d.indexOf(id)>-1||d.indexOf(id.replace('BD-0','BD-'))>-1);
+ let h=`<div class="eyebrow"><a href="#archive">Archive</a> &#8250; ${E(id)} &#183; ${LBL[st]?LBL[st][0]:st}</div><h1>${E(r.title)}</h1>`;
+ if(r.type)h+=`<p class="lede">${E(r.type)}</p>`;
+ if(pl){const pr=pl.progress||{};
+  h+=`<div class="card"><div class="grid">
+   <div class="tile"><div class="k">Status</div><div class="v" style="font-size:1rem">${pill(st)}</div></div>
+   <div class="tile"><div class="k">Commits landed</div><div class="v">${(pl.evidence||[]).length}</div></div>
+   <div class="tile"><div class="k">Size</div><div class="v" style="font-size:1rem">${E(pl.sizeTier||'')}</div></div>
+  </div>${bar(pr.done||0,pr.total||0)}</div>
+  <h2>Waves &amp; commits</h2><div class="card">${(pl.evidence||[]).map(ev=>`<div class="step"><span class="box done">&#10003;</span><span><span class="mono chip">${E(ev.sha)}</span> ${E(ev.subject)}</span></div>`).join('')||'<div class="muted">No landed commits yet.</div>'}</div>`;
+ }else{
+  h+=`<h2>Where we are</h2><div class="card"><div class="kv">
+   <div class="k">Type</div><div>${E(r.type||'&#8212;')}</div>
+   <div class="k">Target</div><div>${E(r.target||'&#8212;')}</div>
+   <div class="k">Blockers</div><div>${E(r.blockers||'&#8212;')}</div>
+   <div class="k">Unblocks</div><div>${E(r.unblocks||'&#8212;')}</div></div></div>`;
+ }
+ if(r.body)h+=`<h2>Detail</h2><div class="card">${E(r.body)}</div>`;
+ else if(r.snippet)h+=`<div class="card">${E(r.snippet)}</div>`;
+ h+=`<h2>Decisions on record</h2><div class="card">${dec.length?dec.map(d=>`<div class="row"><div class="main">${E(d)}</div></div>`).join(''):'<div class="muted">None touching this BD.</div>'}</div>`;
+ return h;
+}
+
+function pMethodology(){
+ let h=`<div class="eyebrow">How work moves</div><h1>Methodology</h1>
+ <div class="card"><strong>Large-BD deterministic flow</strong><div class="muted">docs-researcher &#8594; architect &#8594; adversarial architect &#8594; reconciliation (if findings) &#8594; user design review &#8594; planner &#8594; adversarial planner &#8594; reconciliation (if findings) &#8594; user gate &#8594; parallel worktree coder waves.</div></div>
+ <div class="card"><strong>Small-BD flow</strong><div class="muted">(optional researcher) &#8594; architect &#8594; planner &#8594; coder + bounded review/fix cycle.</div></div>
+ <h2>Agent roster</h2><div class="card">`;
+ h+=(S.agents||[]).map(a=>`<div class="row"><div class="main"><span class="mono">${E(a.name)}</span> ${a.cls==='RW'?'<span class="pill accent">RW</span>':'<span class="pill pending">RO</span>'}<div class="note">${E(a.role)}</div></div></div>`).join('')||'<div class="muted">No roster.</div>';
+ h+='</div>';return h;
+}
+
+function pRules(){
+ const rs=S.rules||[];const groups={};rs.forEach(r=>{(groups[r.group]=groups[r.group]||[]).push(r);});
+ let h=`<div class="eyebrow">Standing rules &#183; ${rs.length}</div><h1>Pack rules</h1><p class="lede">A live mirror of CLAUDE.md &#167; Pack memory.</p>`;
+ for(const g in groups){h+=`<h2>${E(g)}</h2>`+groups[g].map(r=>
+  `<div class="card" id="rules-${E(r.anchor)}"><strong>${E(r.title)}</strong>${r.anchor?` <span class="chip">${E(r.anchor)}</span>`:''}<div class="muted" style="margin-top:5px">${E(r.body)}</div></div>`).join('');}
+ return h;
+}
+
+function pDeps(){
+ const act=new Set(S.active||[]);const edges=[];
+ (Object.values(S.bds||{})).forEach(r=>{if(!r.blockers)return;const low=r.blockers.toLowerCase();
+  if(/no blocker|none|n\/a/.test(low))return;
+  const tos=(r.blockers.match(/BD-\d+/g)||[]).filter(t=>t!==r.id);
+  if(tos.length)edges.push({from:r.id,num:r.num,to:[...new Set(tos)],why:r.blockers,st:act.has(r.id)?'active':r.status});});
+ let h=`<div class="eyebrow">Sequencing</div><h1>Dependencies</h1><p class="lede">Best-effort from each BD's Blockers: prose.</p>`;
+ if(!edges.length)return h+'<div class="card muted">No prerequisite edges parsed from Blockers prose.</div>';
+ const SECTIONS=[['Open &amp; queued',['pending','unblocked','deferred','active']],
+  ['Resolved',['done']],
+  ['Deprecated &amp; superseded',['deprecated','cancelled']]];
+ SECTIONS.forEach(sec=>{const label=sec[0],toks=sec[1];
+  const rows=edges.filter(e=>toks.indexOf(e.st)>-1).sort((a,b)=>a.num-b.num||(a.from<b.from?-1:a.from>b.from?1:0));
+  if(!rows.length)return;
+  h+=`<h2>${label} &#183; ${rows.length}</h2>`;
+  h+=rows.map(e=>`<div class="card"><a class="ttl" href="${idHash(e.from)}">${E(e.from)}</a> ${pill(e.st)} <span class="muted">waits on</span> ${e.to.map(t=>`<a href="${idHash(t)}">${E(t)}</a>`).join(', ')}<div class="note">${E(e.why.slice(0,200))}</div></div>`).join('');});
+ return h;
+}
+
+function pChangelog(){
+ let h=`<div class="eyebrow">Newest first</div><h1>Recently landed</h1>`;
+ h+=(S.changelog||[]).map(c=>`<div class="card"><strong>${E(c.version)}</strong> <span class="chip">${E(c.date)}</span>
+  <div class="sec">${(c.items||[]).map(it=>`<div class="step"><span class="box done">&#10003;</span><span>${E(it)}</span></div>`).join('')||'<div class="muted">&#8212;</div>'}</div></div>`).join('');
+ return h;
+}
+
+function pMetrics(){
+ const c=S.counts||{},m=S.metrics||{};
+ return `<div class="eyebrow">Toward launch</div><h1>Metrics</h1>
+ <div class="card"><strong>Resolution progress</strong>${bar(m.resolved||0,m.total||0)}
+  <div class="kv" style="margin-top:8px"><div class="k">Open / unblocked</div><div>${(c.open||0)+(c.unblocked||0)}</div>
+  <div class="k">Deferred</div><div>${c.deferred||0}</div>
+  <div class="k">Running window</div><div>${(S.motion||[]).length}</div></div></div>
+ <div class="card"><strong>Repo context</strong><div class="kv" style="margin-top:6px">
+  <div class="k">Total items</div><div>${c.total||0}</div>
+  <div class="k">Running window</div><div>${(S.motion||[]).length}</div>
+  <div class="k">Branch</div><div class="mono">${E((S.repo&&S.repo.branch||'').replace(/^worktree-agent-.*/,'&#8212;'))}</div></div></div>`;
+}
+
+function pHelp(){
+ const cmds=(S.help&&S.help.commands)||[];
+ let h=`<div class="eyebrow">Pack-side commands</div><h1>Help &amp; commands</h1>
+ <div class="card"><strong>Pack commands</strong><div class="sec">${cmds.map(c=>`<div class="step"><span class="box">&#183;</span><span class="mono">${E(c)}</span></div>`).join('')||'<div class="muted">&#8212;</div>'}</div></div>
+ <div class="proj"><h3>Project-side &#8212; not pack commands</h3><div class="muted">Client project command surfaces are separate from pack-self commands (see BD-257).</div></div>`;
+ return h;
+}
+
+/* ---------- router ---------- */
+function route(){
+ const raw=(location.hash||'#landing').slice(1);
+ const[seg,anchor]=raw.split('/');
+ let html;
+ if(/^bd-\d+$/.test(seg)){html=pBD('BD-'+seg.split('-')[1].padStart(3,'0'));}
+ else switch(seg){
+  case'':case'landing':html=pLanding();break;
+  case'frontier':html=pFrontier();break;
+  case'grand-plan':html=pGrand();break;
+  case'archive':html=pArchive();break;
+  case'methodology':html=pMethodology();break;
+  case'rules':html=pRules();break;
+  case'deps':html=pDeps();break;
+  case'changelog':html=pChangelog();break;
+  case'metrics':html=pMetrics();break;
+  case'help':html=pHelp();break;
+  default:html=pLanding();
+ }
+ document.getElementById('main').innerHTML=html;
+ document.querySelectorAll('.navgroup a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+seg));
+ window.scrollTo(0,0);
+ if(anchor){const el=document.getElementById(seg+'-'+anchor)||document.getElementById(anchor);if(el)el.scrollIntoView();}
+ document.body.classList.remove('nav-open');
+}
+document.getElementById('side').innerHTML=sidebar();
+window.addEventListener('hashchange',route);
+route();
+</script>
+</body></html>
