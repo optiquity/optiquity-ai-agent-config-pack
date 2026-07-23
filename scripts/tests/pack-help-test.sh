@@ -3,8 +3,9 @@
 # tests. Covers detect_pack_surface (V3 §28.2.3) and pack-help.sh's
 # single-fragment emit. BD-243 NUCLEAR: the deferred-tracker fragment is
 # deleted and `pack help` no longer advertises tracker mode — these tests
-# assert the tracker section is ABSENT on both surfaces and the live
-# `pack td` rows are PRESENT.
+# assert the tracker section is ABSENT on both surfaces; the live `pack td`
+# rows are ABSENT on the PACK surface (pack-internal — scripts/pack-td.sh
+# carries `# pack-internal: true`) and PRESENT on the CLIENT surface.
 
 set -uo pipefail
 
@@ -151,10 +152,13 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$REPO_ROOT" 2>/dev/null)
 [[ "$output" != *"Tracker commands"* && "$output" != *"pack tracker"* ]] \
     && t_pass "2.1 tracker advertising absent (pack surface)" \
     || t_fail "2.1 tracker advertising leaked" "got: ${output:0:400}"
-# 2.1 live `pack td` rows present (relocated into HELP-FRAGMENT-PACK).
-[[ "$output" == *"pack td promote"* && "$output" == *"pack td resolve"* ]] \
-    && t_pass "2.1 pack td rows present" \
-    || t_fail "2.1 pack td rows missing"
+# 2.1 `pack td` rows ABSENT on the pack surface: `pack td` is pack-internal
+# (scripts/pack-td.sh carries `# pack-internal: true`), a project-side TD
+# concept that does not belong on the pack surface — HELP-FRAGMENT-PACK omits
+# the rows. They remain on the CLIENT surface (asserted at 2.2 below).
+[[ "$output" != *"pack td promote"* && "$output" != *"pack td resolve"* ]] \
+    && t_pass "2.1 pack td rows absent (pack surface)" \
+    || t_fail "2.1 pack td rows leaked onto pack surface" "got: ${output:0:400}"
 # 2.1 no leftover sibling-include placeholder line.
 [[ "$output" != *"[Included from"* ]] \
     && t_pass "2.1 no include-placeholder leak" \

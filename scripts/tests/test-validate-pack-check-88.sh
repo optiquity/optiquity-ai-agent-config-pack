@@ -8,8 +8,9 @@
 # matches `git hash-object` of the tracked build-spec
 # pack-ops/DASHBOARD-SPEC-PACK.md (declare-verify-backing). A mismatch (the spec
 # changed without a re-render → a committed stale shell) FAILs; an unhashable spec
-# (a declared fingerprint with NO backing) FAILs. At HEAD the dir/shell is absent
-# (0 tracked) so the guard SKIPs (lenient).
+# (a declared fingerprint with NO backing) FAILs. At HEAD the shell is tracked and
+# in sync with the spec (BD-224 board now git-tracked) so the guard is ACTIVE and
+# PASSES.
 #
 # This test is NOT fixture-dependent (it never reads a built test-fixtures/<NAME>
 # directory — it `git init`s a throwaway repo in a /tmp REPO_ROOT). It lives
@@ -19,7 +20,7 @@
 #
 # Coverage:
 #   Group 0: Module import + Check 88 symbol registration + count invariant
-#   Group 1: Real-state-at-HEAD SKIP (the real tree has no tracked shell)
+#   Group 1: Real-state-at-HEAD ACTIVE + PASS (the real tree tracks the shell in sync with the spec)
 #   Group 2: Synthetic PASS/FAIL/SKIP against a /tmp git repo (monkeypatch
 #            REPO_ROOT):
 #            - PASS: shell present + matching spec-sha → 0 failures + "in sync"
@@ -87,10 +88,10 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────
-# Group 1: Real-state-at-HEAD SKIP (real tree has no tracked shell)
+# Group 1: Real-state-at-HEAD ACTIVE + PASS (real tree tracks the shell in sync with the spec)
 # ─────────────────────────────────────────────────────────────────
 
-printf "\n=== Group 1: Real-state-at-HEAD SKIP ===\n"
+printf "\n=== Group 1: Real-state-at-HEAD ACTIVE + PASS ===\n"
 
 REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 <<'EOF'
 import os, sys, io, contextlib
@@ -114,15 +115,15 @@ finally:
 
 if len(new) != 0:
     failures.append(f"real-state Check 88 expected 0 failures, got {len(new)}: {cap}")
-if "skipping (lenient)" not in cap:
-    failures.append(f"real-state SKIP message missing 'skipping (lenient)': {cap}")
+if "in sync" not in cap:
+    failures.append(f"real-state PASS message missing 'in sync': {cap}")
 
 if failures:
     print("FAILURES"); [print(" ", f) for f in failures]; sys.exit(1)
 print("OK")
 EOF
 case $? in
-    0) t_pass "real-state-at-HEAD Check 88 SKIPs (the real tree has no tracked dashboard-shell.html)" ;;
+    0) t_pass "real-state-at-HEAD Check 88 ACTIVE + PASSES (the real tree tracks dashboard-shell.html in sync with the spec)" ;;
     *) t_fail "real-state Check 88 failed" ;;
 esac
 
@@ -364,10 +365,10 @@ printf "\n=== Group 3: End-to-end validate-pack.py exit-status on HEAD ===\n"
 
 if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 88 > /tmp/vp-check88-e2e.out 2>&1; then
     if grep -q "Check 88: pack-ops/dashboard-approvals/dashboard-shell.html spec-sha matches" /tmp/vp-check88-e2e.out \
-       && grep -q "skipping (lenient)" /tmp/vp-check88-e2e.out; then
-        t_pass "validate-pack.py --only-check 88 exits 0; Check 88 runs and SKIPs lenient on HEAD"
+       && grep -q "in sync" /tmp/vp-check88-e2e.out; then
+        t_pass "validate-pack.py --only-check 88 exits 0; Check 88 runs ACTIVE + PASSES on HEAD (shell tracked, in sync)"
     else
-        t_fail "validate-pack.py exits 0 but Check 88 output not detected" \
+        t_fail "validate-pack.py exits 0 but Check 88 PASS output not detected" \
             "Tail: $(tail -10 /tmp/vp-check88-e2e.out)"
     fi
 else

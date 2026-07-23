@@ -7,8 +7,8 @@
 # {dashboard.html, dashboard-url.txt, dashboard-shell.html}. An EXTRA tracked file
 # (registry creep) FAILs; a MISSING file (any strict subset of the trio tracked)
 # FAILs — the missing-file teeth enforce the all-three-or-none first-commit
-# atomicity (F12). At HEAD the dir is absent (0 tracked) so the guard SKIPs
-# (lenient).
+# atomicity (F12). At HEAD the dir tracks EXACTLY the three files (BD-224 board
+# now git-tracked) so the guard is ACTIVE and PASSES.
 #
 # This test is NOT fixture-dependent (it never reads a built test-fixtures/<NAME>
 # directory — it `git init`s a throwaway repo in a /tmp REPO_ROOT). It lives
@@ -18,7 +18,7 @@
 #
 # Coverage:
 #   Group 0: Module import + Check 86 symbol registration + count invariant
-#   Group 1: Real-state-at-HEAD SKIP (the real tree has no tracked approvals dir)
+#   Group 1: Real-state-at-HEAD ACTIVE + PASS (the real tree tracks exactly the three files)
 #   Group 2: Synthetic SKIP/PASS/FAIL against a /tmp git repo (monkeypatch
 #            REPO_ROOT):
 #            - SKIP: no dashboard-approvals/ tracked → 0 failures (lenient)
@@ -82,10 +82,10 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────
-# Group 1: Real-state-at-HEAD SKIP (real tree has no tracked approvals dir)
+# Group 1: Real-state-at-HEAD ACTIVE + PASS (real tree tracks exactly the three files)
 # ─────────────────────────────────────────────────────────────────
 
-printf "\n=== Group 1: Real-state-at-HEAD SKIP ===\n"
+printf "\n=== Group 1: Real-state-at-HEAD ACTIVE + PASS ===\n"
 
 REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 <<'EOF'
 import os, sys, io, contextlib
@@ -109,15 +109,15 @@ finally:
 
 if len(new) != 0:
     failures.append(f"real-state Check 86 expected 0 failures, got {len(new)}: {cap}")
-if "skipping (lenient)" not in cap:
-    failures.append(f"real-state SKIP message missing 'skipping (lenient)': {cap}")
+if "all-three-or-none atomicity satisfied" not in cap:
+    failures.append(f"real-state PASS message missing 'all-three-or-none atomicity satisfied': {cap}")
 
 if failures:
     print("FAILURES"); [print(" ", f) for f in failures]; sys.exit(1)
 print("OK")
 EOF
 case $? in
-    0) t_pass "real-state-at-HEAD Check 86 SKIPs (the real tree has no tracked dashboard-approvals/)" ;;
+    0) t_pass "real-state-at-HEAD Check 86 ACTIVE + PASSES (the real tree tracks exactly the three dashboard-approvals/ files)" ;;
     *) t_fail "real-state Check 86 failed" ;;
 esac
 
@@ -281,10 +281,10 @@ printf "\n=== Group 3: End-to-end validate-pack.py exit-status on HEAD ===\n"
 
 if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 86 > /tmp/vp-check86-e2e.out 2>&1; then
     if grep -q "Check 86: pack-ops/dashboard-approvals/ holds exactly three files" /tmp/vp-check86-e2e.out \
-       && grep -q "skipping (lenient)" /tmp/vp-check86-e2e.out; then
-        t_pass "validate-pack.py --only-check 86 exits 0; Check 86 runs and SKIPs lenient on HEAD"
+       && grep -q "all-three-or-none atomicity satisfied" /tmp/vp-check86-e2e.out; then
+        t_pass "validate-pack.py --only-check 86 exits 0; Check 86 runs ACTIVE + PASSES on HEAD (board tracked)"
     else
-        t_fail "validate-pack.py exits 0 but Check 86 output not detected" \
+        t_fail "validate-pack.py exits 0 but Check 86 PASS output not detected" \
             "Tail: $(tail -10 /tmp/vp-check86-e2e.out)"
     fi
 else
