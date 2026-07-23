@@ -1,15 +1,14 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "5bb5779",
-  "checkpoint": "2026-07-22T00:00:00Z",
+  "boundary_commit": "861834f",
+  "checkpoint": "2026-07-23T00:00:00Z",
   "active": [],
   "in_flight_agents": [],
   "queue": ["BD-257", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
   "parallelization": "none.",
-  "wave": "BD-224 RESOLVED at the boundary commit (Status: Resolved, as-landed record written, _toc regenerated). No active or in-flight work — clean frontier. NEXT: kick off BD-257 (the project-side slash-command sibling of BD-224) on user direction. Push is user-manual (held).",
+  "wave": "BD-224 RESOLVED; all in-scope dashboard follow-ups landed at/under the boundary — the recency-ordering fix, the dashboard as-built reference doc, and the D1 board-tracking (all three approvals files tracked; dashboard.html marked -diff -merge). No active or in-flight work — clean frontier. NEXT: kick off BD-257 (the project-side slash-command sibling of BD-224; its client dashboard inherits the recency-sort + D1 tracking, and it consumes both BD-224 as-built docs) on user direction. Push is user-manual (held).",
   "pending_decisions": [
-    "OPEN (user): keep vs remove the untracked pack-ops/dashboard-approvals/ (the committed dashboard-shell reuse-cache + its Check 86/88 apparatus). Undecided; the dir stays untracked until the user decides.",
     "Standing: NO new BDs without explicit user ask; pack-chat-only trees are Pack-Chat-direct; MAJOR edits route to pack-coder; push is user-manual; the intervention commit-gate is live (write a fresh pack-ops/.commit-approval-token before each approved commit); session-state COMPACT — one SHA in boundary_commit only, no other SHAs, no hex agent IDs, <4096 bytes."
   ],
-  "cycle_position": "Idle — BD-224 fully resolved at the boundary commit; no commit cycle in progress. NEXT: BD-257 kickoff on user direction."
+  "cycle_position": "Idle — BD-224 fully resolved; the dashboard recency-fix + as-built doc + D1 board-tracking all landed. No commit cycle in progress. NEXT: BD-257 kickoff on user direction."
 }
