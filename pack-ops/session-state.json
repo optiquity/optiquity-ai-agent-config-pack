@@ -1,15 +1,16 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "cd90d9f",
+  "boundary_commit": "7d8d437",
   "checkpoint": "2026-07-23T00:00:00Z",
   "active": [],
   "in_flight_agents": [],
   "queue": ["BD-257", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
   "parallelization": "none.",
-  "wave": "BD-272 RESOLVED — pack td boundary violation fully eradicated (machinery deleted, client surface stripped, README + dormant-tracker BD-107 cites cleared); the separate independent resolution-gate audit returned CLEAN with explicit user sign-off; and the design chain (research/architect/adversarial/reconciliation/audit) is preserved in maintenance-docs/v11-implementation/. CI green. Clean frontier, no in-flight work. NEXT: BD-257 (project-side slash-command sibling of BD-224) — Stage-1 brainstorm as a project-side MIRROR of the pack-side command set, presented for review, then pause to decide the rest.",
+  "wave": "BD-272 RESOLVED (pack td fully eradicated, independent audit CLEAN, design chain preserved in maintenance-docs/v11-implementation/). Post-resolve housekeeping done: /pack-dashboard re-rendered + committed (board fresh — BD-272 shows Resolved, pre-BD-272 stale pack-td.sh snippet cleared), and the 8 stale prior-cycle agent worktrees pruned (only the 2 real checkouts remain). CI green. Clean frontier, no in-flight work. NEXT: BD-257 (project-side slash-command sibling of BD-224) — Stage-1 brainstorm as a project-side MIRROR of the pack-side command set, presented for review, then pause to decide the rest.",
   "pending_decisions": [
-    "Awaiting user direction on ordering three ready items: (a) fresh /pack-dashboard render (shows BD-272 Resolved + clears the stale pack-td.sh snippet in the generated board), (b) prune 8 stale prior-cycle agent worktrees (local, overdue teardowns holding redundant copies of already-landed work), (c) BD-257 Stage-1 kickoff.",
+    "Dashboard claude.ai PUBLISH pending user authorization: the committed dashboard.html is the SSOT and is fresh, but the foreground republish to the existing artifact URL was denied by the auto-mode classifier — the user must authorize the Artifact publish (permission rule / non-auto retry) or skip it (committed board stays current regardless).",
+    "BD-257 Stage-1 kickoff awaiting the user's go (project-side mirror brainstorm, then pause to discuss).",
     "Standing: NO new BDs without explicit user ask; pack-chat-only trees are Pack-Chat-direct; MAJOR edits route to pack-coder; push is user-manual (v11-dev in sync with origin); the intervention commit-gate is live (write a fresh pack-ops/.commit-approval-token before each approved commit) EXCEPT routine session-state refreshes, which the user authorized Pack Chat to perform autonomously; session-state COMPACT — one SHA in boundary_commit only, no other SHAs, no hex agent IDs, <4096 bytes."
   ],
-  "cycle_position": "Idle — BD-272 fully resolved + CI green. Awaiting the user's go on (a) dashboard render / (b) worktree prune / (c) BD-257 Stage-1."
+  "cycle_position": "Idle — BD-272 resolved + dashboard re-rendered/committed + worktrees pruned, all CI green. Paused per user. Awaiting: (1) dashboard-publish authorize-or-skip; (2) BD-257 Stage-1 go."
 }
