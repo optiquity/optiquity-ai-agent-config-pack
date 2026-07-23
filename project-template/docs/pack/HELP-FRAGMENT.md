@@ -17,23 +17,7 @@ your CLI for this content. Full docs in `docs/pack/PM-CHAT.md`,
 | `bash scripts/groupings.sh <verb>` | Groupings queries: list / list-membership / deps [--deferral] / order / shared-with (see docs/pack/PM-CHAT.md). |
 | `bash scripts/status-generate.sh` | Regenerate the STATUS.md dashboard's generated sections; `--check` gates drift. |
 | `./agent-run.sh <cli> --agent <name>` | Spawn a project agent. `./agent-run.sh --help` for flags. |
-| `pack td promote --to=phase-N` | Promote a TD-NNN to a new phase epic (Path 1). |
-| `pack td promote --to=phase-N.M` | Promote a TD-NNN to a new phase task under phase N (Path 2). |
-| `pack td resolve <td-id>` | Direct-close wrapper. No promotion label; no new entity. |
 | `pack help` | Print this fragment (LCD shell verb). |
-
-## TD promotion
-
-`pack td <verb>` orchestrates the two-path TD promotion plus the
-direct-close shape.
-
-| Verb | What it does |
-|---|---|
-| `pack td promote --to=phase-N <td-id>` | Path 1 — promote a TD to a new phase epic. |
-| `pack td promote --to=phase-N.M <td-id>` | Path 2 — promote a TD to a new phase task under phase N. |
-| `pack td resolve <td-id> [--note "..."]` | Direct close. No promotion label; no new entity. |
-
-There is no Path 3 and no `--fold-into` flag.
 
 ## See also
 

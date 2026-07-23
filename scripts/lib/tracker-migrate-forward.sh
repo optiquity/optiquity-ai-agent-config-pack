@@ -69,7 +69,7 @@ fi
 # go through BD-108's `tracker_links_create_blocked_by` orchestrator
 # so the cycle-graph store at `<repo>/.pack-tracker/links-graph.json`
 # is populated by initial forward migration. Without this, the
-# cycle-graph store is empty until a `pack td promote --to=phase-N.M`
+# cycle-graph store is empty until a subsequent link-creating cycle
 # runs, leaving forward-migration cycles invisible to subsequent
 # link-creation cycle checks. Source the link orchestrator (which in
 # turn sources tracker-cycle-check.sh, tracker-errors.sh) idempotently.

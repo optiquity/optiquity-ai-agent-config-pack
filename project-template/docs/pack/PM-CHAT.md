@@ -747,19 +747,18 @@ Every prompt to repo-ops must include:
 When a TD-NNN becomes Unblocked (per METHODOLOGY § Part 7 Procedure 1
 step 3), the PM Chat advises one of three outcomes:
 
-| Outcome | TD lifecycle ends as | Verb | New entity created |
+| Outcome | TD lifecycle ends as | How (flat-file) | New entity created |
 |---|---|---|---|
-| **Direct close** (small; no blockers; fits inline) | Resolved with normal lifecycle | `pack td resolve <td-id>` (or BACKLOG-edit) | none |
-| **Path 1** (multi-task work; new phase warranted) | Resolved with `promoted-to:phase-N` label | `pack td promote --to=phase-N <td-id>` | new phase epic at L1 |
-| **Path 2** (single-task scope; fits as a new task in an existing phase) | Resolved with `promoted-to:phase-N.M` label | `pack td promote --to=phase-N.M <td-id>` | new phase task at L2 |
+| **Direct close** (small; no blockers; fits inline) | Resolved in place | Edit the TD entry's `Status:` / `Resolved:` lines directly | none |
+| **Path 1** (multi-task work; new phase warranted) | Resolved; the TD's `Resolved:` line cross-refs the new phase epic | Write the phase epic entry, then resolve the TD | new phase epic at L1 |
+| **Path 2** (single-task scope; fits as a new task in an existing phase) | Resolved; the TD's `Resolved:` line cross-refs the new phase task | Write the phase task under phase N, then resolve the TD | new phase task at L2 |
 
-**Path 3 is forbidden.** There
-is no `--fold-into` verb and no `folded-into:` label. Where Path 3
-would have applied — TD whose work logically belongs inside an existing
-task — the path is "edit the existing task body manually via PM Chat
-and resolve the TD via direct close" (outside the promotion mechanism).
-Or use Path 2 with a `Dependencies` bullet pointing at the absorbing
-task to express ordering without merging entities.
+**Path 3 is forbidden.** There is no fold-into-an-existing-task
+outcome. Where Path 3 would have applied — a TD whose work logically
+belongs inside an existing task — the path is "edit the existing task
+body manually via PM Chat and resolve the TD via direct close." Or use
+Path 2 with a `Dependencies` bullet pointing at the absorbing task to
+express ordering without merging entities.
 
 ### Advisory heuristic
 
@@ -793,11 +792,10 @@ Proceed? (yes / change-to-path-1 / change-to-direct-close / show-details)
 **Direct close.** PM Chat does not invoke planner or architect. The
 user does the work in-session (or queues it); PM Chat closes the TD
 via the existing BACKLOG-status-update procedure (METHODOLOGY § Part 7
-Procedure 4) and runs `pack td resolve <td-id>` to emit the audit
-shape. No new orchestration; no promotion labels; no new tracker
-entity.
+Procedure 4) by editing the TD entry's `Status:` / `Resolved:` lines
+directly. No new orchestration; no new entity.
 
-**Path 2 (`pack td promote --to=phase-N.M`).** PM Chat does not invoke
+**Path 2 (new phase task under phase N).** PM Chat does not invoke
 planner or architect by default. PM Chat:
 
 1. Reads the TD content.
@@ -820,7 +818,7 @@ does NOT invoke the architect for Path 2 by default; architect
 involvement is triggered only by the user explicitly requesting
 architectural review.
 
-**Path 1 (`pack td promote --to=phase-N`).** PM Chat invokes the
+**Path 1 (new phase epic).** PM Chat invokes the
 **architect** (project-side `architect.md` agent) **by default** for
 two reasons:
 
@@ -839,26 +837,6 @@ or non-trivial sequencing. The architect's output explicitly states
 "planner pass needed" or "no planner pass needed; tasks are
 self-evident from the TD content." For Path 1, **the architect's call
 decides** the planner-invocation trigger.
-
-### Verb shape
-
-```
-pack td promote --to=phase-N           # Path 1 — new phase
-pack td promote --to=phase-N.M         # Path 2 — new phase task
-pack td resolve <td-id> [--note "..."] # Direct close
-```
-
-The `--to` argument's grammar disambiguates Path 1 (`phase-N`) from
-Path 2 (`phase-N.M`). NO `--fold-into`. NO third subcommand.
-
-### Implementation reference
-
-Orchestration library: `scripts/lib/tracker-promote.sh`.
-Verb dispatcher: `scripts/pack-td.sh`. The library reuses the
-existing provider abstraction (`provider_create`, `provider_link`,
-`provider_sub_issue_create`, `provider_close`, `provider_set_labels`)
-and the `tracker_links_create_blocked_by` orchestrator; no new
-provider operation or capability flag is added.
 
 ---
 

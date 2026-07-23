@@ -3,9 +3,10 @@
 # tests. Covers detect_pack_surface (V3 §28.2.3) and pack-help.sh's
 # single-fragment emit. BD-243 NUCLEAR: the deferred-tracker fragment is
 # deleted and `pack help` no longer advertises tracker mode — these tests
-# assert the tracker section is ABSENT on both surfaces; the live `pack td`
-# rows are ABSENT on the PACK surface (pack-internal — scripts/pack-td.sh
-# carries `# pack-internal: true`) and PRESENT on the CLIENT surface.
+# assert the tracker section is ABSENT on both surfaces. BD-272: the
+# eradicated `pack td` verb rows are ABSENT on BOTH the pack and client
+# surfaces (the dead pack-backed verb + its client advertisement removed);
+# the string literals below are absence-guards, not advertising.
 
 set -uo pipefail
 
@@ -139,8 +140,8 @@ rm -rf "$TR_NB"
 printf "\n=== Group 2: pack-help.sh end-to-end ===\n"
 
 # 2.1 pack repo (use the actual pack-repo root): output contains the
-# pack-side header + pack commands, the live `pack td` rows, and NO
-# deferred-tracker advertising (BD-243 NUCLEAR).
+# pack-side header + pack commands, NO `pack td` rows, and NO
+# deferred-tracker advertising (BD-243 NUCLEAR; BD-272 pack td eradicated).
 output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$REPO_ROOT" 2>/dev/null)
 [[ "$output" == *"# Pack v11 — verb reference (pack repo)"* ]] \
     && t_pass "2.1 pack-side header present" \
@@ -152,10 +153,10 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$REPO_ROOT" 2>/dev/null)
 [[ "$output" != *"Tracker commands"* && "$output" != *"pack tracker"* ]] \
     && t_pass "2.1 tracker advertising absent (pack surface)" \
     || t_fail "2.1 tracker advertising leaked" "got: ${output:0:400}"
-# 2.1 `pack td` rows ABSENT on the pack surface: `pack td` is pack-internal
-# (scripts/pack-td.sh carries `# pack-internal: true`), a project-side TD
-# concept that does not belong on the pack surface — HELP-FRAGMENT-PACK omits
-# the rows. They remain on the CLIENT surface (asserted at 2.2 below).
+# 2.1 `pack td` rows ABSENT on the pack surface: the `pack td` verb was
+# eradicated (BD-272 — dead pack-backed machinery removed), so its rows
+# appear on NEITHER surface. Absence on the client surface is asserted at
+# 2.2 below.
 [[ "$output" != *"pack td promote"* && "$output" != *"pack td resolve"* ]] \
     && t_pass "2.1 pack td rows absent (pack surface)" \
     || t_fail "2.1 pack td rows leaked onto pack surface" "got: ${output:0:400}"
@@ -167,7 +168,7 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$REPO_ROOT" 2>/dev/null)
 # 2.2 client surface from a fixture tree. BD-243 NUCLEAR: only
 # HELP-FRAGMENT.md ships now (the deferred-tracker fragment is deleted).
 # Assert the client header + client-only verb are present, tracker
-# advertising is absent, and the live `pack td` rows are present.
+# advertising is absent, and the `pack td` rows are absent (BD-272).
 TR_CLI2=$(mktemp -d -t ph-cli2.XXXXXX)
 mkdir -p "$TR_CLI2/docs/project" "$TR_CLI2/docs/pack"
 cat > "$TR_CLI2/docs/project/BACKLOG.md" <<'EOF'
@@ -182,9 +183,9 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$TR_CLI2" 2>/dev/null)
 [[ "$output" != *"Tracker commands"* && "$output" != *"pack tracker"* ]] \
     && t_pass "2.2 tracker advertising absent (client surface)" \
     || t_fail "2.2 tracker advertising leaked" "got: ${output:0:400}"
-[[ "$output" == *"pack td promote"* && "$output" == *"pack td resolve"* ]] \
-    && t_pass "2.2 client pack td rows present" \
-    || t_fail "2.2 client pack td rows missing"
+[[ "$output" != *"pack td promote"* && "$output" != *"pack td resolve"* ]] \
+    && t_pass "2.2 client pack td rows absent" \
+    || t_fail "2.2 client pack td rows leaked"
 [[ "$output" == *"agent-run.sh"* ]] \
     && t_pass "2.2 client-only verb (agent-run) listed" \
     || t_fail "2.2 client-only verb"

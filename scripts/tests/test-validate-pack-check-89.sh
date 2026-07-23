@@ -37,7 +37,7 @@
 #                    failure naming the unadvertised skill
 #            - False-positive guard: a `scripts/pack-testonly.sh` span (NOT a
 #                    `/pack-` span) + NO skill → 0 failures (the anchored regex
-#                    excludes the scripts/ span; locks /pack-td / /pack-tracker)
+#                    excludes the scripts/ span; locks /pack-tracker)
 #            - Reverse engine-skill non-regression: a NON-pack-*-named
 #                    render-engine skill in all 3 roots + no row → 0 failures
 #                    (reverse candidate set is pack-*-named dirs only)
@@ -264,7 +264,7 @@ if "pack-testonly" not in cap or "not advertised" not in cap:
 
 # C5: False-positive guard — a `scripts/pack-testonly.sh` span (NOT a `/pack-`
 # span) + NO skill → 0 failures. The anchored regex excludes the scripts/ span,
-# so `advertised` is empty; locks the /pack-td / /pack-tracker non-regression.
+# so `advertised` is empty; locks the /pack-tracker non-regression.
 fc, cap = run_case(["`scripts/pack-testonly.sh`"], {})
 if fc != 0:
     failures.append(f"C5 (scripts/ span false-positive guard) expected 0 failures, got {fc}: {cap}")

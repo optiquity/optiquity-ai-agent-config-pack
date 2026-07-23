@@ -1597,23 +1597,23 @@ including the v11.0 phase-N.M and phase-task A-blocked-by-B forms.)
 Is the work small (≤ ~30 minutes inline; no significant scope expansion;
 user available to do it) AND no blockers?
   → Yes: direct close
-         (verb: `pack td resolve <td-id>`; no promotion
-          label; no new entity; v10 lifecycle unchanged)
+         (resolve the TD in place via its `Status:` / `Resolved:`
+          lines; no new entity; lifecycle unchanged)
   → No: Does the work span multiple tasks, warrant its own phase
         (architectural surface; multi-day; distinct concern), OR is
         there a cluster of related TDs in the same area?
       → Yes: Path 1 — promote to a new phase epic
-             (verb: `pack td promote --to=phase-N`;
-              new phase epic at L1; `derived-from:TD-NNN` on phase
-              epic; `promoted-to:phase-N` on closed TD; PM Chat
+             (write a new phase epic entry at L1; the phase entry
+              body notes it derives from the TD; the closed TD's
+              `Resolved:` line cross-refs the new phase epic; PM Chat
               invokes architect by default)
       → No: Path 2 — promote to a new phase task under existing phase
-             (verb: `pack td promote --to=phase-N.M`;
-              new phase task at L2 child of phase-N epic;
-              `derived-from:TD-NNN` on task; `promoted-to:phase-N.M`
-              on closed TD; for each `Dependencies` bullet entry on
-              the new task, PM Chat creates a cross-entity
-              `blocked-by` edge)
+             (write a new phase task at L2 child of the phase-N epic;
+              the task body notes it derives from the TD; the closed
+              TD's `Resolved:` line cross-refs the new phase task; for
+              each `Dependencies` bullet entry on the new task, PM Chat
+              records a cross-entity `blocked-by` edge in the flat-file
+              entry bodies)
 ```
 PM Chat advises per heuristic (Description length, File/Symbol
 scope, Type signal, related-TD cluster). The user can confirm or override
@@ -1621,13 +1621,13 @@ via `change-to-path-1` / `change-to-path-2` / `change-to-direct-close`.
 Bias toward resolving now.
 
 **Path 3 is forbidden** (supersedes the v10 fold-into-existing-task shape). The
-v10 "fold into existing task body via inline `(from TD-NNN)` marker
-plus `folded-into:` label" shape is rejected; where that case would
+v10 "fold into existing task body via inline `(from TD-NNN)` marker"
+shape is rejected; where that case would
 have applied, the user edits the absorbing task body manually via PM
 Chat (outside the promotion mechanism) and resolves the TD via direct
 close, OR uses Path 2 with a `Dependencies` bullet pointing at the
-absorbing task to express ordering without merging entities. The
-`pack td promote` verb has no `--fold-into` flag.
+absorbing task to express ordering without merging entities. There is
+no fold-into-an-existing-task outcome.
 
 ### Procedure 2 — Post-session processing (after every coder completion report)
 

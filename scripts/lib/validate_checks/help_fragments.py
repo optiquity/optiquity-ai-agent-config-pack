@@ -330,7 +330,7 @@ def check_help_fragment_completeness() -> None:
 # Anchored slash-row regex: a COMPLETE backtick span `/pack-<name>`. Does NOT
 # reuse _VERB_RE — _VERB_RE's `/pack-\w+` arm uses \w (no hyphen) and would
 # truncate `/pack-isolation-mode` -> `isolation` (a guaranteed false FAIL).
-# The closing-backtick anchor also excludes `scripts/pack-td.sh`-shape spans
+# The closing-backtick anchor also excludes `scripts/pack-help.sh`-shape spans
 # (they start `scripts/`, never a bare `/pack-`), so no allowlist is needed.
 # NOTE (raw-vs-set): findall over the current fragment returns 10 raw matches
 # (`/pack-help` and `/pack-startup` each appear twice in HELP-FRAGMENT-PACK.md);

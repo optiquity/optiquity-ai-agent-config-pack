@@ -501,12 +501,6 @@ reason: the installer script that provisions the project; referenced for provena
 target: scripts/pack-help.sh
 reason: project help script invoked by the pack-help skill; present after install, absent from the bare template.
 
-target: scripts/pack-td.sh
-reason: project TD-tracker verb dispatcher; present after install, absent from the bare template.
-
-target: scripts/lib/tracker-promote.sh
-reason: project tracker-orchestration library; present after install, absent from the bare template.
-
 target: .agents/mcp_config.json
 reason: optional MCP config created during install/setup; present when the MCP feature is enabled, absent from the bare template.
 

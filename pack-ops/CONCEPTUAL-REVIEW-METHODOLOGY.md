@@ -209,7 +209,7 @@ Seven universal principles. Violations have empirically caused real bugs in v11.
 | 3 | **Typed errors with named recovery verb** | V1 §9 + V3 §27.1 Layer 2; a uniform typed-error envelope; never bare `printf 'ERROR:'` |
 | 4 | **Composition over special cases** — uniform mechanism for many uses | V1 §5.3 `link.kind` open-string family; avoid new ops per use case |
 | 5 | **Mode-agnostic operational logic** — logic is independent of the storage backend; only the resolver differs | V1 §8.5 / D-6 trinity Document-locations resolver |
-| 6 | **Idempotency for orchestration verbs** — re-running on already-applied state is no-op or replay-safe | V1 §6.4 checkpoint; `pack td promote` |
+| 6 | **Idempotency for orchestration verbs** — re-running on already-applied state is no-op or replay-safe | V1 §6.4 checkpoint; `init-project.sh --update` |
 | 7 | **Additive grammar extensions** — new forms admitted, existing forms continue to parse | V3.3 §5.3 (Blockers gain `phase-N.M`); V1 §6.7 whitespace tolerance |
 
 If a finding violates a principle not on this list, document it as concept-specific (f) and note for inclusion in v(N+1) methodology revision.

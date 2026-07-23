@@ -32,8 +32,8 @@
 # (update / close / reopen), so this path ports unchanged.
 #
 # Reference: ARCHITECTURE-BD-204.md §2.3 (full CRUD), §2.6 / DP-3
-# (status matrix + state_reason); tracker-promote.sh:801 (the
-# provider_update call shape this reuses).
+# (status matrix + state_reason). Reuses the standard
+# `provider_update "$gh_id" "$payload"` call shape.
 #
 # Bash 3.2 compatible (macOS default). Do NOT add a shebang — this
 # file is sourced, not executed.
@@ -487,8 +487,8 @@ tracker_edit_entry() {
         patch=$(printf '%s' "$patch" | jq --arg b "$composed_body" '.body = $b')
     fi
 
-    # Build the provider_update payload (§2.3; reuses the
-    # tracker-promote.sh:801 `provider_update "$gh_id" "$payload"` call
+    # Build the provider_update payload (§2.3; the standard
+    # `provider_update "$gh_id" "$payload"` call
     # shape). The status:* label swap rides add_labels / remove_labels:
     # remove the old status:* label, add the new one.
     local new_label old_label
