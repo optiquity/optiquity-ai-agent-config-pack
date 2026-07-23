@@ -233,7 +233,7 @@ scripts/                                    Pack-level scripts
     ├── recommendation.sh                   Inflection-point recommendation system (v11; D-19; dormant, deferred per BD-214)
     ├── tracker-provider.sh                 TrackerProvider abstraction (v11; D-1; dormant, deferred per BD-214)
     ├── tracker-provider-gh.sh              gh-CLI backend (v11; D-2; dormant, deferred per BD-214)
-    ├── tracker-{config,doctor,init,labels,errors,sidecar,mirror,agent-read,phase-task,cycle-check,links,promote}.sh   Tracker subsystem (v11; phase-task per V3.3 §2 D-21 / BD-106; cycle-check + links per V3.3 §5 / BD-108; promote per V3.3 §3 / BD-107; doctor per BD-130; dormant, deferred per BD-214)
+    ├── tracker-{config,doctor,init,labels,errors,sidecar,mirror,agent-read,phase-task,cycle-check,links}.sh   Tracker subsystem (v11; phase-task per V3.3 §2 D-21 / BD-106; cycle-check + links per V3.3 §5 / BD-108; doctor per BD-130; dormant, deferred per BD-214)
     ├── tracker-migrate-{forward,reverse}.sh    Forward / reverse migration libs (v11; D-3 / D-8; dormant, deferred per BD-214)
     ├── template-{translations,version}.sh  Template freshness helpers (v11)
     └── migrate-v10-to-v11/                 v10→v11 adapter-private libs (v11; BD-095 + BD-101 + BD-165)
