@@ -30,8 +30,7 @@
 #     `pf-category:prompt`, `pf-category:agent-perf`,
 #     `pf-category:friction`, `pf-category:open-question`.
 #
-# Promotion-path label family (V3.3 §3.5; BD-106 lands the helpers,
-# BD-107 wires them into the promote orchestration):
+# Promotion-path label family (V3.3 §3.5; BD-106 lands the helpers):
 #   - `derived-from:TD-NNN` — applied to the new phase epic (Path 1)
 #     or new phase task (Path 2). Reverse pointer to the source TD.
 #   - `promoted-to:phase-N` / `promoted-to:phase-N.M` — applied to
@@ -42,7 +41,7 @@
 #     constructor.
 # These are open-string label families (one label per concrete
 # identifier); they are NOT ensured at init time — created at the
-# moment of promotion / derivation (BD-107) via the helpers below.
+# moment of promotion / derivation via the helpers below.
 #
 # Public API:
 #   - tracker_labels_canonical_set

@@ -8,7 +8,7 @@
 # no-mirror tree, or a v10 IMPLEMENTATION-PLAN.md INPUT).
 #
 # This library lands the parser + emitter for `### Tasks` blocks and
-# the helpers that downstream BDs (BD-107 promotion, BD-108 cross-
+# the helpers that downstream BDs (BD-108 cross-
 # entity dependency links) compose with. It is **deliberately
 # single-file** — parse and emit operate on the same grammar surface
 # (METHODOLOGY § Part 4; V3.3 §4.1/§4.2) and share the regex
