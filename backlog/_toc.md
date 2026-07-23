@@ -24,7 +24,6 @@
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
 - [BD-257](./BD-257.md) — Add net-new + review/refresh existing client (project-side) slash commands + their execution foundation (brainstorm-gated; project-side analog of BD-224)
-- [BD-272](./BD-272.md) — Eradicate the `pack td` boundary violation (mis-homed, client-advertised, never-shipped project-side TD-promotion workflow)
 
 ## Deferred
 
@@ -270,6 +269,7 @@
 - [BD-267](./BD-267.md) — Impl-plan ordering + lifecycle contract: grouping-affinity placement, deferral-deprioritization ordering, four-field dependency sentence, terminal-supersession sentence, groupings-contract pointer (BD-189 CBD-6)
 - [BD-268](./BD-268.md) — Groupings workflow integration: METHODOLOGY Workflow 7 + PM-CHAT + trinity + prompts + pm-startup + agent defs + HELP-FRAGMENT rows + changelog Write-authority clarify + allowlist records (BD-189 CBD-7)
 - [BD-271](./BD-271.md) — Narration-twin hardening: client-gate session-state behavioral coverage + a new Check 85 regex-CONTENT parity guard (BD-252 / BD-253 / BD-269 follow-on)
+- [BD-272](./BD-272.md) — Eradicate the `pack td` boundary violation (mis-homed, client-advertised, never-shipped project-side TD-promotion workflow)
 
 ## Deprecated
 
