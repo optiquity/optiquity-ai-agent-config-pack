@@ -28,6 +28,13 @@
 #                           surface (`project-template/`) ⇒ a WARN line naming
 #                           the dir surface + both BDs, exit 0 (the S1 dir-
 #                           collision case that the old regex was blind to)
+#            T5 PASS+WARN — one open BD names a placeholder-SEGMENT path
+#                           (`project-template/skills/<command>/SKILL.md`) and
+#                           another names the literal directory prefix
+#                           (`project-template/skills/`) ⇒ a WARN naming the
+#                           shared `project-template/skills/` prefix + both BDs,
+#                           exit 0 (the BD-257<->BD-037 placeholder blind spot
+#                           the placeholder-segment terminator closes)
 #   Group 2: end-to-end validate-pack.py exit-status on HEAD, shape-only +
 #            live-state-INDEPENDENT: Check 82 runs in the battery, exit 0;
 #            IF any shared-surface WARN is present it matches the canonical
@@ -208,6 +215,29 @@ elif "WARN" not in cap or "project-template/" not in cap \
         or "BD-918" not in cap or "BD-919" not in cap:
     failures.append(f"T4 expected a WARN naming the shared DIRECTORY surface + both BDs, got: {cap}")
 
+# T5: two open BDs where ONE names a placeholder-SEGMENT path
+# (project-template/skills/<command>/SKILL.md) and the OTHER names the literal
+# directory prefix (project-template/skills/) ⇒ a WARN on the shared
+# project-template/skills/ prefix + both BDs, exit 0. This is the BD-257<->BD-037
+# blind spot the placeholder-segment terminator closes: the OLD grammar
+# truncated the placeholder span at the angle-bracket marker (which is outside
+# the path char-class, so the span never reached its closing backtick) and the whole
+# span tokenized to nothing -- the overlap on the literal directory prefix was
+# invisible to the collision scan. The NEW terminator (?<=/)(?=<) extracts the
+# literal directory prefix up to the placeholder segment, so the placeholder
+# path and the literal-dir path now collide on project-template/skills/.
+PLACEHOLDER_PATH = f"{BT}project-template/skills/<command>/SKILL.md{BT}"
+LITERAL_DIR_PATH = f"{BT}project-template/skills/{BT}"
+fc, cap = run([
+    ("BD-920", "Open", f"{PLACEHOLDER_PATH}, {BT}scripts/only-920.py{BT}"),
+    ("BD-921", "Open", f"{LITERAL_DIR_PATH}, {BT}scripts/only-921.py{BT}"),
+])
+if fc != 0:
+    failures.append(f"T5 expected 0 failures (advisory NEVER fails), got {fc}: {cap}")
+elif "WARN" not in cap or "project-template/skills/" not in cap \
+        or "BD-920" not in cap or "BD-921" not in cap:
+    failures.append(f"T5 expected a WARN naming the shared project-template/skills/ prefix + both BDs (placeholder-segment path must tokenize its literal directory prefix), got: {cap}")
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -216,7 +246,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "End-to-end synthetic-tree tests T1-T4 (WARN-on-shared-surface bite naming surface+pair; no-overlap clean; 3-BD overlap; bare single-segment DIRECTORY collision; advisory NEVER fails)" ;;
+    0) t_pass "End-to-end synthetic-tree tests T1-T5 (WARN-on-shared-surface bite naming surface+pair; no-overlap clean; 3-BD overlap; bare single-segment DIRECTORY collision; placeholder-SEGMENT path collides on its literal directory prefix; advisory NEVER fails)" ;;
     *) t_fail "End-to-end check_cross_bd_surface_advisory tests failed (see Python output)" ;;
 esac
 

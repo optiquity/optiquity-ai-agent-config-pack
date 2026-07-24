@@ -37,6 +37,10 @@
 #                      structured (the trailing-slash dir case) ⇒ no FAIL
 #            T8 PASS — a NON-active BD with a bare single-segment directory
 #                      token is structured ⇒ NOT WARNed, exit 0
+#            T9 PASS — active BD whose File/Symbol is a placeholder-SEGMENT path
+#                      (`project-template/skills/<command>/SKILL.md`, no TBD
+#                      text) is structured (the terminator extracts the literal
+#                      `project-template/skills/` directory prefix) ⇒ no FAIL
 #   Group 2: end-to-end validate-pack.py exit-status on HEAD (Check 81 clean)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-81.sh
@@ -232,6 +236,22 @@ fc, cap = run([("BD-908", "Open", DIR_ONLY)], [])  # active[] empty
 if fc != 0 or "BD-908" in cap:
     failures.append(f"T8 (non-active bare-dir token) expected 0 fail + NO WARN (structured), got {fc}: {cap}")
 
+# T9: PASS — an ACTIVE BD whose File/Symbol is a placeholder-SEGMENT path
+# (project-template/skills/<command>/SKILL.md) with NO bare/TBD marker text is
+# recognized as STRUCTURED: the placeholder-segment terminator extracts the
+# literal project-template/skills/ directory prefix as a keyable path token,
+# so the FAIL leg does not fire. Before the terminator fix the placeholder span
+# tokenized to nothing (the angle-bracket chars fall outside the path char-class
+# so the span never reached its closing backtick), so a placeholder-only field
+# looked un-structured and would have false-FAILed an active BD whose surface
+# is a genuine (placeholder-segment) directory. The TBD short-circuit is
+# independent and unchanged: a placeholder path that ALSO carries TBD/placeholder
+# marker text still classifies non-structured (exercised by T4).
+PLACEHOLDER_SEG = f"{BT}project-template/skills/<command>/SKILL.md{BT}"
+fc, cap = run([("BD-909", "Open", PLACEHOLDER_SEG)], ["BD-909"])
+if fc != 0:
+    failures.append(f"T9 (active placeholder-segment path, no TBD) expected 0 failures (literal dir prefix is structured), got {fc}: {cap}")
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -240,7 +260,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "End-to-end synthetic-tree tests T1-T8 (FAIL-leg bite on active bare-TBD/placeholder/missing + WARN-leg on non-active + PASS on active structured incl. bare single-segment DIRECTORY token + SKIP-lenient on absent session-state)" ;;
+    0) t_pass "End-to-end synthetic-tree tests T1-T9 (FAIL-leg bite on active bare-TBD/placeholder/missing + WARN-leg on non-active + PASS on active structured incl. bare single-segment DIRECTORY token + placeholder-SEGMENT path structured via literal dir prefix + SKIP-lenient on absent session-state)" ;;
     *) t_fail "End-to-end check_open_bd_structured_surface_field tests failed (see Python output)" ;;
 esac
 

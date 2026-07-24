@@ -539,9 +539,30 @@ _CHECK_81_TBD_MARKERS = (
 # positives). Used by BOTH Check 81 (≥1 token ⇒ structured) and Check 82 (the
 # surface→BDs map keys). Bounded to the field VALUE (no tree walk, no
 # subprocess).
+#
+# Placeholder-segment terminator: a path token may ALSO be terminated by a
+# `<placeholder>` SEGMENT — a `<` that immediately follows a `/` — in which
+# case the captured token is the literal DIRECTORY PREFIX up to (and
+# including) that `/` (`project-template/skills/<command>/SKILL.md` ⇒
+# `project-template/skills/`). Without this, a backtick span carrying a
+# placeholder segment never reaches its closing backtick within the token
+# grammar (the `<`/`>` chars are outside the path char-class), so the WHOLE
+# span tokenizes to nothing and a BD whose surface is written with a
+# placeholder segment is INVISIBLE to the collision scan on that path — the
+# BD-257↔BD-037 `project-template/skills/` blind spot. Bounded (ci-guard-
+# measure-then-bound): the `(?<=/)(?=<)` terminator fires ONLY when `<`
+# directly follows a `/` (a FULL placeholder segment), so a mid-segment
+# placeholder (`scripts/pack-<noun>.sh`), a leading placeholder
+# (`<repo>/docs/...`), or a bare prose `<` (`a < b`) yields NO token from that
+# span — the broadening is sized exactly to genuine directory-prefix surfaces,
+# and the captured token always ends in `/` (a clean directory). Non-
+# placeholder paths tokenize EXACTLY as before (the closing-backtick branch is
+# unchanged; the single capture group is preserved so `.group(1)` call sites
+# are untouched).
 _CHECK_81_PATH_TOKEN_RE = re.compile(
     r"`([A-Za-z0-9_][A-Za-z0-9_./-]*"
-    r"(?:/[A-Za-z0-9_./-]+|\.[A-Za-z0-9_]+|/))`"
+    r"(?:/[A-Za-z0-9_./-]+|\.[A-Za-z0-9_]+|/))"
+    r"(?:`|(?<=/)(?=<))"
 )
 
 
