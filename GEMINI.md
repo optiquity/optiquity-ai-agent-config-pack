@@ -649,20 +649,21 @@ PACK-AGENTS.md current".
   audience-correct canonical value per `maintenance-docs/v11-implementation/ARCHITECTURE-BD-182.md`
   §4.1 canonical reference table — NOT a byte-identical cross-trinity
   copy. `[roles: coder] [rationale: cross-cli-reference-normalization]`
-- **Dependency-direction governs file location; client deliverables default
-  to project-side.** A file's location is governed by DEPENDENCY DIRECTION,
-  not ship-status: a project-side deliverable must NEVER be a runtime
-  dependency of a pack operation (the reverse — pack-side libs being a
-  dependency of project deliverables — is fine). The default home for a new
-  client-shipped script is `project-template/scripts/`; BUT a file a pack
-  operation depends on at runtime (e.g. `init-project.sh` `source`s it) MUST
-  stay pack-side even if it also ships. A pack-side file may ship to clients
-  ONLY when BOTH (1) a pack operation depends on it at runtime AND (2) a
-  client surface invokes it — and ONLY via the frozen
-  `_SANCTIONED_PACK_SIDE_SHIPPED` allowlist in `scripts/validate-pack.py` (CI
-  Check 47 enforces install-map↔constant set-equality; growing the constant
-  requires architect+user sign-off). Current sanctioned set: exactly
-  `{scripts/lib/detect.sh, scripts/pack-help.sh}`. `[roles: architect coder]
+- **Dependency-direction governs file location; pack and project stay SEPARATE
+  (mirror-but-customize); the ship-allowlist goal is EMPTY.** A file's location
+  follows DEPENDENCY DIRECTION, not ship-status: a project-side deliverable
+  must NEVER be a runtime dependency of a pack operation (the reverse is fine).
+  Pack and project are SEPARATE surfaces; their behavior is MIRRORED but
+  CUSTOMIZED per side — NO dual-use files/scripts, EVEN when the two copies
+  would be byte-identical: ship a SEPARATE pack-side copy and a SEPARATE
+  project-side copy, never one file serving both. A new client-shipped script
+  defaults to `project-template/scripts/`; a file a pack operation depends on
+  at runtime (e.g. `init-project.sh` `source`s it) stays pack-side and is NOT
+  reused as the client's copy. The `_SANCTIONED_PACK_SIDE_SHIPPED` allowlist
+  (CI Check 47, install-map↔constant set-equality in
+  `scripts/validate-pack.py`) is the bounded pack-side-ship exception; its
+  GOAL STATE is EMPTY. The set is SHRINK-ONLY and MAY NEVER GROW — no
+  admission, no sign-off exception. `[roles: architect coder]
   [rationale: dependency-direction-placement]`
 - **Graph-first context when the knowledge graph exists.** If
   `$(git rev-parse --show-toplevel)/graphify-out/graph.json` exists, prefer

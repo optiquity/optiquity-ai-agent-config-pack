@@ -614,19 +614,31 @@ which resolves to `.gemini/.env` per §4.1.
 
 Ship-status and dependency-direction are orthogonal; placement follows the
 latter. A deliverable normally lives project-side, and a new client-shipped
-script defaults to `project-template/scripts/`. But a file a PACK OPERATION
-depends on at runtime cannot live project-side without making a project
-deliverable a dependency of a pack op — forbidden. Worked example:
-`scripts/lib/detect.sh` is `source`d by `init-project.sh:79` /
-`scripts/add-capability.sh` / the migrator (all pack operations), so it stays
-pack-side even though it ships (it is the dependency of the shipped
-`scripts/pack-help.sh`);
-promoting it to `project-template/scripts/lib/` was considered and RETRACTED for
-that inversion (`maintenance-docs/v11-implementation/ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md`
-§8.0). The pack-side-ship exception is frozen to `_SANCTIONED_PACK_SIDE_SHIPPED`;
-CI Check 47 holds the install-map's pack-side subset == that constant, so the
-lazy "ship from `scripts/` too" path fails by default — growth is a
-deliberate, sign-off-gated constant edit, never a stray map add.
+script defaults to `project-template/scripts/`. A file a PACK OPERATION depends
+on at runtime cannot live project-side without making a project deliverable a
+dependency of a pack op — forbidden — so it stays pack-side.
+
+Pack and project are SEPARATE surfaces whose behavior is MIRRORED but CUSTOMIZED
+per side. There are NO dual-use files: even when a pack-side file and a client's
+file would be byte-identical, the client gets its OWN customized copy under
+`project-template/`, never the pack-side file itself. One file serving both a
+pack op and a client surface couples the two — a pack-op change silently
+rewrites client behavior, and vice-versa — the coupling the separation forbids.
+
+Worked example: `scripts/lib/detect.sh` is `source`d by `scripts/init-project.sh` /
+`scripts/add-capability.sh` / the migrator (all pack operations), so it STAYS
+pack-side. The client needs equivalent detection, so it ships a SEPARATE
+project-side copy — the pack-side file does NOT double as the client's. The
+`_SANCTIONED_PACK_SIDE_SHIPPED` allowlist + CI Check 47 (install-map's pack-side
+subset == the constant) is the bounded exception that would let a
+pack-side-located file ALSO ship; its GOAL STATE is EMPTY. An empty allowlist
+turns Check 47 into the machine-enforcement of the no-dual-use default: any
+pack-side ship not in the constant fails CI. The set is SHRINK-ONLY and MAY
+NEVER GROW — there is no admission path and no sign-off exception; the lazy
+"ship from `scripts/` too" path fails by default. The dual-use-vs-separate-copy
+analysis behind these pack-side placements lives in
+`maintenance-docs/v11-implementation/ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md`
+§8.
 
 ## pack-chat-minor-edits-only
 
