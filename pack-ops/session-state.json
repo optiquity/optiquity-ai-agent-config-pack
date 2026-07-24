@@ -1,18 +1,18 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "daaefba",
+  "boundary_commit": "4347096",
   "checkpoint": "2026-07-24T00:00:00Z",
   "active": ["BD-257"],
   "in_flight_agents": [
-    "architect-bd257-clientmirror — BD-257 full-mirror client command subsystem design (RO); reads the clean Stage-1 research + the adjudicated set",
-    "coder-check82-tokenfix — STANDALONE pack-only fix of the cross_bd.py placeholder-path tokenization undercount (RW, isolated worktree)"
+    "planner-bd257-clientmirror — BD-257 implementation plan (10-command set, resolved OIs, no-dual-use principle) (RO)"
   ],
   "queue": ["BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "two parallel tracks: BD-257 architect (project-side design) + Check-82 fix (pack-only) — kept as SEPARATE commits per user.",
-  "wave": "BD-257 Stage-1 ADJUDICATED (user): full /pm-* client mirror of BD-224. Locked decisions — (1) EVERY client slash command /pm-* incl /pack-help -> /pm-help with its OWN help script + fragment (no sharing; pack-help.sh de-ships, Check-47 allowlist shrinks toward {detect.sh}); (2) all 3 modes (review + intervention + isolation) mirrored WITH enforcement, nothing dropped; (3) client help<->skill parity check; (4) /pm-dashboard HTML render-cache framework COEXISTING with STATUS.md; (5) /pm-startup completed incl modes canary; (6) shell-verb promotions as needed, all /pm-*. LARGE-BD deterministic pipeline underway. Check-82 collision-scan undercount being fixed STANDALONE (separate pack-only commit). NEXT after architect: adversarial architect -> reconciliation (if findings) -> USER design review -> planner.",
+  "parallelization": "BD-257 LARGE-BD pipeline runs its stages serially; coder waves parallelize later per the reconciled rule-10 map (A serial keystone -> B parallel worktrees -> C serial wiring).",
+  "wave": "BD-257 design APPROVED at the user design review. Resolved OIs: OI-A ship BOTH isolation values (mirror pack behavior, customized client-side); OI-B EMPTY ship-allowlist (de-ship pack-help.sh + detect.sh -> _SANCTIONED_PACK_SIDE_SHIPPED=()); OI-C spec-parameterize the client dashboard engine where cheap; OI-D promote /pm-groupings + /pm-target-sweep (10-command set = 8 mirror + 2 promotions); OI-E no trinity Scripts row; OI-F config+token under docs/project/. Planner producing the implementation plan; NEXT: adversarial planner -> reconciliation (if findings) -> USER planner-to-coder gate -> parallel coder waves. Check-82 tokenizer fix LANDED standalone (pack-only, CI green).",
   "pending_decisions": [
-    "BD-257 architect design in flight; on return runs adversarial architect -> reconciliation (if findings) -> USER design review before any planner/coder. Check-82 standalone fix runs coder -> reviewer -> commit (pack-only), kept separate from all BD-257 commits.",
-    "Standing: NO new BDs without explicit user ask; pack-chat-only trees are Pack-Chat-direct; MAJOR edits route to pack-coder; push is user-manual (v11-dev in sync with origin); the intervention commit-gate is live (write a fresh pack-ops/.commit-approval-token before each approved commit) EXCEPT routine session-state refreshes, which the user authorized Pack Chat to perform autonomously; session-state COMPACT — one SHA in boundary_commit only, no other SHAs, no hex agent IDs, <4096 bytes."
+    "STANDING PRINCIPLE (user): pack and project stay SEPARATE; behavior MIRRORED but CUSTOMIZED for project side; NO dual-use files/scripts — separate pack + project copies always; ship-allowlist stays empty. Applied as BINDING to all of BD-257. OPEN: whether to formalize it as a pack-memory rule (strengthen dependency-direction-placement) now / fold into BD-257 / defer — architect-gated; awaiting user choice.",
+    "BD-257 planner output is NEVER auto-approved into a coder spawn — it runs adversarial planner -> reconciliation (if findings) -> USER planner-to-coder gate first.",
+    "Standing: NO new BDs without explicit user ask; pack-chat-only trees are Pack-Chat-direct; MAJOR edits route to pack-coder; push is user-manual (v11-dev in sync with origin); the intervention commit-gate is live (write a fresh pack-ops/.commit-approval-token in a SEPARATE step before each approved commit) EXCEPT routine session-state refreshes, which the user authorized Pack Chat to perform autonomously; session-state COMPACT — one SHA in boundary_commit only, no other SHAs, no hex agent IDs, <4096 bytes."
   ],
-  "cycle_position": "BD-257 architect design in flight (LARGE-BD pipeline, next gate = user design review after adversarial+reconciliation); Check-82 standalone pack-only fix in its coder cycle."
+  "cycle_position": "BD-257 planner in flight (LARGE-BD pipeline); after adversarial + reconciliation -> user planner-to-coder gate before any coder spawn. Check-82 fix landed + CI green + worktree torn down."
 }
