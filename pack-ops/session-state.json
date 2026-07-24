@@ -1,18 +1,17 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "4347096",
+  "boundary_commit": "30bda2a",
   "checkpoint": "2026-07-24T00:00:00Z",
   "active": ["BD-257"],
   "in_flight_agents": [
-    "planner-bd257-clientmirror — BD-257 implementation plan (10-command set, resolved OIs, no-dual-use principle) (RO)"
+    "coder-bd257-a1 — BD-257 A1 keystone commit: client help separation + de-ship pack-help.sh/detect.sh + _SANCTIONED_PACK_SIDE_SHIPPED=() + the Check-47 empty-invariant assertion (code-enforcing the (c) hard line) (RW, isolated worktree)"
   ],
   "queue": ["BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "BD-257 LARGE-BD pipeline runs its stages serially; coder waves parallelize later per the reconciled rule-10 map (A serial keystone -> B parallel worktrees -> C serial wiring).",
-  "wave": "BD-257 design APPROVED at the user design review. Resolved OIs: OI-A ship BOTH isolation values (mirror pack behavior, customized client-side); OI-B EMPTY ship-allowlist (de-ship pack-help.sh + detect.sh -> _SANCTIONED_PACK_SIDE_SHIPPED=()); OI-C spec-parameterize the client dashboard engine where cheap; OI-D promote /pm-groupings + /pm-target-sweep (10-command set = 8 mirror + 2 promotions); OI-E no trinity Scripts row; OI-F config+token under docs/project/. Planner producing the implementation plan; NEXT: adversarial planner -> reconciliation (if findings) -> USER planner-to-coder gate -> parallel coder waves. Check-82 tokenizer fix LANDED standalone (pack-only, CI green).",
+  "parallelization": "BD-257 coder waves are SERIAL (B-waves serialize on PLATFORM-SKILLS.md per Check 31): order A1 -> B1 -> B2 -> B4 -> B3 -> C1 -> C2; each commit runs its own bounded review/fix cycle + per-commit user approval.",
+  "wave": "No-dual-use (c) hard-line rule LANDED (dependency-direction-placement strengthened: no dual-use, empty allowlist, growth FORBIDDEN — trinity + rationale; CI green). BD-257 implementation BEGUN. A1 keystone in flight: client help separation (/pack-help -> /pm-help with its OWN pm-help.sh + fragment), de-ship pack-help.sh + detect.sh, empty the allowlist, and ADD the Check-47 empty-invariant assertion so any regrowth fails CI (code-enforced (c)). Seq-1 done -> A1 drops the pack-root trinity value-flip (the rule already owns it) and instead reconciles the Check-47 comments to (c). NEXT after A1: B1 (modes) -> B2 (status/refresh) -> B4 (promotions) -> B3 (dashboard, heaviest) -> C1 (fragment rows + startup) -> C2 (Check 90 parity + count 86->87).",
   "pending_decisions": [
-    "STANDING PRINCIPLE (user): pack and project stay SEPARATE; behavior MIRRORED but CUSTOMIZED for project side; NO dual-use files/scripts — separate pack + project copies always; ship-allowlist stays empty. Applied as BINDING to all of BD-257. OPEN: whether to formalize it as a pack-memory rule (strengthen dependency-direction-placement) now / fold into BD-257 / defer — architect-gated; awaiting user choice.",
-    "BD-257 planner output is NEVER auto-approved into a coder spawn — it runs adversarial planner -> reconciliation (if findings) -> USER planner-to-coder gate first.",
+    "BD-257 runs 7 serial coder-wave commits (A1->B1->B2->B4->B3->C1->C2), each with a bounded review/fix cycle and a per-commit user commit-approval gate. B3 (dashboard schema-retarget) is the heaviest — its own review budget.",
     "Standing: NO new BDs without explicit user ask; pack-chat-only trees are Pack-Chat-direct; MAJOR edits route to pack-coder; push is user-manual (v11-dev in sync with origin); the intervention commit-gate is live (write a fresh pack-ops/.commit-approval-token in a SEPARATE step before each approved commit) EXCEPT routine session-state refreshes, which the user authorized Pack Chat to perform autonomously; session-state COMPACT — one SHA in boundary_commit only, no other SHAs, no hex agent IDs, <4096 bytes."
   ],
-  "cycle_position": "BD-257 planner in flight (LARGE-BD pipeline); after adversarial + reconciliation -> user planner-to-coder gate before any coder spawn. Check-82 fix landed + CI green + worktree torn down."
+  "cycle_position": "BD-257 A1 coder in flight (first of 7 serial waves); then reviewer -> user commit-approval -> B1. No-dual-use rule fully landed + CI green."
 }
