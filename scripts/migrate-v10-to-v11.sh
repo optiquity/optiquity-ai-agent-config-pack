@@ -22,8 +22,10 @@
 #
 # The v10→v11 transition's post-dispatch work (BD-042 legacy-doc
 # relocation; additive install of v11 artifacts like HELP-FRAGMENT,
-# ISSUE_TEMPLATE forms, the pool-distributed pack-help skill, the
-# bare scripts/pack-help.sh + scripts/lib/detect.sh files; the Antigravity
+# ISSUE_TEMPLATE forms, the pool-distributed pm-help skill (the client
+# help runner scripts/pm-help.sh is a project-template/scripts/ file that
+# ships via the directory sweep — NO pack-side file is copied to clients,
+# no dual-use per BD-257); the Antigravity
 # agent plugin bundle installed REPLACE-IF-DIFFERENT through the BD-088
 # customization-preserve engine — BD-221 corrected agent-migration model;
 # the lift of departing Gemini x- custom agents INTO that bundle; and the
@@ -324,35 +326,26 @@ _v10_to_v11_install_v11_artifacts() {
         done
     fi
 
-    # pack-help is a pooled SSOT skill distributed LOOSE to each CLI's
+    # pm-help is a pooled SSOT skill distributed LOOSE to each CLI's
     # workspace skill dir (.claude/.codex/.agents — Antigravity reads
-    # `.agents/skills/`). The committed per-CLI copies and the legacy
-    # `.gemini/commands/pack-help.toml` command no longer exist; the pool
-    # `project-template/skills/pack-help/SKILL.md` is fanned out here, iff
-    # the destination is absent (additive, no overwrite of project edits).
-    if [[ -f "$PACK/project-template/skills/pack-help/SKILL.md" ]]; then
+    # `.agents/skills/`), matching the net-new skill fan-out below. The
+    # pool `project-template/skills/pm-help/SKILL.md` is fanned out here,
+    # iff the destination is absent (additive, no overwrite of project
+    # edits). The client help RUNNER `scripts/pm-help.sh` is an ordinary
+    # `project-template/scripts/` file that ships via the
+    # `project-template/scripts` directory sweep — NO pack-side file
+    # (pack-help.sh / lib/detect.sh) is copied into the client here:
+    # no dual-use, and the ship-allowlist is empty per BD-257
+    # (dependency-direction-placement conjunct (c)).
+    if [[ -f "$PACK/project-template/skills/pm-help/SKILL.md" ]]; then
         local ph_cli
         for ph_cli in .claude .codex .agents; do
-            if [[ ! -f "$_MIGRATOR_TARGET/$ph_cli/skills/pack-help/SKILL.md" ]]; then
-                mkdir -p "$_MIGRATOR_TARGET/$ph_cli/skills/pack-help"
-                cp "$PACK/project-template/skills/pack-help/SKILL.md" \
-                    "$_MIGRATOR_TARGET/$ph_cli/skills/pack-help/SKILL.md"
+            if [[ ! -f "$_MIGRATOR_TARGET/$ph_cli/skills/pm-help/SKILL.md" ]]; then
+                mkdir -p "$_MIGRATOR_TARGET/$ph_cli/skills/pm-help"
+                cp "$PACK/project-template/skills/pm-help/SKILL.md" \
+                    "$_MIGRATOR_TARGET/$ph_cli/skills/pm-help/SKILL.md"
             fi
         done
-    fi
-
-    # The pack-help shell script + its single dep (lib/detect.sh) — BD-097
-    # audit B-1 documented this as required because the per-CLI surfaces
-    # invoke `bash scripts/pack-help.sh` relative to the project.
-    mkdir -p "$_MIGRATOR_TARGET/scripts/lib"
-    if [[ -f "$PACK/scripts/pack-help.sh" \
-       && ! -f "$_MIGRATOR_TARGET/scripts/pack-help.sh" ]]; then
-        cp "$PACK/scripts/pack-help.sh" "$_MIGRATOR_TARGET/scripts/pack-help.sh"
-        chmod +x "$_MIGRATOR_TARGET/scripts/pack-help.sh"
-    fi
-    if [[ -f "$PACK/scripts/lib/detect.sh" \
-       && ! -f "$_MIGRATOR_TARGET/scripts/lib/detect.sh" ]]; then
-        cp "$PACK/scripts/lib/detect.sh" "$_MIGRATOR_TARGET/scripts/lib/detect.sh"
     fi
 
     # Antigravity agent plugin BUNDLE — net-new v11 surface (BD-221). v11

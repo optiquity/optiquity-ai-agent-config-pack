@@ -20,8 +20,8 @@
 #   Group 5: Static fixture file sanity (under scripts/tests/fixtures/project-side-refs/)
 #   Group 6: End-to-end validate-pack.py exit-status on HEAD
 #   Group 7: JC-2 broadening (BD-195 C2 §2.2 Step-5)
-#   Group 8: BD-195 C3d — sanctioned pack-side-shipped freeze (Check 47) +
-#            re-contamination regression (membership-gate, not content-skip)
+#   Group 8: BD-257 — empty sanctioned set (no-dual-use) + Check 47 EMPTY
+#            invariant (supersedes the BD-195 2-member freeze)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-43.sh
 
@@ -63,7 +63,7 @@ required = [
     '_CHECK_43_PACK_OPS_CLIENT_INSTALLED',
     '_check_43_context_has_anchor',
     '_iter_client_installed_files',
-    # BD-195 C3d (Check 47 + walk-gate) — folded into this file.
+    # Check 47 sanctioned-set freeze + walk-gate — folded into this file.
     '_SANCTIONED_PACK_SIDE_SHIPPED',
     'check_sanctioned_pack_side_shipped',
 ]
@@ -192,17 +192,25 @@ if not has_pt:
     failures.append("T2 _iter_client_installed_files() missing project-template/ entries")
 
 # T3: includes the explicit non-project-template entries (per
-#     _CLIENT_INSTALLED_FILES inventory).
+#     _CLIENT_INSTALLED_FILES inventory). Post-BD-257 these are the
+#     supporting-docs/ sources only — NO pack-side file ships to clients.
 expected_extras = [
     "supporting-docs/METHODOLOGY.md",
     "supporting-docs/INSTALL-PROCEDURES.md",
-    "scripts/pack-help.sh",
-    "scripts/lib/detect.sh",
 ]
 for entry in expected_extras:
     if entry not in strs:
         failures.append(
             f"T3 _iter_client_installed_files() missing expected entry: {entry}"
+        )
+
+# T3b: pack-side files are NO LONGER admitted to the base set (BD-257
+#      empty sanctioned set — no pack-side file ships to clients).
+for gone in ["scripts/pack-help.sh", "scripts/lib/detect.sh"]:
+    if gone in strs:
+        failures.append(
+            f"T3b _iter_client_installed_files() must NOT include de-shipped "
+            f"pack-side file: {gone}"
         )
 
 # T4: deduplication — no entry appears twice.
@@ -343,8 +351,6 @@ def run_check_with_synthetic(project_files: dict, extra_files: dict = None,
         "#   project-template/docs/pack/HELP-FRAGMENT.md  ->  docs/pack/HELP-FRAGMENT.md  [stage:S11]",
         "#   supporting-docs/METHODOLOGY.md  ->  docs/pack/METHODOLOGY.md  [stage:S6]",
         "#   supporting-docs/INSTALL-PROCEDURES.md  ->  docs/pack/INSTALL-PROCEDURES.md  [stage:S6]",
-        "#   scripts/pack-help.sh  ->  scripts/pack-help.sh  [stage:S5]",
-        "#   scripts/lib/detect.sh  ->  scripts/lib/detect.sh  [stage:S5]",
     ]
     if installed_inventory_extras:
         for entry in installed_inventory_extras:
@@ -473,20 +479,21 @@ if fail_count != 0:
         f"T7 (code-block PASS) expected 0 failures, got {fail_count}: {captured}"
     )
 
-# T8: scripts/lib/detect.sh synthetic file with maintenance-docs/
-#     qualified path-prefix in a shell comment.
-#     This exercises the .sh-file scope (Check 43 walks
-#     scripts/lib/detect.sh per _iter_client_installed_files).
-detect_content = (
+# T8: a project-template/ .sh file with a maintenance-docs/ qualified
+#     path-prefix in a shell comment FAILS Check 43. project-template/
+#     files are always walked (part (a) of _iter_client_installed_files);
+#     post-BD-257 no pack-side file is walked as a client surface (empty
+#     sanctioned set), so the .sh-scope coverage rides a genuinely-walked
+#     client script instead of the de-shipped detect.sh.
+sh_content = (
     "#!/usr/bin/env bash\n"
-    "# Synthetic detect.sh; references pack-internal target:\n"
+    "# Synthetic client script; references pack-internal target:\n"
     "# maintenance-docs/v11-implementation/ARCHITECTURE-FOO.md\n"
     "echo \"stub\"\n"
 )
 fail_count, pass_msg, captured = run_check_with_synthetic(
-    {"FOO.md": "no leaks here\n"},
-    {"scripts/lib/detect.sh": detect_content,
-     "maintenance-docs/v11-implementation/ARCHITECTURE-FOO.md": "stub"},
+    {"scripts/foo.sh": sh_content},
+    {"maintenance-docs/v11-implementation/ARCHITECTURE-FOO.md": "stub"},
 )
 if fail_count < 1:
     failures.append(
@@ -883,24 +890,27 @@ case $? in
 esac
 
 # ─────────────────────────────────────────────────────────────────
-# Group 8: BD-195 C3d — sanctioned pack-side-shipped freeze (Check 47)
-#          + the re-contamination regression (membership-gate, not skip)
+# Group 8: BD-257 — empty sanctioned set (no-dual-use) + Check 47
+#          EMPTY invariant (supersedes the BD-195 2-member freeze)
 # ─────────────────────────────────────────────────────────────────
 #
-# Cases per PLAN-BD-195-REMEDIATION.md §C3d (architect §8.1/§8.2):
-#   (0)   detect.sh is EXPLICITLY in _iter_client_installed_files()'s walk-set
-#         (direct membership-admit proof — refactor-robust, independent of
-#         Check 43's content logic);
-#   (i)   a CLEAN synthetic detect.sh PASSES Check 43 (it is walked);
-#   (ii)  a synthetic detect.sh with an INJECTED pack-internal ref still
-#         FAILS Check 43 — the load-bearing re-contamination regression
-#         proving the walk-gate is MEMBERSHIP-only, not a content silencer;
-#   (iii) a non-template map entry NOT in _SANCTIONED_PACK_SIDE_SHIPPED
-#         FAILS Check 47 (lazy-add blocked);
-#   (iv)  a constant entry NOT in the map FAILS Check 47 (set-equality,
-#         both directions).
+# _SANCTIONED_PACK_SIDE_SHIPPED is now FROZEN EMPTY: no pack-side file
+# ships to clients (dependency-direction-placement conjunct (c)). Cases:
+#   (a) EMPTY-INVARIANT BITES — a non-empty _SANCTIONED_PACK_SIDE_SHIPPED
+#       makes Check 47 FAIL (code-enforced shrink-only floor; the NEGATIVE
+#       test proving the assertion has teeth);
+#   (b) EMPTY + no pack-side ship — Check 47 PASSES (green);
+#   (c) LAZY-ADD blocked — a pack-side install-map entry (empty constant)
+#       FAILS Check 47 (set-equality: unsanctioned);
+#   (d) WALK-GATE admits NOTHING pack-side — _iter_client_installed_files()
+#       does not admit a pack-side map entry under the empty constant;
+#   (e) the frozen constant is EXACTLY empty (sized to the measured set);
+#   (f) MIGRATOR SCAN (install path 2) — the v10→v11 migrator copies NO
+#       pack-side file into clients: a clean migrator PASSES; a direct
+#       pack-side `cp "$PACK/…"` OR a pack-side directory-sweep row FAILS
+#       (the load-bearing no-dual-use bite on the second install path).
 
-printf "\n=== Group 8: BD-195 C3d sanctioned-set freeze + re-contamination regression ===\n"
+printf "\n=== Group 8: BD-257 empty sanctioned-set + Check 47 empty-invariant ===\n"
 
 python3 <<EOF
 import sys, tempfile, pathlib, shutil, io, contextlib, os, subprocess
@@ -925,26 +935,30 @@ def _patch_root(mod, root):
 
 failures = []
 
-def build_tree(detect_content: str, extra_map_entries: list = None,
-               omit_detect_from_map: bool = False) -> pathlib.Path:
-    """Build a synthetic REPO_ROOT with the two sanctioned files present
-    and a controllable _CLIENT_INSTALLED_FILES inventory."""
+def build_tree(extra_map_entries: list = None,
+               migrator_body: str = None) -> pathlib.Path:
+    """Build a synthetic REPO_ROOT whose _CLIENT_INSTALLED_FILES inventory
+    ships NO pack-side file (the BD-257 empty-sanction reality: only a
+    project-template/ entry + a supporting-docs/ entry, both membership-free).
+    extra_map_entries add pack-side rows to exercise the lazy-add/leak path.
+    migrator_body (BD-257) writes scripts/migrate-v10-to-v11.sh so Check 47's
+    migrator copy-vector scan (install path 2) can read it; None omits the
+    migrator (the scan then lenient-skips)."""
     root = pathlib.Path(tempfile.mkdtemp(prefix="vp-check47-"))
     (root / "project-template").mkdir()
     (root / "project-template" / "CLAUDE.md").write_text("clean\n")
-    # The two sanctioned pack-side files on disk.
-    (root / "scripts" / "lib").mkdir(parents=True)
-    (root / "scripts" / "lib" / "detect.sh").write_text(detect_content)
-    (root / "scripts" / "pack-help.sh").write_text("#!/usr/bin/env bash\necho ok\n")
+    (root / "supporting-docs").mkdir()
+    (root / "supporting-docs" / "METHODOLOGY.md").write_text("doc\n")
+    if migrator_body is not None:
+        mg = root / "scripts" / "migrate-v10-to-v11.sh"
+        mg.parent.mkdir(parents=True, exist_ok=True)
+        mg.write_text(migrator_body)
     inv = [
         "#!/usr/bin/env bash",
         "# _CLIENT_INSTALLED_FILES_START",
         "#   project-template/CLAUDE.md  ->  CLAUDE.md  [stage:S2]",
         "#   supporting-docs/METHODOLOGY.md  ->  docs/pack/METHODOLOGY.md  [stage:S6]",
-        "#   scripts/pack-help.sh  ->  scripts/pack-help.sh  [stage:S5]",
     ]
-    if not omit_detect_from_map:
-        inv.append("#   scripts/lib/detect.sh  ->  scripts/lib/detect.sh  [stage:S5]")
     for entry in (extra_map_entries or []):
         # Materialize the file so it is real at HEAD (Check 41-style realism).
         p = root / entry
@@ -982,94 +996,151 @@ def run(check_fn_name: str, root: pathlib.Path) -> tuple:
         shutil.rmtree(root, ignore_errors=True)
     return (len(new_failures), captured)
 
-CLEAN_DETECT = "#!/usr/bin/env bash\n# detect helpers; no pack-self refs.\necho ok\n"
-# A pack-internal qualified path-prefix in a shell comment — the same
-# leak shape Check 43's T8 case exercises.
-DIRTY_DETECT = (
-    "#!/usr/bin/env bash\n"
-    "# Re-contamination: maintenance-docs/v11-implementation/ARCHITECTURE-FOO.md\n"
-    "echo ok\n"
-)
+# The check body reads boundary_refs._SANCTIONED_PACK_SIDE_SHIPPED directly;
+# patch it on the SUBMODULE (a facade-only patch would not bite — same reason
+# _patch_root walks every validate_checks.* submodule for REPO_ROOT).
+BR = sys.modules['validate_checks.boundary_refs']
 
-# (0) MEMBERSHIP-ADMIT proof — assert scripts/lib/detect.sh is ACTUALLY in
-#     the _iter_client_installed_files() walked set. The (i)/(ii) cases below
-#     prove membership only IMPLICITLY (via the clean PASS / injected-ref
-#     FAIL); this case asserts the walk-set contains detect.sh DIRECTLY, so
-#     the proof survives a refactor that changes Check 43's content logic
-#     without touching the membership gate. (architect §8.1 (ii) / PLAN R-9.)
-membership_root = build_tree(CLEAN_DETECT)
-saved_root_m = mod.REPO_ROOT
-_patch_root(mod, membership_root)
+# (a) EMPTY-INVARIANT BITES — a NON-EMPTY _SANCTIONED_PACK_SIDE_SHIPPED makes
+#     Check 47 FAIL (the code-enforced shrink-only floor; BD-257). This is the
+#     load-bearing NEGATIVE test: without the empty-invariant assertion a
+#     repopulated set would sail through set-equality if the map matched it.
+_saved_const = BR._SANCTIONED_PACK_SIDE_SHIPPED
+BR._SANCTIONED_PACK_SIDE_SHIPPED = ("scripts/pack-help.sh",)
 try:
-    walked = {str(p).replace("\\\\", "/") for p in mod._iter_client_installed_files()}
+    fc, cap = run("check_sanctioned_pack_side_shipped", build_tree())
 finally:
-    _patch_root(mod, saved_root_m)
-    shutil.rmtree(membership_root, ignore_errors=True)
-if "scripts/lib/detect.sh" not in walked:
-    failures.append(
-        "(0) sanctioned scripts/lib/detect.sh NOT admitted to the "
-        "_iter_client_installed_files() walk-set (membership gate must ADMIT "
-        "it): " + str(sorted(walked))
-    )
-
-# (i) CLEAN sanctioned detect.sh PASSES Check 43 (it is walked).
-fc, cap = run("check_project_side_bare_internal_refs", build_tree(CLEAN_DETECT))
-if fc != 0:
-    failures.append(f"(i) clean sanctioned detect.sh expected PASS, got {fc}: {cap}")
-
-# (ii) INJECTED pack-internal ref into the walked detect.sh still FAILS
-#      Check 43 — membership-gate is NOT a content skip.
-root_dirty = build_tree(DIRTY_DETECT)
-# Seed the resolving pack-internal target so the bare/qualified ref resolves.
-tgt = root_dirty / "maintenance-docs" / "v11-implementation" / "ARCHITECTURE-FOO.md"
-tgt.parent.mkdir(parents=True, exist_ok=True)
-tgt.write_text("stub")
-fc, cap = run("check_project_side_bare_internal_refs", root_dirty)
+    BR._SANCTIONED_PACK_SIDE_SHIPPED = _saved_const
 if fc < 1:
     failures.append(
-        f"(ii) injected-ref detect.sh expected Check 43 FAIL (membership-gate, "
-        f"not content-skip), got {fc}: {cap}"
+        f"(a) non-empty _SANCTIONED_PACK_SIDE_SHIPPED expected Check 47 FAIL "
+        f"(empty-invariant), got {fc}: {cap}"
+    )
+elif "EMPTY" not in cap or "_SANCTIONED_PACK_SIDE_SHIPPED" not in cap:
+    failures.append(
+        f"(a) empty-invariant failure message must state the set must be "
+        f"EMPTY and name the constant, got: {cap}"
     )
 
-# (iii) a non-template map entry NOT in the frozen constant FAILS Check 47.
+# (b) EMPTY constant + a map that ships NO pack-side file PASSES Check 47.
+fc, cap = run("check_sanctioned_pack_side_shipped", build_tree())
+if fc != 0:
+    failures.append(
+        f"(b) empty constant + no pack-side ship expected Check 47 PASS, "
+        f"got {fc}: {cap}"
+    )
+
+# (c) LAZY-ADD blocked — a pack-side install-map entry (empty constant) FAILS
+#     Check 47 (set-equality: unsanctioned).
 fc, cap = run(
     "check_sanctioned_pack_side_shipped",
-    build_tree(CLEAN_DETECT, extra_map_entries=["scripts/lib/rogue.sh"]),
+    build_tree(extra_map_entries=["scripts/lib/rogue.sh"]),
 )
 if fc < 1:
     failures.append(
-        f"(iii) unsanctioned pack-side map entry expected Check 47 FAIL "
+        f"(c) unsanctioned pack-side map entry expected Check 47 FAIL "
         f"(lazy-add blocked), got {fc}: {cap}"
     )
 elif "rogue.sh" not in cap or "_SANCTIONED_PACK_SIDE_SHIPPED" not in cap:
     failures.append(
-        f"(iii) Check 47 failure message must name the offending path + the "
+        f"(c) Check 47 failure message must name the offending path + the "
         f"membership criterion, got: {cap}"
     )
 
-# (iv) a constant entry NOT in the map FAILS Check 47 (set-equality both ways).
-fc, cap = run(
-    "check_sanctioned_pack_side_shipped",
-    build_tree(CLEAN_DETECT, omit_detect_from_map=True),
-)
-if fc < 1:
+# (d) WALK-GATE admits NOTHING pack-side — with the empty constant,
+#     _iter_client_installed_files() does not admit a pack-side map entry.
+d_root = build_tree(extra_map_entries=["scripts/lib/rogue.sh"])
+saved_root_d = mod.REPO_ROOT
+_patch_root(mod, d_root)
+try:
+    walked = {str(p).replace("\\\\", "/") for p in mod._iter_client_installed_files()}
+finally:
+    _patch_root(mod, saved_root_d)
+    shutil.rmtree(d_root, ignore_errors=True)
+if any("rogue.sh" in w for w in walked):
     failures.append(
-        f"(iv) sanctioned entry absent from the map expected Check 47 FAIL "
-        f"(set-equality), got {fc}: {cap}"
+        "(d) empty constant must NOT admit a pack-side map entry to the "
+        "_iter_client_installed_files() walk-set: " + str(sorted(walked))
     )
 
-# (v) baseline: a well-formed 2-member map PASSES Check 47.
-fc, cap = run("check_sanctioned_pack_side_shipped", build_tree(CLEAN_DETECT))
-if fc != 0:
-    failures.append(f"(v) frozen 2-member map expected Check 47 PASS, got {fc}: {cap}")
-
-# (vi) the frozen constant is EXACTLY the two paths (sized to measured set).
-if tuple(mod._SANCTIONED_PACK_SIDE_SHIPPED) != (
-    "scripts/lib/detect.sh", "scripts/pack-help.sh"
-):
+# (e) the frozen constant is EXACTLY empty (sized to the measured set).
+if tuple(BR._SANCTIONED_PACK_SIDE_SHIPPED) != ():
     failures.append(
-        f"(vi) _SANCTIONED_PACK_SIDE_SHIPPED must be exactly the 2 measured "
-        f"paths, got {mod._SANCTIONED_PACK_SIDE_SHIPPED!r}"
+        f"(e) _SANCTIONED_PACK_SIDE_SHIPPED must be exactly empty (), got "
+        f"{BR._SANCTIONED_PACK_SIDE_SHIPPED!r}"
+    )
+
+# (f) MIGRATOR SCAN (BD-257, install path 2). Check 47 also scans the v10→v11
+#     migrator for pack-side copies into clients. GREEN when every copy vector
+#     (direct cp, directory-sweep rows, manifest rows) references
+#     project-template/ only; RED when a pack-side source is (re-)introduced.
+#     The load-bearing NEGATIVE test (declare-verify-backing): reverting the
+#     de-ship — re-adding a pack-side cp of scripts/pack-help.sh — turns it
+#     RED. Synthetic bodies use the heredoc marker ROWS (not EOF, which would
+#     close the outer bash heredoc); the literal dollar sign is built with
+#     chr(36) so NO '\$' appears in this bash heredoc (dodging set -u).
+_D = chr(36)  # '$' — kept out of the outer bash heredoc source
+_MIGRATOR_CLEAN = (
+    '#!/usr/bin/env bash\n'
+    'migrator_manifest() {\n'
+    "    cat <<'ROWS'\n"
+    'project-template/CLAUDE.md CLAUDE.md trinity transform\n'
+    'ROWS\n'
+    '}\n'
+    'migrator_directory_sweeps() {\n'
+    "    cat <<'ROWS'\n"
+    'project-template/scripts pack-script\n'
+    'ROWS\n'
+    '}\n'
+    '_hook() {\n'
+    '    cp "' + _D + 'PACK/project-template/skills/pm-help/SKILL.md" client/skills/pm-help/SKILL.md\n'
+    '}\n'
+)
+
+# (f1) clean migrator (all vectors project-side) → Check 47 PASS (GREEN).
+fc, cap = run("check_sanctioned_pack_side_shipped",
+              build_tree(migrator_body=_MIGRATOR_CLEAN))
+if fc != 0:
+    failures.append(
+        f"(f1) clean migrator (project-side copies only) expected Check 47 "
+        f"PASS, got {fc}: {cap}"
+    )
+
+# (f2) BITE — a direct pack-side cp of scripts/pack-help.sh (the reverted
+#      de-ship) → Check 47 FAIL (RED).
+_mig_cp = _MIGRATOR_CLEAN.replace(
+    '_hook() {\n',
+    '_hook() {\n    cp "' + _D + 'PACK/scripts/pack-help.sh" client/scripts/pack-help.sh\n',
+)
+fc, cap = run("check_sanctioned_pack_side_shipped",
+              build_tree(migrator_body=_mig_cp))
+if fc < 1:
+    failures.append(
+        f"(f2) migrator direct pack-side cp expected Check 47 FAIL "
+        f"(no-dual-use bite), got {fc}: {cap}"
+    )
+elif "scripts/pack-help.sh" not in cap or "migrate-v10-to-v11.sh" not in cap:
+    failures.append(
+        f"(f2) migrator-copy failure message must name the offending path + "
+        f"the migrator, got: {cap}"
+    )
+
+# (f3) BITE — a pack-side directory-sweep row (scripts/lib pack-lib) → RED.
+_mig_sweep = _MIGRATOR_CLEAN.replace(
+    'project-template/scripts pack-script',
+    'project-template/scripts pack-script\nscripts/lib pack-lib',
+)
+fc, cap = run("check_sanctioned_pack_side_shipped",
+              build_tree(migrator_body=_mig_sweep))
+if fc < 1:
+    failures.append(
+        f"(f3) migrator pack-side sweep row expected Check 47 FAIL "
+        f"(no-dual-use bite), got {fc}: {cap}"
+    )
+elif "scripts/lib" not in cap:
+    failures.append(
+        f"(f3) migrator sweep-row failure message must name the offending "
+        f"path, got: {cap}"
     )
 
 if failures:
@@ -1080,8 +1151,8 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "C3d freeze + walk-gate: clean PASSES, injected-ref FAILS C43, lazy-add/missing FAIL C47" ;;
-    *) t_fail "BD-195 C3d Check-47 / re-contamination regression failed (see Python output)" ;;
+    0) t_pass "BD-257 empty-sanction: non-empty FAILS C47 (empty-invariant), empty PASSES, lazy-add FAILS, walk-gate admits nothing, migrator clean PASSES / pack-side copy FAILS (install path 2)" ;;
+    *) t_fail "BD-257 Check-47 empty-invariant / empty-sanction / migrator-scan regression failed (see Python output)" ;;
 esac
 
 # ─────────────────────────────────────────────────────────────────

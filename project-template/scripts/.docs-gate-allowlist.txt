@@ -498,9 +498,6 @@ reason: pack-shipped reference doc installed into docs/pack/ at project init; pr
 target: scripts/init-project.sh
 reason: the installer script that provisions the project; referenced for provenance — present in the working tree the project was created from.
 
-target: scripts/pack-help.sh
-reason: project help script invoked by the pack-help skill; present after install, absent from the bare template.
-
 target: .agents/mcp_config.json
 reason: optional MCP config created during install/setup; present when the MCP feature is enabled, absent from the bare template.
 

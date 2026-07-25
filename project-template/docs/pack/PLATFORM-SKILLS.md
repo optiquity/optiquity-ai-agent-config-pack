@@ -463,7 +463,7 @@ the remaining 14 load directly from a single D1/D2/D4/D5 selector
 
 These skills are outside the dimension model and the trigger model. They
 are not loaded by any agent — they are used exclusively by the PM chat
-itself (and, for `pack-help`, as a quick command reference for any tool's
+itself (and, for `pm-help`, as a quick command reference for any tool's
 user) for session startup, orientation, and pack-command lookup. They
 exist in the skill directory because the template's skill loading
 mechanism is uniform across tools, but their purpose is PM chat
@@ -472,7 +472,7 @@ operational, not agent role guidance.
 | Skill | Description | Loaded by |
 |---|---|---|
 | pm-startup | PM chat session startup procedure: read state files, check TD-TBD sentinels, report ready status | PM chat only (not an agent) |
-| pack-help | Show all pack commands and colloquial mappings (the `/pack-help` quick reference); replaces the former per-CLI `pack-help` slash-command | PM chat / any tool user (not an agent) |
+| pm-help | Show all project commands and colloquial mappings (the `/pm-help` quick reference) | PM chat / any tool user (not an agent) |
 
 **Total skills: 37** (14 Tier 0 base + 20 dimensional / intersection + 1 trigger-loaded + 2 PM chat operational).
 

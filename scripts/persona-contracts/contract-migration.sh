@@ -25,8 +25,10 @@
 #         ship a BACKLOG.md, so the project's BACKLOG must remain
 #         byte-identical (sha256 unchanged).
 #   4. v11-only client artifacts now installed in the migrated project
-#      (HELP-FRAGMENT.md, scripts/pack-help.sh,
-#      pack-help skill/command per CLI, .github/ISSUE_TEMPLATE/* forms).
+#      (HELP-FRAGMENT.md, scripts/pm-help.sh — the client help runner,
+#      pm-help skill per CLI, .github/ISSUE_TEMPLATE/* forms). NO pack-side
+#      file (pack-help.sh / detect.sh) is installed — empty ship-allowlist
+#      per BD-257.
 #
 # Derivation: items (1), (2), (4) enumerate from project-template/ + the
 # BD-080 stage-S11 install rules (no hardcoded file lists). Items (3a)..(3d)
@@ -226,7 +228,8 @@ done
 #     reference-level, not filesystem-level — see migrator-skills.sh
 #     §header). The on-disk-skill assertion is therefore against the
 #     references in canonical files, not the directory inventory.
-#   - BD-080 migrator install: pack-help is now an ordinary pool skill
+#   - BD-080 migrator install: the client help skill (pm-help, renamed from
+#     pack-help per BD-257) is an ordinary pool skill
 #     fanned out by the migrator to all three CLI skill homes
 #     (.claude/skills/, .codex/skills/, .agents/skills/ — Antigravity
 #     reads `.agents/skills/`; there is no `.toml` command form).
@@ -257,13 +260,30 @@ for f in CLAUDE.md AGENTS.md GEMINI.md; do
         t_fail "skill-rename: ${f} still references bare 'python-architecture' ($bare occurrences)"
     fi
 done
-# pack-help pool skill installed for all three CLI skill homes (Antigravity
-# reads .agents/skills/).
+# pm-help pool skill installed for all three CLI skill homes (Antigravity
+# reads .agents/skills/; renamed from pack-help per BD-257).
 for tool in claude codex agents; do
-    if [[ -f "$SANDBOX/.${tool}/skills/pack-help/SKILL.md" ]]; then
-        t_pass "skill ${tool}/pack-help installed by migrator"
+    if [[ -f "$SANDBOX/.${tool}/skills/pm-help/SKILL.md" ]]; then
+        t_pass "skill ${tool}/pm-help installed by migrator"
     else
-        t_fail "skill ${tool}/pack-help MISSING post-migrate (BD-080 migrator install)"
+        t_fail "skill ${tool}/pm-help MISSING post-migrate (BD-080 migrator install)"
+    fi
+done
+# BD-257 de-ship BITE: the pre-BD-257 pack-help skill must NOT be installed,
+# and no pack-side pack-help.sh / detect.sh ships (empty ship-allowlist).
+# Each assertion would FAIL against the old shape that installed them.
+for tool in claude codex agents; do
+    if [[ ! -e "$SANDBOX/.${tool}/skills/pack-help/SKILL.md" ]]; then
+        t_pass "skill ${tool}/pack-help NOT installed (renamed to pm-help, BD-257)"
+    else
+        t_fail "skill ${tool}/pack-help unexpectedly installed (should be pm-help, BD-257)"
+    fi
+done
+for gone in scripts/pack-help.sh scripts/lib/detect.sh; do
+    if [[ ! -e "$SANDBOX/$gone" ]]; then
+        t_pass "$gone NOT shipped by migrator (de-shipped per BD-257)"
+    else
+        t_fail "$gone unexpectedly installed by migrator (should be de-shipped, BD-257)"
     fi
 done
 
@@ -409,14 +429,18 @@ fi
 #   1. HELP-FRAGMENT.md           → docs/pack/HELP-FRAGMENT.md
 #   2. tracker.toml.example       → NO LONGER installed (tracker deferred, BD-214)
 #   3. .github/ISSUE_TEMPLATE/*   → handled by glob block below
-#   4. pack-help pool skill       → .claude/skills/pack-help/SKILL.md,
-#                                   .codex/skills/pack-help/SKILL.md,
-#                                   .agents/skills/pack-help/SKILL.md
-#                                   (pack-help is now an ordinary pool skill
+#   4. pm-help pool skill         → .claude/skills/pm-help/SKILL.md,
+#                                   .codex/skills/pm-help/SKILL.md,
+#                                   .agents/skills/pm-help/SKILL.md
+#                                   (pm-help — renamed from pack-help per
+#                                   BD-257 — is an ordinary pool skill
 #                                   fanned out to all three CLIs; Antigravity
 #                                   reads `.agents/skills/`, no `.toml`
 #                                   command form)
-#   5. scripts/pack-help.sh + lib → scripts/pack-help.sh, scripts/lib/detect.sh
+#   5. client help runner         → scripts/pm-help.sh (shipped via the
+#                                   project-template scripts sweep; NO
+#                                   pack-side pack-help.sh / detect.sh —
+#                                   empty ship-allowlist per BD-257)
 #   6. per-entry tree templates   → docs/project/{backlog,implementation-plan,
 #                                   changelog}/_rules.md + _intro.md.
 #                                   BD-166 (BD-206: no _format.md anywhere).
@@ -449,11 +473,15 @@ v11_artifacts=(
     # BD-214: tracker.toml.example is NO LONGER installed by the migrator
     # (tracker deferred; flat-file is the sole supported mode). Absence is
     # asserted below.
-    "scripts/pack-help.sh"
-    "scripts/lib/detect.sh"
-    ".claude/skills/pack-help/SKILL.md"
-    ".codex/skills/pack-help/SKILL.md"
-    ".agents/skills/pack-help/SKILL.md"
+    # BD-257: the client help runner scripts/pm-help.sh ships via the
+    # project-template scripts sweep; the pm-help pool skill (renamed from
+    # pack-help) fans out to all three CLIs. NO pack-side pack-help.sh /
+    # detect.sh ships — empty ship-allowlist; their ABSENCE (and the old
+    # pack-help skill's absence) is asserted above.
+    "scripts/pm-help.sh"
+    ".claude/skills/pm-help/SKILL.md"
+    ".codex/skills/pm-help/SKILL.md"
+    ".agents/skills/pm-help/SKILL.md"
     # Sub-stage 6: per-entry canonical templates (BD-166). Each stream
     # gets _rules.md + _intro.md (BD-206: _format.md is FORBIDDEN
     # everywhere — its content folds into changelog/_rules.md).

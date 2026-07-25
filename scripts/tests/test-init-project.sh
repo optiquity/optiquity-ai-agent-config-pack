@@ -169,18 +169,18 @@ assert_contains "3.1 S11 stage ran" "$out" \
 [[ -f "$T/.github/ISSUE_TEMPLATE/config.yml" ]] \
     && t_pass "3.2 config.yml present" \
     || t_fail "3.2 config.yml missing"
-[[ -f "$T/.claude/skills/pack-help/SKILL.md" ]] \
-    && t_pass "3.2 .claude/skills/pack-help/SKILL.md present" \
-    || t_fail "3.2 .claude/skills/pack-help missing"
-[[ -f "$T/.codex/skills/pack-help/SKILL.md" ]] \
-    && t_pass "3.2 .codex/skills/pack-help/SKILL.md present" \
-    || t_fail "3.2 .codex/skills/pack-help missing"
-# BD-221: pack-help is a pool skill distributed LOOSE to the Antigravity
-# workspace at .agents/skills/pack-help/SKILL.md (the former `.toml`
+[[ -f "$T/.claude/skills/pm-help/SKILL.md" ]] \
+    && t_pass "3.2 .claude/skills/pm-help/SKILL.md present" \
+    || t_fail "3.2 .claude/skills/pm-help missing"
+[[ -f "$T/.codex/skills/pm-help/SKILL.md" ]] \
+    && t_pass "3.2 .codex/skills/pm-help/SKILL.md present" \
+    || t_fail "3.2 .codex/skills/pm-help missing"
+# BD-221: pm-help is a pool skill distributed LOOSE to the Antigravity
+# workspace at .agents/skills/pm-help/SKILL.md (the former `.toml`
 # command surface is retired).
-[[ -f "$T/.agents/skills/pack-help/SKILL.md" ]] \
-    && t_pass "3.2 .agents/skills/pack-help/SKILL.md present" \
-    || t_fail "3.2 .agents/skills/pack-help missing"
+[[ -f "$T/.agents/skills/pm-help/SKILL.md" ]] \
+    && t_pass "3.2 .agents/skills/pm-help/SKILL.md present" \
+    || t_fail "3.2 .agents/skills/pm-help missing"
 # BD-221: the Antigravity workspace skills dir is populated by stage S4.
 [[ -d "$T/.agents/skills" ]] \
     && t_pass "3.2 .agents/skills/ present (Antigravity workspace skills)" \
@@ -195,19 +195,25 @@ else
     t_fail "3.3 install-source mismatch (expected: project-template/docs/pack/HELP-FRAGMENT.md)"
 fi
 
-# 3.4 (BD-097 audit B-1) pack-help.sh + lib/detect.sh installed in client,
-# and `bash scripts/pack-help.sh` runs from the project root without
-# needing PACK env or any pack-repo path resolution.
-[[ -x "$T/scripts/pack-help.sh" ]] \
-    && t_pass "3.4 scripts/pack-help.sh installed + executable" \
-    || t_fail "3.4 pack-help.sh missing or not executable"
-[[ -f "$T/scripts/lib/detect.sh" ]] \
-    && t_pass "3.4 scripts/lib/detect.sh installed" \
-    || t_fail "3.4 detect.sh missing"
-help_out=$(cd "$T" && bash scripts/pack-help.sh 2>&1) ; help_rc=$?
-assert_eq "3.4 pack-help.sh from project root rc=0" "0" "$help_rc"
-assert_contains "3.4 pack-help.sh emits client-side header" "$help_out" \
+# 3.4 (BD-257) pm-help.sh is a bare-template client script
+# (project-template/scripts/pm-help.sh) shipped by stage S5; it runs from
+# the project root without needing PACK env or any pack-repo path resolution.
+[[ -x "$T/scripts/pm-help.sh" ]] \
+    && t_pass "3.4 scripts/pm-help.sh installed + executable" \
+    || t_fail "3.4 pm-help.sh missing or not executable"
+help_out=$(cd "$T" && bash scripts/pm-help.sh 2>&1) ; help_rc=$?
+assert_eq "3.4 pm-help.sh from project root rc=0" "0" "$help_rc"
+assert_contains "3.4 pm-help.sh emits client-side header" "$help_out" \
     "Pack v11 — verb reference (this project)"
+
+# 3.4b (BD-257) NO pack-side file ships to the client — the ship-allowlist
+# is EMPTY (no dual-use). pack-help.sh + lib/detect.sh are NOT installed.
+[[ ! -e "$T/scripts/pack-help.sh" ]] \
+    && t_pass "3.4b scripts/pack-help.sh NOT shipped (de-shipped per BD-257)" \
+    || t_fail "3.4b pack-help.sh unexpectedly present in client install"
+[[ ! -e "$T/scripts/lib/detect.sh" ]] \
+    && t_pass "3.4b scripts/lib/detect.sh NOT shipped (de-shipped per BD-257)" \
+    || t_fail "3.4b detect.sh unexpectedly present in client install"
 
 rm -rf "$T"
 

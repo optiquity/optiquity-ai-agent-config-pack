@@ -525,12 +525,14 @@ missing = [n for n in required if not hasattr(mod, n)]
 if missing:
     failures.append(f"missing fence helpers: {missing}")
 
-# The architect-spec constant must enumerate at least 11 entries
-# (7 original + 4 dual-surface per H.12/H.13 reorder).
+# The architect-spec constant must enumerate at least 9 entries
+# (7 original + 2 dual-surface post-BD-257 de-ship: the scripts/ pair
+# detect.sh + pack-help.sh was dropped when both were de-shipped and are no
+# longer walked by Check 37; PACK-FEEDBACK.md is the 10th, added separately).
 if hasattr(mod, '_CHECK_37_PER_LINE_FENCE_FILES'):
     n = len(mod._CHECK_37_PER_LINE_FENCE_FILES)
-    if n < 11:
-        failures.append(f"_CHECK_37_PER_LINE_FENCE_FILES has {n} entries; expected >=11")
+    if n < 9:
+        failures.append(f"_CHECK_37_PER_LINE_FENCE_FILES has {n} entries; expected >=9")
     # Each entry must be a non-empty string.
     for entry in mod._CHECK_37_PER_LINE_FENCE_FILES:
         if not isinstance(entry, str) or not entry:
@@ -699,10 +701,11 @@ esac
 # Exercises `_iter_client_installed_files()` per architect §3.1 +
 # §3.4. The helper returns the union of project-template/ (recursive)
 # + the explicit non-project-template entries from
-# `_CLIENT_INSTALLED_FILES` in scripts/init-project.sh. T1 verifies
-# Check 37 walks scripts/lib/detect.sh (path-prefix detection at the
-# walked file); T2 verifies anchor-phrase exemption survives at a
-# non-project-template entry; T3 + T4 are unit-checks of the helper.
+# `_CLIENT_INSTALLED_FILES` in scripts/init-project.sh. Post-BD-257 the
+# sanctioned set is EMPTY, so T1 verifies the walk admits NO pack-side file
+# (the de-ship bite); T2 verifies anchor-phrase exemption survives at a
+# non-project-template (supporting-docs/) entry; T3 + T4 are unit-checks of
+# the helper.
 
 printf "\n=== Group 7: Check 37 scope expansion (Guardrail 3) unit tests ===\n"
 
@@ -723,23 +726,21 @@ missing = [n for n in required if not hasattr(mod, n)]
 if missing:
     failures.append(f"missing helpers: {missing}")
 
-# G7.T1: Synthetic detection — Check 37 walks scripts/lib/detect.sh
-#   (expanded scope) and would flag a maintenance-docs/ path-prefix
-#   match in a non-fence line.
-#
-#   We can't easily synthesize this end-to-end without rewriting
-#   detect.sh (out-of-scope and would break HEAD). Instead, we verify
-#   that scripts/lib/detect.sh appears in the walked-files iterator
-#   (the precondition for Check 37 detection on that surface).
+# G7.T1: post-BD-257 the sanctioned set is EMPTY — no pack-side file is
+#   admitted to the walk-set as a client surface. The de-shipped
+#   scripts/lib/detect.sh + scripts/pack-help.sh MUST NOT appear in the
+#   walked-files iterator (the de-ship bite; the direct inverse of the
+#   former 2-member freeze precondition).
 from pathlib import Path
 if hasattr(mod, '_iter_client_installed_files'):
     walked = mod._iter_client_installed_files()
     walked_str = {str(p) for p in walked}
-    if 'scripts/lib/detect.sh' not in walked_str:
-        failures.append(
-            "G7.T1: scripts/lib/detect.sh NOT in _iter_client_installed_files() — "
-            "expanded scope is broken (path not walked)"
-        )
+    for gone in ('scripts/lib/detect.sh', 'scripts/pack-help.sh'):
+        if gone in walked_str:
+            failures.append(
+                f"G7.T1: de-shipped pack-side file {gone} unexpectedly walked "
+                f"as a client surface (BD-257 empty sanctioned set)"
+            )
 
 # G7.T2: Anchor-phrase exemption still operates on non-project-template
 #   entries. supporting-docs/METHODOLOGY.md contains legitimate
@@ -756,18 +757,17 @@ if hasattr(mod, '_iter_client_installed_files'):
             "expanded scope missing pedagogical surface"
         )
 
-# G7.T3: Helper returns >= 4 explicit non-project-template entries
-#   plus all project-template/ files. The 4 client-installed extras are:
-#   supporting-docs/METHODOLOGY.md, supporting-docs/INSTALL-PROCEDURES.md,
-#   scripts/pack-help.sh, scripts/lib/detect.sh.
+# G7.T3: Helper returns the explicit non-project-template entries plus all
+#   project-template/ files. Post-BD-257 the client-installed extras are the
+#   supporting-docs/ sources ONLY — NO pack-side file ships to clients
+#   (empty sanctioned set; scripts/pack-help.sh + scripts/lib/detect.sh are
+#   de-shipped and therefore NOT walked as client surfaces).
 if hasattr(mod, '_iter_client_installed_files'):
     walked = mod._iter_client_installed_files()
     walked_str = {str(p) for p in walked}
     expected_extras = {
         'supporting-docs/METHODOLOGY.md',
         'supporting-docs/INSTALL-PROCEDURES.md',
-        'scripts/pack-help.sh',
-        'scripts/lib/detect.sh',
     }
     missing_extras = expected_extras - walked_str
     if missing_extras:

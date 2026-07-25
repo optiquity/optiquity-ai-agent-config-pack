@@ -12,8 +12,8 @@
 #
 # v11 additions (BD-080): stage S11 installs v11 client-side artifacts
 # (HELP-FRAGMENT.md,
-# .github/ISSUE_TEMPLATE/* issue forms, per-CLI pack-help skills /
-# command). NOTE (BD-214, 2026-06-13): tracker.toml.example is NO LONGER
+# .github/ISSUE_TEMPLATE/* issue forms). NOTE (BD-214, 2026-06-13):
+# tracker.toml.example is NO LONGER
 # installed — tracker integration is deferred and flat-file is the sole
 # supported mode (the dormant config record stays committed pack-side at
 # project-template/tracker.toml.project-example). The --update flag
@@ -931,7 +931,7 @@ EOF
 # ── Stage S11 — v11 client-side artifacts (BD-080) ────────────────────────
 
 stage_s11_v11_artifacts() {
-    say "── S11 — v11 client artifacts (HELP-FRAGMENT, issue forms, pack-help) ──"
+    say "── S11 — v11 client artifacts (HELP-FRAGMENT, issue forms) ──"
 
     local copy_fn="cp"
     [[ "$CLASS" == existing-* ]] && copy_fn="existing_classifier_copy"
@@ -966,31 +966,16 @@ stage_s11_v11_artifacts() {
         done
     fi
 
-    # 4. pack-help + pm-startup are ordinary pool skills (project-template/
-    #    skills/{pack-help,pm-startup}/SKILL.md) distributed LOOSE to all
+    # 4. pm-help + pm-startup are ordinary pool skills (project-template/
+    #    skills/{pm-help,pm-startup}/SKILL.md) distributed LOOSE to all
     #    three CLIs by stage S4 (claude/codex/agents). No explicit per-CLI
     #    copy block is needed here — Antigravity has no `.toml` command
-    #    format, so the skill IS the command.
+    #    format, so the skill IS the command. The client help runner is
+    #    project-template/scripts/pm-help.sh, an ordinary flat client
+    #    script shipped by stage S5 — NO pack-side file is copied here
+    #    (no dual-use; the ship-allowlist is empty per BD-257).
 
-    # 5. The pack-help shell script + its single dep (lib/detect.sh).
-    #    The pool skills above invoke `bash scripts/pack-help.sh`
-    #    relative to the project — without these copies the slash-command
-    #    surfaces (`/pack-help` on Claude/Codex/Antigravity) fail at first
-    #    invocation in a freshly-installed project (BD-097 audit B-1).
-    mkdir -p "$TARGET/scripts/lib"
-    if [[ -f "$PACK/scripts/pack-help.sh" ]]; then
-        cp -f "$PACK/scripts/pack-help.sh" "$TARGET/scripts/pack-help.sh"
-        chmod +x "$TARGET/scripts/pack-help.sh"
-    fi
-    if [[ -f "$PACK/scripts/lib/detect.sh" ]]; then
-        cp -f "$PACK/scripts/lib/detect.sh" "$TARGET/scripts/lib/detect.sh"
-    fi
-    [[ -x "$TARGET/scripts/pack-help.sh" ]] \
-        || fail_stage S11 "scripts/pack-help.sh missing or not executable after copy"
-    [[ -f "$TARGET/scripts/lib/detect.sh" ]] \
-        || fail_stage S11 "scripts/lib/detect.sh missing after copy"
-
-    # 6. Per-entry tree skeleton install (BD-166).
+    # 5. Per-entry tree skeleton install (BD-166).
     #    Ships the project-side per-entry source-of-truth surface so
     #    a greenfield v11 client has the v11.0-shape skeleton from
     #    the first init. Four streams (backlog, implementation-plan,
@@ -1059,7 +1044,7 @@ stage_s11_v11_artifacts() {
     [[ -f "$pe_dst/immutable-manifest.txt" ]] \
         || fail_stage S11 "docs/project/immutable-manifest.txt missing after generation"
 
-    # 7. Empty-seed TOC regenerate (greenfield path only).
+    # 6. Empty-seed TOC regenerate (greenfield path only).
     #    For greenfield (CLASS=new-*) the project starts empty — no
     #    entry files exist — so the TOC regenerator produces the empty
     #    seed `_toc.md` for each stream. No monolithic mirror is
@@ -1242,8 +1227,8 @@ cmd_update() {
         "project-template/.github/ISSUE_TEMPLATE/work-item.yml:.github/ISSUE_TEMPLATE/work-item.yml:generic"
         "project-template/.github/ISSUE_TEMPLATE/inbound.yml:.github/ISSUE_TEMPLATE/inbound.yml:generic"
         "project-template/.github/ISSUE_TEMPLATE/config.yml:.github/ISSUE_TEMPLATE/config.yml:generic"
-        # BD-221 (2026-06-16): pack-help + pm-startup are ordinary pool
-        # skills (project-template/skills/{pack-help,pm-startup}/SKILL.md)
+        # BD-221 (2026-06-16): pm-help + pm-startup are ordinary pool
+        # skills (project-template/skills/{pm-help,pm-startup}/SKILL.md)
         # distributed LOOSE to claude/codex/agents by stage S4. The former
         # per-CLI explicit-copy rows (.claude/.codex SKILL.md + the retired
         # `.toml` command surfaces) are gone — the S4 fresh-install loop
@@ -1438,7 +1423,7 @@ cmd_update() {
 #   project-template/docs/pack/PACK-FEEDBACK.md  ->  docs/pack/PACK-FEEDBACK.md  [stage:S6,cmd_update]
 #   project-template/docs/pack/PLATFORM-SKILLS.md  ->  docs/pack/PLATFORM-SKILLS.md  [stage:S6,cmd_update]
 #   project-template/docs/pack/PM-CHAT.md  ->  docs/pack/PM-CHAT.md  [stage:S6,cmd_update]
-#   (BD-221: pack-help + pm-startup are pool skills distributed LOOSE to
+#   (BD-221: pm-help + pm-startup are pool skills distributed LOOSE to
 #    .{claude,codex,agents}/skills/* by the S4 canonical-pool loop — see the
 #    bulk-copied-directories block above; no per-CLI START/END rows. The
 #    former `.toml` command surfaces are retired.)
@@ -1452,8 +1437,6 @@ cmd_update() {
 #   project-template/docs/project/groupings/_intro.md  ->  docs/project/groupings/_intro.md  [stage:S11,cmd_update]
 #   supporting-docs/METHODOLOGY.md  ->  docs/pack/METHODOLOGY.md  [stage:S6,cmd_update]
 #   supporting-docs/INSTALL-PROCEDURES.md  ->  docs/pack/INSTALL-PROCEDURES.md  [stage:S6,cmd_update]
-#   scripts/pack-help.sh  ->  scripts/pack-help.sh  [stage:S11]
-#   scripts/lib/detect.sh  ->  scripts/lib/detect.sh  [stage:S11]
 # _CLIENT_INSTALLED_FILES_END
 
 # Blast-radius sweep — §7.7

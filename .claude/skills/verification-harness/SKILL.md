@@ -123,7 +123,7 @@ mkgitrepo() {
 make_v10_target() {
     # Synthesizes a minimal v10-shape target dir: CLAUDE.md without v11
     # fingerprint, docs/pack/PROMPT-TEMPLATES.md present, no
-    # .claude/skills/pack-help/.
+    # .claude/skills/pm-help/.
     local dir
     dir=$(mkfixture "$1")
     mkdir -p "$dir/.claude" "$dir/docs/pack"

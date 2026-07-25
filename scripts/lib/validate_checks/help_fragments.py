@@ -147,11 +147,12 @@ def check_trinity_addenda_h2(
 
 
 # ── Check 21 RETIRED in BD-221 (Antigravity conversion) ──────────────────────
-# `check_pack_help_per_cli_parity` is removed. pack-help is now an ordinary
-# pooled skill (`project-template/skills/pack-help/SKILL.md`) distributed loose
-# to all CLIs by init-project — there is no per-CLI parity triplet to enforce.
-# The one load-bearing assertion ("the pack-help SKILL.md body references
-# `scripts/pack-help.sh`") is FOLDED into Check 1 (SKILL.md frontmatter walk).
+# `check_pack_help_per_cli_parity` is removed. The client help skill is now
+# an ordinary pooled skill (`project-template/skills/pm-help/SKILL.md`, renamed
+# from `pack-help` per BD-257) distributed loose to all CLIs by init-project —
+# there is no per-CLI parity triplet to enforce. The one load-bearing assertion
+# ("the pm-help SKILL.md body references `scripts/pm-help.sh`") is FOLDED into
+# Check 1 (SKILL.md frontmatter walk).
 # The registry entry + the `CHECK_REGISTRY_EXPECTED_COUNT` were decremented in
 # lock-step (61 → 59 with Check 28). No per-check test existed for Check 21.
 

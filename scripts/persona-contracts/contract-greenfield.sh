@@ -25,13 +25,15 @@
 #      `project-template/` originals (greenfield path uses `cp`, not the
 #      existing-classifier fork). Stage S7.
 #   4. Stage S11 client artifacts present:
-#      docs/pack/HELP-FRAGMENT.md, scripts/pack-help.sh (executable),
-#      scripts/lib/detect.sh. pack-help is now an ordinary pool skill
-#      (project-template/skills/pack-help/SKILL.md) distributed by S4 to
-#      all three CLIs — so it lands at .claude/skills/pack-help/SKILL.md,
-#      .codex/skills/pack-help/SKILL.md, .agents/skills/pack-help/SKILL.md
-#      (Antigravity has no `.toml` command format; the skill IS the
-#      command).
+#      docs/pack/HELP-FRAGMENT.md, scripts/pm-help.sh (executable — the
+#      client help runner shipped via the project-template scripts sweep).
+#      The client help skill is the ordinary pool skill pm-help
+#      (project-template/skills/pm-help/SKILL.md, renamed from pack-help per
+#      BD-257) distributed by S4 to all three CLIs — so it lands at
+#      .claude/skills/pm-help/SKILL.md, .codex/skills/pm-help/SKILL.md,
+#      .agents/skills/pm-help/SKILL.md (Antigravity has no `.toml` command
+#      format; the skill IS the command). NO pack-side file (pack-help.sh /
+#      detect.sh) ships to clients — empty ship-allowlist per BD-257.
 #   5. agent-run.sh present and executable (stage S5).
 #
 # Exit 0 = contract holds. Non-zero = at least one assertion failed; each
@@ -100,8 +102,9 @@ for d in "${skill_dirs[@]}"; do
     done
 done
 # Sanity: every CLI's skill dir count matches expected. Per-CLI extras are
-# derived from project-template/.${tool}/skills/ when present. pack-help and
-# pm-startup are now ordinary pool skills in the shared
+# derived from project-template/.${tool}/skills/ when present. pm-help
+# (renamed from pack-help per BD-257) and pm-startup are now ordinary pool
+# skills in the shared
 # `project-template/skills/` tree (S4 distributes them to all three CLIs —
 # claude/codex/agents; Antigravity has no `.toml` command format, so the
 # skill IS the command). Skills that appear in BOTH a per-CLI extras dir
@@ -199,14 +202,18 @@ done
 #                                  mirrors the migration contract's pattern;
 #                                  pre-fix this surface was unverified by
 #                                  greenfield, only by migration).
-#   4. pack-help pool skill      → .claude/skills/pack-help/SKILL.md,
-#                                  .codex/skills/pack-help/SKILL.md,
-#                                  .agents/skills/pack-help/SKILL.md
-#                                  (pack-help is now an ordinary pool skill
+#   4. pm-help pool skill        → .claude/skills/pm-help/SKILL.md,
+#                                  .codex/skills/pm-help/SKILL.md,
+#                                  .agents/skills/pm-help/SKILL.md
+#                                  (pm-help — renamed from pack-help per
+#                                  BD-257 — is an ordinary pool skill
 #                                  distributed by S4 to all three CLIs;
 #                                  Antigravity has no `.toml` command
 #                                  format, so the skill IS the command)
-#   5. scripts/pack-help.sh + lib → scripts/pack-help.sh, scripts/lib/detect.sh
+#   5. client help runner        → scripts/pm-help.sh (shipped via the
+#                                  project-template scripts sweep; NO
+#                                  pack-side pack-help.sh / detect.sh ships —
+#                                  empty ship-allowlist per BD-257)
 #   6. per-entry tree templates  → docs/project/{backlog,implementation-plan,
 #                                  changelog}/_rules.md + _intro.md.
 #                                  BD-166 (BD-206: no _format.md anywhere).
@@ -220,11 +227,12 @@ s11_files=(
     # advertising removed). Absence is asserted below.
     # BD-214: tracker.toml.example is NO LONGER installed (tracker deferred;
     # flat-file is the sole supported mode). Absence is asserted below.
-    "scripts/pack-help.sh"
-    "scripts/lib/detect.sh"
-    ".claude/skills/pack-help/SKILL.md"
-    ".codex/skills/pack-help/SKILL.md"
-    ".agents/skills/pack-help/SKILL.md"
+    # BD-257: the client help runner scripts/pm-help.sh ships via the
+    # project-template scripts sweep. NO pack-side file (pack-help.sh /
+    # detect.sh) ships — empty ship-allowlist; their ABSENCE is asserted
+    # below. The pm-help pool skill (.{claude,codex,agents}/skills/pm-help/
+    # SKILL.md) is auto-asserted by derivation logic #1 above.
+    "scripts/pm-help.sh"
     # Sub-stage 6: per-entry canonical templates (BD-166). Each stream
     # gets _rules.md + _intro.md (BD-206: _format.md is FORBIDDEN
     # everywhere — its content folds into changelog/_rules.md).
@@ -293,11 +301,25 @@ if [[ -d "$PACK_ROOT/project-template/.github/ISSUE_TEMPLATE" ]]; then
         t_fail "S11 sub-stage 3: $missing_forms ISSUE_TEMPLATE form(s) missing post-init"
     fi
 fi
-# pack-help.sh executable.
-if [[ -x "$SANDBOX/scripts/pack-help.sh" ]]; then
-    t_pass "scripts/pack-help.sh executable"
+# pm-help.sh executable (the client help runner; renamed from pack-help.sh
+# per BD-257).
+if [[ -x "$SANDBOX/scripts/pm-help.sh" ]]; then
+    t_pass "scripts/pm-help.sh executable"
 else
-    t_fail "scripts/pack-help.sh not executable"
+    t_fail "scripts/pm-help.sh not executable"
+fi
+# BD-257 de-ship BITE: the pack-side pack-help.sh + lib/detect.sh MUST NOT be
+# installed into a client (empty ship-allowlist; no dual-use). This assertion
+# would FAIL against the pre-BD-257 shape that shipped both.
+if [[ ! -e "$SANDBOX/scripts/pack-help.sh" ]]; then
+    t_pass "scripts/pack-help.sh NOT shipped (de-shipped per BD-257)"
+else
+    t_fail "scripts/pack-help.sh unexpectedly present in greenfield install"
+fi
+if [[ ! -e "$SANDBOX/scripts/lib/detect.sh" ]]; then
+    t_pass "scripts/lib/detect.sh NOT shipped (de-shipped per BD-257)"
+else
+    t_fail "scripts/lib/detect.sh unexpectedly present in greenfield install"
 fi
 
 # Assertion 5: agent-run.sh present and executable.

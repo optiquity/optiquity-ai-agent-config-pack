@@ -582,18 +582,15 @@ def _context_has_anchor(lines: list[str], lineno: int) -> bool:
 
 
 
-# Pack-side-LOCATED, client-SHIPPED files. FROZEN. Each entry is a
-# pack-operation runtime dependency (dependency-direction principle:
-# init-project.sh/add-capability.sh/migrator source detect.sh; pack-help.sh
-# sources detect.sh) AND must ship to clients (pack-help LCD floor). They
-# are held to client-surface cleanliness by Check 43 and MUST stay clean.
-# ADDING AN ENTRY requires architect+user authorization — see Check 47
-# (set-equality freeze) and ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8
-# (the dependency-direction membership criterion, §8.3).
-_SANCTIONED_PACK_SIDE_SHIPPED = (
-    "scripts/lib/detect.sh",
-    "scripts/pack-help.sh",
-)
+# Pack-side-LOCATED, client-SHIPPED files. FROZEN EMPTY. No pack-side file
+# currently ships to clients: the no-dual-use rule (dependency-direction-
+# placement conjunct (c)) requires every client deliverable to be its OWN
+# project-template/ copy, never a pack-side file reused as the client's copy.
+# The set is SHRINK-ONLY and MAY NEVER GROW — there is NO admission path and
+# NO sign-off exception. Check 47 CODE-ENFORCES this empty invariant (a non-
+# empty value is a hard CI failure) in addition to the install-map
+# set-equality freeze.
+_SANCTIONED_PACK_SIDE_SHIPPED: tuple[str, ...] = ()
 
 
 def _iter_client_installed_files() -> list[Path]:
@@ -603,11 +600,12 @@ def _iter_client_installed_files() -> list[Path]:
           split into two admitted classes: `supporting-docs/` entries are
           client-installed sources and pass through WITHOUT a membership
           check; every OTHER non-template entry (pack-side-located) is
-          admitted ONLY if it is in _SANCTIONED_PACK_SIDE_SHIPPED (membership
-          gate, NOT a content skip — admitted files stay fully walked +
-          cleanliness-enforced by Check 43; an UNsanctioned pack-side entry
-          is a hard error via Check 47). See
-          ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8.1/§8.2.
+          admitted ONLY if it is in _SANCTIONED_PACK_SIDE_SHIPPED (the
+          membership gate — currently EMPTY per BD-257's no-dual-use rule,
+          so NO pack-side entry is admitted; NOT a content skip — any
+          admitted file stays fully walked + cleanliness-enforced by Check
+          43; an UNsanctioned pack-side entry is a hard error via Check 47).
+          See ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8.1/§8.2.
 
     This replaces _PROJECT_SIDE_ROOTS-based walks for Checks 37 + 43.
     The source-of-truth for (b) is _CLIENT_INSTALLED_FILES_START/_END
@@ -639,11 +637,12 @@ def _iter_client_installed_files() -> list[Path]:
     #     before). PACK-SIDE-LOCATED entries (neither project-template/ nor
     #     supporting-docs/) are MEMBERSHIP-GATED to _SANCTIONED_PACK_SIDE_SHIPPED:
     #     the gate authorizes WHICH pack-side files may be walked as client
-    #     surfaces — it is NOT a content skip. Admitted files stay fully walked
-    #     and Check 43 still enforces cleanliness on them (re-adding a `BD-`
-    #     token to detect.sh post-strip still FAILS Check 43). An UNsanctioned
-    #     pack-side map entry is silently NOT admitted here and is turned into
-    #     a HARD CI error by Check 47 (set-equality freeze).
+    #     surfaces — it is NOT a content skip. The set is EMPTY per BD-257's
+    #     no-dual-use rule, so no pack-side map entry is admitted here today;
+    #     were one ever admitted it would stay fully walked and Check 43 would
+    #     enforce cleanliness on it. An UNsanctioned pack-side map entry is
+    #     silently NOT admitted here and is turned into a HARD CI error by
+    #     Check 47 (empty-invariant + set-equality freeze).
     entries, _, _, _, _ = _parse_client_installed_files()
     for entry in entries:
         if entry.startswith("project-template/"):
@@ -729,11 +728,15 @@ def _iter_project_side_files() -> list[Path]:
 # Membership test is exact-string match via `_has_per_line_fence`.
 #
 # Contract: see `maintenance-docs/v11-implementation/ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md`
-# §2.3 (constant) and §2.4 (fence-placement plan per file). The 4
-# dual-surface entries (METHODOLOGY.md, INSTALL-PROCEDURES.md,
-# detect.sh, pack-help.sh) were added 2026-05-24 per the H.12/H.13
-# reorder — see `IMPLEMENTATION-REPORT-BD-173-Batch-19c-REORDER-H.12-H.13.md`
-# for the STOP-AND-ESCALATE evidence that drove the expansion.
+# §2.3 (constant) and §2.4 (fence-placement plan per file). The 2 remaining
+# dual-surface entries (METHODOLOGY.md, INSTALL-PROCEDURES.md) were added
+# 2026-05-24 per the H.12/H.13 reorder — see
+# `IMPLEMENTATION-REPORT-BD-173-Batch-19c-REORDER-H.12-H.13.md` for the
+# STOP-AND-ESCALATE evidence that drove the expansion. The scripts/ pair
+# (detect.sh, pack-help.sh) was DROPPED per BD-257: both are de-shipped
+# (empty pack→client ship-allowlist), so Check 37 no longer walks them as
+# client surfaces — their fence membership was consulted zero times and is
+# removed (`fail-loud-delete-old-source`).
 _CHECK_37_PER_LINE_FENCE_FILES = (
     # Original 7 entries (project-template/ trinity + prompts + skill + PM-CHAT.md):
     "project-template/skills/boundary-investigation/SKILL.md",
@@ -743,15 +746,14 @@ _CHECK_37_PER_LINE_FENCE_FILES = (
     "project-template/CLAUDE.md",
     "project-template/AGENTS.md",
     "project-template/GEMINI.md",
-    # 4 dual-surface additions (added 2026-05-24 per H.12/H.13 reorder).
-    # These files carry LEGITIMATE pack-internal references in functional
-    # dual-surface code (scripts/) or pedagogical role-name content
-    # (supporting-docs/) that the fence covers without breaking script
-    # semantics or doc explanatory purpose.
+    # 2 dual-surface additions (added 2026-05-24 per H.12/H.13 reorder).
+    # These files carry LEGITIMATE pack-internal references in pedagogical
+    # role-name content (supporting-docs/) that the fence covers without
+    # breaking the doc's explanatory purpose. (The former scripts/ pair
+    # detect.sh + pack-help.sh was removed per BD-257 — both de-shipped, no
+    # longer walked by Check 37 as client surfaces.)
     "supporting-docs/METHODOLOGY.md",
     "supporting-docs/INSTALL-PROCEDURES.md",
-    "scripts/lib/detect.sh",
-    "scripts/pack-help.sh",
     # PACK-FEEDBACK.md (added 2026-05-24 during H.13 implementation —
     # architect-spec gap discovery, IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.13.md
     # §7). Architect §2.3 originally classified this file as
@@ -4391,23 +4393,146 @@ def check_pack_skill_mirror_identity() -> None:
 
 
 
-# ── Check 47: sanctioned pack-side-shipped freeze (BD-195 C3d) ─────────────
-# Freezes the bounded exception that lets `scripts/lib/detect.sh` +
-# `scripts/pack-help.sh` ship to clients from their pack-side location.
-# Asserts the install map's pack-side subset (non-project-template/,
-# non-supporting-docs/ entries from _CLIENT_INSTALLED_FILES) EQUALS
-# _SANCTIONED_PACK_SIDE_SHIPPED exactly (set equality — neither superset
-# nor subset). Adding a pack-side shipped file to the map WITHOUT editing
-# the frozen constant FAILS CI (the lazy `ship a new file from scripts/`
-# path is mechanically blocked); a constant entry that left the map also
-# FAILS. The membership TEST: a file qualifies ONLY IF (1) a pack operation
-# depends on it at runtime AND (2) a client surface requires it shipped —
-# default for new shipped files stays project-template/scripts/. See
-# ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8.2/§8.3.
+# ── Check 47: sanctioned pack-side-shipped freeze — EMPTY invariant (BD-195 C3d; BD-257) ──
+# _SANCTIONED_PACK_SIDE_SHIPPED is FROZEN EMPTY: no pack-side file ships to
+# clients (no-dual-use rule / dependency-direction-placement conjunct (c) —
+# every client deliverable is its OWN project-template/ copy). This check
+# CODE-ENFORCES three invariants:
+#   (1) EMPTY invariant — a non-empty _SANCTIONED_PACK_SIDE_SHIPPED FAILS CI.
+#       The set is SHRINK-ONLY and MAY NEVER GROW: there is NO admission path
+#       and NO sign-off exception. Growth is FORBIDDEN, not gated.
+#   (2) Set-equality freeze (install path 1) — the install map's pack-side
+#       subset (non-project-template/, non-supporting-docs/ entries from
+#       _CLIENT_INSTALLED_FILES) EQUALS _SANCTIONED_PACK_SIDE_SHIPPED exactly.
+#       With the empty constant the map ships ZERO pack-side files; adding one
+#       (the lazy `ship a new file from scripts/` path) FAILS CI.
+#   (3) Migrator empty-ship (install path 2, BD-257) — the v10→v11 migrator
+#       (scripts/migrate-v10-to-v11.sh) copies NO pack-side file into clients
+#       across any of its declared copy vectors (direct `cp "$PACK/…"`, the
+#       directory-sweep rows, the manifest rows). A pack-side source FAILS CI.
+# A new client-shipped file's home is project-template/scripts/ — always. See
+# ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8.0/§8.2 for the
+# dependency-direction rationale (§8.3's admission path is SUPERSEDED by
+# BD-257 — growth forbidden).
+
+# BD-257 — the migrator (second client-install path) copy-vector scan.
+# scripts/migrate-v10-to-v11.sh reaches a client through three declared copy
+# vectors: a direct `cp "$PACK/<path>" …`, the migrator_directory_sweeps rows,
+# and the migrator_manifest rows. The no-dual-use rule forbids ANY pack-side
+# source (outside project-template/ + supporting-docs/) on ANY vector.
+_MIGRATOR_REL = "scripts/migrate-v10-to-v11.sh"
+
+# Vector 1 — a direct `cp "$PACK/<path>" …` copy; group 1 is the pack-repo-
+# relative source path.
+_MIGRATOR_CP_PACK_SRC_RE = re.compile(r'cp\s+"\$PACK/([^"]+)"')
+
+
+def _is_pack_side_ship_source(path: str) -> bool:
+    """A migrator copy SOURCE is pack-side (a no-dual-use violation when copied
+    into a client) UNLESS it lives under project-template/ or supporting-docs/
+    (the two client-deliverable roots)."""
+    return not (
+        path.startswith("project-template/")
+        or path.startswith("supporting-docs/")
+    )
+
+
+def _migrator_heredoc_first_fields(text: str, func_name: str) -> list:
+    """Return the first whitespace-delimited field of each content row inside
+    the `cat <<'EOF' … EOF` heredoc of the named migrator adapter hook
+    (migrator_manifest / migrator_directory_sweeps). Blank + comment rows are
+    skipped. Empty list if the function or its heredoc is absent."""
+    fields: list = []
+    fn = re.search(r"(?m)^" + re.escape(func_name) + r"\(\)\s*\{", text)
+    if not fn:
+        return fields
+    body = text[fn.end():]
+    opener = re.search(r"<<-?'?(\w+)'?\s*\n", body)
+    if not opener:
+        return fields
+    marker = opener.group(1)
+    rest = body[opener.end():]
+    closer = re.search(r"(?m)^\s*" + re.escape(marker) + r"\s*$", rest)
+    if not closer:
+        return fields
+    for row in rest[: closer.start()].splitlines():
+        s = row.strip()
+        if not s or s.startswith("#"):
+            continue
+        fields.append(s.split()[0])
+    return fields
+
+
+def _check_migrator_no_pack_side_client_copies() -> None:
+    """Check 47 (BD-257) — the v10→v11 migrator must copy NO pack-side file
+    into clients (install path 2). Scans scripts/migrate-v10-to-v11.sh across
+    its three declared copy vectors; any source outside project-template/ +
+    supporting-docs/ is a no-dual-use violation. Lenient-skip if the migrator
+    is absent (mirrors the init-project.sh handling). O(lines): one file read +
+    regex, no tree walk, no subprocess."""
+    migrator = REPO_ROOT / _MIGRATOR_REL
+    if not migrator.is_file():
+        ok(f"{_MIGRATOR_REL} absent — skipping migrator copy scan (lenient)")
+        return
+    text = migrator.read_text(encoding="utf-8", errors="replace")
+    offenders: list = []
+
+    # Vector 1 — direct `cp "$PACK/<pack-side>"` copies (skip comment lines).
+    for line in text.splitlines():
+        if line.lstrip().startswith("#"):
+            continue
+        m = _MIGRATOR_CP_PACK_SRC_RE.search(line)
+        if m and _is_pack_side_ship_source(m.group(1)):
+            offenders.append(f"direct-cp:{m.group(1)}")
+
+    # Vectors 2 + 3 — the declared directory-sweep + manifest copy rows.
+    for func in ("migrator_directory_sweeps", "migrator_manifest"):
+        for src in _migrator_heredoc_first_fields(text, func):
+            if _is_pack_side_ship_source(src):
+                offenders.append(f"{func}:{src}")
+
+    if offenders:
+        fail(
+            f"{_MIGRATOR_REL} copies pack-side file(s) into clients "
+            f"(no-dual-use rule / dependency-direction-placement conjunct (c) "
+            f"— the ship-allowlist is EMPTY on BOTH install paths): "
+            f"{sorted(offenders)}. A client deliverable must be its OWN "
+            f"project-template/ (or supporting-docs/) file, never a pack-side "
+            f"file copied into the client."
+        )
+        return
+    ok(f"{_MIGRATOR_REL} copies NO pack-side file into clients (3 vectors clean)")
+
 
 def check_sanctioned_pack_side_shipped() -> None:
-    """Check 47 — sanctioned pack-side-shipped set freeze (BD-195 C3d)."""
-    print("\n── Check 47: sanctioned pack-side-shipped freeze (BD-195) ──")
+    """Check 47 — sanctioned pack-side-shipped set freeze + EMPTY invariant
+    (BD-195 C3d; BD-257 no-dual-use)."""
+    print("\n── Check 47: sanctioned pack-side-shipped freeze (BD-195/BD-257) ──")
+
+    # EMPTY invariant (BD-257 — CODE-enforced shrink-only floor). The
+    # sanctioned set is frozen empty: no pack-side file ships to clients
+    # (no-dual-use rule / dependency-direction-placement conjunct (c)). Growth
+    # is FORBIDDEN — there is NO admission path and NO sign-off exception. A
+    # non-empty constant is a hard CI failure regardless of install-map state
+    # (this makes the empty floor a machine invariant, not merely rule text).
+    if _SANCTIONED_PACK_SIDE_SHIPPED:
+        fail(
+            "_SANCTIONED_PACK_SIDE_SHIPPED must be EMPTY (no-dual-use rule): "
+            "the set is frozen empty and SHRINK-ONLY — growth is FORBIDDEN, "
+            "no admission, no sign-off exception. Non-empty value: "
+            f"{sorted(_SANCTIONED_PACK_SIDE_SHIPPED)}. A client deliverable "
+            "must be its OWN project-template/ copy, never a pack-side file "
+            "reused as the client's copy."
+        )
+        return
+
+    # Install path 2 (BD-257): the v10→v11 migrator must also ship ZERO
+    # pack-side files. Runs independently of the init-project.sh install-map
+    # check below — both enforce the same empty-ship invariant, one per client-
+    # install path (the migrator scan is lenient-skipped if the migrator is
+    # absent, exactly like the init-project.sh check).
+    _check_migrator_no_pack_side_client_copies()
+
     init_sh = REPO_ROOT / "scripts" / "init-project.sh"
     if not init_sh.is_file():
         ok("scripts/init-project.sh absent — skipping (lenient)")
@@ -4430,12 +4555,12 @@ def check_sanctioned_pack_side_shipped() -> None:
     frozen = set(_SANCTIONED_PACK_SIDE_SHIPPED)
 
     membership_test = (
-        "A file qualifies for _SANCTIONED_PACK_SIDE_SHIPPED ONLY IF (1) a pack "
-        "operation depends on it at runtime (sourced/invoked by init-project.sh, "
-        "add-capability.sh, or the migrator) AND (2) a client surface requires "
-        "it shipped. If only (2): default to project-template/scripts/. If only "
-        "(1): keep pack-side, unshipped. Growth requires architect + user "
-        "authorization citing ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8.3."
+        "_SANCTIONED_PACK_SIDE_SHIPPED is FROZEN EMPTY (no-dual-use rule / "
+        "dependency-direction-placement conjunct (c)): no pack-side file ships "
+        "to clients. The set is SHRINK-ONLY and MAY NEVER GROW — growth is "
+        "FORBIDDEN, with NO admission path and NO sign-off exception. A client "
+        "deliverable is ALWAYS its OWN project-template/ copy; a pack-side file "
+        "a pack op depends on stays pack-side and unshipped."
     )
 
     if map_pack_side == frozen:

@@ -142,15 +142,22 @@ assert_contains "2.1 S6 ran" "$out" "S6 — render truthful migration report"
 [[ -f "$T/.github/ISSUE_TEMPLATE/work-item.yml" ]] \
     && t_pass "2.4 issue forms installed" \
     || t_fail "2.4 issue forms missing"
-[[ -f "$T/.claude/skills/pack-help/SKILL.md" ]] \
-    && t_pass "2.4 .claude pack-help skill installed" \
-    || t_fail "2.4 .claude pack-help missing"
-[[ -f "$T/.codex/skills/pack-help/SKILL.md" ]] \
-    && t_pass "2.4 .codex pack-help skill installed" \
-    || t_fail "2.4 .codex pack-help missing"
-[[ -f "$T/.agents/skills/pack-help/SKILL.md" ]] \
-    && t_pass "2.4 .agents pack-help skill installed (Antigravity loose)" \
-    || t_fail "2.4 .agents pack-help missing"
+# BD-257: the client help skill is /pm-help (renamed from pack-help); the
+# migrator fans it out LOOSE to each CLI's skills dir.
+[[ -f "$T/.claude/skills/pm-help/SKILL.md" ]] \
+    && t_pass "2.4 .claude pm-help skill installed" \
+    || t_fail "2.4 .claude pm-help missing"
+[[ -f "$T/.codex/skills/pm-help/SKILL.md" ]] \
+    && t_pass "2.4 .codex pm-help skill installed" \
+    || t_fail "2.4 .codex pm-help missing"
+[[ -f "$T/.agents/skills/pm-help/SKILL.md" ]] \
+    && t_pass "2.4 .agents pm-help skill installed (Antigravity loose)" \
+    || t_fail "2.4 .agents pm-help missing"
+# BD-257 no-dual-use: the de-shipped pack-side pack-help skill must NOT be
+# fanned out to the client under its old name.
+[[ ! -f "$T/.claude/skills/pack-help/SKILL.md" ]] \
+    && t_pass "2.4 .claude pack-help skill NOT installed (renamed to pm-help, BD-257)" \
+    || t_fail "2.4 .claude pack-help unexpectedly installed (should be pm-help, BD-257)"
 # BD-221: the v10→v11 migrator additively installs the Antigravity agent
 # plugin bundle (.agents-plugin/optiquity-agents/ —
 # _v10_to_v11_install_v11_artifacts). Pin a known bundle agent + plugin.json
@@ -171,17 +178,22 @@ else
     t_fail "2.5 install-source mismatch (expected: project-template/docs/pack/HELP-FRAGMENT.md)"
 fi
 
-# 2.5b (BD-097 audit B-1) pack-help.sh + lib/detect.sh installed by
-# migrator S5; pack-help.sh runs from project root without external deps.
-[[ -x "$T/scripts/pack-help.sh" ]] \
-    && t_pass "2.5b scripts/pack-help.sh installed + executable" \
-    || t_fail "2.5b pack-help.sh missing or not executable"
-[[ -f "$T/scripts/lib/detect.sh" ]] \
-    && t_pass "2.5b scripts/lib/detect.sh installed" \
-    || t_fail "2.5b detect.sh missing"
-help_out=$(cd "$T" && bash scripts/pack-help.sh 2>&1) ; help_rc=$?
-assert_eq "2.5b pack-help.sh from project root rc=0" "0" "$help_rc"
-assert_contains "2.5b pack-help.sh emits client-side header" "$help_out" \
+# 2.5b (BD-257 no-dual-use) the client's OWN help runner scripts/pm-help.sh
+# ships via the project-template/scripts directory sweep; the de-shipped
+# pack-side pack-help.sh + lib/detect.sh are NOT copied into the client
+# (empty ship-allowlist; dependency-direction-placement conjunct (c)).
+[[ -x "$T/scripts/pm-help.sh" ]] \
+    && t_pass "2.5b scripts/pm-help.sh installed + executable (sweep)" \
+    || t_fail "2.5b pm-help.sh missing or not executable"
+[[ ! -f "$T/scripts/pack-help.sh" ]] \
+    && t_pass "2.5b scripts/pack-help.sh NOT installed (de-shipped, BD-257)" \
+    || t_fail "2.5b pack-help.sh unexpectedly installed (should be de-shipped, BD-257)"
+[[ ! -f "$T/scripts/lib/detect.sh" ]] \
+    && t_pass "2.5b scripts/lib/detect.sh NOT installed (de-shipped, BD-257)" \
+    || t_fail "2.5b detect.sh unexpectedly installed (should be de-shipped, BD-257)"
+help_out=$(cd "$T" && bash scripts/pm-help.sh 2>&1) ; help_rc=$?
+assert_eq "2.5b pm-help.sh from project root rc=0" "0" "$help_rc"
+assert_contains "2.5b pm-help.sh emits client-side header" "$help_out" \
     "Pack v11 — verb reference (this project)"
 
 # 2.5c (BD-263): the v10→v11 migrator installs the groupings per-entry

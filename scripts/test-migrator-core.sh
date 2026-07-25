@@ -171,11 +171,11 @@ fi
 echo "== migrator_detect_target_version: v11 shape =="
 
 fx="$FIXTURE_BASE/detect-v11"
-mkdir -p "$fx/.claude/skills/pack-help"
-echo "# SKILL.md" > "$fx/.claude/skills/pack-help/SKILL.md"
+mkdir -p "$fx/.claude/skills/pm-help"
+echo "# SKILL.md" > "$fx/.claude/skills/pm-help/SKILL.md"
 cat > "$fx/CLAUDE.md" <<'EOF'
 # CLAUDE.md
-- run `pack help` for the full verb list, or `/pack-help` in your CLI.
+- **Pack commands:** run `/pm-help` for the full verb list, or `bash scripts/pm-help.sh`.
 EOF
 
 out=$(_core_subshell '
@@ -386,9 +386,9 @@ out=$(_core_subshell '
 rc=$?
 # v11 inherits v10's trinity/config/BACKLOG surface and adds the v11-only
 # Antigravity additions: the agent plugin bundle, the loose
-# `.agents/skills/pack-help/SKILL.md`, and the per-CLI loose pack-help
-# skills. The legacy `.gemini/agents` dir + `.gemini/commands/pack-help.toml`
-# command are gone (BD-221).
+# `.agents/skills/pm-help/SKILL.md`, and the per-CLI loose pm-help
+# skills (renamed from pack-help per BD-257). The legacy `.gemini/agents`
+# dir + `.gemini/commands/pack-help.toml` command are gone (BD-221).
 if [[ $rc -eq 0 \
    && "$out" == *"CLAUDE.md"* \
    && "$out" == *"AGENTS.md"* \
@@ -398,10 +398,10 @@ if [[ $rc -eq 0 \
    && "$out" != *".gemini/"* \
    && "$out" == *".github/ISSUE_TEMPLATE/work-item.yml"* \
    && "$out" == *".agents-plugin/optiquity-agents/agents"* \
-   && "$out" == *".claude/skills/pack-help/SKILL.md"* \
-   && "$out" == *".codex/skills/pack-help/SKILL.md"* \
-   && "$out" == *".agents/skills/pack-help/SKILL.md"* ]]; then
-    pass "v11 surface inherits v10 trinity/config + adds agent bundle + loose pack-help skills (.claude/.codex/.agents); excludes legacy .gemini/ + deferred tracker.toml.example"
+   && "$out" == *".claude/skills/pm-help/SKILL.md"* \
+   && "$out" == *".codex/skills/pm-help/SKILL.md"* \
+   && "$out" == *".agents/skills/pm-help/SKILL.md"* ]]; then
+    pass "v11 surface inherits v10 trinity/config + adds agent bundle + loose pm-help skills (.claude/.codex/.agents); excludes legacy .gemini/ + deferred tracker.toml.example"
 else
     fail "target_surface_v11" "v10 entries + v11 Antigravity additions; no .gemini/" "rc=$rc out=$out"
 fi

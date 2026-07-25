@@ -94,7 +94,7 @@ A **safe** dry-run:
 - Diff file-list contains only the v11 forced additions (per
   `supporting-docs/MIGRATION-v10-to-v11.md` § What changed in v11): trinity `## Quick
   reference` blocks, `HELP-FRAGMENT*.md`,
-  `.github/ISSUE_TEMPLATE/*.yml`, per-CLI `pack-help` skill/command,
+  `.github/ISSUE_TEMPLATE/*.yml`, per-CLI `pm-help` skill,
   `.pack-migrate-v10-to-v11/` state dir, the relocation moves.
 - Stderr tail empty or only `[dry-run] would ...` lines.
 
@@ -151,7 +151,7 @@ version:
 
 The harness does NOT verify:
 
-- **Post-migration runtime behavior.** Whether `pack help`,
+- **Post-migration runtime behavior.** Whether `/pm-help`,
   `pm-startup`, or any project command actually works after migration.
 - **Downstream tool compatibility.** Whether your CI, IDE
   integrations, or local tooling work against the v11 file layout.

@@ -51,10 +51,11 @@ Checks:
       .gitignore retains the `!.env.example` re-include after the
       `*.env*` ignore pattern.
   21. [RETIRED in BD-221 — Antigravity conversion] Pack-help per-CLI
-      parity (BD-082). pack-help is now an ordinary pooled skill
-      distributed loose to all CLIs; the "references scripts/pack-help.sh"
-      assertion folded into Check 1 (SKILL.md frontmatter). The check
-      number is intentionally NOT renumbered.
+      parity (BD-082). The client help skill (renamed pack-help → pm-help
+      per BD-257) is now an ordinary pooled skill distributed loose to all
+      CLIs; the "references scripts/pm-help.sh" assertion folded into
+      Check 1 (SKILL.md frontmatter). The check number is intentionally
+      NOT renumbered.
   22. Help-fragment freshness (BD-082): every verb that pack prose
       references is present in the HELP-FRAGMENT shared content,
       pack-side and project-template-side.
@@ -876,8 +877,10 @@ def _build_check_registry():
         # they carry `number=None` — selectable by label only, never by integer.
         (None, "check_issue_template_forms", check_issue_template_forms, W),
         (None, "check_template_archive_v11", check_template_archive_v11, W),
-        # ── Check 21 RETIRED in BD-221 (Antigravity conversion): pack-help is a
-        # pooled skill; the script-ref assertion folded into Check 1. ──
+        # ── Check 21 RETIRED in BD-221 (Antigravity conversion): the client
+        # help skill (pack-help → pm-help per BD-257) is a pooled skill; the
+        # script-ref assertion (references scripts/pm-help.sh) folded into
+        # Check 1. ──
         (22, "check_help_fragment_freshness", check_help_fragment_freshness, W),
         (23, "check_help_fragment_completeness", check_help_fragment_completeness, W),
         # ── Check 24 callsite removed in BD-194 (Candidate 6). See
@@ -967,11 +970,17 @@ def _build_check_registry():
         # GUARDRAILS.md §6 (M1-M4) + §7; PLAN-DOC-CONCISION-GUARDRAILS.md
         # §3 C10.
         (44, "check_durable_doc_concision", check_durable_doc_concision, W),
-        # ── BD-195 (C3d): sanctioned pack-side-shipped freeze. Lands LAST —
-        # it freezes the bounded dual-use-shipped-lib exception to exactly
-        # {detect.sh, pack-help.sh} and reuses _parse_client_installed_files()
-        # (shared with Checks 41/43), so it sits after the inventory + walk
-        # gates. Per ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8.2.
+        # ── BD-195 (C3d) / BD-257: sanctioned pack-side-shipped freeze —
+        # EMPTY invariant. Lands LAST — it freezes _SANCTIONED_PACK_SIDE_SHIPPED
+        # to EXACTLY the empty set () (no pack-side file ships to clients per the
+        # no-dual-use rule / dependency-direction-placement conjunct (c)),
+        # code-enforces that empty floor, and scans BOTH client-install paths
+        # (init-project.sh's _CLIENT_INSTALLED_FILES via
+        # _parse_client_installed_files() — shared with Checks 41/43 — AND
+        # migrate-v10-to-v11.sh's copy vectors), so it sits after the inventory +
+        # walk gates. Per ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8.2 (the
+        # freeze anti-pattern, now frozen-empty; §8.3's admission path is
+        # SUPERSEDED by BD-257 — growth forbidden).
         (47, "check_sanctioned_pack_side_shipped", check_sanctioned_pack_side_shipped, W),
         # ── BD-195 (C6): JC-5 soft-advisory removed-doc guard. Lands LAST —
         # it is SOFT (WARN-only; never appends to `failures`, never changes

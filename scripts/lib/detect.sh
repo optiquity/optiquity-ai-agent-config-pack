@@ -901,9 +901,11 @@ python_observability_marker_detected() {
 #   1. tracker.toml `[pack]\nversion = "vN"` field, when present (opt-in:
 #      absence is NOT a v10 signal — the cascade continues).
 #   2. Trinity addenda fingerprint — v11 trinity files contain the line
-#      `run \`pack help\` for the full verb list`.
-#   3. Surface markers — v11-only files: pack-help SKILL.md per CLI,
-#      ISSUE_TEMPLATE/work-item.yml, docs/pack/HELP-FRAGMENT.md.
+#      `run \`/pm-help\` for the full verb list` (client help renamed from
+#      `/pack-help` per BD-257).
+#   3. Surface markers — v11-only files: pm-help SKILL.md per CLI (renamed
+#      from pack-help per BD-257), ISSUE_TEMPLATE/work-item.yml,
+#      docs/pack/HELP-FRAGMENT.md.
 #   4. Negative markers — v10-shape: docs/pack/PROMPT-TEMPLATES.md present
 #      AND none of the v11 surface markers above.
 #   5. Otherwise: `unknown`.
@@ -940,7 +942,7 @@ detect_target_pack_version() {
     local trinity
     for trinity in CLAUDE.md AGENTS.md GEMINI.md; do
         if [[ -f "$target/$trinity" ]]; then
-            if grep -q 'run `pack help` for the full verb list' \
+            if grep -q 'run `/pm-help` for the full verb list' \
                "$target/$trinity" 2>/dev/null; then
                 echo "v11"
                 return 0
@@ -948,10 +950,13 @@ detect_target_pack_version() {
         fi
     done
 
-    # Signal 3: v11-only surface markers.
-    if [[ -f "$target/.claude/skills/pack-help/SKILL.md" \
-       || -f "$target/.codex/skills/pack-help/SKILL.md" \
-       || -f "$target/.gemini/commands/pack-help.toml" \
+    # Signal 3: v11-only surface markers. The per-CLI help skill is the
+    # loose `pm-help` SKILL.md across the three CLI homes (claude/codex/agents
+    # — Antigravity reads `.agents/skills/`), renamed from `pack-help` per
+    # BD-257.
+    if [[ -f "$target/.claude/skills/pm-help/SKILL.md" \
+       || -f "$target/.codex/skills/pm-help/SKILL.md" \
+       || -f "$target/.agents/skills/pm-help/SKILL.md" \
        || -f "$target/.github/ISSUE_TEMPLATE/work-item.yml" \
        || -f "$target/docs/pack/HELP-FRAGMENT.md" ]]; then
         echo "v11"

@@ -503,10 +503,12 @@ EOF
             # .codex/config.toml, BACKLOG.md) and adds the v11-specific
             # Antigravity surfaces. Agents are a plugin bundle
             # (.agents-plugin/optiquity-agents/agents), skills are loose
-            # under .agents/skills/, and pack-help is a pool skill
-            # distributed loose to all three CLIs. The legacy `.gemini/`
-            # agent dir + `.gemini/commands/pack-help.toml` command are
-            # gone (BD-221). Only customization-relevant surfaces are
+            # under .agents/skills/, and pm-help is a pool skill
+            # distributed loose to all three CLIs (renamed from pack-help
+            # per BD-257; the pack-side pack-help.sh + lib/detect.sh no
+            # longer ship — no dual-use). The legacy `.gemini/` agent dir +
+            # `.gemini/commands/pack-help.toml` command are gone (BD-221).
+            # Only customization-relevant surfaces are
             # listed. tracker.toml.example is NOT listed: a v11 install no
             # longer creates it (tracker integration is deferred;
             # flat-file is the sole supported mode). The groupings stream
@@ -524,9 +526,9 @@ GEMINI.md
 BACKLOG.md
 docs/pack/HELP-FRAGMENT.md
 .github/ISSUE_TEMPLATE/work-item.yml
-.claude/skills/pack-help/SKILL.md
-.codex/skills/pack-help/SKILL.md
-.agents/skills/pack-help/SKILL.md
+.claude/skills/pm-help/SKILL.md
+.codex/skills/pm-help/SKILL.md
+.agents/skills/pm-help/SKILL.md
 docs/project/groupings/_rules.md
 docs/project/groupings/_intro.md
 EOF

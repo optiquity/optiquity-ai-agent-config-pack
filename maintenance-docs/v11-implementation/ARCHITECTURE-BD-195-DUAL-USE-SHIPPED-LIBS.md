@@ -14,6 +14,22 @@ The remaining fix-commits (C3c, PG-2) wait on this decision.
 file that is USED pack-side AND DELIVERED to clients belong, and how is its
 pack-self content (BD-NNN comments, `pack-ops/` refs) handled.
 
+> **SUPERSEDED IN PART BY BD-257 (2026-07-24).** This doc designed a *bounded,
+> non-empty* dual-use-shipped-lib exception — the 2-member allowlist
+> `_SANCTIONED_PACK_SIDE_SHIPPED = {scripts/lib/detect.sh, scripts/pack-help.sh}`
+> (§8.1) admitted via the §8.3 membership criterion. BD-257 adopted the
+> no-dual-use rule (`dependency-direction-placement` conjunct (c)): pack and
+> project are SEPARATE surfaces and NO pack-side file ships to clients — every
+> client deliverable is its OWN `project-template/` copy, even when the two
+> copies would be byte-identical. `_SANCTIONED_PACK_SIDE_SHIPPED` is now FROZEN
+> EMPTY `()`, SHRINK-ONLY, and MAY NEVER GROW; the §8.3 admission path is
+> REMOVED (growth forbidden — no sign-off exception). Check 47 code-enforces the
+> empty invariant on BOTH client-install paths (`init-project.sh` AND the
+> v10→v11 migrator). The dependency-direction PRINCIPLE (§8.0) and the
+> freeze-the-set anti-pattern (§8.2, now frozen-empty) survive; the specific
+> 2-member exception and its admission criterion do NOT. Read §8 below as the
+> historical design that BD-257 tightened to empty.
+
 ---
 
 ## 0 — Bottom line up front
@@ -726,6 +742,9 @@ depended on the location move. Only §A's "promote" recommendation is retracted.
 
 ### 8.1 — (a) The bounded, sanctioned exception
 
+> **SUPERSEDED by BD-257:** the 2-member set below is now EMPTY `()` — no
+> pack-side file ships to clients (no-dual-use rule). Read as historical design.
+
 **Problem restated.** Post-strip, the two files are CLEAN but pack-side-LOCATED
 and client-SHIPPED. Check 43 correctly walks them (EEB-D, branch (b)) and holds
 them to client-surface cleanliness. We need: (i) the guard does NOT flag the
@@ -889,6 +908,12 @@ for deliberate growth. Default for new shipped files stays
 `project-template/scripts/`.
 
 ### 8.3 — The documented membership criterion (for surfaces 1, 3, 5)
+
+> **SUPERSEDED by BD-257 — this admission path is REMOVED.** Growth is now
+> FORBIDDEN: `_SANCTIONED_PACK_SIDE_SHIPPED` is frozen EMPTY and MAY NEVER GROW,
+> with no admission path and no sign-off exception. A file that a pack op depends
+> on stays pack-side and unshipped; a client deliverable is ALWAYS its OWN
+> `project-template/` copy. The criterion below is historical.
 
 > **A file may join `_SANCTIONED_PACK_SIDE_SHIPPED` ONLY IF BOTH hold:**
 > **(1) a pack operation depends on it at runtime** (sourced/invoked by

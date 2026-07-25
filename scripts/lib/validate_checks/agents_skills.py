@@ -129,14 +129,17 @@ def check_skill_frontmatter() -> None:
                 fail(f"skills/{skill_dir.name}/SKILL.md — missing required field: {field}")
             continue
 
-        # BD-221 (folded from retired Check 21, OQ-C): the pooled `pack-help`
-        # skill body MUST reference `scripts/pack-help.sh` so the skill actually
-        # invokes the pack-help shell when an agent runs it.
-        if skill_dir.name == "pack-help" and "pack-help.sh" not in content:
+        # BD-221 (folded from retired Check 21, OQ-C): the pooled client
+        # help skill body MUST reference its runner so the skill actually
+        # invokes the help shell when an agent runs it. The client help skill
+        # is `pm-help` → `scripts/pm-help.sh` (renamed from `pack-help` /
+        # `pack-help.sh` per BD-257).
+        if skill_dir.name == "pm-help" and "pm-help.sh" not in content:
             fail(
-                f"skills/{skill_dir.name}/SKILL.md — pack-help skill does not "
-                f"reference `scripts/pack-help.sh` (the body must invoke the "
-                f"pack-help shell; folded from retired Check 21 per BD-221)"
+                f"skills/{skill_dir.name}/SKILL.md — pm-help skill does not "
+                f"reference `scripts/pm-help.sh` (the body must invoke the "
+                f"pm-help shell; folded from retired Check 21 per BD-221, "
+                f"renamed from pack-help per BD-257)"
             )
             continue
 

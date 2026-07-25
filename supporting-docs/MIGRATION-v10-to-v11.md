@@ -5,7 +5,7 @@ This guide is the authoritative narrative for upgrading an existing
 Phase A; Phase B (tracker opt-in) is DEFERRED.
 
 1. **Phase A — forced v10→v11 changes.** Everyone runs this. Trinity
-   refresh, HELP-FRAGMENT install, per-CLI `pack-help` surfaces, issue
+   refresh, HELP-FRAGMENT install, the per-CLI `pm-help` help skill, issue
    templates, legacy doc relocation tail. Driven by
    `scripts/migrate-v10-to-v11.sh`. (`tracker.toml.example` is
    NO LONGER installed — see Phase B.)
@@ -40,14 +40,15 @@ project — there is no shared state between projects.
   into the bundle and your old `.gemini/` tree is retired to a
   `gemini-retired-docs/` backup. See "Gemini → Antigravity transition"
   below for the full narrative.
-- New help-verb system: `pack help` (LCD shell verb) and `/pack-help`
-  (per-CLI command). Both invoke `scripts/pack-help.sh` which renders
-  `HELP-FRAGMENT-PACK.md` (pack repo) or `docs/pack/HELP-FRAGMENT.md`
-  (client repo).
+- New help-verb system (project side): `/pm-help` (per-CLI command) and its
+  LCD shell form `bash scripts/pm-help.sh`. The skill invokes the project's
+  OWN `scripts/pm-help.sh`, which renders the project's
+  `docs/pack/HELP-FRAGMENT.md`. No pack-side file is copied into the project
+  — the client help runner is its own `project-template/scripts/` deliverable
+  (no dual-use; the ship-allowlist is empty per BD-257).
 - New trinity addenda: `## Quick reference` block at the top of every
-  trinity file (pack-root + client) — one line for `pack help` /
-  `/pack-help`, one line for `pack-startup` / `pm-startup` recommended
-  first action.
+  project trinity file — one line for `/pm-help` / `bash scripts/pm-help.sh`,
+  one line for `pm-startup` recommended first action.
 - Customization-preservation contract: `init-project.sh --update`
   and `migrate-v10-to-v11.sh` share one library and one truthful
   report format. See `MERGE-STRATEGY.md` for the per-file class matrix.
@@ -446,7 +447,7 @@ framework exit code (`24` for S4; `25` for S5).
 | S3 | Dispatch v10 → v11 changes via the customization-preserve engine (trinity / configs / scripts / agents / docs) |
 | S4a | rename `IMPLEMENTATION_PLAN.md` → `IMPLEMENTATION-PLAN.md` at project root. History-preserving via `git mv` for tracked source; plain `mv` fallback for untracked. No-op if the source is absent. Halts with the typed error `migration-rename-collision` if both names already exist (the user inspects, resolves, re-runs). |
 | S4b | relocation tail (legacy root docs → `docs/pack/`) |
-| S5 | Install v11 client artifacts (HELP-FRAGMENT*.md, issue forms, per-CLI pack-help to `.claude`/`.codex`/`.agents`, the Antigravity agent plugin bundle at `.agents-plugin/optiquity-agents/` installed replace-if-different). `tracker.toml.example` is NO LONGER installed — tracker integration is deferred; the dormant config record stays committed pack-side at `project-template/tracker.toml.project-example`. |
+| S5 | Install v11 client artifacts (HELP-FRAGMENT*.md, issue forms, the per-CLI `pm-help` help skill to `.claude`/`.codex`/`.agents`, the Antigravity agent plugin bundle at `.agents-plugin/optiquity-agents/` installed replace-if-different). The client help runner `scripts/pm-help.sh` ships as an ordinary `project-template/scripts/` file via the scripts directory sweep — NO pack-side file (pack-help.sh / lib/detect.sh) is copied into the project (no dual-use; empty ship-allowlist per BD-257). `tracker.toml.example` is NO LONGER installed — tracker integration is deferred; the dormant config record stays committed pack-side at `project-template/tracker.toml.project-example`. |
 | S5a | Lift each departing Gemini custom (`x-`) agent into the Antigravity bundle (`.agents-plugin/optiquity-agents/agents/`) so it becomes a live Antigravity agent — never overwriting a same-named bundle custom. |
 | S5b | Retire the departing `.gemini/` tree by moving it (never deleting) into a root-level `gemini-retired-docs/` backup holding directory. |
 | S6 | Render truthful migration report at `.pack-migrate-v10-to-v11/report.md` |
@@ -545,19 +546,19 @@ After all sidecars resolved:
 git status
 # Should show modified files but no untracked .v10-customized sidecars
 
-bash scripts/pack-help.sh
-# Should print the merged HELP-FRAGMENT (pack-side header + tracker section
-# inlined + colloquial mappings). If pack-help.sh is missing, the v11
-# install didn't land — re-run the migrator.
+bash scripts/pm-help.sh
+# Should print the project's HELP-FRAGMENT (client-side header + colloquial
+# mappings). If pm-help.sh is missing, the v11 install didn't land — re-run
+# the migrator.
 
 # Confirm trinity addenda landed:
 grep "Quick reference" CLAUDE.md AGENTS.md GEMINI.md
 # Should show the "## Quick reference" block in all three files.
 
 # If you have a Claude Code / Codex / Antigravity install:
-ls .claude/skills/pack-help/SKILL.md \
-   .codex/skills/pack-help/SKILL.md \
-   .agents/skills/pack-help/SKILL.md
+ls .claude/skills/pm-help/SKILL.md \
+   .codex/skills/pm-help/SKILL.md \
+   .agents/skills/pm-help/SKILL.md
 # All three should exist.
 ```
 
@@ -579,7 +580,7 @@ git diff --staged | less
 #   - docs/pack/HELP-FRAGMENT.md is new.
 #   - tracker.toml.example is NOT installed (tracker deferred).
 #   - .github/ISSUE_TEMPLATE/{work-item,inbound,config}.yml are new.
-#   - per-CLI pack-help skill / command are new.
+#   - the per-CLI pm-help skill + scripts/pm-help.sh are new.
 #   - Any reconciliation files you edited.
 
 git commit -m "chore: migrate to AI Agent Config Pack v11"
@@ -714,13 +715,18 @@ git -C "$PACK" tag --list v10
 If still missing, the pack repo was checked out without tags; re-clone
 or `git fetch origin v10:v10`.
 
-### Migrator finishes but I can't run `pack help`
+### Migrator finishes but I can't run `/pm-help`
 
-`scripts/pack-help.sh` is a pack-repo verb (it lives at the pack repo
-root, not in your project). You run it from the pack repo or via your
-CLI's `/pack-help` command. The CLI commands ARE installed into your
-project (`.claude/skills/pack-help/SKILL.md`, etc.) and route to your
-**pack repo's** `scripts/pack-help.sh`.
+The project's help is self-contained: the migrator installs the client's
+OWN `scripts/pm-help.sh` (an ordinary `project-template/scripts/` file,
+copied into your project by the scripts sweep) plus the per-CLI
+`/pm-help` skill (`.claude/skills/pm-help/SKILL.md`, etc.). Run it as
+`bash scripts/pm-help.sh` from your project root, or via your CLI's
+`/pm-help` command — it reads your project's own
+`docs/pack/HELP-FRAGMENT.md`. No pack-side file is copied into your
+project and nothing routes back to the pack repo (no dual-use per
+BD-257). If `scripts/pm-help.sh` is missing, the v11 install did not
+land — re-run the migrator.
 
 ### "refusing to proceed: prior --update sidecars present"
 

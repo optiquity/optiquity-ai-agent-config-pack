@@ -800,19 +800,19 @@ fx=$(mkfixture tgtver-trinity-fingerprint)
 mkdir -p "$fx/.claude"
 cat > "$fx/CLAUDE.md" <<'EOF'
 # CLAUDE.md
-- run `pack help` for the full verb list, or `/pack-help` in your CLI.
+- **Pack commands:** run `/pm-help` for the full verb list, or `bash scripts/pm-help.sh`.
 EOF
 assert_eq "trinity addenda fingerprint → v11 (signal 2)" \
     "v11" "$(detect_target_pack_version "$fx")"
 
 fx=$(mkfixture tgtver-surface-marker)
-mkdir -p "$fx/.claude/skills/pack-help" "$fx/.claude"
-echo "# SKILL.md" > "$fx/.claude/skills/pack-help/SKILL.md"
+mkdir -p "$fx/.claude/skills/pm-help" "$fx/.claude"
+echo "# SKILL.md" > "$fx/.claude/skills/pm-help/SKILL.md"
 cat > "$fx/CLAUDE.md" <<'EOF'
 # CLAUDE.md
 no fingerprint here.
 EOF
-assert_eq "v11 surface marker (.claude/skills/pack-help) → v11 (signal 3)" \
+assert_eq "v11 surface marker (.claude/skills/pm-help) → v11 (signal 3)" \
     "v11" "$(detect_target_pack_version "$fx")"
 
 fx=$(mkfixture tgtver-v10-shape)

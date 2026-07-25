@@ -7,7 +7,8 @@
 #   Phase-B is the optional tracker-integration phase. The v10→v11
 #   migrator itself does not opt the user into tracker mode — it lays
 #   down the artifacts (tracker.toml.example, ISSUE_TEMPLATE forms,
-#   per-CLI pack-help) and points the user at `pack tracker init` in
+#   per-CLI pm-help — renamed from pack-help per BD-257) and points the
+#   user at `pack tracker init` in
 #   the post-report hook. Gate 3 fires only when the user *has*
 #   already opted into tracker mode at the time the migrator's --apply
 #   completes (e.g. they ran `pack tracker init` between runs, or this

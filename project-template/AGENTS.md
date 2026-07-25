@@ -26,7 +26,7 @@ Transport: [TRANSPORT] (e.g., gRPC + Proto3 for first-party; REST for third-part
 
 ## Quick reference
 
-- **Pack commands:** run `pack help` for the full verb list, or `/pack-help` in your CLI.
+- **Pack commands:** run `/pm-help` for the full verb list, or `bash scripts/pm-help.sh`.
 - **Recommended first action:** run `pm-startup` (or your CLI's equivalent).
 
 ---

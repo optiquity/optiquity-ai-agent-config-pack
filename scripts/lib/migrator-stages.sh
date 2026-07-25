@@ -404,8 +404,10 @@ _stage_artifact_installs() {
 
         mkdir -p "$(dirname "$dst")"
         cp "$src" "$dst"
-        # Preserve executable bit for shipped scripts (the monolith does
-        # this explicitly for `scripts/pack-help.sh` at lines 363–364).
+        # Preserve executable bit for shipped scripts (e.g. the client help
+        # runner `scripts/pm-help.sh`, shipped via the project-template
+        # scripts sweep; pack-side pack-help.sh + detect.sh are de-shipped
+        # per BD-257 and never installed here).
         if [[ -x "$src" ]]; then
             chmod +x "$dst"
         fi
