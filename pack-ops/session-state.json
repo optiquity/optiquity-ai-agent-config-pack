@@ -1,18 +1,17 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "30bda2a",
+  "boundary_commit": "6c44219",
   "checkpoint": "2026-07-25T00:00:00Z",
   "active": ["BD-257"],
   "in_flight_agents": [
-    "BD-257 A1 work is COMPLETE + self-verified and PRESERVED UNCOMMITTED in its live coder worktree (the sole agent worktree, based at the boundary commit; exact path in the local spawn registry) — DO NOT tear it down.",
-    "The A1 FINAL reviewer (3rd/last of the bounded cycle) DIED mid-review on the account monthly spend limit before writing a report — must be RE-RUN (fresh instance) to complete the cycle before A1 commits."
+    "coder-bd257-b1 — BD-257 B1 (client mode subsystem): PM-OPERATING-MODES.md + 3 /pm-*-mode selector skills + 2 FLAT hooks (pm-modes-enforce.py + pm-modes-commit-gate.py) + client session-config/token + PM-CHAT full opt-in addendum + PLATFORM-SKILLS count bumps (RW, isolated worktree)"
   ],
   "queue": ["BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "BD-257 serial coder waves A1->B1->B2->B4->B3->C1->C2; A1 is in its bounded review/fix cycle.",
-  "wave": "BD-257 A1 (keystone) IMPLEMENTED + self-verified: client help separation (/pack-help -> /pm-help, own pm-help.sh + fragment), de-ship pack-help.sh + detect.sh from BOTH install paths (init-project.sh + migrate-v10-to-v11.sh), empty ship-allowlist + Check-47 empty-invariant assertion + migrator-path guard (all proven to bite), and a FULL /pack-help->/pm-help client census reconciled (detect.sh version-detection, agents_skills.py runner-wire, README/docs/config) with 4 masking test fixtures de-masked. BLOCKED: the FINAL independent review is INCOMPLETE — the reviewer hit the account MONTHLY SPEND LIMIT. Self-verified battery is green except the expected untracked pm-help.sh dangling artifact (clears on staging).",
+  "parallelization": "BD-257 serial coder waves: A1 (LANDED) -> B1 (in flight) -> B2 -> B4 -> B3 -> C1 -> C2; each commit its own bounded review/fix cycle + per-commit user approval.",
+  "wave": "BD-257 A1 (keystone) LANDED + CI green: client /pack-help -> /pm-help help separation (own pm-help.sh + fragment), de-ship pack-help.sh + detect.sh from BOTH install paths (init-project.sh + migrate-v10-to-v11.sh), empty ship-allowlist CODE-ENFORCED (Check-47 empty-invariant assertion + migrator-path guard, both proven to bite), full rename census reconciled (detect.sh, runner-wire, docs) + 4 masking fixtures de-masked. Took coder + 2 fix passes + 3 reviews (final clean) through a spend-cap interruption. NEXT: B1 (client mode subsystem, in flight) -> B2 (status/refresh) -> B4 (promotions /pm-groupings + /pm-target-sweep) -> B3 (dashboard schema-retarget, heaviest) -> C1 (fragment rows + startup) -> C2 (Check 90 parity + count 86->87).",
   "pending_decisions": [
-    "RESUME PATH (blocked on spend limit): the user raises the monthly spend limit (claude.ai/settings/usage), then re-run the A1 FINAL reviewer against the live A1 worktree; if CLEAN -> apply A1 to canonical (stage the tracked diff + the 2 new files project-template/scripts/pm-help.sh + project-template/skills/pm-help/ + the new migration fixture so the Check-68 artifact clears; regen the manifest at push if the fixture is an input) -> user commit approval -> B1. If it finds NEW live pack-help surfaces -> stop + architect (blast-radius under-mapped).",
-    "Standing: NO new BDs without explicit user ask; pack-chat-only trees are Pack-Chat-direct; push is user-manual; the intervention commit-gate is live (fresh pack-ops/.commit-approval-token in a SEPARATE step before each approved commit) EXCEPT routine session-state refreshes (autonomous); session-state COMPACT — one SHA in boundary_commit only, no other SHAs, no hex agent IDs, <4096 bytes."
+    "BD-257 remaining waves B1..C2 each run a bounded review/fix cycle + a per-commit user commit-approval gate. B3 (dashboard) is the heaviest — its own review budget.",
+    "Standing: NO new BDs without explicit user ask; pack-chat-only trees are Pack-Chat-direct; MAJOR edits route to pack-coder; push is user-manual (v11-dev in sync with origin); the intervention commit-gate is live (write a fresh pack-ops/.commit-approval-token in a SEPARATE step before each approved commit) EXCEPT routine session-state refreshes, which the user authorized Pack Chat to perform autonomously; session-state COMPACT — one SHA in boundary_commit only, no other SHAs, no hex agent IDs, <4096 bytes."
   ],
-  "cycle_position": "BD-257 A1 bounded review/fix cycle: coder + 2 fix passes DONE + self-verified; the 3rd/final reviewer DIED on the monthly spend limit before reporting -> must re-run. A1 work preserved uncommitted in its live worktree. BLOCKED on a spend-limit raise."
+  "cycle_position": "BD-257 B1 coder in flight (2nd of 6 remaining serial waves); A1 landed + CI green + worktree torn down."
 }
