@@ -24,6 +24,8 @@
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
 - [BD-257](./BD-257.md) — Add net-new + review/refresh existing client (project-side) slash commands + their execution foundation (brainstorm-gated; project-side analog of BD-224)
+- [BD-273](./BD-273.md) — Pack-side agent-scratch ownership isolation + deletion-boundary guard (pack dev-workflow safety)
+- [BD-274](./BD-274.md) — Project-side (client) agent-scratch ownership isolation (client deliverable analog of BD-273)
 
 ## Deferred
 
