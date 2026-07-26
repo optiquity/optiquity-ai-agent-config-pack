@@ -120,8 +120,11 @@ IN_GLOBS = [
 ]
 
 # Files matched by a glob above but EXCLUDED (help output / orientation are
-# not operating instruction).
-EXCLUDE_BASENAMES = {"HELP-FRAGMENT.md", "_intro.md", "_toc.md"}
+# not operating instruction). PM-DASHBOARD-SPEC.md is the /pm-dashboard build
+# spec: a verbatim reference source read fresh every render, not a terse
+# operating doc, so it is excluded from the content gates here (mirrors the
+# pack-side _CHECK_OPERATING_DOC_EXEMPT entry).
+EXCLUDE_BASENAMES = {"HELP-FRAGMENT.md", "_intro.md", "_toc.md", "PM-DASHBOARD-SPEC.md"}
 
 
 def iter_in_set():

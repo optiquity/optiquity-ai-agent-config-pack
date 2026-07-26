@@ -1219,6 +1219,7 @@ cmd_update() {
         "project-template/.agents/mcp_config.json.example:.agents/mcp_config.json:mcp-config-json"
         "project-template/docs/pack/PM-CHAT.md:docs/pack/PM-CHAT.md:pm-chat"
         "project-template/docs/pack/PM-OPERATING-MODES.md:docs/pack/PM-OPERATING-MODES.md:generic"
+        "project-template/docs/pack/PM-DASHBOARD-SPEC.md:docs/pack/PM-DASHBOARD-SPEC.md:generic"
         "project-template/docs/pack/PLATFORM-SKILLS.md:docs/pack/PLATFORM-SKILLS.md:generic"
         "project-template/docs/pack/PACK-FEEDBACK.md:docs/pack/PACK-FEEDBACK.md:generic"
         # BD-180 observation E (2026-05-20): PROMPT-TEMPLATES.md entry
@@ -1433,6 +1434,7 @@ cmd_update() {
 #   project-template/docs/pack/PLATFORM-SKILLS.md  ->  docs/pack/PLATFORM-SKILLS.md  [stage:S6,cmd_update]
 #   project-template/docs/pack/PM-CHAT.md  ->  docs/pack/PM-CHAT.md  [stage:S6,cmd_update]
 #   project-template/docs/pack/PM-OPERATING-MODES.md  ->  docs/pack/PM-OPERATING-MODES.md  [stage:S6,cmd_update]
+#   project-template/docs/pack/PM-DASHBOARD-SPEC.md  ->  docs/pack/PM-DASHBOARD-SPEC.md  [stage:S6,cmd_update]
 #   (BD-221: pm-help + pm-startup are pool skills distributed LOOSE to
 #    .{claude,codex,agents}/skills/* by the S4 canonical-pool loop — see the
 #    bulk-copied-directories block above; no per-CLI START/END rows. The
