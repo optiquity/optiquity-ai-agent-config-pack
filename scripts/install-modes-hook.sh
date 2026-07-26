@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # pack-internal: true  (pack-ops modes-enforcement hook installer; not a user-facing verb, in no install map)
 #
-# scripts/install-modes-hook.sh — heal / opt-out / status helper for the two
-# pack modes-enforcement PreToolUse hooks:
-#   - isolation   : PreToolUse[Agent] -> scripts/hooks/modes-enforce.py
-#   - commit-gate : PreToolUse[Bash]  -> scripts/hooks/modes-commit-gate.py
+# scripts/install-modes-hook.sh — heal / opt-out / status helper for the pack
+# PreToolUse hooks:
+#   - isolation         : PreToolUse[Agent] -> scripts/hooks/modes-enforce.py
+#   - commit-gate       : PreToolUse[Bash]  -> scripts/hooks/modes-commit-gate.py
+#   - deletion-boundary : PreToolUse[Bash]  -> scripts/hooks/deletion-boundary.py
 #
 # The PRIMARY wiring is the tracked pack-root .claude/settings.json (applied
 # natively at session start — no install step, nothing to rot). This script is
@@ -26,6 +27,7 @@
 #                 .claude/settings.json AND the local settings.local.json:
 #                   isolation: <committed+local|committed|local|none>
 #                   commit-gate: <committed+local|committed|local|none>
+#                   deletion-boundary: <committed+local|committed|local|none>
 #
 # Dependency direction (CLAUDE.md "dependency-direction-placement"): a PACK-OPS
 # tool — it NEVER ships to clients and is NOT in any install map. It is NOT a
@@ -87,16 +89,19 @@ mode = os.environ["MHOOK_MODE"]
 settings_path = os.environ["MHOOK_SETTINGS"]
 committed_path = os.environ.get("MHOOK_COMMITTED", "")
 
-# The two hooks this installer manages: (name, matcher, marker, command). The
+# The hooks this installer manages: (name, matcher, marker, command). The
 # command uses the literal $CLAUDE_PROJECT_DIR so the wired path resolves
-# regardless of session cwd; both bodies are executable (python3 shebang). The
+# regardless of session cwd; every body is executable (python3 shebang). The
 # marker (a path substring) makes detection form-agnostic if a live CLI needs
-# the `python3 <path>` form.
+# the `python3 <path>` form. Each tuple emits ONE PreToolUse array element
+# (desired_entry); merge/uninstall/dedup/status are data-driven over this table.
 HOOKS = [
-    ("isolation",   "Agent", "scripts/hooks/modes-enforce.py",
+    ("isolation",         "Agent", "scripts/hooks/modes-enforce.py",
      "$CLAUDE_PROJECT_DIR/scripts/hooks/modes-enforce.py"),
-    ("commit-gate", "Bash",  "scripts/hooks/modes-commit-gate.py",
+    ("commit-gate",       "Bash",  "scripts/hooks/modes-commit-gate.py",
      "$CLAUDE_PROJECT_DIR/scripts/hooks/modes-commit-gate.py"),
+    ("deletion-boundary", "Bash",  "scripts/hooks/deletion-boundary.py",
+     "$CLAUDE_PROJECT_DIR/scripts/hooks/deletion-boundary.py"),
 ]
 
 

@@ -153,6 +153,21 @@ print("yes" if "WebFetch(domain:claude.ai)" in allow else "no")
 PY
 }
 
+has_delbound() { # -> yes|no : is our PreToolUse[Bash] deletion-boundary entry present in $1?
+  python3 - "$1" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+pt = d.get("hooks", {}).get("PreToolUse", [])
+found = any(
+    isinstance(e, dict) and e.get("matcher") == "Bash"
+    and any(str(h.get("command", "")).endswith("scripts/hooks/deletion-boundary.py")
+            for h in e.get("hooks", []) or [])
+    for e in pt
+)
+print("yes" if found else "no")
+PY
+}
+
 # install -> deep-merges, preserves permissions.allow (does NOT clobber).
 out="$(MODES_HOOK_SETTINGS_FILE="$SCRATCH" bash "$INSTALLER" 2>&1)"; rc=$?
 if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q 'installed'; then
@@ -162,6 +177,8 @@ else
 fi
 [ "$(has_modes "$SCRATCH")" = "yes" ] && pass "install added the modes entry" \
   || fail "install added the modes entry"
+[ "$(has_delbound "$SCRATCH")" = "yes" ] && pass "install added the deletion-boundary entry (3-hook aware)" \
+  || fail "install added the deletion-boundary entry (3-hook aware)"
 [ "$(has_perm "$SCRATCH")" = "yes" ] && pass "install preserved permissions.allow (merge, not clobber)" \
   || fail "install preserved permissions.allow (merge, not clobber)"
 
@@ -177,17 +194,22 @@ cmp -s "$SCRATCH" "$WORK/after-install.json" \
   && pass "re-run install left the file byte-unchanged (idempotent)" \
   || fail "re-run install left the file byte-unchanged (idempotent)"
 
-# --status -> per-hook merged reality; the isolation entry is wired locally (no
-# committed seam here) -> `isolation: local`.
+# --status -> per-hook merged reality; every entry is wired locally (no committed
+# seam here) -> `<hook>: local`. The single-line greps stay green with a 3rd line.
 st="$(MODES_HOOK_SETTINGS_FILE="$SCRATCH" bash "$INSTALLER" --status 2>/dev/null)"
 printf '%s\n' "$st" | grep -q '^isolation: local$' \
   && pass "--status reports isolation: local" \
   || fail "--status reports isolation: local (got: $st)"
+printf '%s\n' "$st" | grep -q '^deletion-boundary: local$' \
+  && pass "--status reports deletion-boundary: local (3-hook aware)" \
+  || fail "--status reports deletion-boundary: local (got: $st)"
 
-# --uninstall -> modes entry gone, permissions intact.
+# --uninstall -> ALL modes entries gone (3-hook aware), permissions intact.
 MODES_HOOK_SETTINGS_FILE="$SCRATCH" bash "$INSTALLER" --uninstall >/dev/null 2>&1
 [ "$(has_modes "$SCRATCH")" = "no" ] && pass "--uninstall removed the modes entry" \
   || fail "--uninstall removed the modes entry"
+[ "$(has_delbound "$SCRATCH")" = "no" ] && pass "--uninstall removed the deletion-boundary entry (3-hook aware)" \
+  || fail "--uninstall removed the deletion-boundary entry (3-hook aware)"
 [ "$(has_perm "$SCRATCH")" = "yes" ] && pass "--uninstall left permissions.allow intact" \
   || fail "--uninstall left permissions.allow intact"
 
@@ -220,6 +242,53 @@ fi
 cmp -s "$MAL" "$WORK/mal-before.json" \
   && pass "install on malformed settings left the file byte-unchanged (no discard)" \
   || fail "install on malformed settings left the file byte-unchanged (no discard)"
+
+echo "── Group B: --dedup / --status are 3-hook aware (committed vs local) ──"
+
+# A COMMITTED scratch file wiring all three managed hooks (built via the installer
+# against a scratch committed path).
+DD_COMMITTED="$WORK/dd-committed.json"
+printf '%s\n' '{}' > "$DD_COMMITTED"
+MODES_HOOK_SETTINGS_FILE="$DD_COMMITTED" bash "$INSTALLER" >/dev/null 2>&1
+
+# A LOCAL file = a copy of the committed set (all duplicates) PLUS one local-only
+# override hook the committed file does NOT wire (must survive dedup).
+DD_LOCAL="$WORK/dd-local.json"
+cp "$DD_COMMITTED" "$DD_LOCAL"
+python3 - "$DD_LOCAL" <<'PY'
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p))
+d["hooks"]["PreToolUse"].append(
+    {"matcher": "Bash",
+     "hooks": [{"type": "command",
+                "command": "$CLAUDE_PROJECT_DIR/scripts/hooks/local-only-hook.py"}]})
+json.dump(d, open(p, "w"), indent=2)
+PY
+
+# --status with the committed seam -> deletion-boundary is committed+local here.
+st="$(MODES_HOOK_SETTINGS_FILE="$DD_LOCAL" MODES_HOOK_COMMITTED_FILE="$DD_COMMITTED" \
+      bash "$INSTALLER" --status 2>/dev/null)"
+printf '%s\n' "$st" | grep -q '^deletion-boundary: committed+local$' \
+  && pass "--status reports deletion-boundary: committed+local (3-hook aware)" \
+  || fail "--status reports deletion-boundary: committed+local (got: $st)"
+
+# --dedup removes ONLY the committed duplicates (all three) — the local-only
+# override is preserved.
+out="$(MODES_HOOK_SETTINGS_FILE="$DD_LOCAL" MODES_HOOK_COMMITTED_FILE="$DD_COMMITTED" \
+       bash "$INSTALLER" --dedup 2>&1)"; rc=$?
+if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q 'deduplicated'; then
+  pass "--dedup removes committed duplicates (rc 0)"
+else
+  fail "--dedup removes committed duplicates (rc $rc, out: $out)"
+fi
+[ "$(has_delbound "$DD_LOCAL")" = "no" ] && pass "--dedup removed the deletion-boundary duplicate (3-hook aware)" \
+  || fail "--dedup removed the deletion-boundary duplicate"
+[ "$(has_modes "$DD_LOCAL")" = "no" ] && pass "--dedup removed the isolation duplicate" \
+  || fail "--dedup removed the isolation duplicate"
+grep -q 'local-only-hook.py' "$DD_LOCAL" \
+  && pass "--dedup preserved the local-only override" \
+  || fail "--dedup preserved the local-only override"
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ] || exit 1
