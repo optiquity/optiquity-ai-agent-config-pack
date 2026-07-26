@@ -1,21 +1,21 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "c2a1980",
+  "boundary_commit": "b7ba1a0",
   "checkpoint": "2026-07-26T00:00:00Z",
   "active": ["BD-257", "BD-273"],
   "in_flight_agents": [
-    "coder-bd257-b3 -- BD-257 B3 client /pm-dashboard render-cache framework (NEW pm-dashboard-render.py schema-retargeted engine + PM-DASHBOARD-SPEC.md + pm-dashboard/SKILL.md + pack+client gate exemptions + PLATFORM-SKILLS 44->45; project-side, framework-only) (RW, isolated worktree, first coder of B3 commit)",
-    "architect-bd273-adversarial -- adversarial review of the BD-273/274 ownership-isolation design (RO, isolated then main checkout; fresh independent instance)"
+    "coder-bd257-b3 -- BD-257 B3 client /pm-dashboard render-cache framework (schema-retargeted engine + PM-DASHBOARD-SPEC.md + pm-dashboard/SKILL.md + pack+client gate exemptions + PLATFORM-SKILLS 44->45; project-side, framework-only) (RW, isolated worktree)",
+    "architect-bd273-reconcile -- reconciliation of the BD-273/274 ownership design, folding ALL adversarial findings + the single-root decision (RO, fresh instance; owned dir at canonical root)"
   ],
   "queue": ["BD-274", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "Two parallel tracks: BD-257 serial coder waves (A1+B1+B2+B4 LANDED -> B3 -> C1 -> C2) + BD-273/274 ownership isolation (architect design done; adversarial pass next). Each BD-257 commit its own bounded review/fix + per-commit user approval.",
-  "wave": "BD-257 A1+B1+B2+B4 LANDED + CI green (client help separation + de-ship + code-enforced empty allowlist; client mode subsystem + 2 FLAT enforcement hooks + canaries; /pm-status + /pm-refresh; /pm-groupings + /pm-target-sweep). Remaining: B3 (dashboard schema-retarget, heaviest) -> C1 (fragment rows + /pm-startup + Claude-only-enforcement markers) -> C2 (Check 90 parity + count 86->87). BD-273 (pack agent-scratch ownership isolation) design doc done + FEASIBILITY PROBE = GO (subagent Bash IS hooked + agent_id populated + main-thread agent_id absent -> hook can gate on agent_id; agent cannot self-read agent_id from env -> Option-2 registry stands). BD-274 = client analog (assessed in same design). INTERIM ownership convention LIVE on every spawn.",
+  "parallelization": "Two parallel tracks: BD-257 serial coder waves (A1+B1+B2+B4 LANDED -> B3 in flight -> C1 -> C2) + BD-273/274 ownership LARGE-BD pipeline (design -> adversarial DONE -> reconciliation in flight -> user design review -> planner). Each BD-257 commit its own bounded review/fix + per-commit user approval.",
+  "wave": "BD-257 A1+B1+B2+B4 LANDED+CI green; B3 (dashboard, heaviest) coder in flight -> C1 -> C2. BD-273/274 ownership: probe GO; adversarial review DONE (ship-worthy after reconciliation: BLOCKER-1 root mess, MUST-1 parser over-claims, MUST-2 registry-write honor-system risk, MUST-3 mislabel, 6 SHOULD incl BD-274 migrator/customization gap, 3 NIT). USER DECIDED canonical root = single ${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pack-handoff/ (BD-248's; _tmp variant + ~/Developer/_tmp DROPPED; stale env-memory DELETED). Fresh reconciliation architect in flight, fix-all.",
   "pending_decisions": [
-    "BD-273/274: probe = GO. NEXT = adversarial architect pass on the ownership design (LARGE-BD pipeline; needs user architect-spawn approval), then reconciliation-if-findings, then user design review, then planner.",
-    "SEQUENCING open: BD-257 B3 wave (I can start; standard triage) vs pushing BD-273 forward -- parallel tracks possible.",
+    "BD-273/274: reconciliation in flight. NEXT = user design review of reconciled design, then planner (adversarial planner -> reconciliation -> user gate -> coder waves). BD-273 pack first; BD-274 client AFTER BD-257 settings.json settles (COORDINATE: both touch project-template/.claude/settings.json).",
+    "MUST-2 crux the reconciliation decides on evidence: post-spawn registry (honor-system write risk) vs formula-derivation owned_dir=<root>/agent-<agent_id> the hook computes from agent_id (no registry-miss window).",
     "CARRY-FORWARD to C1: /pm-help + /pm-isolation-mode + /pm-intervention-mode HELP-FRAGMENT rows get a (Claude-only enforcement) marker.",
-    "BD-257 WRAP-UP: reconcile pack README client-skill-inventory count (stale '36 skills / 1 PM operational') to final once C1/C2 land; candidate CI check README-count-vs-PLATFORM-SKILLS SSOT.",
-    "Standing: NO new BDs without explicit user ask; pack-chat-only trees are Pack-Chat-direct; push user-manual (v11-dev in sync); intervention commit-gate live (fresh token separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no hex agent IDs, <4096 bytes)."
+    "BD-257 WRAP-UP: reconcile pack README client-skill count to final once C1/C2 land; candidate CI check README-count-vs-PLATFORM-SKILLS SSOT.",
+    "Standing: NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; push user-manual; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no hex agent IDs, <4096 bytes); canonical scratch root = $XDG_STATE_HOME/optiquity-pack-handoff/ (in-repo SSOT: BD-248 + PACK-CHAT.md L347-349)."
   ],
-  "cycle_position": "PARALLEL: BD-257 B3 coder in flight (heaviest wave, own review budget) + BD-273 adversarial architect in flight (RO). A1+B1+B2+B4 landed+CI green. Probe GO. Next: B3 bounded review/fix + user commit approval; BD-273 reconciliation-if-findings then user design review then planner."
+  "cycle_position": "PARALLEL: BD-257 B3 coder in flight + BD-273 reconciliation architect in flight (adversarial DONE, root decided). Next: B3 bounded review/fix + user commit approval; BD-273 user design review of the reconciled design."
 }
