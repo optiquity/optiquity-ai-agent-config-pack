@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-# pack-internal: true  (pack-ops isolation_mode PreToolUse[Agent] deny-hook body; never ships to clients, in no install map)
 #
-# scripts/hooks/modes-enforce.py — Layer-1 isolation_mode enforcement hook.
+# scripts/pm-modes-enforce.py — client isolation_mode enforcement hook.
 #
 # A Claude Code PreToolUse hook (matcher `Agent`) that re-reads the active
-# isolation_mode from pack-ops/session-config.json at the instant of every
-# sub-agent spawn, maps subagent_type -> RW/RO agent class, and DENIES an
-# UNDER-isolated spawn — one a must-isolate mode requires to isolate but whose
-# `isolation:"worktree"` parameter is absent. It enforces INTENT (the correct
-# spawn parameter), never OUTCOME (whether isolation actually took effect — that
-# stays the agent's runtime pwd/HEAD self-detect).
+# isolation_mode from docs/project/pm-session-config.json at the instant of
+# every sub-agent spawn, maps subagent_type -> read-write / read-only agent
+# class, and DENIES an UNDER-isolated spawn — one a must-isolate mode requires
+# to isolate but whose `isolation:"worktree"` parameter is absent. It enforces
+# INTENT (the correct spawn parameter), never OUTCOME (whether isolation actually
+# took effect — that stays the agent's runtime pwd/HEAD self-detect).
 #
 # FAIL-OPEN discipline: the genuine allow (print nothing, exit 0) cases are a
 # non-Agent tool, an unparseable payload, an unknown agent class, and any
@@ -17,31 +16,48 @@
 # unavailable) is NOT a blanket allow: _resolve_mode folds it to the DEFAULT mode
 # (read-write-only) and the spawn is then enforced per that mode, so an
 # under-isolated RW spawn DENIES under the must-isolate default. The body NEVER
-# exits 2 (exit 2 = blocking); an internal error degrades to today's honor-system,
-# never to a wedged session.
+# exits 2 (exit 2 = blocking); an internal error degrades to the honor-system
+# default, never to a wedged session.
 #
 # MUST-ISOLATE-ONLY direction: it denies only an UNDER-isolated spawn (one that
 # should isolate but does not); it NEVER denies an over-isolated spawn, so it
 # stays compatible with an all-isolated posture.
 #
-# Dependency direction (CLAUDE.md "dependency-direction-placement"): a PACK-OPS
-# tool — it NEVER ships to clients and is NOT in any install map. The
-# orchestrator wires it (with modes-commit-gate.py) via the tracked pack-root
-# .claude/settings.json.
+# Scope bound: this hook governs ONLY the in-session Agent-tool spawn path. The
+# shipped agent-run.sh launcher isolates per its own flags and is NOT reached by
+# this config or hook (see docs/pack/PM-OPERATING-MODES.md).
+#
+# Dependency direction: a client-side hook — it is read only by the client
+# .claude/settings.json (which wires it via `python3 ./scripts/pm-modes-
+# enforce.py`) and depends on no other file. It is a self-contained client copy;
+# it shares no code with any pack-repo hook.
 
 import json
 import os
 import subprocess
 import sys
 
-# Agent-class map (subagent_type -> class). RW = read-write (mutates the tree);
-# a fix-coder is a pack-coder instance. RO = read-only.
-_RW_CLASSES = frozenset({"pack-coder"})
+# Agent-class map (subagent_type -> class). Client agent names are un-prefixed.
+# RW = read-write (mutates the tree): coder (covers coder + fix-coder) and
+# repo-ops (scripted writes). RO = read-only: the 14 report-only agents (the
+# BASE `auditor` is distinct from the seven `auditor-*` cluster members — a glob
+# would misclassify).
+_RW_CLASSES = frozenset({"coder", "repo-ops"})
 _RO_CLASSES = frozenset({
-    "pack-reviewer",
-    "pack-architect",
-    "pack-planner",
-    "pack-docs-researcher",
+    "architect",
+    "planner",
+    "reviewer",
+    "tester",
+    "docs-researcher",
+    "grpc-schema",
+    "auditor",
+    "auditor-architecture",
+    "auditor-code",
+    "auditor-docs",
+    "auditor-ops",
+    "auditor-security",
+    "auditor-tests",
+    "auditor-ui",
 })
 
 _DEFAULT_MODE = "read-write-only"
@@ -49,7 +65,7 @@ _DEFAULT_MODE = "read-write-only"
 
 def _resolve_mode(cwd):
     """Return the active isolation_mode string, folding ANY failure to the
-    family default (read-write-only). Mirrors OPERATING-MODES.md "Reading the
+    family default (read-write-only). Mirrors PM-OPERATING-MODES.md "Reading the
     config": empty root / non-git cwd / absent / malformed / unreadable -> the
     default."""
     try:
@@ -63,7 +79,7 @@ def _resolve_mode(cwd):
     root = proc.stdout.strip()
     if not root:
         return _DEFAULT_MODE
-    cfg = os.path.join(root, "pack-ops", "session-config.json")
+    cfg = os.path.join(root, "docs", "project", "pm-session-config.json")
     try:
         with open(cfg) as fh:
             mode = json.load(fh).get("isolation_mode", _DEFAULT_MODE)
@@ -125,9 +141,9 @@ def main():
                     "permissionDecisionReason": reason,
                 }
             }
-            # Compact separators — the spike-proven schema + the /pack-startup
-            # canary + the unit test all match the space-free substring
-            # `"permissionDecision":"deny"`.
+            # Compact separators so the space-free substring
+            # `"permissionDecision":"deny"` is literally present for any
+            # canary/grep that matches it.
             sys.stdout.write(json.dumps(out, separators=(",", ":")))
         # Every non-deny path prints nothing.
         return 0

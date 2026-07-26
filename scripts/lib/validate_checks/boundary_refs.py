@@ -2614,8 +2614,8 @@ _CHECK_41_EXEMPTIONS: dict[str, str] = {
 # Inventory rows that ship via a runtime-basename directory GLOB inside their
 # stage function (name=$(basename "$f")/"$form"), so the literal filename is
 # computed at runtime and legitimately does NOT appear as a per-file copy
-# literal. Sized to EXACTLY the 7 measured glob-shipped rows (3 S11 issue forms
-# + 4 S6 docs/pack/*.md). A per-file omission is structurally impossible for a
+# literal. Sized to EXACTLY the 8 measured glob-shipped rows (3 S11 issue forms
+# + 5 S6 docs/pack/*.md). A per-file omission is structurally impossible for a
 # directory glob.
 _CHECK_41_GLOB_LIST_EXEMPT: frozenset[str] = frozenset({
     "project-template/.github/ISSUE_TEMPLATE/work-item.yml",
@@ -2625,6 +2625,9 @@ _CHECK_41_GLOB_LIST_EXEMPT: frozenset[str] = frozenset({
     "project-template/docs/pack/PACK-FEEDBACK.md",
     "project-template/docs/pack/PLATFORM-SKILLS.md",
     "project-template/docs/pack/PM-CHAT.md",
+    # BD-257 B1: the client mode-subsystem behavior SSOT; ships via the
+    # S6 docs/pack/*.md directory glob, same as its siblings above.
+    "project-template/docs/pack/PM-OPERATING-MODES.md",
 })
 
 

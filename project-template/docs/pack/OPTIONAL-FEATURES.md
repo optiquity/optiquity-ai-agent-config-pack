@@ -281,6 +281,22 @@ hand and open a separate session in that directory — that is plain git and nee
 nothing from the pack; the pack only guarantees that nothing it ships breaks
 inside a manual worktree.
 
+**Session isolation mode (`isolation_mode`) — governs in-session spawns only.**
+Which agent classes isolate is also selectable per session through the
+`isolation_mode` config (`read-write-only` default, or `full`; the full mode
+matrix is in `docs/pack/PM-OPERATING-MODES.md`). `read-write-only` isolates
+read-write agents only (the by-class default above); `full` additionally
+isolates read-only spawns (a clean-channel opt-in). A Claude-only
+PreToolUse[Agent] hook backstops the active mode by DENYING an under-isolated
+spawn — it fails open (it never blocks on its own error and never exits non-zero),
+so it can only tighten the honor-system posture, never wedge a session. This mode
+governs ONLY the in-session Agent-tool spawn path. The `agent-run.sh --worktree`
+launcher above isolates per its OWN `--worktree` flag and is NOT reached by the
+`isolation_mode` config or the hook — setting `isolation_mode: full` does not
+govern an agent-run.sh launch. The hook wires ONLY in your Claude
+`.claude/settings.json`; Codex CLI and Antigravity CLI have no equivalent
+enforcement.
+
 ---
 
 ## CI test parallelization (GitHub Actions matrix)

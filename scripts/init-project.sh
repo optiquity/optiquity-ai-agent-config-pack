@@ -555,8 +555,16 @@ stage_s5_scripts() {
     local pack_scripts="$PACK/project-template/scripts"
     if [[ -d "$pack_scripts" ]]; then
         local f
-        for f in "$pack_scripts"/*; do
-            [[ -e "$f" ]] || continue
+        # Include DOTFILES: `*` skips leading-dot names, so a bare `*` would
+        # drop client-shipped dotfiles (e.g. `.docs-gate-allowlist.txt`, which
+        # validate-docs.sh reads — absent, it false-positives on a bare
+        # install). The `.[!.]*` pattern adds dotfiles while excluding `.`/`..`.
+        # The `-f` guard skips the literal pattern when nothing matches
+        # (nullglob is not set) AND skips any stray subdirectory (e.g. a
+        # gitignored `__pycache__`) — true parity with _cmd_update_iter_dir's
+        # `find -type f` (this dir is a flat file set, no tracked subdirs).
+        for f in "$pack_scripts"/* "$pack_scripts"/.[!.]*; do
+            [[ -f "$f" ]] || continue
             local name; name=$(basename "$f")
             if [[ "$CLASS" == existing-* ]]; then
                 existing_classifier_copy "$f" "$TARGET/scripts/$name"
@@ -1210,6 +1218,7 @@ cmd_update() {
         "project-template/.mcp.json.example:.mcp.json:claude-mcp-example"
         "project-template/.agents/mcp_config.json.example:.agents/mcp_config.json:mcp-config-json"
         "project-template/docs/pack/PM-CHAT.md:docs/pack/PM-CHAT.md:pm-chat"
+        "project-template/docs/pack/PM-OPERATING-MODES.md:docs/pack/PM-OPERATING-MODES.md:generic"
         "project-template/docs/pack/PLATFORM-SKILLS.md:docs/pack/PLATFORM-SKILLS.md:generic"
         "project-template/docs/pack/PACK-FEEDBACK.md:docs/pack/PACK-FEEDBACK.md:generic"
         # BD-180 observation E (2026-05-20): PROMPT-TEMPLATES.md entry
@@ -1423,6 +1432,7 @@ cmd_update() {
 #   project-template/docs/pack/PACK-FEEDBACK.md  ->  docs/pack/PACK-FEEDBACK.md  [stage:S6,cmd_update]
 #   project-template/docs/pack/PLATFORM-SKILLS.md  ->  docs/pack/PLATFORM-SKILLS.md  [stage:S6,cmd_update]
 #   project-template/docs/pack/PM-CHAT.md  ->  docs/pack/PM-CHAT.md  [stage:S6,cmd_update]
+#   project-template/docs/pack/PM-OPERATING-MODES.md  ->  docs/pack/PM-OPERATING-MODES.md  [stage:S6,cmd_update]
 #   (BD-221: pm-help + pm-startup are pool skills distributed LOOSE to
 #    .{claude,codex,agents}/skills/* by the S4 canonical-pool loop — see the
 #    bulk-copied-directories block above; no per-CLI START/END rows. The
@@ -1462,7 +1472,11 @@ blast_radius_sweep() {
         #   - detect.sh (scripts/lib/) uses PROMPT-TEMPLATES.md as a
         #     v10-shape negative marker for pack-version detection;
         #     this is functional library code, not stale narrative.
-        if grep -rn --exclude='METHODOLOGY.md' --exclude='INSTALL-PROCEDURES.md' --exclude='PM-CHAT.md' --exclude='detect.sh' "PROMPT-TEMPLATES" "$TARGET/$d" >/dev/null 2>&1; then
+        #   - .docs-gate-allowlist.txt (scripts/) records the retired
+        #     PROMPT-TEMPLATES.md name as a `target:` exception (legacy
+        #     v9-era artifact guarded by migration text); the allowlist
+        #     by construction enumerates legitimate references.
+        if grep -rn --exclude='METHODOLOGY.md' --exclude='INSTALL-PROCEDURES.md' --exclude='PM-CHAT.md' --exclude='detect.sh' --exclude='.docs-gate-allowlist.txt' "PROMPT-TEMPLATES" "$TARGET/$d" >/dev/null 2>&1; then
             warn "PROMPT-TEMPLATES reference found in $d"
             matches=1
         fi

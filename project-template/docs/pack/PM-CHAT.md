@@ -300,9 +300,14 @@ These rules are non-negotiable and always apply on all tools:
   write any files yet; (3) wait for explicit user approval
   ("approved," "looks good," or equivalent affirmative); (4) only
   then write the files; (5) show the commit message and wait for
-  approval before committing. Skipping step 2 or step 3 (writing
-  files before the user has seen and approved the content) causes
-  unauthorized state changes and requires manual revert.
+  approval before committing. When `intervention_mode` gates commits
+  (any value other than `none`), write the single-use approval token
+  `docs/project/.pm-commit-approval-token` immediately after the user's
+  affirmative and before the `git commit`, so the commit-approval
+  backstop sees a fresh token (it consumes the token on the allowed
+  commit). Skipping step 2 or step 3 (writing files before the user
+  has seen and approved the content) causes unauthorized state changes
+  and requires manual revert.
 - **Mid-pipeline working-tree state is intentional — no auto-
   commit at checkpoints.** When a multi-agent pipeline is in
   flight (researcher → architect → planner → coder → reviewer, or
@@ -507,6 +512,17 @@ committed, the live worktree when the work is still uncommitted (cd into
 that worktree and VERIFY pwd/HEAD at runtime). Read-only agents write
 no tree state and emit one report, so they need no isolated checkout of
 their own.
+
+**Optional `full` isolation (opt-in).** The placement above is the default
+`isolation_mode: read-write-only` posture (read-write agents isolate; read-only
+agents run in the work's tree). Setting `isolation_mode: full` (see
+`docs/pack/PM-OPERATING-MODES.md`) ALSO spawns every read-only agent into its own
+isolated worktree, then cd-s it to the target tree — a clean-channel opt-in for
+when read-only subagent output would otherwise spill into the main session. Under
+`full`, an under-isolated read-only spawn is denied by the same Claude-only
+PreToolUse[Agent] backstop that enforces read-write isolation (see
+`docs/pack/OPTIONAL-FEATURES.md`); the read-write baseline is unchanged. This mode
+governs ONLY in-session Agent-tool spawns, not the agent-run.sh launcher.
 
 Do **NOT** pin `isolation:"worktree"` in any read-write agent's
 definition frontmatter. The parameter has only the one value

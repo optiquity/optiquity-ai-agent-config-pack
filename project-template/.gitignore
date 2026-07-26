@@ -18,6 +18,13 @@
 # Never committed: contains local paths and is regenerable from the tracker.
 .pack-tracker/
 
+# ─── PM operating-mode runtime state ──────────────────────────────────────
+# Per-clone operating-mode config + single-use commit-approval token, both
+# read/written at runtime by the PM chat and the mode hooks. Never committed:
+# per-clone state, not project content.
+docs/project/pm-session-config.json
+docs/project/.pm-commit-approval-token
+
 # ─── Secrets and credentials ───────────────────────────────────────────────
 .env
 .env.*
