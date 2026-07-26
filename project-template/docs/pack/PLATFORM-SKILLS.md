@@ -459,7 +459,7 @@ the remaining 14 load directly from a single D1/D2/D4/D5 selector
 |---|---|---|
 | audit-methodology | Audit report format, severity scale, subagent coordination, file scopes, ownership precedence | `auditor` parent + all 7 subagents |
 
-### PM chat operational skill (5)
+### PM chat operational skill (7)
 
 These skills are outside the dimension model and the trigger model. They
 are not loaded by any agent — they are used exclusively by the PM chat
@@ -476,8 +476,10 @@ operational, not agent role guidance.
 | pm-review-mode | Set the review mode (itemized / full / hybrid / none) — how open items are presented for review | PM chat only (not an agent) |
 | pm-intervention-mode | Set the intervention mode (full / pre-coder / ambiguity / none) — how often the workflow pauses | PM chat only (not an agent) |
 | pm-isolation-mode | Set the isolation mode (read-write-only / full) — which agent classes spawn isolated; Claude-only | PM chat only (not an agent) |
+| pm-status | Fast read-only status snapshot: repo state, PM-session frontier, active modes, backlog + phase, next queued items | PM chat only (not an agent) |
+| pm-refresh | Mid-session re-warm: re-read rules + PM-session state, re-echo the modes, re-run the modes-hook canary; report-only (no sync, no writes) | PM chat only (not an agent) |
 
-**Total skills: 40** (14 Tier 0 base + 20 dimensional / intersection + 1 trigger-loaded + 5 PM chat operational).
+**Total skills: 42** (14 Tier 0 base + 20 dimensional / intersection + 1 trigger-loaded + 7 PM chat operational).
 
 ---
 
