@@ -201,11 +201,19 @@ PACK-AGENTS.md current".
 - **Implicit BD status flip on batch completion.** When a batch's review +
   fixes are clean and tests are green, flip its BDs to `Resolved` as the
   final step of the batch — no separate user approval needed.
-- **Per-action approval extends to sub-agents.** Every sub-agent obeys the
-  same "no state-changing operation without explicit per-action approval"
-  rule its parent obeys — never run a destructive file operation (`rm -rf`,
-  `git rm`, overwriting a trusted file) on your own authority even when the
-  overall task is approved; surface it and wait. `[roles: universal]
+- **Per-action approval extends to sub-agents; scratch is owned +
+  write-mostly.** Every sub-agent obeys the same "no state-changing
+  operation without explicit per-action approval" rule its parent obeys —
+  never run a destructive file operation on your own authority even when
+  the task is approved: `rm`/`rm -rf`/`rmdir`/`unlink`/`git rm`/
+  `find … -delete`/`find … | xargs rm`/`mv <src>`/`shred`/`truncate`. Each
+  spawned agent OWNS one unique work dir (its assigned handoff/scratch dir)
+  and writes ALL output there. **An agent deletes or destructively
+  overwrites NOTHING outside its owned dir and the OS temp roots
+  (`$TMPDIR`/mktemp)** — never another agent's dir, a shared scratch root,
+  the repo/worktree, or a glob broader than its own dir. Cleanup of the
+  owned dir itself is the orchestrator's/harness's job; surface any needed
+  out-of-scope deletion and wait. `[roles: universal]
   [rationale: per-action-approval-sub-agents]`
 - **Deferred work needs a tracked anchor.** When work is genuinely
   deferred (user-authorized; survives the `feedback-deferral-is-scope-

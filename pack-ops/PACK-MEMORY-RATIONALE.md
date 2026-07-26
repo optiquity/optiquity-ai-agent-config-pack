@@ -65,12 +65,19 @@ future verb.
 
 The "no state-changing operations without explicit per-action approval" rule
 applies to Pack Chat AND every sub-agent it spawns. State-changing git verbs
-are forbidden to all agents per `PACK-AGENTS.md` § "Agent permission rules";
-destructive file operations (`rm -rf`, `git rm`, overwriting trusted files)
-require Pack Chat to ask the user even when the overall task is approved.
-Sub-agents inherit this by construction (they write only their report + scoped
-working-tree files; they cannot commit). See
-`feedback-no-destructive-without-approval` for the memory-cache pointer.
+are forbidden to all agents per `PACK-AGENTS.md` § "Agent permission rules".
+Destructive non-git shell ops (`rm`/`rm -rf`/`rmdir`/`unlink`/`find … -delete`/
+`find … | xargs rm`/`mv <src>`/`shred`/`truncate`, or destructively
+overwriting a file outside the owned dir) are the parallel ban for bare shell.
+Each agent OWNS one unique work dir (its assigned handoff/scratch dir): it
+writes all output there and may delete within it and within the OS temp roots
+(`$TMPDIR`/mktemp), but deletes or overwrites NOTHING outside that boundary —
+not another agent's dir, not a shared scratch root, not the repo/worktree, not
+a broad glob. Cleanup of the owned dir is the orchestrator's/harness's job. On
+Claude, the `deletion-boundary` `PreToolUse[Bash]` hook backstops this
+best-effort for registered sub-agent spawns (Claude-only; see the
+modes-enforcement family). See `feedback-no-destructive-without-approval` for
+the memory-cache pointer.
 
 ---
 

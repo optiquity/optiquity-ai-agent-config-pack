@@ -182,7 +182,9 @@ enforceable. RO agents run in the tree the work lives in.
   `tools:`.)
 
 Both classes obey `agents-never-commit` + the full destructive-git-verb
-ban identically (trinity `## Pack memory` `[rationale: agents-never-commit]`).
+ban identically, and delete nothing outside their owned handoff dir + OS
+temp roots (trinity `## Pack memory` `[rationale: agents-never-commit]` +
+`[rationale: per-action-approval-sub-agents]`).
 
 The class is declared with TRIPLE reinforcement: (1) the `Class` column
 in the `## Pack agents` roster above (the SSOT); (2) the prose mandate

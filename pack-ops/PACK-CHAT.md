@@ -355,6 +355,18 @@ worktree mechanics (the `isolation:"worktree"` parameter + the
   (`<handoff>/changes.patch`) is named too, but for an RW agent it is
   written only at the post-review-clean step (see Merge-back), never up
   front.
+- **Record the owned dir immediately post-spawn.** The named handoff dir
+  IS the agent's OWNED scratch dir. IMMEDIATELY after the spawn
+  tool_result — folded into the SAME post-spawn action that writes the
+  spawn record (trinity `## Pack memory` `[rationale: spawn-registry-find]`),
+  before any other work — the orchestrator appends a `{agent_id, owned_dir}`
+  line to
+  `${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pack-handoff/.pack-agent-owned-dirs.jsonl`
+  (per-machine, append-only, hook-readable). Two ledgers, one write action;
+  writing it before any other work narrows the background-concurrency
+  window in which a sub-agent's delete would miss the registry (a miss
+  fails open — see trinity `## Pack memory`
+  `[rationale: per-action-approval-sub-agents]`).
 - **Inject the graph path into the prompt (Claude-only).** Every
   spawn prompt injects the orchestrator-derived ABSOLUTE graph literal —
   Pack Chat evaluates the derivation formula
