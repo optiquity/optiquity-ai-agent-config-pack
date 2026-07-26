@@ -1,17 +1,19 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "6c44219",
-  "checkpoint": "2026-07-25T00:00:00Z",
+  "boundary_commit": "d9fa4ac",
+  "checkpoint": "2026-07-26T00:00:00Z",
   "active": ["BD-257"],
   "in_flight_agents": [
-    "coder-bd257-b1 — BD-257 B1 (client mode subsystem): PM-OPERATING-MODES.md + 3 /pm-*-mode selector skills + 2 FLAT hooks (pm-modes-enforce.py + pm-modes-commit-gate.py) + client session-config/token + PM-CHAT full opt-in addendum + PLATFORM-SKILLS count bumps (RW, isolated worktree)"
+    "coder-bd257-b2 — BD-257 B2 (/pm-status + /pm-refresh client skills + PLATFORM-SKILLS 40->42, project-only) (RW, isolated worktree; first spawn under the new SCRATCH OWNERSHIP convention)"
   ],
   "queue": ["BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "BD-257 serial coder waves: A1 (LANDED) -> B1 (in flight) -> B2 -> B4 -> B3 -> C1 -> C2; each commit its own bounded review/fix cycle + per-commit user approval.",
-  "wave": "BD-257 A1 (keystone) LANDED + CI green: client /pack-help -> /pm-help help separation (own pm-help.sh + fragment), de-ship pack-help.sh + detect.sh from BOTH install paths (init-project.sh + migrate-v10-to-v11.sh), empty ship-allowlist CODE-ENFORCED (Check-47 empty-invariant assertion + migrator-path guard, both proven to bite), full rename census reconciled (detect.sh, runner-wire, docs) + 4 masking fixtures de-masked. Took coder + 2 fix passes + 3 reviews (final clean) through a spend-cap interruption. NEXT: B1 (client mode subsystem, in flight) -> B2 (status/refresh) -> B4 (promotions /pm-groupings + /pm-target-sweep) -> B3 (dashboard schema-retarget, heaviest) -> C1 (fragment rows + startup) -> C2 (Check 90 parity + count 86->87).",
+  "parallelization": "BD-257 serial coder waves: A1 (LANDED) -> B1 (LANDED) -> B2 (in flight) -> B4 (promotions) -> B3 (dashboard, heaviest) -> C1 (fragment rows + startup) -> C2 (Check 90 parity + count 86->87). Each commit its own bounded review/fix cycle + per-commit user approval.",
+  "wave": "BD-257 A1 + B1 both LANDED + CI green. A1 = client help separation + de-ship both install paths + empty-allowlist code-enforced (Check-47 empty-invariant + migrator guard). B1 = client mode subsystem (PM-OPERATING-MODES SSOT + 3 /pm-*-mode selectors + 2 FLAT enforcement hooks + client-hook canaries + enforcement-by-CLI clarity). B2 in flight. INTERIM SCRATCH OWNERSHIP convention now applied to every spawn (unique owned _tmp dir; delete only your own; never a broad glob) after two agents ran rm despite prompt bans.",
   "pending_decisions": [
-    "BD-257 remaining waves B1..C2 each run a bounded review/fix cycle + a per-commit user commit-approval gate. B3 (dashboard) is the heaviest — its own review budget.",
-    "Standing: NO new BDs without explicit user ask; pack-chat-only trees are Pack-Chat-direct; MAJOR edits route to pack-coder; push is user-manual (v11-dev in sync with origin); the intervention commit-gate is live (write a fresh pack-ops/.commit-approval-token in a SEPARATE step before each approved commit) EXCEPT routine session-state refreshes, which the user authorized Pack Chat to perform autonomously; session-state COMPACT — one SHA in boundary_commit only, no other SHAs, no hex agent IDs, <4096 bytes."
+    "DELETION-GUARD (user reframed to OWNERSHIP-ISOLATION): the right model is each agent owns one unique _tmp dir (delete within, never outside). Awaiting user decision to open BD-273 + a FRESH architect pass to design the ownership model (reusing the first deletion-guard architect's feasibility findings: hooks fire for subagents + agent_id distinguishes them). Interim convention already applied to spawns.",
+    "CARRY-FORWARD to C1: the /pm-help + /pm-isolation-mode + /pm-intervention-mode HELP-FRAGMENT rows get a (Claude-only enforcement) marker so /pm-help shows the per-CLI enforcement boundary.",
+    "BD-257 remaining waves B2..C2 each run a bounded review/fix cycle + per-commit user approval; B3 (dashboard schema-retarget) is the heaviest.",
+    "Standing: NO new BDs without explicit user ask; pack-chat-only trees are Pack-Chat-direct; push is user-manual (v11-dev in sync); the intervention commit-gate is live (fresh pack-ops/.commit-approval-token in a SEPARATE step before each approved commit) EXCEPT routine session-state refreshes (autonomous); session-state COMPACT — one SHA in boundary_commit only, no other SHAs, no hex agent IDs, <4096 bytes."
   ],
-  "cycle_position": "BD-257 B1 coder in flight (2nd of 6 remaining serial waves); A1 landed + CI green + worktree torn down."
+  "cycle_position": "BD-257 B2 coder in flight (3rd of the remaining serial waves); A1 + B1 landed + CI green + worktrees torn down. Deletion-guard ownership-isolation model awaiting user BD-273/architect decision."
 }
