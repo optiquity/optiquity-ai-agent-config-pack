@@ -1,20 +1,18 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "41372a8",
+  "boundary_commit": "e1d0dbc",
   "checkpoint": "2026-07-26T00:00:00Z",
   "active": ["BD-257", "BD-273"],
-  "in_flight_agents": [
-    "architect-bd273-ownership — designing the agent-scratch OWNERSHIP-ISOLATION model for BD-273 (pack) + BD-274 (client): owned-dir convention + path-scoped deletion-boundary hook + rule strengthening (RO, awaiting user design review)",
-    "coder-bd257-b4 — BD-257 B4 (/pm-groupings + /pm-target-sweep promotion skills + PLATFORM-SKILLS 42->44, project-only) (RW, isolated worktree)"
-  ],
+  "in_flight_agents": [],
   "queue": ["BD-274", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "Two parallel tracks: BD-257 serial coder waves (A1+B1+B2 LANDED -> B4 in flight -> B3 -> C1 -> C2) + the BD-273/274 ownership architect (RO). Each BD-257 commit its own bounded review/fix + per-commit user approval.",
-  "wave": "BD-257 A1+B1+B2 all LANDED + CI green (client help separation + de-ship + code-enforced empty allowlist; client mode subsystem with 2 FLAT enforcement hooks + canaries + per-CLI enforcement clarity; /pm-status + /pm-refresh). B4 (promotions /pm-groupings + /pm-target-sweep) in flight, then B3 (dashboard schema-retarget, heaviest) -> C1 (fragment rows + startup) -> C2 (Check 90 parity + count 86->87). BD-273 (pack agent-scratch ownership isolation + path-scoped deletion-boundary hook) + BD-274 (client analog) OPENED; a fresh architect is designing the ownership-isolation model (reframes the first deletion-guard verb-ban; reuses its feasibility + rule-draft). INTERIM ownership convention LIVE on every spawn (unique owned _tmp dir; delete only your own; never a broad glob).",
+  "parallelization": "Two parallel tracks: BD-257 serial coder waves (A1+B1+B2+B4 LANDED -> B3 -> C1 -> C2) + BD-273/274 ownership isolation (architect design done; adversarial pass next). Each BD-257 commit its own bounded review/fix + per-commit user approval.",
+  "wave": "BD-257 A1+B1+B2+B4 LANDED + CI green (client help separation + de-ship + code-enforced empty allowlist; client mode subsystem + 2 FLAT enforcement hooks + canaries; /pm-status + /pm-refresh; /pm-groupings + /pm-target-sweep). Remaining: B3 (dashboard schema-retarget, heaviest) -> C1 (fragment rows + /pm-startup + Claude-only-enforcement markers) -> C2 (Check 90 parity + count 86->87). BD-273 (pack agent-scratch ownership isolation) design doc done + FEASIBILITY PROBE = GO (subagent Bash IS hooked + agent_id populated + main-thread agent_id absent -> hook can gate on agent_id; agent cannot self-read agent_id from env -> Option-2 registry stands). BD-274 = client analog (assessed in same design). INTERIM ownership convention LIVE on every spawn.",
   "pending_decisions": [
-    "BD-273/274 ownership-isolation ARCHITECT DESIGN awaiting user review (approve model + the feasibility-probe GO gate for the pack hook; confirm the BD-274 client realization the architect assesses).",
-    "CARRY-FORWARD to C1: the /pm-help + /pm-isolation-mode + /pm-intervention-mode HELP-FRAGMENT rows get a (Claude-only enforcement) marker.",
-    "BD-257 WRAP-UP: reconcile the pack README client-skill-inventory count (README Repository Layout, currently stale '36 skills / 1 PM operational') to the FINAL settled number once C1/C2 land (avoids re-staling per wave); candidate: a CI check cross-verifying README count vs the PLATFORM-SKILLS SSOT.",
-    "Standing: NO new BDs without explicit user ask; pack-chat-only trees are Pack-Chat-direct; push is user-manual (v11-dev in sync); the intervention commit-gate is live (fresh pack-ops/.commit-approval-token in a SEPARATE step before each approved commit) EXCEPT routine session-state refreshes (autonomous); session-state COMPACT — one SHA in boundary_commit only, no other SHAs, no hex agent IDs, <4096 bytes."
+    "BD-273/274: probe = GO. NEXT = adversarial architect pass on the ownership design (LARGE-BD pipeline; needs user architect-spawn approval), then reconciliation-if-findings, then user design review, then planner.",
+    "SEQUENCING open: BD-257 B3 wave (I can start; standard triage) vs pushing BD-273 forward -- parallel tracks possible.",
+    "CARRY-FORWARD to C1: /pm-help + /pm-isolation-mode + /pm-intervention-mode HELP-FRAGMENT rows get a (Claude-only enforcement) marker.",
+    "BD-257 WRAP-UP: reconcile pack README client-skill-inventory count (stale '36 skills / 1 PM operational') to final once C1/C2 land; candidate CI check README-count-vs-PLATFORM-SKILLS SSOT.",
+    "Standing: NO new BDs without explicit user ask; pack-chat-only trees are Pack-Chat-direct; push user-manual (v11-dev in sync); intervention commit-gate live (fresh token separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no hex agent IDs, <4096 bytes)."
   ],
-  "cycle_position": "BD-257 B4 coder in flight (4th wave) + BD-273/274 ownership architect in flight (parallel). A1+B1+B2 landed+CI green+worktrees torn down."
+  "cycle_position": "BD-257 B4 landed + CI green + worktree torn down. BD-273 probe GO + observer removed. No agents live. Awaiting sequencing decision."
 }
