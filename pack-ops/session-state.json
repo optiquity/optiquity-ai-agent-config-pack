@@ -1,18 +1,21 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "9a01ade",
+  "boundary_commit": "2f64e4b",
   "checkpoint": "2026-07-27T00:00:00Z",
   "active": ["BD-257", "BD-273"],
-  "in_flight_agents": [],
-  "queue": ["BD-274", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "Two tracks: BD-257 remaining (A1+B1+B2+B4+B3 LANDED -> C1 -> C2) + BD-273/274 ownership (BD-273 pack P1+P2+P3 LANDED -> BD-273 resolution -> GATE -> BD-274 C1 -> C2 || C3). No agents live.",
-  "wave": "BD-273 PACK SIDE COMPLETE: P1 (deletion-boundary hook + tests + installer + settings) + P2 (canaries + OPTIONAL-FEATURES runbook + as-built + stale fixes + ceiling 619->644 + OI-A dashboard re-render) + P3 (rule strengthening: trinity bullet + rationale + PACK-AGENTS + PACK-CHAT owned-dir mandate) all LANDED, each reviewed CLEAN, full local battery green (count 86). Dashboard re-rendered (new spec-sha) + re-published. BD-257 A1+B1+B2+B4+B3 LANDED. Remaining: BD-273 resolution; BSD-mktemp standalone fix (queued, user-approved); BD-274 client C-waves; BD-257 C1 (Claude-only markers) + C2 (README count).",
-  "pending_decisions": [
-    "BD-273 RESOLUTION: P1/P2/P3 each per-commit-reviewed CLEAN + local battery green. Decide: end-of-batch reviewer on the full 3-wave batch then flip to Resolved, vs flip now, vs hold BD-273 resolution until BD-274 lands for a combined end-of-batch ownership audit.",
-    "QUEUED (user-approved) standalone pack-only fix: test-activate-capability.sh BSD-mktemp portability (+ optionally the order-dependent test-v11-realistic-ot.sh if a clean bounded fix).",
-    "BD-274 CLIENT C-waves (after GATE re-verify: settings.json unchanged since BD-257 B1 + pm-refresh unchanged since B2): C1 (client pm-deletion-boundary hook + settings element + pack-side unit test + pm-refresh canary + OI-R4 client pm-startup modes-readiness step covering all 3 client hooks) -> C2 (customization-preserve fixture + migrator) || C3 (client trinity rule + PM-CHAT).",
-    "BD-257 remaining: C1 (/pm-help + /pm-isolation-mode + /pm-intervention-mode HELP-FRAGMENT (Claude-only enforcement) markers) -> C2 (README client-skill count reconcile to final).",
-    "Standing: push USER-MANUAL (unpushed stack now large: B3 + P1 + P3 + dashboard + P2 + session-state); NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/; session-state committed sparingly (resume-critical boundaries)."
+  "in_flight_agents": [
+    "architect-bd257-detection -- designing the fix for the BD-257 language-detection regression (3 shipped PM .py scripts trip the weak-evidence python detector; every non-python client wrongly retains python scaffolding) (RO, fresh instance)"
   ],
-  "cycle_position": "BD-273 pack side COMPLETE (P1+P2+P3 landed, worktrees torn down, dashboard re-published). No agents live. Awaiting user direction on BD-273 resolution + next-track sequencing."
+  "queue": ["BD-274", "BD-275", "BD-276", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
+  "parallelization": "BD-273 pack side LANDED. Active: BD-257 detection-fix architect (RO). Sequence: BD-257 detection fix (architect -> user review -> coder) -> BD-257 C1 -> C2 -> BD-274 client C-waves -> combined BD-273/274 audit. BD-275/276 after BD-274.",
+  "wave": "BD-273 PACK SIDE COMPLETE (P1+P2+P3 landed, each reviewed CLEAN, dashboard re-rendered+published). BD-257 A1+B1+B2+B4+B3 landed BUT a REGRESSION was found: the 3 shipped client PM .py scripts (pm-modes-*.py B1 + pm-dashboard-render.py B3) trip the weak-evidence python detector (init-project.sh ~L177-181, >=3 .py), so EVERY non-python client wrongly detects python + retains python conditional scaffolding. Platform-agnostic (would fail Linux CI on push); test-activate-capability.sh correctly caught it (prior 'BSD-mktemp' diagnosis was WRONG). Detection-fix architect in flight (user chose architect pass). BD-275 (order-dependent test flake) + BD-276 (systemic mktemp -t sweep) OPENED. Incidental mktemp edit DROPPED.",
+  "pending_decisions": [
+    "BD-257 DETECTION FIX: architect in flight -> user design review -> coder (bounded review/fix). It is a BD-257 regression, fixed in v11.0 (not a new BD). Priority: it is a client-facing bug that would fail CI on push.",
+    "BD-257 remaining after the detection fix: C1 (/pm-help + /pm-isolation-mode + /pm-intervention-mode HELP-FRAGMENT (Claude-only enforcement) markers) -> C2 (README client-skill count).",
+    "BD-274 CLIENT C-waves (after BD-257 completes + GATE re-verify): C1 (client pm-deletion-boundary hook + settings element + pack-side unit test + pm-refresh canary + OI-R4 client pm-startup readiness step) -> C2 || C3.",
+    "BD-273 RESOLUTION: HELD Open for a combined end-of-batch ownership audit with BD-274, then flip both.",
+    "BD-275 (reproduce-in-fresh-clone then fix the order-dependent test) + BD-276 (verified systemic mktemp -t sweep): sequenced after the BD-257 detection fix + BD-274.",
+    "Standing: push USER-MANUAL (unpushed stack large + now carries the B3 detection regression -- do NOT push until the detection fix lands, else CI goes red); NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
+  ],
+  "cycle_position": "BD-273 pack complete. BD-257 detection-fix architect in flight (regression discovered). BD-275/276 opened. Next: architect design -> user review -> coder fix; then BD-257 C1/C2; then BD-274."
 }
