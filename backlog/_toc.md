@@ -26,6 +26,8 @@
 - [BD-257](./BD-257.md) — Add net-new + review/refresh existing client (project-side) slash commands + their execution foundation (brainstorm-gated; project-side analog of BD-224)
 - [BD-273](./BD-273.md) — Pack-side agent-scratch ownership isolation + deletion-boundary guard (pack dev-workflow safety)
 - [BD-274](./BD-274.md) — Project-side (client) agent-scratch ownership isolation (client deliverable analog of BD-273)
+- [BD-275](./BD-275.md) — Order-dependent test-v11-realistic-ot.sh (serial-suite flake; passes isolated)
+- [BD-276](./BD-276.md) — Systemic BSD-mktemp `-t` portability sweep (tests + runtime libs)
 
 ## Deferred
 
