@@ -141,23 +141,27 @@ existing_classifier_copy() {
 detect_language_markers() {
     local target="${1:-.}"
     local found=()
+    # Dot exclusions below are ANCHORED to "$target" so they drop only dot-entries
+    # UNDER the client tree (.git, .venv, …), NOT a client whose own checkout path
+    # contains a dot-component (e.g. ~/.config/proj) — a loose '*/.*' mis-detects
+    # such a client as (none).
     # Swift: Package.swift, *.xcodeproj, *.xcworkspace
     if find "$target" -maxdepth 2 \( -name "Package.swift" -o -name "*.xcodeproj" -o -name "*.xcworkspace" \) \
-            -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | grep -q .; then
+            -not -path "$target/.*" -not -path "$target/*/.*" -not -path '*/pack-capability-pool/*' 2>/dev/null | grep -q .; then
         found+=("swift")
     fi
     # Python: pyproject.toml
-    if find "$target" -maxdepth 2 -name "pyproject.toml" -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | grep -q .; then
+    if find "$target" -maxdepth 2 -name "pyproject.toml" -not -path "$target/.*" -not -path "$target/*/.*" -not -path '*/pack-capability-pool/*' 2>/dev/null | grep -q .; then
         found+=("python")
     fi
     # Kotlin: build.gradle.kts, settings.gradle.kts, build.gradle
     if find "$target" -maxdepth 2 \( -name "build.gradle.kts" -o -name "settings.gradle.kts" -o -name "build.gradle" \) \
-            -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | grep -q .; then
+            -not -path "$target/.*" -not -path "$target/*/.*" -not -path '*/pack-capability-pool/*' 2>/dev/null | grep -q .; then
         found+=("kotlin")
     fi
     # TypeScript/Node: package.json, tsconfig.json
     if find "$target" -maxdepth 2 \( -name "package.json" -o -name "tsconfig.json" \) \
-            -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | grep -q .; then
+            -not -path "$target/.*" -not -path "$target/*/.*" -not -path '*/pack-capability-pool/*' 2>/dev/null | grep -q .; then
         found+=("typescript")
     fi
     # Proto: proto/ with ≥1 .proto file (keyed on the LIVE-tree proto/ dir only,
@@ -168,15 +172,25 @@ detect_language_markers() {
         found+=("proto")
     fi
 
+    # CLIENT-LANGUAGE-EVIDENCE CONTRACT: a weak extension count is evidence of a
+    # CLIENT language ONLY for source in client-owned territory (the project root,
+    # or a client source dir at depth ≤ 2 — src/, server/, Sources/). It MUST
+    # exclude every directory the PACK populates with its own tooling:
+    #   - scripts/ — pack tooling (conditional *.sh + the PM *.py + any future
+    #     pack-shipped script); excluded via -not -path "$target/scripts/*".
+    #   - pack-capability-pool/ — the tracked capability pool (already excluded).
+    # A pack file dropped into scripts/ is non-evidence BY CONSTRUCTION — no
+    # per-file exclusion to maintain. STRONG markers (manifest filenames) need no
+    # scripts/ exclusion: the pack ships no strong-marker filename into scripts/.
     # Weak evidence (extension count ≥ 3) only if no strong evidence for that language yet.
     if ! printf '%s\n' "${found[@]:-}" | grep -qx "swift"; then
         local c
-        c=$(find "$target" -maxdepth 2 -name "*.swift" -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | wc -l | tr -d ' ')
+        c=$(find "$target" -maxdepth 2 -name "*.swift" -not -path "$target/scripts/*" -not -path "$target/.*" -not -path "$target/*/.*" -not -path '*/pack-capability-pool/*' 2>/dev/null | wc -l | tr -d ' ')
         (( c >= 3 )) && found+=("swift")
     fi
     if ! printf '%s\n' "${found[@]:-}" | grep -qx "python"; then
         local c
-        c=$(find "$target" -maxdepth 2 -name "*.py" -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | wc -l | tr -d ' ')
+        c=$(find "$target" -maxdepth 2 -name "*.py" -not -path "$target/scripts/*" -not -path "$target/.*" -not -path "$target/*/.*" -not -path '*/pack-capability-pool/*' 2>/dev/null | wc -l | tr -d ' ')
         (( c >= 3 )) && found+=("python")
     fi
 
@@ -197,8 +211,8 @@ detect_language_markers() {
 detect_source_files() {
     local target="${1:-.}"
     local s p
-    s=$(find "$target" -maxdepth 2 -name "*.swift" -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | wc -l | tr -d ' ')
-    p=$(find "$target" -maxdepth 2 -name "*.py" -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | wc -l | tr -d ' ')
+    s=$(find "$target" -maxdepth 2 -name "*.swift" -not -path "$target/scripts/*" -not -path "$target/.*" -not -path "$target/*/.*" -not -path '*/pack-capability-pool/*' 2>/dev/null | wc -l | tr -d ' ')
+    p=$(find "$target" -maxdepth 2 -name "*.py" -not -path "$target/scripts/*" -not -path "$target/.*" -not -path "$target/*/.*" -not -path '*/pack-capability-pool/*' 2>/dev/null | wc -l | tr -d ' ')
     echo "source-files: *.swift=$s, *.py=$p"
 }
 

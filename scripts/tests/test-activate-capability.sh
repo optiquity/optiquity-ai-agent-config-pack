@@ -92,6 +92,42 @@ EOF
     printf '%s\n' "$src"
 }
 
+# make_python_only_install — BD-257 symmetric twin of make_swift_only_install:
+# create a Python-only project (strong pyproject.toml marker + *.py under src/;
+# NO Package.swift / *.swift anywhere), run init-project.sh against it, then
+# commit so the tree is clean. Echoes the install dir path on stdout.
+# Guards the LATENT swift twin of the BD-257 weak-count regression: a Python-only
+# client must have its SWIFT conditional scripts removed by S9 — symmetric to the
+# Group-1 Swift-only→removes-python assertion.
+make_python_only_install() {
+    local src
+    src=$(mktemp -d -t bd257-python.XXXXXX)
+    CLEANUP_DIRS+=("$src")
+    git init -q "$src" >/dev/null 2>&1
+    git -C "$src" config user.email "test@example.com"
+    git -C "$src" config user.name  "Test"
+    # Python-only language marker (strong: pyproject.toml) + client source under
+    # src/; no Package.swift / *.swift anywhere.
+    cat > "$src/pyproject.toml" <<'EOF'
+[project]
+name = "widget"
+version = "0.1.0"
+EOF
+    mkdir -p "$src/src/widget"
+    echo 'def main(): pass' > "$src/src/widget/__main__.py"
+    git -C "$src" add -A >/dev/null 2>&1
+    git -C "$src" commit -q -m "python scaffold" >/dev/null 2>&1 || true
+
+    # Install the pack (consume the y/N confirmation). S9 removes the live-tree
+    # Swift set; S5b populates the full pool regardless.
+    PACK="$REPO_ROOT" bash "$INIT_SH" "$src" <<<"y" >/dev/null 2>&1 || {
+        echo "INIT_FAILED" ; return 1
+    }
+    git -C "$src" add -A >/dev/null 2>&1
+    git -C "$src" commit -q -m "pack install" >/dev/null 2>&1 || true
+    printf '%s\n' "$src"
+}
+
 # clone_no_pack — clone an install dir to a fresh scratch dir, scrubbing
 # $PACK from the environment so the activation runs as it would on a fresh
 # machine with no pack present. Echoes the clone path.
@@ -247,6 +283,37 @@ EOF
         assert_file "non-x- resolved file pyproject.toml materialized" \
             "$CLONE2/pyproject.toml"
     fi
+fi
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 3: BD-257 symmetric swift-side conditional removal (Python-only install)
+# ─────────────────────────────────────────────────────────────────────────
+# Mirror of the Group-1 Swift-only→removes-python assertion. Guards the LATENT
+# swift twin of the BD-257 weak-count regression: a Python-only client must have
+# its SWIFT conditional scripts removed by S9. If a future pack change ships ≥3
+# .swift tooling files into scripts/ AND drops the anchored scripts/ exclusion,
+# the weak swift count would wrongly fire swift and RETAIN these — this group
+# catches that regression symmetrically to the python side.
+echo ""
+echo "Group 3: BD-257 symmetric swift-side removal (Python-only install)"
+
+INSTALL3=$(make_python_only_install)
+if [[ "$INSTALL3" == "INIT_FAILED" || ! -d "$INSTALL3" ]]; then
+    t_fail "init-project.sh Python-only install (group 3)" "init failed"
+else
+    # S9 removed the live-tree Swift conditional scripts (has_swift=0).
+    assert_no_file "S9 removed live-tree bootstrap-swift.sh" "$INSTALL3/scripts/bootstrap-swift.sh"
+    assert_no_file "S9 removed live-tree format-swift.sh"    "$INSTALL3/scripts/format-swift.sh"
+    assert_no_file "S9 removed live-tree validate-swift.sh"  "$INSTALL3/scripts/validate-swift.sh"
+    assert_no_file "S9 removed live-tree test-swift.sh"      "$INSTALL3/scripts/test-swift.sh"
+    # Positive control: python was correctly detected (strong pyproject.toml), so
+    # its conditional scripts are RETAINED — proves the group asserts SELECTIVE
+    # removal (swift-only), not blanket deletion of all conditional scripts.
+    assert_file "python conditional bootstrap-python.sh retained" "$INSTALL3/scripts/bootstrap-python.sh"
+    assert_file "python conditional test-python.sh retained"      "$INSTALL3/scripts/test-python.sh"
+    # S5b populates the FULL master set regardless of detected language — the
+    # removed swift scripts survive in the pool for later activation.
+    assert_file "S5b pool holds bootstrap-swift.sh master" "$INSTALL3/pack-capability-pool/scripts/bootstrap-swift.sh"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────

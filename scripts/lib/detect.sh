@@ -499,14 +499,23 @@ python_data_marker_detected() {
         fi
     done
 
-    # Marker (b): >= 5 .py files outside tests/. The
-    # `pack-capability-pool/` exclusion is LOAD-BEARING (not
-    # defensive): the BD-200 tracked pool ships `server/**/*.py`
-    # masters on every installed project, so without it the pool's own
-    # `.py` copies could inflate the count past the threshold and
-    # mis-fire `python-data: yes` on a non-Python project.
+    # Marker (b): >= 5 .py files outside tests/. Two exclusions are
+    # LOAD-BEARING (not defensive), both because the pack ships its own
+    # `.py` into every installed project and those must never count as
+    # client data-architecture evidence:
+    #   - `pack-capability-pool/` — the BD-200 tracked pool ships
+    #     `server/**/*.py` masters on every installed project.
+    #   - `scripts/` — the pack ships PM tooling (`pm-*.py`) into the
+    #     client `scripts/` dir. Anchored to `"$target/scripts/*"` (the
+    #     pack populates only the top-level `scripts/`, never a nested
+    #     client `scripts/`), mirroring the anchored `scripts/` exclusion
+    #     in init-project.sh `detect_language_markers`.
+    # Without these, the pack's own `.py` copies could inflate the count
+    # past the threshold and mis-fire `python-data: yes` on a project
+    # with too few OWN `.py` files.
     local py_files py_count
     py_files=$(find "$target" -name "*.py" \
+        -not -path "$target/scripts/*" \
         -not -path "*/tests/*" \
         -not -path "*/pack-capability-pool/*" \
         -not -name "test_*.py" \

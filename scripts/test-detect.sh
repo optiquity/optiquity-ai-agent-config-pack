@@ -666,6 +666,50 @@ for n in 1 2 3 4; do echo "x = 1" > "$fx/src/mod${n}.py"; done
 assert_eq "4 non-test .py files with no data imports → no" \
     "python-data: no" "$(python_data_marker_detected "$fx")"
 
+# BD-257: the pack ships 3 PM tooling scripts (pm-*.py) into the client
+# `scripts/` dir. Those must NOT inflate the marker-(b) count. A client
+# with 3 pack pm-*.py in scripts/ + only 2 of its OWN .py and no data
+# deps must return `no` (own count 2 < 5). Before the anchored
+# `scripts/` exclusion this wrongly returned `yes` (3 + 2 = 5 >= 5).
+fx=$(mkfixture pyd-marker-scripts-inflation)
+mkdir -p "$fx/scripts" "$fx/src"
+for n in pm-modes-enforce pm-modes-commit-gate pm-dashboard-render; do
+    printf 'print(1)\n' > "$fx/scripts/${n}.py"
+done
+echo "x = 1" > "$fx/src/a.py"
+echo "y = 2" > "$fx/src/b.py"
+assert_eq "3 pack pm-*.py in scripts/ + 2 own .py, no data deps → no (scripts/ excluded)" \
+    "python-data: no" "$(python_data_marker_detected "$fx")"
+
+# BD-257 non-regression (marker c): the SAME shape (pm scripts + 2 own
+# .py) but one own .py has a real stdlib data import → still `yes`. The
+# scripts/ exclusion must not suppress a genuine data signal.
+fx=$(mkfixture pyd-marker-scripts-inflation-real-data)
+mkdir -p "$fx/scripts" "$fx/src"
+for n in pm-modes-enforce pm-modes-commit-gate pm-dashboard-render; do
+    printf 'print(1)\n' > "$fx/scripts/${n}.py"
+done
+cat > "$fx/src/store.py" <<'EOF'
+import sqlite3
+
+def db(p): return sqlite3.connect(p)
+EOF
+echo "y = 2" > "$fx/src/cli.py"
+assert_eq "pm scripts + own sqlite3 import → yes (marker c fires; scripts/ excl not masking)" \
+    "python-data: yes" "$(python_data_marker_detected "$fx")"
+
+# BD-257 non-regression (marker b): pm scripts + 5 of the client's OWN
+# .py in src/ → still `yes` — the anchored scripts/ exclusion drops only
+# pack tooling, the genuine own-file count is preserved.
+fx=$(mkfixture pyd-marker-scripts-plus-five-own)
+mkdir -p "$fx/scripts" "$fx/src"
+for n in pm-modes-enforce pm-modes-commit-gate pm-dashboard-render; do
+    printf 'print(1)\n' > "$fx/scripts/${n}.py"
+done
+for n in 1 2 3 4 5; do echo "x = 1" > "$fx/src/own${n}.py"; done
+assert_eq "pm scripts + 5 own .py in src/ → yes (marker b; real own count preserved)" \
+    "python-data: yes" "$(python_data_marker_detected "$fx")"
+
 # F1: marker (c) — stdlib `import sqlite3` only (small CLI shape).
 fx=$(mkfixture pyd-marker-stdlib-sqlite3)
 mkdir -p "$fx/src"
