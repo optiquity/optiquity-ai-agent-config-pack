@@ -1,21 +1,19 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "2f64e4b",
+  "boundary_commit": "b1b2d1c",
   "checkpoint": "2026-07-27T00:00:00Z",
   "active": ["BD-257", "BD-273"],
-  "in_flight_agents": [
-    "architect-bd257-detection -- designing the fix for the BD-257 language-detection regression (3 shipped PM .py scripts trip the weak-evidence python detector; every non-python client wrongly retains python scaffolding) (RO, fresh instance)"
-  ],
+  "in_flight_agents": [],
   "queue": ["BD-274", "BD-275", "BD-276", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "BD-273 pack side LANDED. Active: BD-257 detection-fix architect (RO). Sequence: BD-257 detection fix (architect -> user review -> coder) -> BD-257 C1 -> C2 -> BD-274 client C-waves -> combined BD-273/274 audit. BD-275/276 after BD-274.",
-  "wave": "BD-273 PACK SIDE COMPLETE (P1+P2+P3 landed, each reviewed CLEAN, dashboard re-rendered+published). BD-257 A1+B1+B2+B4+B3 landed BUT a REGRESSION was found: the 3 shipped client PM .py scripts (pm-modes-*.py B1 + pm-dashboard-render.py B3) trip the weak-evidence python detector (init-project.sh ~L177-181, >=3 .py), so EVERY non-python client wrongly detects python + retains python conditional scaffolding. Platform-agnostic (would fail Linux CI on push); test-activate-capability.sh correctly caught it (prior 'BSD-mktemp' diagnosis was WRONG). Detection-fix architect in flight (user chose architect pass). BD-275 (order-dependent test flake) + BD-276 (systemic mktemp -t sweep) OPENED. Incidental mktemp edit DROPPED.",
+  "parallelization": "No agents live. Sequence: BD-257 C1 (HELP-FRAGMENT /pm-* rows + markers + /pm-startup) -> C2 (README count) -> BD-274 client C-waves -> combined BD-273/274 audit. BD-275/276 after.",
+  "wave": "BD-273 PACK SIDE COMPLETE (P1+P2+P3). BD-257 DETECTION REGRESSION FIXED (exclude pack-tooling scripts/ from the weak-evidence language detectors in init-project.sh + detect.sh sibling marker + anchored dot-path exclusion at all 8 sites + symmetric swift test; 4 files, pack-only; final reviewer CLEAN by reproduction; test-detect 115/0, activate-capability 34/0, validate+DEEP+all fixture-dep suites green). BD-257 A1+B1+B2+B4+B3 landed. Remaining BD-257: C1 (HELP-FRAGMENT 8 /pm-* rows + (Claude-only enforcement) markers on /pm-help+/pm-isolation-mode+/pm-intervention-mode + /pm-startup) -> C2 (README client-skill count). Then BD-274 client. BD-275/276 later.",
   "pending_decisions": [
-    "BD-257 DETECTION FIX: architect in flight -> user design review -> coder (bounded review/fix). It is a BD-257 regression, fixed in v11.0 (not a new BD). Priority: it is a client-facing bug that would fail CI on push.",
-    "BD-257 remaining after the detection fix: C1 (/pm-help + /pm-isolation-mode + /pm-intervention-mode HELP-FRAGMENT (Claude-only enforcement) markers) -> C2 (README client-skill count).",
+    "PUSH now UNBLOCKED (regression fixed) BUT requires manifest-sync FIRST: the detection fix shifted the 3 v11 fixture SHAs, so run scripts/manifest-sync.sh before git push (regenerates test-fixtures/manifest.txt) else CI build.sh --verify fails (C-1). The committed manifest is intentionally stale until that push-time step.",
+    "NEXT: BD-257 C1 (fragment /pm-* rows + Claude-only-enforcement markers + /pm-startup) -> C2 (README count reconcile to final).",
     "BD-274 CLIENT C-waves (after BD-257 completes + GATE re-verify): C1 (client pm-deletion-boundary hook + settings element + pack-side unit test + pm-refresh canary + OI-R4 client pm-startup readiness step) -> C2 || C3.",
     "BD-273 RESOLUTION: HELD Open for a combined end-of-batch ownership audit with BD-274, then flip both.",
-    "BD-275 (reproduce-in-fresh-clone then fix the order-dependent test) + BD-276 (verified systemic mktemp -t sweep): sequenced after the BD-257 detection fix + BD-274.",
-    "Standing: push USER-MANUAL (unpushed stack large + now carries the B3 detection regression -- do NOT push until the detection fix lands, else CI goes red); NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
+    "BD-275 (order-dependent test flake; reproduce-in-fresh-clone) + BD-276 (systemic mktemp -t sweep): after the BD-257 detection fix + BD-274.",
+    "Standing: push USER-MANUAL (run manifest-sync first per C-1); NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-273 pack complete. BD-257 detection-fix architect in flight (regression discovered). BD-275/276 opened. Next: architect design -> user review -> coder fix; then BD-257 C1/C2; then BD-274."
+  "cycle_position": "BD-257 detection regression FIXED + landed, worktree torn down. No agents live. Next: BD-257 C1 coder wave. Push needs manifest-sync (C-1)."
 }
