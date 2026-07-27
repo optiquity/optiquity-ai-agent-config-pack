@@ -11,7 +11,8 @@
 # ARCH-DESIGN-RECONCILED.md (bd224-recon) SS3-4 + PLAN-RECONCILED.md
 # (bd224-planrecon) SS5.
 #
-# Fixture (S1): a `git init`'d `mktemp -d` mini repo-root (NOT ~/Developer/_tmp;
+# Fixture (S1): a `git init`'d `mktemp -d` mini repo-root (NOT the orchestrator's
+# ${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pack-handoff scratch root;
 # the scratch-dir convention governs the orchestrator's untracked work, not
 # where a CI-executed test scaffolds). Committed-CLEAN so the renderer's live
 # git read degrades to a deterministic idle `inflight`; POPULATED (SHOULD-2)

@@ -370,7 +370,7 @@ committed marker-match blanks the deep page for visibly-active work (the regress
      `maintenance-docs/`, or an architecture/plan doc (identified per "Recognizing the plan doc" above);
   2. an **uncommitted** plan/design doc — glob **every** per-BD scratch plan / handoff dir across the
      scratch tree for that BD's `PLAN-*.md` / `ARCHITECTURE-*.md` / impl-report / review (e.g.
-     `~/Developer/_tmp/pack-handoff-bd261/PLAN-BD261-FINAL.md`), same recognition test. The sweep is
+     `${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pack-handoff/bd261-<ts>/PLAN-BD261-FINAL.md`), same recognition test. The sweep is
      per-in-scope-BD, not active-BD-only — a resolved BD's rich handoff doc must be found, not skipped;
   3. **`session-state.json` prose** — `wave`, `cycle_position`, `pending_decisions`, active notes (per
      the prose-tolerance principle);

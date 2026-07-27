@@ -520,7 +520,7 @@ _CHECK_44_DURABLE_DOCS = (
     ("pack-ops/DRY-RUN-MIGRATION.md", 228),
     ("pack-ops/HELP-FRAGMENT-PACK.md", 66),
     ("pack-ops/MERGE-STRATEGY.md", 557),
-    ("pack-ops/OPTIONAL-FEATURES.md", 619),
+    ("pack-ops/OPTIONAL-FEATURES.md", 644),
 )
 
 

@@ -73,7 +73,7 @@ Output a summary in exactly this format:
 **Last commit:** [date] — [summary from git log -1 --oneline]
 **CI tooling:** [GitHub MCP available / not configured — CI via `gh run list`]
 **Graph:** [the Step-5 readiness line — e.g. `fresh | pre-push hook: installed`, or `STALE — built at <sha8>, HEAD <sha8> | pre-push hook: NOT installed — run scripts/install-graphify-hook.sh`, or `not built (optional pack-dev accelerator)`]
-**Modes enforce:** [the Step-6 readiness line — e.g. `wired (isolation self-test PASS, commit-gate self-test PASS) — Claude-only`, or `wired (isolation self-test PASS, commit-gate self-test FAIL — inspect) — Claude-only`, or `wiring MISSING — restore .claude/settings.json`, or `n/a (non-Claude CLI)`]
+**Modes enforce:** [the Step-6 readiness line — e.g. `wired (isolation self-test PASS, commit-gate self-test PASS, deletion-boundary self-test PASS) — Claude-only`, or `wired (isolation self-test PASS, commit-gate self-test PASS, deletion-boundary self-test FAIL — inspect) — Claude-only`, or `wiring MISSING — restore .claude/settings.json`, or `n/a (non-Claude CLI)`]
 **Resume:** [from `pack-ops/session-state.json` — `no live session — clean start` if absent/idle, else `active: BD-NNN @ <sub-step>; in-flight: <agents to re-spawn>; queue: <order>; mode: <serial|parallel>; pending: <decisions>; cycle: <position>; boundary <sha8> (= HEAD | N behind)`]
 
 **Awaiting instructions.**
@@ -122,23 +122,26 @@ Compute the line reported on the Step-4 `**Modes enforce:**` line. LOCAL only �
 no CI gate, no committed sentinel; it NEVER fails the session (reports absent /
 wiring MISSING / self-test FAIL; it does not error). Both hooks are auto-wired by
 the tracked pack-root `.claude/settings.json`, so this step VERIFIES rather than
-installs: a WIRING probe (grep the tracked `.claude/settings.json` for both hook
-bodies — deterministic, O(1)) plus a FUNCTION canary per body (a dry-run payload
+installs: a WIRING probe (grep the tracked `.claude/settings.json` for all three
+hook bodies — deterministic, O(1)) plus a FUNCTION canary per body (a dry-run payload
 piped into the hook — the did-it-actually-fire signal). Branched at runtime on
 `CLAUDECODE` (the text is byte-identical across the three mirrors; only the
 runtime output differs by CLI). The commit-gate canary drives the body through
-its `MODES_GATE_*` scratch seams, so it touches NO live config or token.
+its `MODES_GATE_*` scratch seams and the deletion-boundary canary through its
+`DELBOUND_*` seams (a synthetic registry + synthetic temp root), so both touch NO
+live config, token, or filesystem.
 
 ```bash
 ROOT="$(git rev-parse --show-toplevel)"
 if [ "${CLAUDECODE:-}" = "1" ]; then
   ISO="$ROOT/scripts/hooks/modes-enforce.py"
   GATE="$ROOT/scripts/hooks/modes-commit-gate.py"
+  DEL="$ROOT/scripts/hooks/deletion-boundary.py"
   SETTINGS="$ROOT/.claude/settings.json"
-  if [ ! -f "$ISO" ] || [ ! -f "$GATE" ]; then
+  if [ ! -f "$ISO" ] || [ ! -f "$GATE" ] || [ ! -f "$DEL" ]; then
     echo "modes enforce: hook body absent (feature not built in this clone)"
   else
-    if [ -f "$SETTINGS" ] && grep -q 'modes-enforce.py' "$SETTINGS" && grep -q 'modes-commit-gate.py' "$SETTINGS"; then
+    if [ -f "$SETTINGS" ] && grep -q 'modes-enforce.py' "$SETTINGS" && grep -q 'modes-commit-gate.py' "$SETTINGS" && grep -q 'deletion-boundary.py' "$SETTINGS"; then
       wired="wired"
     else
       wired="wiring MISSING — restore .claude/settings.json"
@@ -151,10 +154,19 @@ if [ "${CLAUDECODE:-}" = "1" ]; then
     gp="$(printf '%s' "$gc" | MODES_GATE_CONFIG_FILE="$cfg" MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
     rm -f "$cfg"
     case "$gp" in *'"permissionDecision":"deny"'*) gate="commit-gate self-test PASS" ;; *) gate="commit-gate self-test FAIL — inspect" ;; esac
+    dreg="$(mktemp)"; downed="/delbound-canary-owned"
+    printf '%s\n' '{"agent_id":"delbound-canary","owned_dir":"'"$downed"'"}' > "$dreg"
+    dc='{"tool_name":"Bash","agent_id":"delbound-canary","cwd":"'"$downed"'","tool_input":{"command":"rm -rf /delbound-canary-root/bd257-*"}}'
+    dp="$(printf '%s' "$dc" | DELBOUND_REGISTRY_FILE="$dreg" DELBOUND_TEMP_ROOTS="/delbound-canary-tmp" python3 "$DEL" 2>/dev/null)"
+    ac='{"tool_name":"Bash","agent_id":"delbound-canary","cwd":"'"$downed"'","tool_input":{"command":"rm -rf '"$downed"'/scratch && rm -rf /delbound-canary-tmp/x && rm -rf \"$WORK\""}}'
+    ap="$(printf '%s' "$ac" | DELBOUND_REGISTRY_FILE="$dreg" DELBOUND_TEMP_ROOTS="/delbound-canary-tmp" python3 "$DEL" 2>/dev/null)"
+    rm -f "$dreg"
+    del="deletion-boundary self-test FAIL — inspect"
+    case "$dp" in *'"permissionDecision":"deny"'*) case "$ap" in *'"permissionDecision":"deny"'*) : ;; *) del="deletion-boundary self-test PASS" ;; esac ;; esac
     if [ "$wired" = "wired" ]; then
-      echo "modes enforce: wired ($iso, $gate) — Claude-only"
+      echo "modes enforce: wired ($iso, $gate, $del) — Claude-only"
     else
-      echo "modes enforce: $wired ($iso, $gate) — Claude-only"
+      echo "modes enforce: $wired ($iso, $gate, $del) — Claude-only"
     fi
   fi
 else

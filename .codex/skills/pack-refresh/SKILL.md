@@ -40,21 +40,23 @@ verb, never a silent settings mutation).
 1. Re-echo the three active modes' behavior text from
    `pack-ops/OPERATING-MODES.md` (the values read in Step 2), putting the live
    mode semantics back at the front of context.
-2. Re-run the function canary for BOTH hooks and confirm the committed wiring —
+2. Re-run the function canary for ALL THREE hooks and confirm the committed wiring —
    the same probe `/pack-startup` Step 6 uses (the commit-gate canary drives the
-   body through its `MODES_GATE_*` scratch seams, touching NO live config or
-   token):
+   body through its `MODES_GATE_*` scratch seams and the deletion-boundary canary
+   through its `DELBOUND_*` seams — a synthetic registry + synthetic temp root —
+   touching NO live config, token, or filesystem):
 
 ```bash
 ROOT="$(git rev-parse --show-toplevel)"
 if [ "${CLAUDECODE:-}" = "1" ]; then
   ISO="$ROOT/scripts/hooks/modes-enforce.py"
   GATE="$ROOT/scripts/hooks/modes-commit-gate.py"
+  DEL="$ROOT/scripts/hooks/deletion-boundary.py"
   SETTINGS="$ROOT/.claude/settings.json"
-  if [ ! -f "$ISO" ] || [ ! -f "$GATE" ]; then
+  if [ ! -f "$ISO" ] || [ ! -f "$GATE" ] || [ ! -f "$DEL" ]; then
     echo "modes re-heal: hook body absent (feature not built in this clone)"
   else
-    if [ -f "$SETTINGS" ] && grep -q 'modes-enforce.py' "$SETTINGS" && grep -q 'modes-commit-gate.py' "$SETTINGS"; then
+    if [ -f "$SETTINGS" ] && grep -q 'modes-enforce.py' "$SETTINGS" && grep -q 'modes-commit-gate.py' "$SETTINGS" && grep -q 'deletion-boundary.py' "$SETTINGS"; then
       wired="wired"
     else
       wired="wiring MISSING — restore .claude/settings.json"
@@ -67,7 +69,16 @@ if [ "${CLAUDECODE:-}" = "1" ]; then
     gp="$(printf '%s' "$gc" | MODES_GATE_CONFIG_FILE="$cfg" MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
     rm -f "$cfg"
     case "$gp" in *'"permissionDecision":"deny"'*) gate="commit-gate self-test PASS" ;; *) gate="commit-gate self-test FAIL — inspect scripts/hooks/" ;; esac
-    echo "modes re-heal: $wired ($iso, $gate) — Claude-only"
+    dreg="$(mktemp)"; downed="/delbound-canary-owned"
+    printf '%s\n' '{"agent_id":"delbound-canary","owned_dir":"'"$downed"'"}' > "$dreg"
+    dc='{"tool_name":"Bash","agent_id":"delbound-canary","cwd":"'"$downed"'","tool_input":{"command":"rm -rf /delbound-canary-root/bd257-*"}}'
+    dp="$(printf '%s' "$dc" | DELBOUND_REGISTRY_FILE="$dreg" DELBOUND_TEMP_ROOTS="/delbound-canary-tmp" python3 "$DEL" 2>/dev/null)"
+    ac='{"tool_name":"Bash","agent_id":"delbound-canary","cwd":"'"$downed"'","tool_input":{"command":"rm -rf '"$downed"'/scratch && rm -rf /delbound-canary-tmp/x && rm -rf \"$WORK\""}}'
+    ap="$(printf '%s' "$ac" | DELBOUND_REGISTRY_FILE="$dreg" DELBOUND_TEMP_ROOTS="/delbound-canary-tmp" python3 "$DEL" 2>/dev/null)"
+    rm -f "$dreg"
+    del="deletion-boundary self-test FAIL — inspect scripts/hooks/"
+    case "$dp" in *'"permissionDecision":"deny"'*) case "$ap" in *'"permissionDecision":"deny"'*) : ;; *) del="deletion-boundary self-test PASS" ;; esac ;; esac
+    echo "modes re-heal: $wired ($iso, $gate, $del) — Claude-only"
   fi
 else
   echo "modes re-heal: n/a (non-Claude CLI — isolation_mode + hooks are Claude-only)"

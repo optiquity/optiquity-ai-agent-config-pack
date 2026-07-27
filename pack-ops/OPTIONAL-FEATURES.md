@@ -288,9 +288,10 @@ it ships breaks inside a manual worktree.
 
 ## Claude Code — modes-enforcement hooks (auto-wired)
 
-**Status:** Claude Code only. TWO `PreToolUse` hooks that mechanically backstop
-the operating modes, AUTO-WIRED by the tracked pack-root `.claude/settings.json`
-(both bodies live in `scripts/hooks/`). Claude Code applies project
+**Status:** Claude Code only. THREE `PreToolUse` hooks that mechanically backstop
+the operating modes (hooks 1–2) and the universal sub-agent deletion boundary
+(hook 3), AUTO-WIRED by the tracked pack-root `.claude/settings.json` (all three
+bodies live in `scripts/hooks/`). Claude Code applies project
 `settings.json` hooks natively at session start, so there is NO install step and
 NO run-mechanism that can silently rot; the user's gitignored
 `.claude/settings.local.json` is NEVER auto-written. On a fresh clone's first
@@ -342,14 +343,38 @@ cleanly-parsed non-`none` mode + absent-or-stale token}.
   then FAILS (nothing staged) has spent its token → re-approve (the fail-safe
   direction).
 
+**Hook 3 — deletion-boundary (`PreToolUse[Bash]` → `scripts/hooks/deletion-boundary.py`).**
+On a spawned sub-agent's Bash call it DENIES a deletion (`rm`/`rmdir`/`unlink`/
+`shred`/`truncate`, `git rm`, `mv <src>`, `find … -delete`/`-exec`, `find <literal>
+| xargs <core>`) whose LITERAL target resolves OUTSIDE the firing agent's owned
+scratch dir AND outside the OS temp roots (`$TMPDIR` / mktemp / `/tmp` /
+`/var/folders`). Ownership is keyed by the sub-agent's `agent_id` in an append-only
+registry the orchestrator writes post-spawn
+(`${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pack-handoff/.pack-agent-owned-dirs.jsonl`).
+It reads NO `pack-ops/session-config.json` (the boundary is a universal invariant,
+not a mode) and FAILS OPEN HARDEST of the three: missing `agent_id` (main thread),
+registry miss/absent, an unresolvable (`$VAR`/`$(…)`) or relative-without-`cwd`
+target, or any exception all ALLOW. In-owned-dir and in-temp deletes always ALLOW;
+deny is via the JSON `permissionDecision` (never `exit 2`).
+
+**Deletion-boundary honest bounds.** DEFENSE-IN-DEPTH behind the unconditional
+`per-action-approval-sub-agents` rule (the guarantee) — a BEST-EFFORT backstop for
+REGISTERED spawns only (a registry miss → fail-open ALLOW; the rule covers that
+spawn). It matches only the common direct verb-head literal form; these slip
+(fail-open false-NEGATIVES): variable-assembled literals (`$D` unresolvable);
+`bash -c` nesting past one layer; command-substitution (`rm -rf $(cat list)`);
+`xargs` fed by a non-`find` source; exotic verbs outside the CORE set; a literal
+mis-extracted from brace / parameter expansion; a fully-glob target with no literal
+prefix (`rm -rf *` → ALLOW). The hook narrows the accident window; the rule closes it.
+
 **Installer — heal / opt-out / status stopgap (`scripts/install-modes-hook.sh`).**
 The committed wiring is primary; the installer is the secondary local-override /
 status convenience:
 
 ```bash
-bash scripts/install-modes-hook.sh            # deep-merge BOTH hooks into settings.local.json (heal stopgap), idempotent
+bash scripts/install-modes-hook.sh            # deep-merge ALL THREE hooks into settings.local.json (heal stopgap), idempotent
 bash scripts/install-modes-hook.sh --dedup    # drop a now-duplicate LOCAL entry the committed file already wires
-bash scripts/install-modes-hook.sh --uninstall # remove BOTH modes entries from settings.local.json
+bash scripts/install-modes-hook.sh --uninstall # remove ALL THREE hook entries from settings.local.json
 bash scripts/install-modes-hook.sh --status   # per-hook merged reality (committed+local | committed | local | none)
 ```
 
@@ -361,8 +386,8 @@ approval — never an agent; `--status` is read-only.
 
 **Verification (LOCAL, not CI).** `/pack-startup` Step 6 and `/pack-refresh`
 Step 2b run a function canary per body (a dry-run payload that confirms each deny
-actually fires) plus a grep of the tracked `.claude/settings.json` (both bodies
-wired), reported on the `**Modes enforce:**` line — the did-it-actually-fire
+actually fires) plus a grep of the tracked `.claude/settings.json` (all three
+bodies wired), reported on the `**Modes enforce:**` line — the did-it-actually-fire
 signal, kept local (no CI sentinel) exactly as the graph freshness check is.
 
 ---
