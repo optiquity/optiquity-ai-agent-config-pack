@@ -1,22 +1,18 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "1e9a11b",
-  "checkpoint": "2026-07-26T00:00:00Z",
+  "boundary_commit": "9a01ade",
+  "checkpoint": "2026-07-27T00:00:00Z",
   "active": ["BD-257", "BD-273"],
-  "in_flight_agents": [
-    "coder-bd273-p2 -- BD-273 WAVE P2 (deletion-boundary canary in pack-startup Step 6 + pack-refresh Step 2b; OPTIONAL-FEATURES runbook w/ honest residuals incl rm-rf-* NIT; BD-273 as-built; 2 stale ~/Developer/_tmp example fixes; pack-only) (RW, isolated worktree)",
-    "coder-bd273-p3 -- BD-273 WAVE P3 (rule strengthening: trinity per-action-approval-sub-agents bullet byte-identical x3 + PACK-MEMORY-RATIONALE body + PACK-AGENTS two-class clause + PACK-CHAT owned-dir-record spawn mandate; pack-chat-only, coder-routed) (RW, isolated worktree)"
-  ],
+  "in_flight_agents": [],
   "queue": ["BD-274", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "Two tracks: BD-257 remaining (A1+B1+B2+B4+B3 LANDED -> C1 -> C2) + BD-273/274 ownership (P1 LANDED -> P2 || P3 in flight -> GATE -> C1 -> C2 || C3). P2 || P3 are disjoint-file parallel worktree waves. Each commit its own bounded review/fix + per-commit user approval.",
-  "wave": "BD-273 P1 LANDED (pack deletion-boundary hook + tests + installer + settings; hook live but INERT until the registry is populated). P2 (canary+runbook+as-built+stale-fixes, pack-only) || P3 (rule strengthening, pack-chat-only) in flight. Then GATE (BD-274 C1 needs P1 + settings.json-unchanged re-verify) -> C1 (client hook + OI-R4 client pm-startup readiness step) -> C2 || C3. BD-257 remaining: C1 (HELP-FRAGMENT (Claude-only enforcement) markers) -> C2 (README count). RESOLVED open items: deletion-flow = confirmed as designed (Pack Chat executes ALL deletions; a registered coder needing a repo deletion REPORTS it); BSD-mktemp = standalone pack-only fix queued.",
+  "parallelization": "Two tracks: BD-257 remaining (A1+B1+B2+B4+B3 LANDED -> C1 -> C2) + BD-273/274 ownership (BD-273 pack P1+P2+P3 LANDED -> BD-273 resolution -> GATE -> BD-274 C1 -> C2 || C3). No agents live.",
+  "wave": "BD-273 PACK SIDE COMPLETE: P1 (deletion-boundary hook + tests + installer + settings) + P2 (canaries + OPTIONAL-FEATURES runbook + as-built + stale fixes + ceiling 619->644 + OI-A dashboard re-render) + P3 (rule strengthening: trinity bullet + rationale + PACK-AGENTS + PACK-CHAT owned-dir mandate) all LANDED, each reviewed CLEAN, full local battery green (count 86). Dashboard re-rendered (new spec-sha) + re-published. BD-257 A1+B1+B2+B4+B3 LANDED. Remaining: BD-273 resolution; BSD-mktemp standalone fix (queued, user-approved); BD-274 client C-waves; BD-257 C1 (Claude-only markers) + C2 (README count).",
   "pending_decisions": [
-    "BD-273 P2 || P3: each -> bounded review/fix -> user commit approval (2 commits). Disjoint files; parallel worktrees.",
-    "QUEUED (user-approved) standalone pack-only fix, AFTER P2/P3: test-activate-capability.sh BSD-mktemp portability (mktemp -d -t leaves XXXXXX unexpanded on BSD; green on Linux CI); user option also raised sweeping the order-dependent test-v11-realistic-ot.sh -- include only if a clean bounded fix, else surface.",
-    "OI-R4 recorded: BD-274 C1 ALSO builds a client pm-startup modes-readiness step (mirror pack-startup Step 6, all 3 client hooks).",
-    "CARRY-FORWARD to BD-257 C1: /pm-help + /pm-isolation-mode + /pm-intervention-mode HELP-FRAGMENT rows get a (Claude-only enforcement) marker.",
-    "BD-257 WRAP-UP: reconcile pack README client-skill count to final once C1/C2 land.",
-    "Standing: push USER-MANUAL (unpushed stack: B3 + P1 + session-state); NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/; committing session-state sparingly now (resume-critical boundaries only)."
+    "BD-273 RESOLUTION: P1/P2/P3 each per-commit-reviewed CLEAN + local battery green. Decide: end-of-batch reviewer on the full 3-wave batch then flip to Resolved, vs flip now, vs hold BD-273 resolution until BD-274 lands for a combined end-of-batch ownership audit.",
+    "QUEUED (user-approved) standalone pack-only fix: test-activate-capability.sh BSD-mktemp portability (+ optionally the order-dependent test-v11-realistic-ot.sh if a clean bounded fix).",
+    "BD-274 CLIENT C-waves (after GATE re-verify: settings.json unchanged since BD-257 B1 + pm-refresh unchanged since B2): C1 (client pm-deletion-boundary hook + settings element + pack-side unit test + pm-refresh canary + OI-R4 client pm-startup modes-readiness step covering all 3 client hooks) -> C2 (customization-preserve fixture + migrator) || C3 (client trinity rule + PM-CHAT).",
+    "BD-257 remaining: C1 (/pm-help + /pm-isolation-mode + /pm-intervention-mode HELP-FRAGMENT (Claude-only enforcement) markers) -> C2 (README client-skill count reconcile to final).",
+    "Standing: push USER-MANUAL (unpushed stack now large: B3 + P1 + P3 + dashboard + P2 + session-state); NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/; session-state committed sparingly (resume-critical boundaries)."
   ],
-  "cycle_position": "BD-273 P1 LANDED + worktree torn down. P2 || P3 coders in flight (parallel worktree waves, first BD-273 parallel wave). Next: P2 + P3 bounded review/fix + user commits; then the BSD-mktemp standalone fix; then the GATE + C-waves."
+  "cycle_position": "BD-273 pack side COMPLETE (P1+P2+P3 landed, worktrees torn down, dashboard re-published). No agents live. Awaiting user direction on BD-273 resolution + next-track sequencing."
 }
