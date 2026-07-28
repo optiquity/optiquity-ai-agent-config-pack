@@ -1,17 +1,19 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "261cac3",
+  "boundary_commit": "dc5e269",
   "checkpoint": "2026-07-28T00:00:00Z",
-  "active": [],
-  "in_flight_agents": [],
-  "queue": ["BD-275", "BD-276", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "IDLE. Ownership-isolation feature CLOSED: BD-273 (pack) + BD-274 (client) both RESOLVED. Combined end-of-batch audit was CLEAN-WITH-ONE-SHOULD; all three findings (SHOULD-1 pack test coverage, NIT-1 client handoff-root pack->pm rename, NIT-2 README count) fixed + reviewed CLEAN + committed. Next: manifest-sync + push, then BD-275/276.",
-  "wave": "BD-273 + BD-274 RESOLVED. Full ownership feature landed: pack deletion-boundary hook/rule/canary + client no-dual-use mirror (C1 hook, C2 merge-safety, C3 rule) + audit fixes (pack derive-path test coverage, client handoff-root pack->pm boundary rename, README count). Full battery green. Feature complete.",
-  "pending_decisions": [
-    "PUSH: origin is BEHIND (local ahead by several commits since the last push -- BD-274 C2/C3, the audit-fix commit, and the BD-273/274 resolution bookkeeping). BEFORE pushing, run scripts/manifest-sync.sh -- the BD-274 C1 + the NIT-1 client-hook rename shifted v11 fixture inputs (project-template/scripts/pm-deletion-boundary.py); MANIFEST-CHANGED -> a separate pack-only manifest commit. Then push (user-approved) + confirm CI green across all jobs.",
-    "BROADER (user-flagged, NOT yet a BD): the word 'pack' on the client side (project-template/) has consistently led to boundary leaks; the user wants it used only when absolutely necessary. NIT-1 fixed the handoff-root. Remaining client 'pack' surfaces are structural/product (the project-template/docs/pack/ dir name, PACK-FEEDBACK.md, 'the Pack' product name) -- BD-scale renames, NOT opened. OFFER a scoped client-side 'pack'-mechanism-leak audit BD after BD-275/276 if the user wants it (no new BD without user ask).",
-    "BD-275 (order-dependent test-v11-realistic-ot.sh flake) + BD-276 (systemic BSD-mktemp -t portability sweep): the next queued items.",
-    "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no other SHAs in prose, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/ (pack side)."
+  "active": ["BD-136"],
+  "in_flight_agents": [
+    "docsresearcher-bd136-census -- BD-136 Stage-1 internal census: current state of every BD-136 surface (customization-preserve.sh dispatch, trinity H2 lists + [CONDITIONAL] + Project addenda + markers, PM-CHAT Shape A pair + ownership table, validate-pack highest Check number, trinity-marker fixtures, INSTALL/SETUP/MERGE-STRATEGY docs, init-project + migrator trinity dispatch, OT-trinity-prep matrix) + flag stale BD claims + cross-BD collisions (RO)"
   ],
-  "cycle_position": "Ownership feature (BD-273 + BD-274) CLOSED + both RESOLVED at the audit-fix boundary. IDLE. Next: manifest-sync -> push (user-approved) -> BD-275/276."
+  "queue": ["BD-236", "BD-210", "BD-275", "BD-276", "BD-205", "BD-093"],
+  "parallelization": "SERIAL. Queue re-ordered to the ruled closeout spine 189->224->257->136->236->210->205->093; BD-257 resolved so BD-136 is next. BD-275/276 (off-spine chores) slotted after the spine, before BD-205's final audit. BD-136 = LARGE-BD deterministic pipeline starting.",
+  "wave": "BD-136 STARTING (launch-gate LARGE-BD: trinity marker-section preservation, Shape A + Shape B + [CONDITIONAL] retirement + renamed-from). Deterministic pipeline: docs-researcher (IN FLIGHT) -> architect -> adversarial -> reconciliation-if-findings -> user design review -> planner -> adversarial -> reconciliation-if-findings -> user planner-to-coder gate -> parallel coder waves. BD entry carries a full spec (some claims stale).",
+  "pending_decisions": [
+    "Census returns -> Pack Chat reviews it + flags stale BD claims -> user-approval to spawn pack-architect (architect spawn needs explicit user OK; pipeline start already authorized). Cross-BD collision to record at architect stage: BD-136 touches scripts/validate-pack.py (also BD-236) + scripts/lib/ (also BD-276) -> COORDINATE signal, BD-136 first.",
+    "BROADER (user-flagged, not yet a BD): 'pack' on the client side is a recurring leak vector; the handoff-root was fixed. Remaining structural client 'pack' surfaces (docs/pack/ dir, PACK-FEEDBACK.md) are BD-scale -> offer a scoped audit BD later (no new BD without user ask).",
+    "One local commit unpushed (dashboard re-render); push whenever.",
+    "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no other SHAs, no other dates, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/ (pack side)."
+  ],
+  "cycle_position": "BD-136 (launch-gate LARGE-BD) starting; Stage-1 docs-researcher internal census IN FLIGHT. Next: census review -> user-approved architect spawn -> deterministic pipeline. Queue re-ordered to the ruled closeout spine."
 }
