@@ -215,6 +215,30 @@ assert_contains "3.4 pm-help.sh emits client-side header" "$help_out" \
     && t_pass "3.4b scripts/lib/detect.sh NOT shipped (de-shipped per BD-257)" \
     || t_fail "3.4b detect.sh unexpectedly present in client install"
 
+# 3.5 (BD-257 D2) every v11 skill lands in all three per-CLI homes after a
+# fresh install. The expected set is DERIVED at runtime from the pack git
+# index (git ls-files) — never a hardcoded list — so BD-274 + every future
+# skill auto-joins this gate. init stage_s4_skills globs
+# project-template/skills/*/ and fans each SKILL.md to .claude/.codex/.agents;
+# any dropped skill FAILS here (the init-path regression gate BD-257 flagged
+# as missing). declare-verify-backing: asserts the FILE lands, not that code ran.
+init_skill_miss=0
+init_skill_total=0
+while IFS= read -r sk; do
+    [[ -n "$sk" ]] || continue
+    init_skill_total=$((init_skill_total + 1))
+    for cli in claude codex agents; do
+        if [[ ! -f "$T/.$cli/skills/$sk/SKILL.md" ]]; then
+            t_fail "3.5 fresh-install skill drop: .$cli/skills/$sk/SKILL.md MISSING"
+            init_skill_miss=$((init_skill_miss + 1))
+        fi
+    done
+done < <(git -C "$REPO_ROOT" ls-files 'project-template/skills/*/SKILL.md' \
+    | sed 's#project-template/skills/##; s#/SKILL.md##' | sort)
+[[ "$init_skill_miss" -eq 0 && "$init_skill_total" -gt 0 ]] \
+    && t_pass "3.5 all $init_skill_total v11 skills present in .claude/.codex/.agents after fresh install (self-maintaining set)" \
+    || t_fail "3.5 $init_skill_miss per-CLI skill file(s) MISSING after fresh install (total skills=$init_skill_total)"
+
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────

@@ -326,28 +326,6 @@ _v10_to_v11_install_v11_artifacts() {
         done
     fi
 
-    # pm-help is a pooled SSOT skill distributed LOOSE to each CLI's
-    # workspace skill dir (.claude/.codex/.agents — Antigravity reads
-    # `.agents/skills/`), matching the net-new skill fan-out below. The
-    # pool `project-template/skills/pm-help/SKILL.md` is fanned out here,
-    # iff the destination is absent (additive, no overwrite of project
-    # edits). The client help RUNNER `scripts/pm-help.sh` is an ordinary
-    # `project-template/scripts/` file that ships via the
-    # `project-template/scripts` directory sweep — NO pack-side file
-    # (pack-help.sh / lib/detect.sh) is copied into the client here:
-    # no dual-use, and the ship-allowlist is empty per BD-257
-    # (dependency-direction-placement conjunct (c)).
-    if [[ -f "$PACK/project-template/skills/pm-help/SKILL.md" ]]; then
-        local ph_cli
-        for ph_cli in .claude .codex .agents; do
-            if [[ ! -f "$_MIGRATOR_TARGET/$ph_cli/skills/pm-help/SKILL.md" ]]; then
-                mkdir -p "$_MIGRATOR_TARGET/$ph_cli/skills/pm-help"
-                cp "$PACK/project-template/skills/pm-help/SKILL.md" \
-                    "$_MIGRATOR_TARGET/$ph_cli/skills/pm-help/SKILL.md"
-            fi
-        done
-    fi
-
     # Antigravity agent plugin BUNDLE — net-new v11 surface (BD-221). v11
     # ships the third-CLI agents as a plugin bundle at
     # project-template/.agents-plugin/optiquity-agents/ (16 agents/*.md +
@@ -474,42 +452,70 @@ _v10_to_v11_install_v11_artifacts() {
             || fail_stage S5 "per_entry_regenerate_toc failed for project-groupings (groupings _toc.md seed)"
     fi
 
-    # BD-161 (absorbed into BD-167 per
-    # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §17.2 + §8.14):
-    # net-new v11 SKILL.md dirs that did not exist in v10 must install
-    # to all three per-CLI skill homes during the v10→v11 migration.
-    # Without this, a v10→v11-migrated client silently lacks the new
-    # v11 skills and the PM chat will not load them.
+    # Net-new v11 SKILL.md fan-out (BD-257 D1): install every skill that is
+    # net-new since the v10 baseline into all three per-CLI skill homes
+    # (.claude/skills/, .codex/skills/, .agents/skills/ — Antigravity reads
+    # `.agents/skills/`) iff the destination is absent (additive; no overwrite
+    # of client-customized skill files; the BD-088 truthful-report mechanism
+    # handles divergence on later pack version-bumps).
     #
-    # The six net-new skills are:
-    #   - swift-concurrency-patterns (BD-158)
-    #   - apple-swiftdata-patterns (BD-157)
-    #   - protobuf-patterns (BD-156)
-    #   - python-server-architecture (BD-162 split)
-    #   - python-data-architecture (BD-162 split)
-    #   - python-observability-patterns (BD-162)
+    # SELF-MAINTAINING: the net-new set is DERIVED at runtime — the pack git
+    # index (`git ls-files`) diffed against MIGRATOR_BASELINE_TAG (a
+    # `git cat-file -e <tag>:<relpath>` object-existence probe — present at
+    # the baseline ⇒ NOT net-new ⇒ skip), never a hand-maintained name list.
+    # BD-274 + every future skill rides for free with ZERO further migrator
+    # edits. This reuses the framework's v10-baseline mechanism (the same
+    # MIGRATOR_BASELINE_TAG the `migrator_baseline_to_tmp` primitive uses),
+    # so it is an extension within the adapter hook, not a migrator rewrite.
     #
-    # Each ships from project-template/skills/<name>/SKILL.md; the
-    # migrator copies it into all three per-CLI skill homes
-    # (.claude/skills/, .codex/skills/, .agents/skills/ — Antigravity
-    # reads `.agents/skills/`) iff the destination is absent (additive,
-    # no overwrite of client-customized skill files; the BD-088
-    # truthful-report mechanism handles divergence on later pack
-    # version-bumps).
-    local skill_name skill_src cli skill_dest
-    for skill_name in swift-concurrency-patterns apple-swiftdata-patterns \
-                      protobuf-patterns python-server-architecture \
-                      python-data-architecture python-observability-patterns; do
-        skill_src="$PACK/project-template/skills/$skill_name/SKILL.md"
-        [[ -f "$skill_src" ]] || continue
+    # Honors client deletions of v10 skills: a v10 skill the client removed
+    # is not net-new (it existed at the baseline) so it is never re-added —
+    # consistent with the engine's `project-deleted-pack-kept` disposition
+    # (scripts/lib/customization-preserve.sh). For a net-new skill the client
+    # never had it, so "iff absent" always fires and it installs.
+    #
+    # This SUBSUMES the former hardcoded 6-skill loop AND the pm-help
+    # special-case (both DELETED — pm-help is net-new since v10, so it lands
+    # via this loop). The client help RUNNER `scripts/pm-help.sh` is an
+    # ordinary `project-template/scripts/` file that ships via the
+    # `project-template/scripts` directory sweep — NO pack-side file
+    # (pack-help.sh / lib/detect.sh) is copied into the client: no dual-use,
+    # and the ship-allowlist is empty per BD-257
+    # (dependency-direction-placement conjunct (c)).
+    local skill_relpath skill_name cli skill_dest missing_skill=0
+    while IFS= read -r skill_relpath; do
+        # Net-new gate: skip any skill that already existed at the v10
+        # baseline (object present at the tag ⇒ cat-file -e succeeds).
+        if git -C "$PACK" cat-file -e "$MIGRATOR_BASELINE_TAG:$skill_relpath" 2>/dev/null; then
+            continue
+        fi
+        skill_name=$(basename "$(dirname "$skill_relpath")")
         for cli in .claude .codex .agents; do
             skill_dest="$_MIGRATOR_TARGET/$cli/skills/$skill_name/SKILL.md"
             if [[ ! -f "$skill_dest" ]]; then
                 mkdir -p "$_MIGRATOR_TARGET/$cli/skills/$skill_name"
-                cp "$skill_src" "$skill_dest"
+                # Source is a client deliverable under project-template/ (the
+                # copy vector Check 47 verifies as no-dual-use-clean); the
+                # literal project-template/ prefix keeps that machine-checkable.
+                cp "$PACK/project-template/skills/$skill_name/SKILL.md" "$skill_dest"
             fi
         done
-    done
+    done < <(git -C "$PACK" ls-files 'project-template/skills/*/SKILL.md')
+
+    # declare-verify-backing: every net-new skill MUST land in all three
+    # per-CLI homes. For a net-new skill the client never had it, so there
+    # is no legitimate divergence — a STRICT presence guard is correct here
+    # (unlike the bundle's superset-tolerant guard). Fail loud if any missing.
+    while IFS= read -r skill_relpath; do
+        git -C "$PACK" cat-file -e "$MIGRATOR_BASELINE_TAG:$skill_relpath" 2>/dev/null && continue
+        skill_name=$(basename "$(dirname "$skill_relpath")")
+        for cli in .claude .codex .agents; do
+            [[ -f "$_MIGRATOR_TARGET/$cli/skills/$skill_name/SKILL.md" ]] \
+                || missing_skill=$((missing_skill + 1))
+        done
+    done < <(git -C "$PACK" ls-files 'project-template/skills/*/SKILL.md')
+    (( missing_skill == 0 )) \
+        || fail_stage S5 "net-new skill fan-out incomplete: $missing_skill per-CLI skill file(s) missing"
 }
 
 # Internal: lift departing Gemini x- custom agents INTO the Antigravity

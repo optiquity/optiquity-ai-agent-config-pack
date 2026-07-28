@@ -28,7 +28,7 @@ assert_contains() {
 # Build a minimal v10-shaped target directory: trinity files + .claude/
 # sufficient to pass migrator pre-flight. Working tree is clean (committed).
 make_v10_target() {
-    local d
+    local d cli
     d=$(mktemp -d -t migrate10-tgt.XXXXXX)
     git init -q "$d" >/dev/null
     git -C "$d" config user.email "test@example.com"
@@ -41,6 +41,19 @@ make_v10_target() {
     git -C "$REPO_ROOT" show v10:project-template/CLAUDE.md > "$d/CLAUDE.md" 2>/dev/null
     git -C "$REPO_ROOT" show v10:project-template/AGENTS.md > "$d/AGENTS.md" 2>/dev/null
     git -C "$REPO_ROOT" show v10:project-template/GEMINI.md > "$d/GEMINI.md" 2>/dev/null
+
+    # BD-257 D2 (OI-2): seed ONE pre-existing v10 skill (c-language — shared
+    # by v10 and v11) into all three per-CLI homes so the migrate fixture
+    # exercises the deletion-honoring case: a v10 skill the client KEEPS must
+    # survive the migration untouched (iff-absent additive; asserted at 2.8),
+    # and a DIFFERENT shared v10 skill the client DELETED (never seeded) must
+    # NOT be re-added by the net-new glob-diff fan-out (asserted at 2.9 —
+    # guards Option-b glob-DIFF vs a regress to Option-a glob-ALL).
+    for cli in .claude .codex .agents; do
+        mkdir -p "$d/$cli/skills/c-language"
+        git -C "$REPO_ROOT" show "${V10_TAG:-v10}:project-template/skills/c-language/SKILL.md" \
+            > "$d/$cli/skills/c-language/SKILL.md" 2>/dev/null
+    done
 
     git -C "$d" add -A >/dev/null
     git -C "$d" commit -q -m "v10 initial state" 2>/dev/null
@@ -238,6 +251,72 @@ assert_contains "2.6 report has H1" "$report" \
 [[ "$report" == *"Total files processed:"* ]] \
     && t_pass "2.6 report has totals line" \
     || t_fail "2.6 report missing totals"
+
+# 2.7 (BD-257 D2) every NET-NEW-since-v10 skill lands in all three per-CLI
+# homes after the migration. Self-maintaining expected set: net-new =
+# (v11 git index) minus (v10 tag), via `comm -13` — never a hardcoded list.
+# This is the migrate-path regression gate: RED against the pre-D1 migrator
+# (its hardcoded 6-skill loop dropped 9 net-new skills → 27 missing files)
+# and GREEN after D1. declare-verify-backing: asserts the FILE lands.
+migrate_netnew_miss=0
+migrate_netnew_total=0
+while IFS= read -r sk; do
+    [[ -n "$sk" ]] || continue
+    migrate_netnew_total=$((migrate_netnew_total + 1))
+    for cli in claude codex agents; do
+        if [[ ! -f "$T/.$cli/skills/$sk/SKILL.md" ]]; then
+            t_fail "2.7 net-new drop: .$cli/skills/$sk/SKILL.md MISSING"
+            migrate_netnew_miss=$((migrate_netnew_miss + 1))
+        fi
+    done
+done < <(comm -13 \
+    <(git -C "$REPO_ROOT" ls-tree -r --name-only "${V10_TAG:-v10}" -- project-template/skills/ \
+        | sed -n 's#^project-template/skills/\([^/]*\)/SKILL.md$#\1#p' | sort -u) \
+    <(git -C "$REPO_ROOT" ls-files 'project-template/skills/*/SKILL.md' \
+        | sed 's#project-template/skills/##; s#/SKILL.md##' | sort))
+[[ "$migrate_netnew_miss" -eq 0 && "$migrate_netnew_total" -gt 0 ]] \
+    && t_pass "2.7 all $migrate_netnew_total net-new-since-v10 skills present in .claude/.codex/.agents after migration (self-maintaining set)" \
+    || t_fail "2.7 $migrate_netnew_miss per-CLI net-new skill file(s) MISSING after migration (net-new total=$migrate_netnew_total)"
+
+# 2.8 (BD-257 D2 / OI-2) the seeded v10 skill the client KEPT (c-language)
+# survives the migration byte-identical in all three homes — the net-new
+# gate skips it (it existed at v10) and iff-absent never clobbers it.
+kept_ok=1
+for cli in claude codex agents; do
+    [[ -f "$T/.$cli/skills/c-language/SKILL.md" ]] || kept_ok=0
+done
+if [[ "$kept_ok" -eq 1 ]] \
+   && cmp -s <(git -C "$REPO_ROOT" show "${V10_TAG:-v10}:project-template/skills/c-language/SKILL.md") \
+             "$T/.claude/skills/c-language/SKILL.md"; then
+    t_pass "2.8 kept v10 skill (c-language) preserved byte-identical in all 3 homes (iff-absent additive)"
+else
+    t_fail "2.8 kept v10 skill (c-language) altered or missing after migration"
+fi
+
+# 2.9 (BD-257 D2 / OI-2) a DIFFERENT shared v10∩v11 skill the client DELETED
+# (never seeded → absent) is NOT re-added by the migration: the net-new gate
+# skips it because it existed at the v10 baseline. Under an Option-a glob-ALL
+# fan-out this skill WOULD be re-added (a v11 skill, absent → add); Option-b
+# glob-DIFF honors the client deletion (project-deleted-pack-kept semantic).
+# The probe skill is derived at runtime (first shared v10∩v11 skill that is
+# not the seeded c-language), keeping the guard self-maintaining.
+deleted_skill=$(comm -12 \
+    <(git -C "$REPO_ROOT" ls-tree -r --name-only "${V10_TAG:-v10}" -- project-template/skills/ \
+        | sed -n 's#^project-template/skills/\([^/]*\)/SKILL.md$#\1#p' | sort -u) \
+    <(git -C "$REPO_ROOT" ls-files 'project-template/skills/*/SKILL.md' \
+        | sed 's#project-template/skills/##; s#/SKILL.md##' | sort) \
+    | grep -v -x 'c-language' | head -1)
+if [[ -z "$deleted_skill" ]]; then
+    t_fail "2.9 no shared v10∩v11 probe skill found (fixture derivation failed)"
+else
+    del_ok=1
+    for cli in claude codex agents; do
+        [[ -e "$T/.$cli/skills/$deleted_skill" ]] && del_ok=0
+    done
+    [[ "$del_ok" -eq 1 ]] \
+        && t_pass "2.9 migrate honors client-deleted v10 skill: '$deleted_skill' (shared v10∩v11, unseeded) NOT re-added (glob-DIFF)" \
+        || t_fail "2.9 migrate wrongly re-added client-deleted v10 skill '$deleted_skill' (glob-ALL regression)"
+fi
 
 rm -rf "$T"
 
