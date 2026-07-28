@@ -1333,6 +1333,19 @@ def _build_check_registry():
         # tree. Number 89 is the next free integer (highest wired was 88).
         (89, "check_help_fragment_command_skill_parity",
               check_help_fragment_command_skill_parity, W),
+        # Check 90 — CLIENT HELP-FRAGMENT /pm-* command ↔ backing-skill parity
+        # (BD-257): the client analog of Check 89 — every advertised `/pm-<name>`
+        # slash row in project-template/docs/pack/HELP-FRAGMENT.md is backed by a
+        # git-TRACKED project-template/skills/pm-<name>/SKILL.md, and every
+        # git-TRACKED pm-*-named command skill is advertised. SINGLE template
+        # root (client skills live in ONE tree, unlike the pack's 3 CLI roots).
+        # Lives in the help-fragment-family module (validate_checks.help_fragments)
+        # alongside Checks 16/22/23/89; reuses the module's _git_ls_files_multi
+        # helper. git-TRACKED enumeration (git ls-files, one pathspec), O(rows),
+        # SKIP-lenient off a work tree. Number 90 is the next free integer
+        # (highest wired was 89).
+        (90, "check_help_fragment_command_skill_parity_client",
+              check_help_fragment_command_skill_parity_client, W),
     ]
 
 

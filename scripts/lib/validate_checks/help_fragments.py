@@ -476,6 +476,131 @@ def check_help_fragment_command_skill_parity() -> None:
     )
 
 
+# Check 90 — client HELP-FRAGMENT /pm-* command ↔ backing-skill parity (BD-257).
+# The CLIENT analog of Check 89: keeps the client `/pm-<name>` rows in
+# project-template/docs/pack/HELP-FRAGMENT.md bijective with the git-TRACKED
+# client command skills project-template/skills/pm-<name>/SKILL.md. Anchored
+# slash-row regex: a COMPLETE backtick span `/pm-<name>` (hyphen-inclusive),
+# mirroring _PACK_SLASH_ROW_RE — a \w-only arm would truncate
+# `/pm-review-mode` -> `review` (a guaranteed false FAIL). The closing-backtick
+# anchor also excludes `scripts/pm-help.sh`-shape spans (they start `scripts/`,
+# never a bare `/pm-`), so no allowlist is needed.
+# NOTE (raw-vs-set): findall over the current fragment returns raw matches with
+# duplicates (`/pm-help` appears twice — a prose mention + a table row); the SET
+# comprehension in the body dedups them to the distinct advertised names. Every
+# count/membership decision is on the SET `advertised`, NEVER on
+# len(_PM_SLASH_ROW_RE.findall(...)).
+_PM_SLASH_ROW_RE = re.compile(r"`/pm-([a-z0-9][a-z0-9-]*)`")
+
+# Client-surface constants for Check 90. RELATIVE on purpose: each is resolved
+# against REPO_ROOT at CALL time (the fragment read) / passed to git ls-files
+# with cwd=REPO_ROOT (the skill enumeration), so a per-check test that
+# monkeypatches help_fragments.REPO_ROOT to a /tmp scratch repo still bites. The
+# client command skills live in a SINGLE root (project-template/skills/), unlike
+# the pack's three CLI roots (_PACK_SKILL_ROOTS) — so Check 90 partitions to one
+# set, never a per-root set.
+_HELP_FRAGMENT_CLIENT = "project-template/docs/pack/HELP-FRAGMENT.md"
+_PM_SKILL_ROOT = "project-template/skills"
+
+
+def check_help_fragment_command_skill_parity_client() -> None:
+    """Check 90 — client HELP-FRAGMENT /pm-* ↔ backing-skill parity (BD-257).
+
+    The CLIENT analog of Check 89 (which gates the pack /pack-* rows). Closes
+    the client-side advertised-but-unimplemented hole so a `/pm-<name>` row can
+    never ship without a backing skill (and the reverse — a shipped pm-* command
+    skill that is never advertised):
+      - FORWARD (help → skill): every backticked `/pm-<name>` slash row in
+        project-template/docs/pack/HELP-FRAGMENT.md must have a git-TRACKED skill
+        at project-template/skills/pm-<name>/SKILL.md.
+      - REVERSE (skill → help): every git-TRACKED pm-*-named command skill
+        (project-template/skills/pm-<name>/SKILL.md) must be advertised as a
+        `/pm-<name>` row.
+
+    SINGLE template root: client command skills live in ONE tree (unlike Check
+    89's three CLI roots), so the tracked set is one flat set of skill dirs and
+    there is no per-root partition / partial-root leg. No allowlist — the pm-*
+    token split is clean by shape (the pathspec restricts the reverse candidate
+    set to pm-*-named dirs, which cleanly excludes the ~35 non-command pooled
+    skills in the same root, e.g. swift-concurrency-patterns).
+
+    declare-verify-backing: uses git-TRACKED membership (git ls-files), never
+    Path.is_file() — an untracked on-disk dir would not ship, so tracked
+    membership is the correct backing signal. Bites the absence-of-backing
+    instance in BOTH directions.
+
+    measure-then-bound / O(rows): one `git ls-files` (one pathspec) + one
+    fragment read + set algebra over the pm-* set. SKIP-lenient off a git work
+    tree; a missing fragment FAILs (a committed pack-shipped surface, not an env
+    artifact), mirroring Check 89's fragment-missing FAIL.
+    """
+    print("\n── Check 90: client HELP-FRAGMENT /pm-* command ↔ backing-skill parity (BD-257) ──")
+
+    # Enumerate the git-TRACKED client command-skill set (one call, one pathspec).
+    available, tracked = _git_ls_files_multi([f"{_PM_SKILL_ROOT}/pm-*/SKILL.md"])
+    if not available:
+        ok("git ls-files unavailable (git absent / not a git work tree) — skipping (lenient)")
+        return
+
+    # Read the advertised /pm-* set from the client fragment (FAIL if absent — a
+    # committed pack-shipped surface, mirroring Check 89's fragment-missing FAIL).
+    frag_path = REPO_ROOT / _HELP_FRAGMENT_CLIENT
+    if not frag_path.is_file():
+        fail(f"client help fragment missing: {_HELP_FRAGMENT_CLIENT}")
+        return
+    frag_text = frag_path.read_text()
+    # SET comprehension: dedups the raw findall (duplicates on the current
+    # fragment — /pm-help appears twice) to the DISTINCT advertised names. All
+    # downstream logic is on this set, NEVER len(_PM_SLASH_ROW_RE.findall(...)).
+    advertised = {f"pm-{m}" for m in _PM_SLASH_ROW_RE.findall(frag_text)}
+
+    # Collect the tracked skill dir names. Each tracked path is
+    # `project-template/skills/pm-<name>/SKILL.md`; parts[-2] is the pm-<name>
+    # dir. The structural guard (matches Check 89's) keeps a hypothetical deeper
+    # path from being mis-read as a skill dir.
+    skill_dirs = set()
+    for path in tracked:
+        parts = path.split("/")
+        # parts = ["project-template", "skills", "pm-<name>", "SKILL.md"]
+        if (len(parts) >= 4 and parts[0] == "project-template"
+                and parts[1] == "skills" and parts[-1] == "SKILL.md"
+                and parts[-2].startswith("pm-")):
+            skill_dirs.add(parts[-2])
+
+    any_failed = False
+
+    # ── FORWARD leg: every advertised command backed by a tracked skill. ──
+    for name in sorted(advertised):
+        if name not in skill_dirs:
+            any_failed = True
+            fail(
+                f"/{name} advertised in {_HELP_FRAGMENT_CLIENT} but no backing "
+                f"skill at {_PM_SKILL_ROOT}/{name}/SKILL.md. Every advertised "
+                f"`/pm-<name>` slash command needs a git-TRACKED "
+                f"{_PM_SKILL_ROOT}/pm-<name>/SKILL.md."
+            )
+
+    # ── REVERSE leg: every pm-*-named command skill is advertised. Candidate set
+    # = the git-TRACKED pm-* skill dirs (the pathspec already excludes the
+    # non-command pooled skills that share this root). ──
+    for name in sorted(skill_dirs):
+        if name not in advertised:
+            any_failed = True
+            fail(
+                f"{name} command skill exists ({_PM_SKILL_ROOT}/{name}/) but is "
+                f"not advertised in {_HELP_FRAGMENT_CLIENT} — add a `/{name}` "
+                f"row."
+            )
+
+    if any_failed:
+        return
+    ok(
+        f"Check 90 — client HELP-FRAGMENT /pm-* commands ({len(advertised)}) <-> "
+        f"backing command skills bijective (forward: all advertised commands "
+        f"backed; reverse: all pm-* command skills advertised)."
+    )
+
+
 __all__ = [
     "_CHECK_16_EXEMPT_SURFACES",
     "check_trinity_addenda_h2",
@@ -487,4 +612,8 @@ __all__ = [
     "_HELP_FRAGMENT_PACK",
     "_PACK_SLASH_ROW_RE",
     "check_help_fragment_command_skill_parity",
+    "_PM_SLASH_ROW_RE",
+    "_HELP_FRAGMENT_CLIENT",
+    "_PM_SKILL_ROOT",
+    "check_help_fragment_command_skill_parity_client",
 ]
