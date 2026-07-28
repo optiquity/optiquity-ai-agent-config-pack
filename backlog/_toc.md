@@ -23,8 +23,6 @@
 - [BD-236](./BD-236.md) — Project-side agent-def discipline-parity guards are incomplete (Check 57 covers 8 of the 13 enumerated git verbs; Check 11 cross-surface symmetry is informational-only) — investigate + design a coherent project-side parity-enforcement strategy
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
-- [BD-273](./BD-273.md) — Pack-side agent-scratch ownership isolation + deletion-boundary guard (pack dev-workflow safety)
-- [BD-274](./BD-274.md) — Project-side (client) agent-scratch ownership isolation (client deliverable analog of BD-273)
 - [BD-275](./BD-275.md) — Order-dependent test-v11-realistic-ot.sh (serial-suite flake; passes isolated)
 - [BD-276](./BD-276.md) — Systemic BSD-mktemp `-t` portability sweep (tests + runtime libs)
 
@@ -274,6 +272,8 @@
 - [BD-268](./BD-268.md) — Groupings workflow integration: METHODOLOGY Workflow 7 + PM-CHAT + trinity + prompts + pm-startup + agent defs + HELP-FRAGMENT rows + changelog Write-authority clarify + allowlist records (BD-189 CBD-7)
 - [BD-271](./BD-271.md) — Narration-twin hardening: client-gate session-state behavioral coverage + a new Check 85 regex-CONTENT parity guard (BD-252 / BD-253 / BD-269 follow-on)
 - [BD-272](./BD-272.md) — Eradicate the `pack td` boundary violation (mis-homed, client-advertised, never-shipped project-side TD-promotion workflow)
+- [BD-273](./BD-273.md) — Pack-side agent-scratch ownership isolation + deletion-boundary guard (pack dev-workflow safety)
+- [BD-274](./BD-274.md) — Project-side (client) agent-scratch ownership isolation (client deliverable analog of BD-273)
 
 ## Deprecated
 

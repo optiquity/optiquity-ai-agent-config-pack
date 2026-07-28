@@ -1,19 +1,17 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "304a98d",
+  "boundary_commit": "261cac3",
   "checkpoint": "2026-07-28T00:00:00Z",
-  "active": ["BD-273", "BD-274"],
-  "in_flight_agents": [
-    "reviewer-bd274-ownershipaudit -- COMBINED BD-273/274 end-of-batch ownership audit: one fresh RO reviewer over the FULL committed ownership feature (pack BD-273 hook/rule/canary + client BD-274 C1 hook + C2 merge-safety + C3 rule) for mirror-but-customize correctness, no-dual-use, P-missed-7 boundary discipline, merge-safety load-bearing reality, install+migrate coverage, full battery. (RO, reviews committed HEAD in main checkout)"
-  ],
+  "active": [],
+  "in_flight_agents": [],
   "queue": ["BD-275", "BD-276", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "SERIAL now. All three BD-274 client waves LANDED (C1, then C3, then C2 = boundary). BD-273 pack side landed earlier. Combined end-of-batch audit IN FLIGHT -> triage -> flip BOTH BD-273 + BD-274 Resolved. Then BD-275/276.",
-  "wave": "BD-274 COMPLETE (all 3 client waves landed): C1 client pm-deletion-boundary hook + settings element + pack-side test + canary extensions; C2 merge-safety fixture (separate-element wiring, no dup commit-gate, bite via customization_preserve) + migrator dry-run assertion + F1/F2 anchor rewords; C3 client trinity ownership bullet (byte-identical x3) + PM-CHAT clauses. BD-273 pack side complete. Combined audit is the independent review of the full feature; on CLEAN -> flip both Resolved.",
+  "parallelization": "IDLE. Ownership-isolation feature CLOSED: BD-273 (pack) + BD-274 (client) both RESOLVED. Combined end-of-batch audit was CLEAN-WITH-ONE-SHOULD; all three findings (SHOULD-1 pack test coverage, NIT-1 client handoff-root pack->pm rename, NIT-2 README count) fixed + reviewed CLEAN + committed. Next: manifest-sync + push, then BD-275/276.",
+  "wave": "BD-273 + BD-274 RESOLVED. Full ownership feature landed: pack deletion-boundary hook/rule/canary + client no-dual-use mirror (C1 hook, C2 merge-safety, C3 rule) + audit fixes (pack derive-path test coverage, client handoff-root pack->pm boundary rename, README count). Full battery green. Feature complete.",
   "pending_decisions": [
-    "COMBINED audit returns -> Pack Chat triages findings (default fix-all) -> present triage -> fixes if any -> then flip BOTH BD-273 + BD-274 to Resolved (Pack-Chat-direct bookkeeping; implicit flip on clean batch).",
-    "PUSH after the audit + flips: origin is BEHIND (local ahead by four commits since the last push -- a session-state refresh, the C3 commit, the C2 commit, and this refresh). A push needs manifest-sync FIRST -- C3 shifted project-template trinity (v11 fixtures shift); C2 is test infra (verify whether fixtures shift). Run scripts/manifest-sync.sh before push; MANIFEST-CHANGED -> separate pack-only commit.",
-    "BD-275 (order-dependent test-v11-realistic-ot.sh flake) + BD-276 (systemic BSD-mktemp -t portability sweep): after BD-273/274 close.",
-    "Standing: push USER-MANUAL; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no other SHAs in prose, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
+    "PUSH: origin is BEHIND (local ahead by several commits since the last push -- BD-274 C2/C3, the audit-fix commit, and the BD-273/274 resolution bookkeeping). BEFORE pushing, run scripts/manifest-sync.sh -- the BD-274 C1 + the NIT-1 client-hook rename shifted v11 fixture inputs (project-template/scripts/pm-deletion-boundary.py); MANIFEST-CHANGED -> a separate pack-only manifest commit. Then push (user-approved) + confirm CI green across all jobs.",
+    "BROADER (user-flagged, NOT yet a BD): the word 'pack' on the client side (project-template/) has consistently led to boundary leaks; the user wants it used only when absolutely necessary. NIT-1 fixed the handoff-root. Remaining client 'pack' surfaces are structural/product (the project-template/docs/pack/ dir name, PACK-FEEDBACK.md, 'the Pack' product name) -- BD-scale renames, NOT opened. OFFER a scoped client-side 'pack'-mechanism-leak audit BD after BD-275/276 if the user wants it (no new BD without user ask).",
+    "BD-275 (order-dependent test-v11-realistic-ot.sh flake) + BD-276 (systemic BSD-mktemp -t portability sweep): the next queued items.",
+    "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no other SHAs in prose, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/ (pack side)."
   ],
-  "cycle_position": "All BD-274 waves LANDED (boundary = C2); BD-273 pack side landed. Combined BD-273/274 end-of-batch audit IN FLIGHT (final ownership-feature review). Next: audit triage -> flip both Resolved -> manifest-sync + push -> BD-275/276."
+  "cycle_position": "Ownership feature (BD-273 + BD-274) CLOSED + both RESOLVED at the audit-fix boundary. IDLE. Next: manifest-sync -> push (user-approved) -> BD-275/276."
 }
