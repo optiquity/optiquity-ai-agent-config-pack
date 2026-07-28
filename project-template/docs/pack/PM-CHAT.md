@@ -577,7 +577,12 @@ edits back:
    derives at runtime under a persistent location —
    `${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pack-handoff/<task>-<timestamp>/`
    — and injects the resolved absolute literal as `<handoff>`** plus the
-   report path inside it (`<handoff>/REPORT.md`).
+   report path inside it (`<handoff>/REPORT.md`). The handoff directory
+   is the agent's OWNED scratch dir: the agent writes its report and
+   scratch there and deletes or destructively overwrites nothing outside
+   it and the OS temp roots — never another agent's dir, a shared scratch
+   root, the working tree, or a broad glob. Cleanup of the owned dir
+   itself is the PM chat's/harness's job.
 2. **The read-write agent does its edits, runs the in-scope verification,
    writes its report to the handoff directory, and returns** — it emits
    **no** patch at this point and runs **zero** state-changing git verbs.
@@ -609,7 +614,11 @@ edits back:
 > orchestrator records each spawn (name, id, purpose, status) in a gitignored
 > per-clone ledger and re-finds a still-alive agent by name → id — only AFTER the
 > fresh-agent-default decision authorizes a re-engage (this is HOW to re-find, not
-> WHEN to reuse).
+> WHEN to reuse). In the same post-spawn action the PM chat also records the
+> `{agent_id, owned_dir}` mapping to
+> `${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pack-handoff/.pm-agent-owned-dirs.jsonl`
+> (append-only, per-machine, never committed) so the client deletion-boundary
+> hook can authorize deletes within that agent's owned dir.
 
 **Remove the worktree only AFTER the commit lands.** Each commit's first
 coder gets a fresh worktree; once that commit has landed (exit 0),

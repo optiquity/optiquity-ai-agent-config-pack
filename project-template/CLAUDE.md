@@ -387,7 +387,12 @@ of agent role.
   destructive and needs approval, including but not limited to the
   ones enumerated here. (Agents go further — an agent runs NO
   state-changing git verb at all; see the agent's own definition
-  file.)
+  file.) Each spawned agent OWNS one unique work dir (its
+  assigned handoff/scratch dir), writes all output there, and
+  deletes or destructively overwrites nothing outside that dir
+  and the OS temp roots — never another agent's dir, a shared
+  scratch root, the working tree, or a broad glob. Cleanup of
+  the owned dir is the PM chat's/harness's job.
 - **PM chat does not architect.** Architecture, planning,
   implementation, and review work goes to the corresponding agent.
   The full pack agent roster is at `docs/pack/PM-CHAT.md` §
