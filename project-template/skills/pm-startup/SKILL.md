@@ -232,23 +232,26 @@ commit-approval hook; `isolation_mode` is Claude-only enforcement. On Codex and
 Antigravity the modes are honored by salience — the PM chat applies the recorded
 value — but no hook backstops them.
 
-**(b) Hook-readiness canary (Claude-only).** Confirm both enforcement hooks still
-fire. Branch on `CLAUDECODE`: on a non-Claude CLI the hooks do not exist (report
-`n/a`); if the hook bodies are absent the feature is not built in this clone;
-else run a wiring probe (grep the tracked `.claude/settings.json`) plus a
+**(b) Hook-readiness canary (Claude-only).** Confirm all three enforcement hooks
+still fire. Branch on `CLAUDECODE`: on a non-Claude CLI the hooks do not exist
+(report `n/a`); if the hook bodies are absent the feature is not built in this
+clone; else run a wiring probe (grep the tracked `.claude/settings.json`) plus a
 function canary per body. The commit-gate canary drives the body through its
-`MODES_GATE_*` scratch seams, touching NO live config or token:
+`MODES_GATE_*` scratch seams and the deletion-boundary canary through its
+`DELBOUND_*` seams — a synthetic registry + synthetic temp root — touching NO
+live config, token, or filesystem:
 
 ```bash
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
 if [ "${CLAUDECODE:-}" = "1" ]; then
   ISO="$ROOT/scripts/pm-modes-enforce.py"
   GATE="$ROOT/scripts/pm-modes-commit-gate.py"
+  DEL="$ROOT/scripts/pm-deletion-boundary.py"
   SETTINGS="$ROOT/.claude/settings.json"
-  if [ ! -f "$ISO" ] || [ ! -f "$GATE" ]; then
+  if [ ! -f "$ISO" ] || [ ! -f "$GATE" ] || [ ! -f "$DEL" ]; then
     echo "modes enforce: hook body absent (feature not built in this clone)"
   else
-    if [ -f "$SETTINGS" ] && grep -q 'pm-modes-enforce.py' "$SETTINGS" && grep -q 'pm-modes-commit-gate.py' "$SETTINGS"; then
+    if [ -f "$SETTINGS" ] && grep -q 'pm-modes-enforce.py' "$SETTINGS" && grep -q 'pm-modes-commit-gate.py' "$SETTINGS" && grep -q 'pm-deletion-boundary.py' "$SETTINGS"; then
       wired="wired"
     else
       wired="wiring MISSING — restore .claude/settings.json"
@@ -261,10 +264,19 @@ if [ "${CLAUDECODE:-}" = "1" ]; then
     gp="$(printf '%s' "$gc" | MODES_GATE_CONFIG_FILE="$cfg" MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
     rm -f "$cfg"
     case "$gp" in *'"permissionDecision":"deny"'*) gate="commit-gate self-test PASS" ;; *) gate="commit-gate self-test FAIL — inspect scripts/" ;; esac
-    echo "modes enforce: $wired ($iso, $gate) — Claude-only"
+    dreg="$(mktemp)"; downed="/delbound-canary-owned"
+    printf '%s\n' '{"agent_id":"delbound-canary","owned_dir":"'"$downed"'"}' > "$dreg"
+    dc='{"tool_name":"Bash","agent_id":"delbound-canary","cwd":"'"$downed"'","tool_input":{"command":"rm -rf /delbound-canary-root/bd257-*"}}'
+    dp="$(printf '%s' "$dc" | DELBOUND_REGISTRY_FILE="$dreg" DELBOUND_TEMP_ROOTS="/delbound-canary-tmp" python3 "$DEL" 2>/dev/null)"
+    ac='{"tool_name":"Bash","agent_id":"delbound-canary","cwd":"'"$downed"'","tool_input":{"command":"rm -rf '"$downed"'/scratch && rm -rf /delbound-canary-tmp/x && rm -rf \"$WORK\""}}'
+    ap="$(printf '%s' "$ac" | DELBOUND_REGISTRY_FILE="$dreg" DELBOUND_TEMP_ROOTS="/delbound-canary-tmp" python3 "$DEL" 2>/dev/null)"
+    rm -f "$dreg"
+    del="deletion-boundary self-test FAIL — inspect scripts/"
+    case "$dp" in *'"permissionDecision":"deny"'*) case "$ap" in *'"permissionDecision":"deny"'*) : ;; *) del="deletion-boundary self-test PASS" ;; esac ;; esac
+    echo "modes enforce: $wired ($iso, $gate, $del) — Claude-only"
   fi
 else
-  echo "modes enforce: n/a (non-Claude CLI — isolation_mode and the commit-gate hook are Claude-only)"
+  echo "modes enforce: n/a (non-Claude CLI — isolation_mode + the hooks are Claude-only)"
 fi
 ```
 
@@ -295,7 +307,7 @@ Output a summary in exactly this format:
 **Skills profile:** [project type from PLATFORM-SKILLS.md — e.g., "iOS Swift app" or "Python gRPC server"]
 **Active skills:** [list from project context file, or "not set — populate during kickoff"]
 **RAG:** [diff from Step 4 — one of: "N ingested, N stale, N orphans" / "N ingested, N stale, N orphans removed: [<paths>]" / "N ingested, stale=N/A (timestamp unavailable; re-ingested unconditionally), N orphans" / "not available — skipped" / "manifest not found — skipped" (defect — surface to developer) / "manifest target missing — run install/migration" (manifest path not on disk; surface to developer)]
-**Modes:** [from the Step 6 Modes readiness step — `review=<r>, intervention=<i>, isolation=<s>; enforce: <readiness>`, where <readiness> is one of: `wired (isolation self-test PASS, commit-gate self-test PASS) — Claude-only` / `wired (isolation self-test PASS, commit-gate self-test FAIL — inspect) — Claude-only` / `wiring MISSING — restore .claude/settings.json` / `hook body absent (feature not built in this clone)` / `n/a (non-Claude CLI)`]
+**Modes:** [from the Step 6 Modes readiness step — `review=<r>, intervention=<i>, isolation=<s>; enforce: <readiness>`, where <readiness> is one of: `wired (isolation self-test PASS, commit-gate self-test PASS, deletion-boundary self-test PASS) — Claude-only` / `wired (isolation self-test PASS, commit-gate self-test PASS, deletion-boundary self-test FAIL — inspect) — Claude-only` / `wiring MISSING — restore .claude/settings.json` / `hook body absent (feature not built in this clone)` / `n/a (non-Claude CLI)`]
 **Resume:** [from `docs/project/pm-session-state.json` — `no resume frontier — fresh session` if absent, else `active: <work item> @ <sub-step>; in-flight: <agents to re-spawn>; queue: <order>; mode: <serial|parallel>; pending: <decisions>; cycle: <position>; boundary <sha8>`]
 
 **Awaiting instructions.**

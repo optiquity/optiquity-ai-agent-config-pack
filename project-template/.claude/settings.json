@@ -42,6 +42,15 @@
             "command": "python3 ./scripts/pm-modes-commit-gate.py"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ./scripts/pm-deletion-boundary.py"
+          }
+        ]
       }
     ],
     "PostToolUse": [

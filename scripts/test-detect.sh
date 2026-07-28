@@ -666,7 +666,7 @@ for n in 1 2 3 4; do echo "x = 1" > "$fx/src/mod${n}.py"; done
 assert_eq "4 non-test .py files with no data imports → no" \
     "python-data: no" "$(python_data_marker_detected "$fx")"
 
-# BD-257: the pack ships 3 PM tooling scripts (pm-*.py) into the client
+# BD-257: the pack ships PM tooling scripts (pm-*.py) into the client
 # `scripts/` dir. Those must NOT inflate the marker-(b) count. A client
 # with 3 pack pm-*.py in scripts/ + only 2 of its OWN .py and no data
 # deps must return `no` (own count 2 < 5). Before the anchored
