@@ -1,20 +1,18 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "4edd209",
+  "boundary_commit": "a5ca32c",
   "checkpoint": "2026-07-28T00:00:00Z",
-  "active": ["BD-257", "BD-273"],
-  "in_flight_agents": [
-    "coder-bd257-c2 -- BD-257 WAVE C2 (FINAL: help_fragments.py NEW Check 90 client /pm-* HELP-FRAGMENT<->skill parity single-root + core.py registry count 86->87 + NEW test-validate-pack-check-90.sh; pack-only; check+count+test lock-step) (RW, isolated worktree)"
-  ],
-  "queue": ["BD-274", "BD-275", "BD-276", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "BD-257 C1 LANDED (unpushed since the CI-green push at the prior boundary). C2 in flight -> completes BD-257. Then BD-274 client C-waves -> combined BD-273/274 audit. BD-275/276 after.",
-  "wave": "Stack PUSHED + CI-green through the detection fix + manifest (origin behind by C1 + session-state now). BD-273 pack side COMPLETE. BD-257: A1+B1+B2+B4+B3 + detection fix + C1 LANDED. C2 (Check 90 client /pm-* parity + registry count 86->87 + test) IN FLIGHT -> completes BD-257. Check 90 should PASS on arrival (C1 pre-satisfied the parity 10/10). Then BD-274 client ownership (GATE re-verify -> C1 client hook + OI-R4 pm-startup extension -> C2 || C3).",
+  "active": ["BD-273", "BD-274"],
+  "in_flight_agents": [],
+  "queue": ["BD-275", "BD-276", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
+  "parallelization": "No agents live. BD-257 RESOLVED. BD-273 pack ownership COMPLETE (held Open for the combined BD-274 audit). Next: BD-274 client ownership C-waves -> combined BD-273/274 audit -> flip both. BD-275/276 after.",
+  "wave": "BD-257 RESOLVED: all 10 client /pm-* commands + execution foundations across 7 waves A1..C2 + the B3 language-detection regression fix + fixture manifest, each reviewed CLEAN, CI green through the detection fix. BD-273 PACK SIDE COMPLETE (P1+P2+P3), held Open for the combined ownership audit. Next: BD-274 client ownership (GATE re-verify: settings.json/pm-refresh/project-trinity/PM-CHAT unchanged since their BD-257 landings -> C1 client pm-deletion-boundary hook + settings element + pack-side unit test + pm-refresh canary + OI-R4 client pm-startup readiness EXTENSION (extends the pm-startup Modes step BD-257 C1 added, with the deletion-boundary canary) -> C2 || C3) -> combined BD-273/274 end-of-batch audit -> flip BOTH Resolved.",
   "pending_decisions": [
-    "BD-257 C2: coder in flight -> bounded review/fix -> user C2 commit approval. C2 is the FINAL BD-257 wave; on landing, BD-257 can flip to Resolved (implicit-status-flip after a clean batch).",
-    "BD-257 RESOLUTION: after C2 lands clean, flip BD-257 to Resolved (per implicit-status-flip: batch reviews+fixes clean + tests green).",
-    "BD-274 CLIENT C-waves: GATE re-verify (settings.json + pm-refresh + project-trinity + PM-CHAT unchanged since their BD-257 landings) -> C1 (client pm-deletion-boundary hook + settings element + pack-side unit test + pm-refresh canary + OI-R4 client pm-startup readiness EXTENSION -- extends the pm-startup Modes step C1 added, with the deletion-boundary canary) -> C2 || C3. Then combined BD-273/274 audit -> flip both.",
+    "PUSH CHECKPOINT (unpushed since the last CI-green push: C1 + C2 + BD-257 resolution + session-state): a push needs manifest-sync FIRST -- BD-257 C1 changed shipped project-template content (HELP-FRAGMENT + pm-startup), which shifts the v11 built fixtures; run scripts/manifest-sync.sh before git push else CI build.sh --verify fails. Decide push-to-validate-now vs proceed-to-BD-274.",
+    "BD-274 CLIENT C-waves: GATE re-verify -> C1 (client hook + OI-R4 pm-startup extension) -> C2 (client customization-preserve fixture + migrator) || C3 (client trinity rule + PM-CHAT). Then combined BD-273/274 audit -> flip both.",
+    "BD-273 RESOLUTION: HELD Open; flips WITH BD-274 after the combined end-of-batch ownership audit.",
     "BD-275 (order-dependent test flake) + BD-276 (systemic mktemp -t sweep): after BD-274.",
-    "Standing: push USER-MANUAL (origin in sync through the detection fix; a future push needs manifest-sync IF a fixture input changed -- C1/C2 do not change fixtures); NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
+    "Standing: push USER-MANUAL (run manifest-sync first when a shipped/fixture input changed); NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-257 C1 LANDED + worktree torn down. C2 coder in flight (final BD-257 wave). Next: C2 review + commit; then BD-257 Resolved; then BD-274."
+  "cycle_position": "BD-257 RESOLVED (7 waves + detection fix landed, C2 worktree torn down). No agents live. Next: push checkpoint decision, then BD-274 client ownership C-waves."
 }
