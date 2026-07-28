@@ -23,7 +23,6 @@
 - [BD-236](./BD-236.md) — Project-side agent-def discipline-parity guards are incomplete (Check 57 covers 8 of the 13 enumerated git verbs; Check 11 cross-surface symmetry is informational-only) — investigate + design a coherent project-side parity-enforcement strategy
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
-- [BD-257](./BD-257.md) — Add net-new + review/refresh existing client (project-side) slash commands + their execution foundation (brainstorm-gated; project-side analog of BD-224)
 - [BD-273](./BD-273.md) — Pack-side agent-scratch ownership isolation + deletion-boundary guard (pack dev-workflow safety)
 - [BD-274](./BD-274.md) — Project-side (client) agent-scratch ownership isolation (client deliverable analog of BD-273)
 - [BD-275](./BD-275.md) — Order-dependent test-v11-realistic-ot.sh (serial-suite flake; passes isolated)
@@ -261,6 +260,7 @@
 - [BD-253](./BD-253.md) — Project-side resumable session-state mechanism (PM-Chat; reconcile with existing `_index.md` / `STATUS.md` state; same transferability + no-CLI-memory rules as BD-252)
 - [BD-255](./BD-255.md) — Systemic multi-surface-consistency defect-class fix: doc↔constant drift prevention + declare-verify hardening + cross-BD collision detection + memory/session-state quartet verification (single pack+project BD)
 - [BD-256](./BD-256.md) — Modularize validate-pack.py — split the 80-check monolith into per-category modules so isolated check-BDs stop colliding on one file and can parallelize
+- [BD-257](./BD-257.md) — Add net-new + review/refresh existing client (project-side) slash commands + their execution foundation (brainstorm-gated; project-side analog of BD-224)
 - [BD-258](./BD-258.md) — Deterministic large-BD/large-phase pipeline: researcher-always-first + mandatory adversarial passes + reconciliation-only-if-findings; strip "optional/discretionary" wording (pack + project symmetric)
 - [BD-259](./BD-259.md) — Bring shipped `project-template/` operating docs into compliance with the shipped client doc-gate (`validate-docs.sh` full-scan is RED at baseline)
 - [BD-260](./BD-260.md) — Add the `work` earliest pre-launch release-state qualifier (before `alpha`) to the versioning scheme (BD-242 successor)
