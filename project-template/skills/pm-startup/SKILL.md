@@ -77,7 +77,7 @@ Read these in full:
   continue). When present, note the active work + sub-step, the in-flight
   agents to re-spawn, the queue order + parallelization mode, the pending
   decisions, the review/fix-cycle position, and the boundary commit, and
-  surface them on the Step 6 `**Resume:**` line. The PM chat primes from
+  surface them on the Step 7 `**Resume:**` line. The PM chat primes from
   the frontier only — it never auto-spawns; re-spawning in-flight agents
   waits for the developer's approval.
 
@@ -87,7 +87,7 @@ Identify the current phase from STATUS, then read only that phase's entry
 (`docs/project/implementation-plan/phase-N.md`).
 
 Read the groupings contract (`docs/project/groupings/_rules.md`) and list the
-`docs/project/groupings/` tree, then compute the groupings counts for Step 6:
+`docs/project/groupings/` tree, then compute the groupings counts for Step 7:
 
 ```bash
 . scripts/groupings-lib.sh && \
@@ -97,7 +97,7 @@ Read the groupings contract (`docs/project/groupings/_rules.md`) and list the
 The output is one `N=<n> M=<m> K=<k>` row — N = real groupings declared,
 M = living phases in no grouping, K = declared stays-ungrouped living
 phases (superseded phases are excluded from M and K). If the library or
-the tree is missing, note "Groupings: not provisioned" for Step 6.
+the tree is missing, note "Groupings: not provisioned" for Step 7.
 
 Read the first 5 lines of `METHODOLOGY.md` to get the version number.
 
@@ -124,7 +124,7 @@ The RAG manifest in `docs/pack/PM-CHAT.md` § RAG ingestion manifest
 is authoritative for which files belong in the local-rag index.
 This step reconciles the actual ingested set against the manifest:
 **orphans are auto-deleted, stale entries are re-ingested, the diff
-is reported in the Step 6 summary.**
+is reported in the Step 7 summary.**
 
 **Why this matters.** Orphan chunks (paths in the index but not in
 the manifest) are not benign — the retriever returns them on
@@ -167,7 +167,7 @@ for Antigravity):
 5. **For each stale or missing manifest path:** call `local-rag`
    `delete` (no-op if missing, clears stale chunks if stale)
    followed by `local-rag` `ingest`.
-6. **Record the diff** for inclusion in the Step 6 startup summary.
+6. **Record the diff** for inclusion in the Step 7 startup summary.
    Format: `RAG: N ingested, N stale, N orphans removed: [<paths>]`
    (or `RAG: N ingested, 0 stale, 0 orphans` for the clean case).
 
@@ -175,19 +175,19 @@ for Antigravity):
 without the optional MCP block, Antigravity without `local-rag` configured,
 or first-time-on-this-machine before the embedding model is
 downloaded), skip this step and report `RAG: not available — skipped`
-in the Step 6 summary. Do not block startup on RAG availability.
+in the Step 7 summary. Do not block startup on RAG availability.
 
 **If the manifest is missing or malformed** (e.g., the `## RAG
 ingestion manifest` section has been removed from PM-CHAT.md), skip
 this step and report `RAG: manifest not found — skipped` in the
-Step 6 summary. Surface this as a defect to the developer in the
+Step 7 summary. Surface this as a defect to the developer in the
 report so they know to restore the manifest.
 
 **If a manifest path does not exist on disk** (e.g., the manifest
 declares `docs/pack/METHODOLOGY.md` but the project has not yet run
 the install copy step that creates it), skip ingest for that
 specific path and report `RAG: manifest target missing — run
-install/migration` in the Step 6 summary. This is the expected
+install/migration` in the Step 7 summary. This is the expected
 first-run state on a project that has not yet installed
 `docs/pack/METHODOLOGY.md`. Surface it to
 the developer so they run `init-project.sh` (new install) or the
@@ -202,7 +202,80 @@ grep -rn "TD-TBD" . --include="*.swift" --include="*.py" --include="*.md" \
 
 Any result is a defect requiring immediate attention before proceeding.
 
-## Step 6 — Report current state
+## Step 6 — Modes readiness (Claude-only enforcement; LOCAL, never fails startup)
+
+Surface the active operating modes and confirm the Claude-only enforcement hooks
+still fire. LOCAL only — no CI gate, no committed sentinel; it NEVER fails the
+session (it reports absent / wiring MISSING / self-test FAIL / n/a; it does not
+error). Its output feeds the Step-7 report's `**Modes:**` line. This step writes
+no file, no config, and no settings.
+
+**(a) Echo the active modes.** Read the three mode values from the per-clone PM
+session config, folding an absent / malformed / unreachable config to the family
+defaults (`itemized` / `full` / `read-write-only`) per
+`docs/pack/PM-OPERATING-MODES.md` § "Reading the config". Read only — never write
+the config here.
+
+```bash
+cfg="$(git rev-parse --show-toplevel 2>/dev/null)/docs/project/pm-session-config.json"
+rm=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("review_mode","itemized"))' "$cfg" 2>/dev/null || echo itemized)
+im=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("intervention_mode","full"))' "$cfg" 2>/dev/null || echo full)
+sm=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("isolation_mode","read-write-only"))' "$cfg" 2>/dev/null || echo read-write-only)
+echo "modes: review=$rm intervention=$im isolation=$sm"
+```
+
+Re-state each value's behavior from the matching table in
+`docs/pack/PM-OPERATING-MODES.md` (that doc is the SSOT — do not re-derive it
+here). Note the per-CLI enforcement split: `review_mode` is cross-CLI salience
+only (no hook); `intervention_mode` is cross-CLI salience with a Claude-only
+commit-approval hook; `isolation_mode` is Claude-only enforcement. On Codex and
+Antigravity the modes are honored by salience — the PM chat applies the recorded
+value — but no hook backstops them.
+
+**(b) Hook-readiness canary (Claude-only).** Confirm both enforcement hooks still
+fire. Branch on `CLAUDECODE`: on a non-Claude CLI the hooks do not exist (report
+`n/a`); if the hook bodies are absent the feature is not built in this clone;
+else run a wiring probe (grep the tracked `.claude/settings.json`) plus a
+function canary per body. The commit-gate canary drives the body through its
+`MODES_GATE_*` scratch seams, touching NO live config or token:
+
+```bash
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ "${CLAUDECODE:-}" = "1" ]; then
+  ISO="$ROOT/scripts/pm-modes-enforce.py"
+  GATE="$ROOT/scripts/pm-modes-commit-gate.py"
+  SETTINGS="$ROOT/.claude/settings.json"
+  if [ ! -f "$ISO" ] || [ ! -f "$GATE" ]; then
+    echo "modes enforce: hook body absent (feature not built in this clone)"
+  else
+    if [ -f "$SETTINGS" ] && grep -q 'pm-modes-enforce.py' "$SETTINGS" && grep -q 'pm-modes-commit-gate.py' "$SETTINGS"; then
+      wired="wired"
+    else
+      wired="wiring MISSING — restore .claude/settings.json"
+    fi
+    ic='{"tool_name":"Agent","cwd":"'"$ROOT"'","tool_input":{"subagent_type":"coder","name":"pm-startup-iso-canary"}}'
+    ip="$(printf '%s' "$ic" | python3 "$ISO" 2>/dev/null)"
+    case "$ip" in *'"permissionDecision":"deny"'*) iso="isolation self-test PASS" ;; *) iso="isolation self-test FAIL — inspect scripts/" ;; esac
+    cfg="$(mktemp)"; printf '%s\n' '{"schema":"pm-session-config/1","intervention_mode":"full"}' > "$cfg"
+    gc='{"tool_name":"Bash","cwd":"'"$ROOT"'","tool_input":{"command":"git commit -m canary"}}'
+    gp="$(printf '%s' "$gc" | MODES_GATE_CONFIG_FILE="$cfg" MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
+    rm -f "$cfg"
+    case "$gp" in *'"permissionDecision":"deny"'*) gate="commit-gate self-test PASS" ;; *) gate="commit-gate self-test FAIL — inspect scripts/" ;; esac
+    echo "modes enforce: $wired ($iso, $gate) — Claude-only"
+  fi
+else
+  echo "modes enforce: n/a (non-Claude CLI — isolation_mode and the commit-gate hook are Claude-only)"
+fi
+```
+
+On a fault, REPORT + OFFER — never auto-mutate. A canary FAIL means a broken
+tracked hook body; the fix is a git-level restore (a user action) — report it,
+do not run a git verb. Wiring MISSING means the tracked `.claude/settings.json`
+was edited away — report it and point to restoring that file. Combine the two
+outputs for the Step-7 report's `**Modes:**` line: `review=<r>, intervention=<i>,
+isolation=<s>; enforce: <the canary result>`.
+
+## Step 7 — Report current state
 
 Read the project name from the heading at the top of `PM-CHAT.md` — it will be
 the first `#` heading (e.g., `# YourProject — PM Chat Instructions`).
@@ -222,6 +295,7 @@ Output a summary in exactly this format:
 **Skills profile:** [project type from PLATFORM-SKILLS.md — e.g., "iOS Swift app" or "Python gRPC server"]
 **Active skills:** [list from project context file, or "not set — populate during kickoff"]
 **RAG:** [diff from Step 4 — one of: "N ingested, N stale, N orphans" / "N ingested, N stale, N orphans removed: [<paths>]" / "N ingested, stale=N/A (timestamp unavailable; re-ingested unconditionally), N orphans" / "not available — skipped" / "manifest not found — skipped" (defect — surface to developer) / "manifest target missing — run install/migration" (manifest path not on disk; surface to developer)]
+**Modes:** [from the Step 6 Modes readiness step — `review=<r>, intervention=<i>, isolation=<s>; enforce: <readiness>`, where <readiness> is one of: `wired (isolation self-test PASS, commit-gate self-test PASS) — Claude-only` / `wired (isolation self-test PASS, commit-gate self-test FAIL — inspect) — Claude-only` / `wiring MISSING — restore .claude/settings.json` / `hook body absent (feature not built in this clone)` / `n/a (non-Claude CLI)`]
 **Resume:** [from `docs/project/pm-session-state.json` — `no resume frontier — fresh session` if absent, else `active: <work item> @ <sub-step>; in-flight: <agents to re-spawn>; queue: <order>; mode: <serial|parallel>; pending: <decisions>; cycle: <position>; boundary <sha8>`]
 
 **Awaiting instructions.**

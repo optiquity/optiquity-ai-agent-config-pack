@@ -10,6 +10,14 @@ Verb manifest for **this project**. Run `/pm-help` in your CLI, or
 |---|---|
 | `/pm-startup` | Bootstrap a PM Chat session — sync repo, read state, run TD-TBD check, report. Run first in new sessions. |
 | `/pm-help` | Print this fragment in your CLI. `bash scripts/pm-help.sh` is identical. |
+| `/pm-status` | Quick project-state snapshot — repo state, live frontier, active modes, backlog, next queue. No sync, no full startup. |
+| `/pm-refresh` | Re-warm live rules + PM-session state to the front of context mid-session. No sync, no history reset. |
+| `/pm-dashboard` | Render the frontier dashboard, publish it to claude.ai in the foreground, and record its URL. |
+| `/pm-review-mode` | Select how surfaced open items are presented — itemized / full / hybrid / none. |
+| `/pm-intervention-mode` | Select the pause/surface gate posture — full / pre-coder / ambiguity / none. (Claude-only enforcement) |
+| `/pm-isolation-mode` | Select which agent classes spawn into an isolated worktree — read-write-only / full. (Claude-only enforcement) |
+| `/pm-groupings` | Query phase groupings — list / membership / deps / order / shared-with. Read-only. |
+| `/pm-target-sweep` | Release-boundary target sweep — enumerate / overdue / re-encode-set / kind-set. Read-only. |
 | `bash scripts/init-project.sh` | One-time setup. `--update` refreshes pack files non-destructively. |
 | `bash scripts/migrate-v10-to-v11.sh` | One-time per upgrade. |
 | `bash scripts/activate-capability.sh` | Activate a supported capability on this project — re-materializes its conditional files from `pack-capability-pool/`. |
