@@ -1,20 +1,18 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "98a4636",
+  "boundary_commit": "97c8659",
   "checkpoint": "2026-07-28T00:00:00Z",
-  "active": ["BD-257", "BD-273", "BD-274"],
-  "in_flight_agents": [
-    "coder-bd257-d-migrate -- BD-257 D1 (migrator glob-diff net-new-skill fanout, deletes both stale sites, git-ls-files self-maintaining, honors project-deleted-pack-kept) + D2 (self-maintaining install+migrate skill-presence tests, RED-before/GREEN-after, OI-2 seed a v10 skill for deletion-honoring) + Slice-2 safe-no-op runner-runs; pack-only (RW, isolated worktree)"
-  ],
+  "active": ["BD-273", "BD-274"],
+  "in_flight_agents": [],
   "queue": ["BD-275", "BD-276", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "BD-257 re-opened. D1+D2 coder in flight. BD-274 C1 reviewed CLEAN + HELD. Sequence: D1+D2 land -> BD-274 C1 HELD commit + remaining C-waves (C2 || C3) -> combined BD-273/274 audit -> flip both -> re-resolve BD-257. BD-275/276 after.",
-  "wave": "BD-257 RE-OPENED for the install/migrate coverage gap (migrator dropped 9 net-new skills). D1/D2 DESIGN approved (glob-diff Option b + self-maintaining tests + OI-2 seed; scripts/settings migrate fine via existing sweep/transform -- only skills were the gap). D1+D2 coder in flight (bounded pack-only). BD-274 C1 DONE + reviewed CLEAN (client pm-deletion-boundary hook no-dual-use mirror + settings element + test 31/0 + pm-refresh/pm-startup canary extensions + a test-detect.sh 4th-.py comment fix), commit HELD in its worktree until D1+D2 land (so BD-274's artifacts install/migrate correctly). BD-273 pack held for combined audit.",
+  "parallelization": "No agents live. BD-257 RE-RESOLVED (D1+D2 coverage verified). BD-274 C1 LANDED. BD-273 pack held. Next: BD-274 C2 || C3 (parallel worktree waves) -> combined BD-273/274 end-of-batch audit -> flip BOTH Resolved. BD-275/276 after.",
+  "wave": "BD-257 RE-RESOLVED: the user caught a real install/migrate coverage gap (migrator dropped 9 net-new skills); D1 (self-maintaining glob-diff migrator fanout, deletes both stale sites, honors deletions) + D2 (install+migrate skill-coverage tests, RED-before/GREEN-after, e2e reviewer-reproduced: all 16 net-new skills land in 3 homes) LANDED + reviewed CLEAN. BD-274 C1 LANDED (client pm-deletion-boundary hook no-dual-use mirror + settings element + test 31/0 + pm-refresh/pm-startup canary extensions). BD-273 pack side COMPLETE (held). Remaining BD-274: C2 (client customization-preserve fixture + migrator hook-merge verification; pack-only) || C3 (client trinity 'no destructive ops' rule + PM-CHAT clauses; project-only). Then combined BD-273/274 audit -> flip both.",
   "pending_decisions": [
-    "BD-257 D1+D2: coder in flight -> bounded review/fix -> user D commit approval. Then re-resolve BD-257 after D1+D2 land + verify (per the re-open note).",
-    "BD-274 C1: reviewed CLEAN (in worktree agent-based at the pre-D boundary); HELD commit -- apply + commit AFTER D1+D2 land (its files are disjoint from D1+D2: client hook/settings/skills/test-detect vs migrator/init-test/migrate-test). Then BD-274 remaining: C2 (customization-preserve fixture + migrator hook-merge) || C3 (client trinity rule + PM-CHAT).",
-    "BD-273 RESOLUTION: HELD Open; flips WITH BD-274 after the combined end-of-batch ownership audit.",
+    "PUSH CHECKPOINT: unpushed since the last CI-green push = D1+D2 + BD-274 C1 + BD-257 re-open/re-resolve + session-state. A push needs manifest-sync FIRST -- BD-274 C1 changed shipped project-template content (settings.json + pm-deletion-boundary.py + pm-refresh/pm-startup skills) which shifts the built v11 fixtures. Decide push-to-validate-now vs proceed-to-BD-274-C2/C3.",
+    "BD-274 C2 || C3: C2 (extend test-customization-preserve.sh + migrator settings.json-merge verification for the new client hook element; pack-only) || C3 (project-template trinity 'No destructive operations' rule + PM-CHAT ownership clauses; project-only). Each its own bounded review/fix + per-commit approval. C3-START re-verify: project trinity + PM-CHAT still at their BD-257 landing SHAs before authoring C3.",
+    "COMBINED BD-273/274 end-of-batch audit after C2/C3 land: one fresh reviewer over the FULL ownership feature (pack BD-273 + client BD-274) for pack<->client consistency + no-dual-use, then flip BOTH BD-273 + BD-274 to Resolved.",
     "BD-275 (order-dependent test flake) + BD-276 (systemic mktemp -t sweep): after BD-274.",
-    "Standing: push USER-MANUAL (origin CI-green at the prior push; unpushed = re-open + D-work; a push needs manifest-sync IF a fixture input changed -- D2 seeds a v10 skill into a TEST fixture, not the built v11 fixtures, so likely no manifest change, verify); NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
+    "Standing: push USER-MANUAL (run manifest-sync first -- BD-274 C1 shifted the v11 fixtures); NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-257 D1+D2 coder in flight (migrate/install coverage fix). BD-274 C1 reviewed CLEAN + commit HELD. Next: D1+D2 review + commit; then unhold BD-274 C1 commit."
+  "cycle_position": "BD-257 RE-RESOLVED (install/migrate coverage fixed + verified). BD-274 C1 landed. No agents live. Next: push checkpoint decision, then BD-274 C2 || C3."
 }
