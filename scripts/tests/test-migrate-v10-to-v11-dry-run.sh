@@ -407,6 +407,69 @@ done
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────
+# Group 8 (BD-273-OWNERSHIP-ISOLATION-AS-BUILT.md §6 "Wiring") — migrator merges the NEW client
+# deletion-boundary PreToolUse[Bash] hook ELEMENT into a CUSTOMIZED client
+# .claude/settings.json WITHOUT clobbering project hooks/permissions or
+# duplicating.
+#
+# The migrator routes `.claude/settings.json` as class `claude-settings`
+# action `transform` (the manifest transform row in migrate-v10-to-v11.sh), dispatched
+# through customization_preserve → merge-json.py — the SAME merge_list
+# element-keying path test-customization-preserve.sh Group 3 exercises. This
+# is the regression assertion that the v11 client hook (BD-274 C1 wiring)
+# rides the migrator cleanly for a customized client, and that project hooks/
+# permissions are preserved (no clobber).
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 8: BD-274 client hook-element migrator merge ===\n"
+
+T=$(make_v10_target)
+# Customize the client settings.json: start from the v10 template (which has
+# NO PreToolUse hooks — pm-modes + deletion-boundary are all v11 additions),
+# then add a PROJECT permission + a PROJECT PostToolUse hook element. These
+# are realistic v10 customizations that must survive the migration untouched.
+git -C "$REPO_ROOT" show v10:project-template/.claude/settings.json \
+    > "$T/.claude/settings.json" 2>/dev/null
+python3 - "$T/.claude/settings.json" <<'PYEOF'
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p))
+d["permissions"]["allow"].append("Bash(mytool *)")
+d["hooks"].setdefault("PostToolUse", []).append(
+    {"matcher": "Read",
+     "hooks": [{"type": "command", "command": "./scripts/x-project-audit.sh"}]})
+json.dump(d, open(p, "w"), indent=2)
+PYEOF
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "v10 customized settings.json" 2>/dev/null
+
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1 ; rc=$?
+assert_eq "8.0 setup --dry-run rc=0" "0" "$rc"
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply "$T" 2>&1) ; rc=$?
+assert_eq "8.1 --apply rc=0 (customized settings.json merges clean)" "0" "$rc"
+[[ -f "$T/.pack-migrate-v10-to-v11/sentinels/stage-S6.done" ]] \
+    && t_pass "8.1 --apply completed through S6 (no reconciliation pause)" \
+    || t_fail "8.1 stage-S6.done missing (settings.json merge paused?)"
+
+M="$T/.claude/settings.json"
+merged=$(cat "$M")
+# The v11 client deletion-boundary hook ELEMENT is adopted (C1 wiring rides
+# the migrator). BITES on C1's separate-element wiring — absent it, count 0.
+assert_contains "8.2 deletion-boundary hook element adopted" \
+    "$merged" "pm-deletion-boundary.py"
+assert_contains "8.2 commit-gate hook element adopted" \
+    "$merged" "pm-modes-commit-gate.py"
+# Project customizations preserved (no clobber of project hooks/permissions).
+assert_contains "8.3 project permission preserved" "$merged" "mytool"
+assert_contains "8.3 project PostToolUse hook preserved" "$merged" "x-project-audit.sh"
+# No duplication: each new hook element appears exactly once.
+db=$(grep -c 'pm-deletion-boundary.py' "$M")
+assert_eq "8.4 deletion-boundary appears exactly once" "1" "$db"
+cg=$(grep -c 'pm-modes-commit-gate.py' "$M")
+assert_eq "8.4 commit-gate appears exactly once" "1" "$cg"
+rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────────────
 

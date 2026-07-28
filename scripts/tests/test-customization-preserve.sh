@@ -260,6 +260,117 @@ assert_contains "3.1 pack-new-perm added"    "$merged" "pack-new-perm"
 
 rm -rf "$T3"
 
+# ── 3.2 (BD-273-OWNERSHIP-ISOLATION-AS-BUILT.md §6 "Wiring"): pack adds a NEW PreToolUse[Bash] hook as its
+#    OWN array ELEMENT (the client deletion-boundary element). The
+#    claude-settings structured merge (merge-json.py `merge_list`, which keys
+#    array elements by whole-element JSON) must: ADOPT the new element
+#    (added_by_pack), PRESERVE a project-customized commit-gate element (its own
+#    `ours` key), PRESERVE a project's OWN separate hook element + permission,
+#    and produce NO duplicate commit-gate. This is the load-bearing merge-safety
+#    property behind wiring the client deletion-boundary hook as a SEPARATE
+#    element rather than appending its command INTO the commit-gate element
+#    (per BD-273-OWNERSHIP-ISOLATION-AS-BUILT.md §6 "Wiring").
+T3B=$(mktemp -d -t cp-json-hook.XXXXXX)
+state="$T3B/state"
+setup_state "$state"
+
+# BASE: pack baseline PreToolUse = [Agent+enforce, Bash+commit-gate]; no
+# deletion-boundary element yet; stock single permission.
+cat > "$T3B/base.json" <<'EOF'
+{
+  "permissions": { "allow": ["Bash(base-perm)"] },
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Agent", "hooks": [ { "type": "command", "command": "python3 ./scripts/pm-modes-enforce.py" } ] },
+      { "matcher": "Bash",  "hooks": [ { "type": "command", "command": "python3 ./scripts/pm-modes-commit-gate.py" } ] }
+    ]
+  }
+}
+EOF
+# OURS: project CUSTOMIZED the commit-gate element (extra project command
+# INSIDE it) + added its OWN Write-matcher hook element + a project permission.
+cat > "$T3B/ours.json" <<'EOF'
+{
+  "permissions": { "allow": ["Bash(base-perm)", "Bash(project-perm)"] },
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Agent", "hooks": [ { "type": "command", "command": "python3 ./scripts/pm-modes-enforce.py" } ] },
+      { "matcher": "Bash",  "hooks": [ { "type": "command", "command": "python3 ./scripts/pm-modes-commit-gate.py" }, { "type": "command", "command": "./scripts/x-project-gate.sh" } ] },
+      { "matcher": "Write", "hooks": [ { "type": "command", "command": "./scripts/x-project-write-hook.sh" } ] }
+    ]
+  }
+}
+EOF
+# THEIRS: pack v11 adds the deletion-boundary hook as its OWN Bash-matcher
+# array element (BD-273-OWNERSHIP-ISOLATION-AS-BUILT.md §6 "Wiring") alongside the stock two.
+cat > "$T3B/theirs.json" <<'EOF'
+{
+  "permissions": { "allow": ["Bash(base-perm)"] },
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Agent", "hooks": [ { "type": "command", "command": "python3 ./scripts/pm-modes-enforce.py" } ] },
+      { "matcher": "Bash",  "hooks": [ { "type": "command", "command": "python3 ./scripts/pm-modes-commit-gate.py" } ] },
+      { "matcher": "Bash",  "hooks": [ { "type": "command", "command": "python3 ./scripts/pm-deletion-boundary.py" } ] }
+    ]
+  }
+}
+EOF
+cp "$T3B/ours.json" "$T3B/dest.json"
+customization_preserve "$T3B/base.json" "$T3B/ours.json" "$T3B/theirs.json" \
+    ".claude/settings.json" "$T3B/dest.json" claude-settings >/dev/null
+last=$(tail -1 "$state/dispositions.tsv")
+# real-merge-required (both sides changed) → structured key-level merge.
+assert_contains "3.2 disposition recorded (merged)" "$last" "merged"
+merged=$(cat "$T3B/dest.json")
+# New pack hook ELEMENT adopted (added_by_pack).
+assert_contains "3.2 deletion-boundary element adopted" "$merged" "pm-deletion-boundary.py"
+# Project-customized commit-gate element preserved (its extra command survives).
+assert_contains "3.2 project commit-gate customization preserved" "$merged" "x-project-gate.sh"
+# Project's OWN separate hook element preserved.
+assert_contains "3.2 project own hook element preserved" "$merged" "x-project-write-hook.sh"
+# Project permission preserved.
+assert_contains "3.2 project permission preserved" "$merged" "project-perm"
+# NO duplicate: exactly ONE commit-gate occurrence (the customized element;
+# the base plain element was superseded by the project's own edit).
+cg_count=$(grep -c 'pm-modes-commit-gate.py' "$T3B/dest.json")
+assert_eq "3.2 no duplicate commit-gate (exactly 1)" "1" "$cg_count"
+# And exactly ONE deletion-boundary occurrence.
+db_count=$(grep -c 'pm-deletion-boundary.py' "$T3B/dest.json")
+assert_eq "3.2 deletion-boundary appears exactly once" "1" "$db_count"
+
+# ── 3.3 BITE (declare-verify-backing; BD-273-OWNERSHIP-ISOLATION-AS-BUILT.md §6 "Wiring"): prove the 3.2 no-duplicate
+#    assertion actually DISTINGUISHES the correct separate-element wiring from
+#    the broken "append the deletion-boundary command INTO the commit-gate
+#    element" wiring. This negative control runs through the IDENTICAL
+#    production dispatch as 3.2 (customization_preserve … claude-settings →
+#    real-merge-required → merge-json.py), differing ONLY in the THEIRS fixture:
+#    the broken THEIRS keys as a DIFFERENT whole-element vs the project's
+#    customized commit-gate element, so BOTH survive the merge → commit-gate is
+#    DUPLICATED (count 2). Were 3.2's no-dupe check not biting, this broken
+#    wiring would slip through the SAME code path undetected.
+cat > "$T3B/theirs-bad.json" <<'EOF'
+{
+  "permissions": { "allow": ["Bash(base-perm)"] },
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Agent", "hooks": [ { "type": "command", "command": "python3 ./scripts/pm-modes-enforce.py" } ] },
+      { "matcher": "Bash",  "hooks": [ { "type": "command", "command": "python3 ./scripts/pm-modes-commit-gate.py" }, { "type": "command", "command": "python3 ./scripts/pm-deletion-boundary.py" } ] }
+    ]
+  }
+}
+EOF
+# Fresh dest — does NOT touch 3.2's already-asserted $T3B/dest.json. Same base +
+# ours as 3.2; only the theirs fixture differs, so any count divergence is
+# attributable solely to the broken wiring, not the dispatch path.
+cp "$T3B/ours.json" "$T3B/dest-bad.json"
+customization_preserve "$T3B/base.json" "$T3B/ours.json" "$T3B/theirs-bad.json" \
+    ".claude/settings.json" "$T3B/dest-bad.json" claude-settings >/dev/null
+cg_bad=$(grep -c 'pm-modes-commit-gate.py' "$T3B/dest-bad.json")
+assert_eq "3.3 BITE: broken append-into wiring DUPLICATES commit-gate (count 2)" \
+    "2" "$cg_bad"
+
+rm -rf "$T3B"
+
 # ─────────────────────────────────────────────────────────────────────────
 # Group 4: structured config (TOML — OT model_providers removal case)
 # ─────────────────────────────────────────────────────────────────────────
