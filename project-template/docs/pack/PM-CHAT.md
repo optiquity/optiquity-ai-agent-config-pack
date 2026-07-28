@@ -575,7 +575,7 @@ edits back:
 
 1. **The PM chat names a per-spawn handoff directory the orchestrator
    derives at runtime under a persistent location —
-   `${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pack-handoff/<task>-<timestamp>/`
+   `${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pm-handoff/<task>-<timestamp>/`
    — and injects the resolved absolute literal as `<handoff>`** plus the
    report path inside it (`<handoff>/REPORT.md`). The handoff directory
    is the agent's OWNED scratch dir: the agent writes its report and
@@ -616,7 +616,7 @@ edits back:
 > fresh-agent-default decision authorizes a re-engage (this is HOW to re-find, not
 > WHEN to reuse). In the same post-spawn action the PM chat also records the
 > `{agent_id, owned_dir}` mapping to
-> `${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pack-handoff/.pm-agent-owned-dirs.jsonl`
+> `${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pm-handoff/.pm-agent-owned-dirs.jsonl`
 > (append-only, per-machine, never committed) so the client deletion-boundary
 > hook can authorize deletes within that agent's owned dir.
 

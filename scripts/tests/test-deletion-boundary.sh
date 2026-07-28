@@ -174,6 +174,56 @@ verdict allow "missing tool_input -> allow"
 run_std "$(payload Bash A "$REPO" '[')"
 verdict allow "weird command ('[') -> allow (exit 0, no crash)"
 
+echo "── Group E: PACK derive paths (NO registry seam — proves the pack .pack- ledger) ──"
+
+# The derive group leaves DELBOUND_REGISTRY_FILE UNSET so the body resolves the
+# registry from XDG_STATE_HOME / HOME — that is what exercises the PACK path
+# constant in _registry_candidates(). It pins DELBOUND_TEMP_ROOTS to a synthetic
+# value AND uses synthetic-absolute owned/target paths (normpath compare, no
+# realpath) so the real /var/folders parent of $WORK never masks the deny.
+DOWN="/delbound-derive-own"                 # synthetic owned dir (need not exist)
+DROOT="/delbound-derive-root"               # synthetic incident root
+DTMP="/delbound-derive-tmp"                  # pinned synthetic temp root
+DCMD="rm -rf $DROOT/bd257-foo"               # the out-of-owned incident
+DPAYLOAD="$(payload Bash D "$REPO" "$DCMD")"
+
+# (E1) registry at the PACK `.pack-` filename under $XDG_STATE_HOME -> DENY.
+# This can ONLY deny if the body derived the ledger at
+# <XDG>/optiquity-pack-handoff/.pack-agent-owned-dirs.jsonl.
+XDG1="$WORK/xdg-pack"
+mkdir -p "$XDG1/optiquity-pack-handoff"
+printf '{"agent_id":"D","owned_dir":"%s"}\n' "$DOWN" \
+  > "$XDG1/optiquity-pack-handoff/.pack-agent-owned-dirs.jsonl"
+OUT="$(printf '%s' "$DPAYLOAD" | XDG_STATE_HOME="$XDG1" HOME="$WORK/no-home" \
+       DELBOUND_TEMP_ROOTS="$DTMP" python3 "$BODY" 2>/dev/null)"; RC=$?
+verdict deny "derive: XDG .pack-agent-owned-dirs.jsonl -> DENY (pack ledger path bites)"
+
+# (E2) NEGATIVE perturbation — the SAME registry content at the CLIENT `.pm-`
+# filename is a MISS for the pack body -> fail-open allow. Proves the pack body
+# reads the PACK filename, not the client one.
+XDG2="$WORK/xdg-pm"
+mkdir -p "$XDG2/optiquity-pack-handoff"
+printf '{"agent_id":"D","owned_dir":"%s"}\n' "$DOWN" \
+  > "$XDG2/optiquity-pack-handoff/.pm-agent-owned-dirs.jsonl"
+OUT="$(printf '%s' "$DPAYLOAD" | XDG_STATE_HOME="$XDG2" HOME="$WORK/no-home" \
+       DELBOUND_TEMP_ROOTS="$DTMP" python3 "$BODY" 2>/dev/null)"; RC=$?
+verdict allow "derive: CLIENT .pm-agent-owned-dirs.jsonl -> allow (pack does NOT read client ledger)"
+
+# (E3) HOME/.local/state fallback (XDG unset) at the PACK `.pack-` filename -> DENY.
+HOME3="$WORK/home-fallback"
+mkdir -p "$HOME3/.local/state/optiquity-pack-handoff"
+printf '{"agent_id":"D","owned_dir":"%s"}\n' "$DOWN" \
+  > "$HOME3/.local/state/optiquity-pack-handoff/.pack-agent-owned-dirs.jsonl"
+OUT="$(printf '%s' "$DPAYLOAD" | HOME="$HOME3" DELBOUND_TEMP_ROOTS="$DTMP" \
+       env -u XDG_STATE_HOME python3 "$BODY" 2>/dev/null)"; RC=$?
+verdict deny "derive: HOME/.local/state .pack- ledger (XDG unset) -> DENY (fallback path bites)"
+
+# (E4) derive: an under-owned delete still ALLOWs through the derived ledger.
+OUT="$(printf '%s' "$(payload Bash D "$REPO" "rm -rf $DOWN/scratch/x")" \
+       | XDG_STATE_HOME="$XDG1" HOME="$WORK/no-home" DELBOUND_TEMP_ROOTS="$DTMP" \
+         python3 "$BODY" 2>/dev/null)"; RC=$?
+verdict allow "derive: under-owned rm via XDG .pack- ledger -> allow (in-dir cleanup)"
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ] || exit 1
 exit 0

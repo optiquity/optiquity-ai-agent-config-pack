@@ -113,7 +113,7 @@ def _registry_candidates():
     seam = os.environ.get("DELBOUND_REGISTRY_FILE")
     if seam:
         return [seam]
-    rel = os.path.join("optiquity-pack-handoff", ".pm-agent-owned-dirs.jsonl")
+    rel = os.path.join("optiquity-pm-handoff", ".pm-agent-owned-dirs.jsonl")
     out = []
     xdg = os.environ.get("XDG_STATE_HOME")
     if xdg:

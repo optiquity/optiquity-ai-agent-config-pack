@@ -7,7 +7,7 @@
 #   - the §4.5 decision matrix + the fail-open discipline (the body must ALWAYS
 #     exit 0, NEVER exit 2), driven through the DELBOUND_* seams; and
 #   - the CLIENT-SPECIFIC registry path (NO seam): the client owned-dirs ledger
-#     ${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pack-handoff/
+#     ${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pm-handoff/
 #     .pm-agent-owned-dirs.jsonl (the pack copy reads `.pack-agent-owned-dirs.jsonl`).
 # It BITES: the derive-path group resolves the incident DENY ONLY if the body
 # reads the CLIENT `.pm-` filename; a registry at the PACK `.pack-` filename is a
@@ -200,11 +200,11 @@ DPAYLOAD="$(payload Bash D "$REPO" "$DCMD")"
 
 # (E1) registry at the CLIENT `.pm-` filename under $XDG_STATE_HOME -> DENY.
 # This can ONLY deny if the body derived the ledger at
-# <XDG>/optiquity-pack-handoff/.pm-agent-owned-dirs.jsonl.
+# <XDG>/optiquity-pm-handoff/.pm-agent-owned-dirs.jsonl.
 XDG1="$WORK/xdg-pm"
-mkdir -p "$XDG1/optiquity-pack-handoff"
+mkdir -p "$XDG1/optiquity-pm-handoff"
 printf '{"agent_id":"D","owned_dir":"%s"}\n' "$DOWN" \
-  > "$XDG1/optiquity-pack-handoff/.pm-agent-owned-dirs.jsonl"
+  > "$XDG1/optiquity-pm-handoff/.pm-agent-owned-dirs.jsonl"
 OUT="$(printf '%s' "$DPAYLOAD" | XDG_STATE_HOME="$XDG1" HOME="$WORK/no-home" \
        DELBOUND_TEMP_ROOTS="$DTMP" python3 "$BODY" 2>/dev/null)"; RC=$?
 verdict deny "derive: XDG .pm-agent-owned-dirs.jsonl -> DENY (client ledger path bites)"
@@ -213,18 +213,18 @@ verdict deny "derive: XDG .pm-agent-owned-dirs.jsonl -> DENY (client ledger path
 # filename is a MISS for the client body -> fail-open allow. Proves the client
 # body reads the CLIENT filename, not the pack one.
 XDG2="$WORK/xdg-pack"
-mkdir -p "$XDG2/optiquity-pack-handoff"
+mkdir -p "$XDG2/optiquity-pm-handoff"
 printf '{"agent_id":"D","owned_dir":"%s"}\n' "$DOWN" \
-  > "$XDG2/optiquity-pack-handoff/.pack-agent-owned-dirs.jsonl"
+  > "$XDG2/optiquity-pm-handoff/.pack-agent-owned-dirs.jsonl"
 OUT="$(printf '%s' "$DPAYLOAD" | XDG_STATE_HOME="$XDG2" HOME="$WORK/no-home" \
        DELBOUND_TEMP_ROOTS="$DTMP" python3 "$BODY" 2>/dev/null)"; RC=$?
 verdict allow "derive: PACK .pack-agent-owned-dirs.jsonl -> allow (client does NOT read pack ledger)"
 
 # (E3) HOME/.local/state fallback (XDG unset) at the CLIENT `.pm-` filename -> DENY.
 HOME3="$WORK/home-fallback"
-mkdir -p "$HOME3/.local/state/optiquity-pack-handoff"
+mkdir -p "$HOME3/.local/state/optiquity-pm-handoff"
 printf '{"agent_id":"D","owned_dir":"%s"}\n' "$DOWN" \
-  > "$HOME3/.local/state/optiquity-pack-handoff/.pm-agent-owned-dirs.jsonl"
+  > "$HOME3/.local/state/optiquity-pm-handoff/.pm-agent-owned-dirs.jsonl"
 OUT="$(printf '%s' "$DPAYLOAD" | HOME="$HOME3" DELBOUND_TEMP_ROOTS="$DTMP" \
        env -u XDG_STATE_HOME python3 "$BODY" 2>/dev/null)"; RC=$?
 verdict deny "derive: HOME/.local/state .pm- ledger (XDG unset) -> DENY (fallback path bites)"

@@ -250,7 +250,7 @@ scripts/persona-contracts/                  BD-116 per-persona contract scripts 
 ├── contract-greenfield.sh                  init on empty dir matches template
 ├── contract-mid-dev.sh                     init on existing-project-mid-dev fixture preserves user files
 └── contract-migration.sh                   v10→v11 migration of v10-realistic-ot preserves customizations
-scripts/tests/test-migrate-v10-to-v11-dry-run.sh   BD-095 tests — dry-run / apply / resume modes (40 cases)
+scripts/tests/test-migrate-v10-to-v11-dry-run.sh   BD-095 tests — dry-run / apply / resume modes (70 cases)
 scripts/tests/test-migrate-v10-to-v11-gates.sh     BD-101 tests — Gate 1 / 2 / 3 verification (39 cases)
 scripts/tests/test-validate-pack-check-16.sh         BD-183 tests — trinity `## Project addenda` H2 (per-trinity-surface generalization)
 scripts/tests/test-validate-pack-check-18.sh         BD-181 tests — trinity H2 structure parity (per-trinity-surface generalization)
