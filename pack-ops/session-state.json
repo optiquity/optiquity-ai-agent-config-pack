@@ -1,21 +1,20 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "cb8afca",
-  "checkpoint": "2026-07-27T00:00:00Z",
+  "boundary_commit": "4edd209",
+  "checkpoint": "2026-07-28T00:00:00Z",
   "active": ["BD-257", "BD-273"],
   "in_flight_agents": [
-    "coder-bd257-c1 -- BD-257 WAVE C1 (client HELP-FRAGMENT 8 /pm-* rows + (Claude-only enforcement) markers on /pm-help+/pm-isolation-mode+/pm-intervention-mode; pm-startup Modes readiness step; project-only) (RW, isolated worktree)"
+    "coder-bd257-c2 -- BD-257 WAVE C2 (FINAL: help_fragments.py NEW Check 90 client /pm-* HELP-FRAGMENT<->skill parity single-root + core.py registry count 86->87 + NEW test-validate-pack-check-90.sh; pack-only; check+count+test lock-step) (RW, isolated worktree)"
   ],
   "queue": ["BD-274", "BD-275", "BD-276", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "PUSHED + CI-GREEN at boundary (origin/v11-dev in sync). Sequence: BD-257 C1 (in flight) -> C2 (Check 90 + count 86->87) -> BD-274 client C-waves -> combined BD-273/274 audit. BD-275/276 after.",
-  "wave": "PUSHED: the full stack (B3 + BD-273 P1/P2/P3 + BD-257 detection fix + manifest) is on origin/v11-dev + CI GREEN (all 7 jobs). BD-273 pack side COMPLETE. BD-257 detection regression FIXED + landed + validated. Remaining BD-257: C1 (HELP-FRAGMENT 8 /pm-* rows + Claude-only-enforcement markers + pm-startup Modes step; project-only) IN FLIGHT -> C2 (help_fragments.py Check 90 client parity + core.py registry count 86->87 + test-validate-pack-check-90.sh; pack-only). Then BD-274 client. BD-275/276 later.",
+  "parallelization": "BD-257 C1 LANDED (unpushed since the CI-green push at the prior boundary). C2 in flight -> completes BD-257. Then BD-274 client C-waves -> combined BD-273/274 audit. BD-275/276 after.",
+  "wave": "Stack PUSHED + CI-green through the detection fix + manifest (origin behind by C1 + session-state now). BD-273 pack side COMPLETE. BD-257: A1+B1+B2+B4+B3 + detection fix + C1 LANDED. C2 (Check 90 client /pm-* parity + registry count 86->87 + test) IN FLIGHT -> completes BD-257. Check 90 should PASS on arrival (C1 pre-satisfied the parity 10/10). Then BD-274 client ownership (GATE re-verify -> C1 client hook + OI-R4 pm-startup extension -> C2 || C3).",
   "pending_decisions": [
-    "BD-257 C1: coder in flight -> bounded review/fix -> user C1 commit approval.",
-    "BD-257 C2 (after C1): NEW Check 90 (client /pm-* HELP-FRAGMENT<->skill parity, single-root project-template/skills/pm-*) + registry count 86->87 + new test-validate-pack-check-90.sh; pack-only; enumerate-encoding-surfaces (check+count+test lock-step).",
-    "BD-274 CLIENT C-waves (after BD-257 completes + GATE re-verify): C1 (client pm-deletion-boundary hook + settings element + pack-side unit test + pm-refresh canary + OI-R4 client pm-startup readiness step -- EXTENDS the pm-startup Modes step C1 adds, with the deletion-boundary canary) -> C2 || C3.",
-    "BD-273 RESOLUTION: HELD Open for a combined end-of-batch ownership audit with BD-274, then flip both.",
+    "BD-257 C2: coder in flight -> bounded review/fix -> user C2 commit approval. C2 is the FINAL BD-257 wave; on landing, BD-257 can flip to Resolved (implicit-status-flip after a clean batch).",
+    "BD-257 RESOLUTION: after C2 lands clean, flip BD-257 to Resolved (per implicit-status-flip: batch reviews+fixes clean + tests green).",
+    "BD-274 CLIENT C-waves: GATE re-verify (settings.json + pm-refresh + project-trinity + PM-CHAT unchanged since their BD-257 landings) -> C1 (client pm-deletion-boundary hook + settings element + pack-side unit test + pm-refresh canary + OI-R4 client pm-startup readiness EXTENSION -- extends the pm-startup Modes step C1 added, with the deletion-boundary canary) -> C2 || C3. Then combined BD-273/274 audit -> flip both.",
     "BD-275 (order-dependent test flake) + BD-276 (systemic mktemp -t sweep): after BD-274.",
-    "Standing: push USER-MANUAL (origin now in sync at boundary; future pushes need manifest-sync IF a fixture input changed); NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
+    "Standing: push USER-MANUAL (origin in sync through the detection fix; a future push needs manifest-sync IF a fixture input changed -- C1/C2 do not change fixtures); NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "Stack PUSHED + CI-GREEN (origin in sync at boundary). BD-257 C1 coder in flight (client HELP-FRAGMENT rows + pm-startup Modes step). Next: C1 review + commit; then C2."
+  "cycle_position": "BD-257 C1 LANDED + worktree torn down. C2 coder in flight (final BD-257 wave). Next: C2 review + commit; then BD-257 Resolved; then BD-274."
 }
