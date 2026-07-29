@@ -1218,7 +1218,6 @@ between machines:
 
 ---
 
-<!-- BEGIN project-owned -->
 
 ## Additional project documents
 
@@ -1232,9 +1231,10 @@ Example:
 List them here and add corresponding checks to the startup procedure if needed.
 -->
 
+<!-- BEGIN project-owned -->
 *No additional project documents defined for this project.*
-
 <!-- END project-owned -->
+
 
 The `<!-- BEGIN project-owned -->` / `<!-- END project-owned -->`
 markers above delimit the region of this file the migration's
