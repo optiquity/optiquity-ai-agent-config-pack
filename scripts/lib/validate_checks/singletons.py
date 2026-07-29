@@ -794,6 +794,21 @@ def check_gitignore_env_example_exception() -> None:
     ok("project-template/.gitignore — `.env.*` + `!.env.example` exception present")
 
 
+# Surfaces where Check 19 ADMITS the three well-formed BD-136 project-owned
+# marker comment openings on top of the strict base allowlist. The client
+# (project-template) trinity carries BD-136's byte-preservation markers — an
+# empty `<!-- BEGIN project-owned -->` / `<!-- END project-owned -->` seed pair
+# under `## Project addenda`, plus `<!-- OPTIONAL: keep this section … -->`
+# `[CONDITIONAL]`-retirement hints — which are legitimate structural content,
+# not fresh-install scaffolding. The pack-root trinity ships ZERO markers
+# (BD-183), so it is EXCLUDED here and keeps the STRICT base allowlist: a
+# would-be marker comment on pack-root is still caught as scaffolding. Mirrors
+# `_CHECK_16_EXEMPT_SURFACES` (help_fragments.py) in shape, but is an ADMISSION
+# set (extra allowed openings on the named surface), not an exemption that
+# short-circuits the check.
+_CHECK_19_MARKER_SURFACES: set[str] = {"project-template"}
+
+
 def check_trinity_no_scaffolding_comments(
     trinity_root: Path = None,
     label: str = "project-template",
@@ -856,6 +871,24 @@ def check_trinity_no_scaffolding_comments(
         "DENY-LIST-CONTENT-START",
         "DENY-LIST-CONTENT-END",
     )
+    # BD-136 C2 — CLIENT trinity marker-section preservation. On the
+    # project-template (client) surface ONLY, admit the three well-formed
+    # project-owned marker comment openings. Bounded EXACTLY to the legitimate
+    # BD-136 marker forms (measure-then-bound — do NOT broaden):
+    #   • "OPTIONAL: keep this section" — the `[CONDITIONAL]`-retirement hint
+    #     lead (N2-tightened; NOT bare `OPTIONAL:`, so a fresh-install
+    #     `OPTIONAL: fill in …` scaffolding comment is STILL caught).
+    #   • "BEGIN project-owned" — the seed/override BEGIN marker; also covers
+    #     the annotated `BEGIN project-owned: renamed-from "…"` form (startswith).
+    #   • "END project-owned" — the seed/override END marker.
+    # Pack-root ships ZERO markers and keeps the STRICT base allowlist above —
+    # a would-be marker comment on pack-root still FAILs Check 19.
+    if label in _CHECK_19_MARKER_SURFACES:
+        ALLOWED_OPENINGS = ALLOWED_OPENINGS + (
+            "OPTIONAL: keep this section",
+            "BEGIN project-owned",
+            "END project-owned",
+        )
     any_failed = False
     for name in ("CLAUDE.md", "AGENTS.md", "GEMINI.md"):
         path = trinity_root / name
@@ -1513,6 +1546,7 @@ __all__ = [
     "check_issue_template_forms",                # Check (None)
     "check_template_archive_v11",                # Check (None)
     "check_gitignore_env_example_exception",     # Check 20
+    "_CHECK_19_MARKER_SURFACES",                 # Check 19 client-marker admission set (BD-136)
     "check_trinity_no_scaffolding_comments",     # Check 19 (dup-registered lambda)
     "check_customization_detection_regression_guard",  # Check 25
     "check_migrator_framework_inventory",        # Check 26

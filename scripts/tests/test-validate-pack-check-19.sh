@@ -15,12 +15,14 @@
 # project-template trinity carry different audiences and different
 # rules by design.
 #
-# Note: Check 19 applies uniformly to ANY trinity surface (the
-# scaffolding comment regex + ALLOWED_OPENINGS allowlist is content-
-# based, not surface-based). Unlike Check 16, no per-surface exemption
-# mechanism is needed; the empirical pre-check at HEAD confirmed
-# pack-root trinity PASSes Check 19 (zero HTML comments → zero
-# scaffolding to find).
+# Note: Check 19 is STRICT by default — the scaffolding-comment regex
+# + base ALLOWED_OPENINGS allowlist reject any other HTML comment,
+# pack-root included (it ships zero markers). A bounded, project-
+# template-scoped admission set (`_CHECK_19_MARKER_SURFACES`) ALSO
+# permits exactly the three BD-136 project-owned marker prefixes
+# (`OPTIONAL: keep this section`, `BEGIN project-owned`, `END project-
+# owned`) on the client trinity surface only; every other surface
+# keeps the strict base allowlist.
 #
 # Usage: bash scripts/tests/test-validate-pack-check-19.sh
 
