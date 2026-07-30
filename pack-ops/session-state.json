@@ -1,16 +1,20 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "805fe26",
+  "boundary_commit": "4de3834",
   "checkpoint": "2026-07-28T00:00:00Z",
   "active": ["BD-136"],
   "in_flight_agents": [
-    "coder-bd136-c5-check91 -- BD-136 C5 (Wave 2, pack-only, RW isolated): NEW scripts/lib/validate_checks/trinity_markers.py Check 91 (V-1..V-8) + register EXACTLY ONE tuple in validate-pack.py (MUST-FIX-1 trap: NO [pack-root] tuple) + core.py count 87->88 ATOMIC + N1 ledger fix (gate Check 59) + NEW test-validate-pack-check-91.sh + refresh test-validate-pack-check-16.sh fixture (C4 OI-3). Reads C1 fence fixture. DEDICATED review (novel + count-trap)."
+    "coder-bd136-c6-authoring -- C6 PM-CHAT authoring P-1..P-8 + S-1 + O-2 clause (project-only)",
+    "coder-bd136-c7-setupdocs -- C7 INSTALL/SETUP docs + C6 cross-refs (scope keyword coder-determined)",
+    "coder-bd136-c8-inithint -- C8 init-hint at 2 close points (MUST-FIX-2) + pack-ops/MERGE-STRATEGY currency (pack-only)",
+    "coder-bd136-c9-inttests -- C9 fixture-dependent tests M-8/9/10/11/12 + OI-A [CONDITIONAL]-absence assertion (pack-only)",
+    "coder-bd136-c10-fixreadme -- C10 test-fixtures/README 3-subclass naming (pack-only)"
   ],
   "queue": ["BD-236", "BD-210", "BD-275", "BD-276", "BD-205", "BD-093"],
   "parallelization": "SERIAL. Queue re-ordered to the ruled closeout spine 189->224->257->136->236->210->205->093; BD-257 resolved so BD-136 is next. BD-275/276 (off-spine chores) slotted after the spine, before BD-205's final audit. BD-136 = LARGE-BD deterministic pipeline starting.",
-  "wave": "BD-136 IMPLEMENTATION. WAVE 1 COMPLETE (C1 merger + C2 Check-19 + C3 PM-CHAT re-prep). C1b (migrator assertions) + OI-2 L-9 clause + C4 (trinity seed + [CONDITIONAL] retirement x3 + S-1 rewrite) all LANDED. WAVE 2: C5 (Check-91 in trinity_markers.py + atomic count 87->88 + per-check test + check-16 fixture refresh) IN FLIGHT -- the count-arity trap (MUST-FIX-1: register ONE tuple, NO pack-root) -> DEDICATED review. Then Wave 3 {C6..C10}. OI-A -> C9. POQ-1 fully resolved.",
+  "wave": "BD-136 IMPLEMENTATION. WAVE 1 (C1 merger + C1b + C2 + C3) + WAVE 2 (C4 trinity retirement + C5 Check-91/count-88, dedicated-review CLEAN, trap avoided) + OI-2 L-9 clause -- ALL LANDED. WAVE 3 in flight: 5 parallel coders {C6 PM-CHAT authoring, C7 INSTALL/SETUP docs, C8 init-hint+MERGE-STRATEGY, C9 fixture-tests+OI-A, C10 fixtures-README} in file-disjoint isolated worktrees. Per OI-5 these are batched (CI-verify + one end-to-end review). POQ-1 fully resolved.",
   "pending_decisions": [
-    "C5 returns -> DEDICATED pack-reviewer (novel check + count-trap: verify ONE tuple, count 88, Check 59 passes, Check 91 BITES on negatives) -> triage/fix -> user commit approval (pack-only). Then Wave 3 {C6 authoring (carries S-1 + can tighten the C4 addenda pointer to the C6 heading), C7 INSTALL/SETUP, C8 init-hint+MERGE-STRATEGY, C9 fixture-tests (carries OI-A [CONDITIONAL]-absence assertion), C10 fixtures-README} parallel worktree waves. End-to-end review before BD-136 resolves. Each commit needs user approval (intervention=full). Push needs manifest-sync (fixture-affecting: C3/C4 + others). Cross-BD: BD-236 rebases count bump; BD-276 mktemp; BD-171 v11.0 rebases C10; BD-210 keep archive doc; BD-202 v11.1 no pull-in.",
+    "Wave 3 coders return -> CI-verify each in its worktree -> user commit approvals (batched; C6/C7 project-side, C8/C9/C10 pack-side; C7 scope-keyword coder-determined). All 5 file-disjoint so any landing order. Then the END-TO-END REVIEW over the full BD-136 (all batched commits: C1b/C2/C3/C4/C6-C10 + cross-commit consistency) -> fixes if any -> flip BD-136 Resolved. Then manifest-sync + push (many fixture-affecting commits: C3/C4/C6/C7/C8). Each commit needs user approval (intervention=full). Cross-BD: BD-236 rebases count bump; BD-276 mktemp; BD-171 v11.0 rebases C10; BD-210 keep archive doc; BD-202 v11.1 no pull-in. S-1/OI-2/OI-A recorded in the decisions handoff doc.",
     "BROADER (user-flagged, not yet a BD): 'pack' on the client side is a recurring leak vector; the handoff-root was fixed. Remaining structural client 'pack' surfaces (docs/pack/ dir, PACK-FEEDBACK.md) are BD-scale -> offer a scoped audit BD later (no new BD without user ask).",
     "One local commit unpushed (dashboard re-render); push whenever.",
     "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no other SHAs, no other dates, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/ (pack side)."
