@@ -470,6 +470,63 @@ assert_eq "8.4 commit-gate appears exactly once" "1" "$cg"
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────
+# Group 9 (BD-136 POQ-1 parity): the BD-095 --resume flow works off a pause
+# TRIGGERED BY A CUSTOMIZED [CONDITIONAL] body — not just the generic-edit
+# pause Group 4 exercises. Locks the reserved genuine-reconciliation case
+# end-to-end (resolve → --resume → S6), proving the POQ-1 BASE-aware M1 sidecar
+# rides the two-phase workflow identically to any other needs-reconciliation
+# sidecar. Complements test-migrate-v10-to-v11.sh Group 2c (the fixture-side
+# customized-[CONDITIONAL] proof) on the dry-run/apply/resume surface.
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 9: BD-136 POQ-1 [CONDITIONAL]-triggered pause + resume ===\n"
+
+# Helper: like prepare_paused, but forces the pause via a CUSTOMIZED
+# `## [CONDITIONAL] X` body (base != ours for that optional section) rather than
+# a generic append. The [CONDITIONAL] heading is discovered at runtime; the awk
+# insertion is onetrueawk/gawk/mawk safe (no gensub / interval expressions).
+prepare_paused_conditional() {
+    local d cust
+    d=$(make_v10_target)
+    cust="POQ1-COND-$$-optional-section-body-edit"
+    awk -v c="$cust" '
+      BEGIN{ done=0 }
+      { print }
+      (!done && ($0 ~ /^## / || $0 ~ /^### /) && $0 ~ /\[CONDITIONAL\]/) { print c; done=1 }
+    ' "$d/CLAUDE.md" > "$d/CLAUDE.md.poq1tmp" && mv "$d/CLAUDE.md.poq1tmp" "$d/CLAUDE.md"
+    git -C "$d" add -A >/dev/null
+    git -C "$d" commit -q -m "customize [CONDITIONAL] body" 2>/dev/null
+    PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$d" >/dev/null 2>&1
+    # Apply pauses at S3 with the [CONDITIONAL] sidecar. Exit code 0 (clean pause).
+    PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply "$d" >/dev/null 2>&1
+    printf '%s\n' "$d"
+}
+
+T=$(prepare_paused_conditional)
+paused="$T/.pack-migrate-v10-to-v11/sentinels/stage-S3.paused"
+if [[ ! -s "$paused" ]]; then
+    t_fail "9.0 [CONDITIONAL]-triggered pause did not produce a sidecar"
+else
+    t_pass "9.0 customized [CONDITIONAL] body forced the BD-095 pause (sidecar present)"
+    # The pause names the trinity sidecar (the reserved [CONDITIONAL] case).
+    grep -q 'CLAUDE.md.v10-customized' "$paused" \
+        && t_pass "9.1 pause names the trinity .v10-customized sidecar" \
+        || t_fail "9.1 pause did not name the trinity sidecar"
+    # Resolve via the .resolved flag-file signal, then --resume.
+    while IFS= read -r s; do
+        [[ -z "$s" ]] && continue
+        touch "${s}.resolved"
+    done < "$paused"
+    out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" --resume "$T" 2>&1) ; rc=$?
+    assert_eq "9.2 --resume rc=0 off a [CONDITIONAL]-triggered pause" "0" "$rc"
+    assert_contains "9.2 --resume completed S6" "$out" "S6 — render"
+    [[ -f "$T/.pack-migrate-v10-to-v11/sentinels/stage-S6.done" ]] \
+        && t_pass "9.3 stage-S6.done after --resume (install completed post-reconciliation)" \
+        || t_fail "9.3 stage-S6.done missing after --resume"
+fi
+rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────────────
 

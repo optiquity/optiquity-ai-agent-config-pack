@@ -318,6 +318,36 @@ else
         || t_fail "2.9 migrate wrongly re-added client-deleted v10 skill '$deleted_skill' (glob-ALL regression)"
 fi
 
+# 2.10 (BD-136 POQ-1 no-sidecar LOCK — the previously-missed migrator encoding
+# surface, per the POQ-1 arch doc §4.3 item 1 + §4.4). A NORMAL non-customized
+# v10→v11 trinity migration (base==ours for all three; every
+# `## [CONDITIONAL]` section is the untouched v10 default) MUST adopt the pack
+# canonical via the BASE-aware M1 markerless fallback → pack-update-applied →
+# NO trinity `.v10-customized` sidecar, NO
+# customization-detected-needs-reconciliation disposition, and therefore NO
+# BD-095 pause. The full manifest install completes (HELP-FRAGMENT / skills /
+# groupings — asserted at 2.4 / 2.5c / 2.7 above, which only run BECAUSE no
+# pause fired). declare-verify-backing: this lock is RED against a BASE-BLIND
+# M1 (the original C1 defect fired on ANY `[CONDITIONAL]` heading in OURS →
+# spurious sidecar → the BD-095 pause → the POQ-1 halt) and GREEN under the
+# shipped BASE-aware M1 (marker-preserve.sh `_mp_conditional_needs_reconciliation`
+# stays silent when base==ours). It would have caught the original halt.
+[[ ! -f "$T/CLAUDE.md.v10-customized" \
+   && ! -f "$T/AGENTS.md.v10-customized" \
+   && ! -f "$T/GEMINI.md.v10-customized" ]] \
+    && t_pass "2.10 no trinity .v10-customized sidecar on the non-customized path (POQ-1 lock)" \
+    || t_fail "2.10 spurious trinity sidecar on the non-customized path (BASE-blind M1 regression)"
+[[ ! -f "$T/.pack-migrate-v10-to-v11/sentinels/stage-S3.paused" ]] \
+    && t_pass "2.10 no BD-095 pause on the non-customized path (install completed, POQ-1 lock)" \
+    || t_fail "2.10 spurious BD-095 pause on the non-customized path (BASE-blind M1 regression)"
+# Positive lock: every trinity row resolves to the clean adopt — ZERO carry the
+# needs-reconciliation disposition.
+trinity_needs_recon=$(awk -F'\t' \
+    '$2=="trinity" && $1=="customization-detected-needs-reconciliation"{n++} END{print n+0}' \
+    "$T/.pack-migrate-v10-to-v11/dispositions.tsv")
+assert_eq "2.10 zero trinity needs-reconciliation dispositions (clean pack adopt)" \
+    "0" "$trinity_needs_recon"
+
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -355,6 +385,79 @@ if [[ -f "$T/.pack-migrate-v10-to-v11-backup/.gemini/.env" ]] && \
 else
     t_fail "2b.3 backup content mismatch"
 fi
+
+rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 2c: BD-136 POQ-1 reserved case — a CUSTOMIZED [CONDITIONAL] body still
+# fails loud (sidecar + L-9 keep-vs-delete note) and hits the intentional
+# BD-095 pause (the human-reconciliation flow the user chose to KEEP).
+# ─────────────────────────────────────────────────────────────────────────
+#
+# The BASE-aware M1 (marker-preserve.sh `_mp_conditional_needs_reconciliation`,
+# POQ-1 fix) stays SILENT on the non-customized path (Group 2 / 2.10 lock) but
+# MUST still FIRE when a client CUSTOMIZED the body under a `## [CONDITIONAL] X`
+# heading (base != ours for that optional section). This is the reserved
+# genuine-reconciliation case: THEIRS→dest, full OURS→`.v10-customized` sidecar
+# (no silent loss — BD-136 L-8), the L-9 keep-vs-delete disposition note, and
+# the BD-095 pause-before-S4 halts the install until `--resume`.
+# declare-verify-backing: the suite previously had NO migrator-level test for
+# this reserved case; this group is the end-to-end proof it survives the POQ-1
+# refinement (a complement to the 2.10 no-sidecar lock).
+
+printf "\n=== Group 2c: BD-136 POQ-1 customized [CONDITIONAL] body → sidecar + pause ===\n"
+
+T=$(make_v10_target)
+# Customize the body under the FIRST `## [CONDITIONAL] X` heading in CLAUDE.md
+# (insert a unique line immediately after the heading, INSIDE that section
+# body). The heading text is discovered at runtime (never hard-coded) so the
+# fixture stays valid if the v10 canonical's optional-section titles drift.
+# awk insertion is onetrueawk/gawk/mawk safe (no gensub / interval expressions).
+cond_custom_line="POQ1-CONDITIONAL-CUSTOM-$$-project-edited-optional-section-body"
+awk -v cust="$cond_custom_line" '
+  BEGIN{ done=0 }
+  { print }
+  (!done && ($0 ~ /^## / || $0 ~ /^### /) && $0 ~ /\[CONDITIONAL\]/) { print cust; done=1 }
+' "$T/CLAUDE.md" > "$T/CLAUDE.md.poq1tmp" && mv "$T/CLAUDE.md.poq1tmp" "$T/CLAUDE.md"
+# Guard against a vacuous pass: confirm the fixture actually injected the edit
+# (i.e. the v10 CLAUDE.md carried a [CONDITIONAL] heading to customize).
+grep -q "$cond_custom_line" "$T/CLAUDE.md" \
+    && t_pass "2c.0 fixture customized a [CONDITIONAL] section body in CLAUDE.md" \
+    || t_fail "2c.0 fixture failed to inject a [CONDITIONAL] customization (no [CONDITIONAL] heading?)"
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "customize [CONDITIONAL] body" 2>/dev/null
+
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$T" 2>&1) ; rc=$?
+# The BD-095 pause is a CLEAN pause (exit 0), not a hard error.
+assert_eq "2c.1 migration rc=0 (clean BD-095 pause)" "0" "$rc"
+
+# (a) the trinity .v10-customized sidecar exists AND preserves the client's
+#     customized body byte-for-byte (no silent loss — L-8).
+[[ -f "$T/CLAUDE.md.v10-customized" ]] \
+    && t_pass "2c.2 CLAUDE.md.v10-customized sidecar written" \
+    || t_fail "2c.2 CLAUDE.md.v10-customized sidecar missing"
+grep -q "$cond_custom_line" "$T/CLAUDE.md.v10-customized" 2>/dev/null \
+    && t_pass "2c.3 sidecar preserves the customized [CONDITIONAL] body (no silent loss, L-8)" \
+    || t_fail "2c.3 sidecar dropped the customized [CONDITIONAL] body"
+
+# (b)+(c) dispositions.tsv records needs-reconciliation for the trinity AND
+#     carries the L-9 [CONDITIONAL] keep-vs-delete message in the notes column.
+cond_row=$(awk -F'\t' '$2=="trinity" && $3=="CLAUDE.md"{print}' \
+    "$T/.pack-migrate-v10-to-v11/dispositions.tsv")
+assert_contains "2c.4 trinity disposition is customization-detected-needs-reconciliation" \
+    "$cond_row" "customization-detected-needs-reconciliation"
+assert_contains "2c.5 disposition note carries the L-9 [CONDITIONAL] keep-vs-delete message" \
+    "$cond_row" "heading whose body you customized"
+
+# (d) the BD-095 pause-before-S4 fired.
+[[ -f "$T/.pack-migrate-v10-to-v11/sentinels/stage-S3.paused" ]] \
+    && t_pass "2c.6 BD-095 stage-S3.paused sentinel present (intentional pause fired)" \
+    || t_fail "2c.6 BD-095 pause did not fire on the customized [CONDITIONAL] body"
+# The pause halts BEFORE the S4/S5 install (load-bearing: it gates the unrelated
+# install until the human reconciles) — HELP-FRAGMENT is not yet installed.
+[[ ! -f "$T/docs/pack/HELP-FRAGMENT.md" ]] \
+    && t_pass "2c.7 install paused before S4/S5 (HELP-FRAGMENT not yet installed)" \
+    || t_fail "2c.7 install ran past the BD-095 pause (pause not load-bearing)"
 
 rm -rf "$T"
 
