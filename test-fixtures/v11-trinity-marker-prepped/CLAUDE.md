@@ -1,13 +1,5 @@
 # CLAUDE.md
 
-<!-- BEGIN project-owned -->
-This repository is a macOS-only algorithmic trading prototype.
-Target: macOS 15+, Xcode 26.4, Swift Package Manager, GitHub (`DShaneNYC/OptiquityTrader`).
-There is no backend server. All logic runs in-process. The architecture must anticipate a future
-first-party gRPC backend with minimal changes: every external integration is behind a protocol,
-every concrete implementation is injected, and no domain type ever appears in a transport signature.
-<!-- END project-owned -->
-
 ## Capability policy
 
 Claude may perform all major engineering tasks in this repository:
@@ -446,6 +438,14 @@ When acting in this repo:
 <!-- Project-original H2 sections from v9.3 land under this heading after
 a v9.3 → v10 migration. See docs/pack/INSTALL-PROCEDURES.md Procedure
 5-C.2 step 2.b for the migration reconciliation workflow. -->
+
+### Repository overview
+
+This repository is a macOS-only algorithmic trading prototype.
+Target: macOS 15+, Xcode 26.4, Swift Package Manager, GitHub (`DShaneNYC/OptiquityTrader`).
+There is no backend server. All logic runs in-process. The architecture must anticipate a future
+first-party gRPC backend with minimal changes: every external integration is behind a protocol,
+every concrete implementation is injected, and no domain type ever appears in a transport signature.
 
 ### Identity and naming
 

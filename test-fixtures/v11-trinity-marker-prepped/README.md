@@ -13,14 +13,25 @@ override annotations. Each file has marker pairs in both shapes:
 
 | File         | Pairs | Shape A | Shape B |
 |--------------|-------|---------|---------|
-| CLAUDE.md    | 15    | 11      | 4       |
-| AGENTS.md    | 14    | 9       | 5       |
-| GEMINI.md    | 15    | 11      | 4       |
+| CLAUDE.md    | 14    | 10      | 4       |
+| AGENTS.md    | 13    | 8       | 5       |
+| GEMINI.md    | 14    | 10      | 4       |
 
 Total 6 `renamed-from` annotations (2 per file): one single-value
 (Xcode), one multi-value-collapse (Swift coding rules → two canonical
 sources). Trinity-symmetric except for the AGENTS.md `## Agent
 behavior` Shape B override (FP2-7 Option B).
+
+The original OT snapshot carried one additional project-owned marker in
+the file **preamble** (a repository-overview intro above the first `## `
+heading). A preamble marker has no enclosing H2/H3 host, so it is neither
+Shape A nor Shape B — the shipped merger rejects it (fail-loud). Under
+BD-136 C9b that intro was relocated to a valid in-section placement — a
+`### Repository overview` H3 at the head of the `## Project addenda`
+seed (the seed-slot exception permits project H3 dumps). The rendered
+project content is preserved verbatim; only its marker geometry became
+valid. That relocation is why each file carries one fewer pair than the
+raw `fd6a0d6` capture (CLAUDE/GEMINI 15→14, AGENTS 14→13).
 
 ## Provenance
 

@@ -12,20 +12,21 @@
 #
 # Legs (BD-136 spec M-8/M-9/M-10/M-11/M-12 + the ratified OI-A assertion):
 #
-#   M-8   OT-derived golden round-trip. Feeds the committed real-world
-#         golden test-fixtures/v11-trinity-marker-prepped/ (all three
-#         trinity files) through the FINAL hardened marker-aware merger and
-#         proves the OT customizations survive byte-identical with ZERO
-#         silent loss, the new canonical is adopted, and no `[CONDITIONAL]`
-#         leaks. NB: the frozen fixture (captured 2026-05-10) carries a
-#         project-owned marker region in the file PREAMBLE — a placement the
-#         merger's later BLOCKER-2 / L-8 gate (M-19) rejects as unsupported —
-#         so a normal whole-file round-trip surfaces needs-reconciliation and
-#         preserves the fixture byte-identical in the `.pre-update` sidecar
-#         (never silently). The clean, no-sidecar `merged-with-customization`
-#         round-trip for the SAME customization shapes is proven on the two
-#         BUILT real fixtures by M-11 / M-12 below. See the IMPL-REPORT open
-#         item "M-8 fixture preamble marker" for the re-prep recommendation.
+#   M-8   OT-derived golden CLEAN round-trip. Feeds the committed real-world
+#         golden test-fixtures/v11-trinity-marker-prepped/ (all three trinity
+#         files) through the FINAL hardened marker-aware merger and proves the
+#         OT customizations round-trip CLEANLY: disposition
+#         merged-with-customization, NO `.pre-update` sidecar, every project
+#         marker region preserved byte-identical, the renamed-from overrides
+#         suppress their canonical counterparts (no duplicate H2), and no
+#         `[CONDITIONAL]` leaks. Under BD-136 C9b the fixture's one preamble
+#         project-owned marker (a repository-overview intro with no enclosing
+#         H2/H3 — a placement the merger's BLOCKER-2 / L-8 gate rejects) was
+#         relocated to a valid `### Repository overview` H3 at the head of the
+#         `## Project addenda` seed, so the golden now conforms to the shipped
+#         Shape A / Shape B rules. THEIRS is a drift-free "new pack canonical"
+#         stand-in synthesized from OURS (see the leg's inline construction
+#         note) so the frozen fixture never conflicts on live-pack drift.
 #   M-9   `renamed-from` override, BASE-aware (L-10 / O-9): a renamed-from
 #         naming a live canonical suppresses it (merged); a renamed-from with
 #         no canonical match soft-classifies by BASE — retirement (BASE had
@@ -153,42 +154,104 @@ mk_trinity_dir() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════
-echo "== M-8: OT golden fixture round-trip (test-fixtures/v11-trinity-marker-prepped) =="
+echo "== M-8: OT golden fixture CLEAN round-trip (test-fixtures/v11-trinity-marker-prepped) =="
 # ═══════════════════════════════════════════════════════════════════════════
 # The committed real-world golden. It is NOT a build.sh fixture (a frozen
 # snapshot), so assert the files directly rather than via require_fixture.
+#
+# THEIRS = a drift-free "new pack canonical" stand-in synthesized from OURS so
+# it tracks the frozen fixture (the LIVE pack trinity has drifted since the
+# 2026-05-10 capture and would spuriously conflict on out-of-marker pack body).
+# Construction (m8_build_theirs): strip each Shape A project block IN PLACE
+# (keep the pack heading + out-of-marker body); REPLACE each whole-section
+# Shape B block with a `## ` pack stub section — using the renamed-from OLD
+# canonical name(s) where the region carries them (so the project override
+# SUPPRESSES its canonical counterpart, proving the fixture's stated
+# no-duplicate-H2 assertion) else the owned heading. Replacing (not dropping)
+# whole-section Shape B blocks preserves the adjacent pack sections' boundaries
+# so every OURS pack section reconciles cleanly under Regime B (BASE="").
+m8_build_theirs() {   # $1=ours  $2=out-theirs
+    local manifest; manifest="$(_mp_regions "$1")"
+    M8_MANIFEST="$manifest" python3 - "$1" "$2" <<'PY'
+import os, sys, re
+ours = open(sys.argv[1]).read().split("\n")
+by_begin = {}
+for row in os.environ["M8_MANIFEST"].split("\n"):
+    if not row.startswith("REGION"):
+        continue
+    _, shape, head, b, e, beginraw = row.split("\t", 5)
+    rf = re.findall(r'"([^"]*)"', beginraw) if "renamed-from" in beginraw else []
+    by_begin[int(b)] = (shape, head, int(e), rf)
+def stub(h):
+    return [h, "", "Pack canonical body for %s (drift-free stand-in)." % h.lstrip("# ").strip(), ""]
+res, i, n = [], 1, len(ours)
+while i <= n:
+    if i in by_begin:
+        shape, head, e, rf = by_begin[i]
+        if shape == "B":                       # Shape A: drop inner block (pass)
+            for name in (rf if rf else [head]):
+                res.extend(stub(name))
+        i = e + 1
+    else:
+        res.append(ours[i-1]); i += 1
+open(sys.argv[2], "w").write("\n".join(res))
+PY
+}
+
+# Count OURS marker regions whose EXACT byte block is NOT present in DEST — the
+# rigorous "byte-identical project content" gate (the graft re-emits each region
+# verbatim via _mp_lines, so a clean round-trip preserves every region). 0 = all.
+m8_regions_missing() {   # $1=ours  $2=dest
+    local manifest; manifest="$(_mp_regions "$1")"
+    M8_MANIFEST="$manifest" python3 - "$1" "$2" <<'PY'
+import os, sys
+ours = open(sys.argv[1]).read().split("\n")
+dest = open(sys.argv[2]).read()
+missing = 0
+for row in os.environ["M8_MANIFEST"].split("\n"):
+    if not row.startswith("REGION"):
+        continue
+    _, shape, head, b, e, beginraw = row.split("\t", 5)
+    block = "\n".join(ours[int(b)-1:int(e)])
+    if block not in dest:
+        missing += 1
+print(missing)
+PY
+}
+
 if [[ ! -f "$GOLDEN_FX/CLAUDE.md" ]]; then
     fail "M-8 golden fixture present ($GOLDEN_FX/CLAUDE.md)"
 else
     for f in CLAUDE.md AGENTS.md GEMINI.md; do
         newstate
-        # THEIRS = the file's own de-customized skeleton (pack canonical with
-        # the project marker blocks stripped) — a self-contained, drift-free
-        # stand-in for the new pack canonical.
-        _mp_strip_marker_blocks < "$GOLDEN_FX/$f" > "$WORK/m8-theirs-$f"
+        m8_build_theirs "$GOLDEN_FX/$f" "$WORK/m8-theirs-$f"
         cp "$GOLDEN_FX/$f" "$WORK/m8-dest-$f"
         customization_preserve "" "$GOLDEN_FX/$f" "$WORK/m8-theirs-$f" \
             "$f" "$WORK/m8-dest-$f" trinity >/dev/null
-        # The frozen fixture carries a preamble-level marker region (M-19 /
-        # BLOCKER-2 rejects the placement) → fail-loud reconciliation, never
-        # a silent merge.
-        assert_eq "M-8 [$f] round-trip surfaces needs-reconciliation (preamble marker, fail loud)" \
-            "$NEEDS" "$(last_disp)"
-        assert_contains "M-8 [$f] diagnostic names the preamble (no enclosing H2)" \
-            "$(last_notes)" "no enclosing H2"
-        # BYTE-IDENTICAL OT customizations: the sidecar preserves OURS exactly
-        # (zero silent loss — the core M-8 guarantee).
-        assert_eq "M-8 [$f] sidecar preserves OT customizations BYTE-IDENTICAL (zero silent loss)" \
-            "identical" "$(cmp -s "$WORK/m8-dest-$f.pre-update" "$GOLDEN_FX/$f" && echo identical || echo differs)"
-        # New canonical adopted at DEST; the retirement is delivered.
-        assert_eq "M-8 [$f] DEST adopts the new canonical (byte-identical THEIRS)" \
-            "identical" "$(cmp -s "$WORK/m8-dest-$f" "$WORK/m8-theirs-$f" && echo identical || echo differs)"
-        assert_eq "M-8 [$f] no [CONDITIONAL] leaks into the new canonical" \
+        # The re-prepped golden has every marker legally hosted → CLEAN merge.
+        assert_eq "M-8 [$f] clean round-trip -> merged-with-customization" \
+            "merged-with-customization" "$(last_disp)"
+        assert_eq "M-8 [$f] writes NO sidecar (zero manual reconciliation)" \
+            "no" "$(file_present "$WORK/m8-dest-$f.pre-update")"
+        assert_eq "M-8 [$f] no [CONDITIONAL] leaks into the merged canonical" \
             "0" "$(grep -c 'CONDITIONAL' "$WORK/m8-dest-$f")"
+        # Every project marker region survives BYTE-IDENTICAL in DEST.
+        assert_eq "M-8 [$f] all project marker regions preserved byte-identical in DEST" \
+            "0" "$(m8_regions_missing "$GOLDEN_FX/$f" "$WORK/m8-dest-$f")"
+        # renamed-from override suppresses its canonical counterpart (no dup H2).
+        assert_eq "M-8 [$f] renamed override heading present exactly once" \
+            "1" "$(grep -c '^## Xcode 26.4 platform features' "$WORK/m8-dest-$f")"
+        assert_eq "M-8 [$f] old canonical heading fully suppressed (no duplicate H2)" \
+            "0" "$(grep -c '^## iOS 26 / Xcode 26.3 platform features' "$WORK/m8-dest-$f")"
     done
-    # The renamed-from override annotations are present + preserved (2 per file).
-    assert_eq "M-8 renamed-from annotations preserved byte-identical in the CLAUDE sidecar" \
-        "2" "$(grep -c 'renamed-from' "$WORK/m8-dest-CLAUDE.md.pre-update")"
+    # The relocated preamble intro (now a Project-addenda H3) survives verbatim.
+    assert_contains "M-8 relocated repository-overview intro preserved (CLAUDE)" \
+        "$(cat "$WORK/m8-dest-CLAUDE.md")" "algorithmic trading prototype"
+    assert_contains "M-8 relocated intro is a '### Repository overview' H3 (CLAUDE)" \
+        "$(cat "$WORK/m8-dest-CLAUDE.md")" "### Repository overview"
+    # The renamed-from override annotations (2 per file) are grafted verbatim.
+    assert_eq "M-8 renamed-from annotations preserved in the merged CLAUDE trinity" \
+        "2" "$(grep -c 'renamed-from' "$WORK/m8-dest-CLAUDE.md")"
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════
