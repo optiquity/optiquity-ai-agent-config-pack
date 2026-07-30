@@ -71,7 +71,7 @@ printf "\n=== Group 1: flag parsing ===\n"
 # pack tree in tracker mode) tripped the prior-state rail before flag
 # validation. Point them at a scratch root with a pack-ops/ surface
 # marker so they pass regardless of cwd state (BD-204 review NIT-2).
-TR_FLAGVAL=$(mktemp -d -t tinit-flagval.XXXXXX)
+TR_FLAGVAL=$(mktemp -d "${TMPDIR:-/tmp}/tinit-flagval.XXXXXX")
 mkdir -p "$TR_FLAGVAL/pack-ops"
 
 # 1.1 missing --backend → validation error.
@@ -89,7 +89,7 @@ assert_contains "1.3 backend 'gitlab' rejected at v11.0" "$err" "not supported a
 rm -rf "$TR_FLAGVAL"
 
 # 1.4 surface auto-detection — pack root (pack-ops/ marker present per BD-175).
-TR_PACK=$(mktemp -d -t tinit-pack.XXXXXX)
+TR_PACK=$(mktemp -d "${TMPDIR:-/tmp}/tinit-pack.XXXXXX")
 mkdir -p "$TR_PACK/pack-ops"
 output=$(tracker_init_run --repo-root "$TR_PACK" --backend github --repo a/b --dry-run 2>&1)
 assert_contains "1.4 auto-detects pack surface"   "$output" "surface:    pack"
@@ -97,7 +97,7 @@ assert_contains "1.4 default id-prefix BD"        "$output" "id-prefix:  BD"
 rm -rf "$TR_PACK"
 
 # 1.5 surface auto-detection — client (docs/pack present).
-TR_CLI=$(mktemp -d -t tinit-cli.XXXXXX)
+TR_CLI=$(mktemp -d "${TMPDIR:-/tmp}/tinit-cli.XXXXXX")
 mkdir -p "$TR_CLI/docs/pack"
 output=$(tracker_init_run --repo-root "$TR_CLI" --backend github --repo a/b --dry-run 2>&1)
 assert_contains "1.5 auto-detects client surface" "$output" "surface:    client"
@@ -105,20 +105,20 @@ assert_contains "1.5 default id-prefix TD"        "$output" "id-prefix:  TD"
 rm -rf "$TR_CLI"
 
 # 1.6 surface auto-detection — neither marker → validation error.
-TR_AMB=$(mktemp -d -t tinit-ambig.XXXXXX)
+TR_AMB=$(mktemp -d "${TMPDIR:-/tmp}/tinit-ambig.XXXXXX")
 err=$(tracker_init_run --repo-root "$TR_AMB" --backend github --repo a/b 2>&1 1>/dev/null) || true
 assert_contains "1.6 ambiguous → validation"      "$err" "cannot auto-detect surface"
 rm -rf "$TR_AMB"
 
 # 1.7 explicit --surface overrides auto-detection.
-TR_OVR=$(mktemp -d -t tinit-ovr.XXXXXX)
+TR_OVR=$(mktemp -d "${TMPDIR:-/tmp}/tinit-ovr.XXXXXX")
 mkdir -p "$TR_OVR/pack-ops"  # BD-175: pack surface marker
 output=$(tracker_init_run --repo-root "$TR_OVR" --surface client --backend github --repo a/b --dry-run 2>&1)
 assert_contains "1.7 explicit --surface client overrides pack-ops/ auto-detect" "$output" "surface:    client"
 rm -rf "$TR_OVR"
 
 # 1.8 --dry-run stops after plan.
-TR_DRY=$(mktemp -d -t tinit-dry.XXXXXX)
+TR_DRY=$(mktemp -d "${TMPDIR:-/tmp}/tinit-dry.XXXXXX")
 mkdir -p "$TR_DRY/pack-ops"  # BD-175: pack surface marker
 output=$(tracker_init_run --repo-root "$TR_DRY" --backend github --repo a/b --dry-run 2>&1)
 rc=$?
@@ -134,7 +134,7 @@ assert_contains "1.9 unknown flag → validation" "$err" "unknown option '--bogu
 
 # 1.10 prior-state safety rail (F8): a tree with .pack-tracker/id-map.json
 # rejects re-init absent --force, telling the user to run disable first.
-TR_PRIOR=$(mktemp -d -t tr-prior.XXXXXX); mkdir -p "$TR_PRIOR/pack-ops"  # BD-175: pack surface marker
+TR_PRIOR=$(mktemp -d "${TMPDIR:-/tmp}/tr-prior.XXXXXX"); mkdir -p "$TR_PRIOR/pack-ops"  # BD-175: pack surface marker
 mkdir -p "$TR_PRIOR/.pack-tracker"; echo '{}' > "$TR_PRIOR/.pack-tracker/id-map.json"
 err=$(tracker_init_run --repo-root "$TR_PRIOR" --backend github --repo a/b --no-forward 2>&1 1>/dev/null) || true
 assert_contains "1.10 prior id-map.json → validation"      "$err" "ERROR: validation"
@@ -154,7 +154,7 @@ printf "\n=== Group 2: auth validation ===\n"
 PATH_SAVED="$PATH"
 
 # 2.1 gh exits non-zero → auth-missing.
-FAKE_BIN_NA=$(mktemp -d -t tinit-na.XXXXXX)
+FAKE_BIN_NA=$(mktemp -d "${TMPDIR:-/tmp}/tinit-na.XXXXXX")
 cat > "$FAKE_BIN_NA/gh" <<'EOF'
 #!/usr/bin/env bash
 echo "You are not logged into any GitHub hosts." >&2
@@ -163,7 +163,7 @@ exit 1
 EOF
 chmod +x "$FAKE_BIN_NA/gh"
 
-TR_NA=$(mktemp -d -t tinit-na-repo.XXXXXX)
+TR_NA=$(mktemp -d "${TMPDIR:-/tmp}/tinit-na-repo.XXXXXX")
 mkdir -p "$TR_NA/pack-ops"  # BD-175: pack surface marker
 
 export PATH="$FAKE_BIN_NA:$PATH_SAVED"
@@ -174,7 +174,7 @@ assert_contains "2.1 message includes gh stderr"          "$err" "not logged int
 rm -rf "$FAKE_BIN_NA" "$TR_NA"
 
 # 2.2 gh exits 0 but no "Logged in to" line → auth-missing.
-FAKE_BIN_NB=$(mktemp -d -t tinit-nb.XXXXXX)
+FAKE_BIN_NB=$(mktemp -d "${TMPDIR:-/tmp}/tinit-nb.XXXXXX")
 cat > "$FAKE_BIN_NB/gh" <<'EOF'
 #!/usr/bin/env bash
 echo "Some unrelated output."
@@ -182,7 +182,7 @@ exit 0
 EOF
 chmod +x "$FAKE_BIN_NB/gh"
 
-TR_NB=$(mktemp -d -t tinit-nb-repo.XXXXXX)
+TR_NB=$(mktemp -d "${TMPDIR:-/tmp}/tinit-nb-repo.XXXXXX")
 mkdir -p "$TR_NB/pack-ops"  # BD-175: pack surface marker
 
 export PATH="$FAKE_BIN_NB:$PATH_SAVED"
@@ -198,7 +198,7 @@ rm -rf "$FAKE_BIN_NB" "$TR_NB"
 printf "\n=== Group 3: templates verification + happy-path init ===\n"
 
 # 3.1 missing issue templates → not-found typed code.
-FAKE_BIN_TPL=$(mktemp -d -t tinit-tpl.XXXXXX)
+FAKE_BIN_TPL=$(mktemp -d "${TMPDIR:-/tmp}/tinit-tpl.XXXXXX")
 cat > "$FAKE_BIN_TPL/gh" <<'EOF'
 #!/usr/bin/env bash
 case "$1 $2" in
@@ -210,7 +210,7 @@ exit 0
 EOF
 chmod +x "$FAKE_BIN_TPL/gh"
 
-TR_NOTPL=$(mktemp -d -t tinit-notpl.XXXXXX)
+TR_NOTPL=$(mktemp -d "${TMPDIR:-/tmp}/tinit-notpl.XXXXXX")
 mkdir -p "$TR_NOTPL/pack-ops"  # BD-175: pack surface marker
 # No .github/ISSUE_TEMPLATE/ exists.
 
@@ -223,7 +223,7 @@ rm -rf "$TR_NOTPL"
 
 # 3.2 happy-path init with --no-forward (writes config, validates auth,
 # verifies templates, ensures labels via mocked gh; skips forward).
-TR_OK=$(mktemp -d -t tinit-ok.XXXXXX)
+TR_OK=$(mktemp -d "${TMPDIR:-/tmp}/tinit-ok.XXXXXX")
 mkdir -p "$TR_OK/pack-ops"  # BD-175: pack surface marker
 mkdir -p "$TR_OK/.github/ISSUE_TEMPLATE"
 touch "$TR_OK/.github/ISSUE_TEMPLATE/work-item.yml"
@@ -280,7 +280,7 @@ assert_eq "3.4 opted_in_at preserved across re-runs" "$prior_opted_in" "$new_opt
 # surface keeps a monolith mirror (the per-entry tree + `_toc.md` is the
 # sole SSOT and readable form). The client config matches the pack
 # config's no-[mirror] shape.
-TR_CLIOK=$(mktemp -d -t tinit-cliok.XXXXXX)
+TR_CLIOK=$(mktemp -d "${TMPDIR:-/tmp}/tinit-cliok.XXXXXX")
 mkdir -p "$TR_CLIOK/docs/pack"  # client surface marker
 mkdir -p "$TR_CLIOK/.github/ISSUE_TEMPLATE"
 touch "$TR_CLIOK/.github/ISSUE_TEMPLATE/work-item.yml"
@@ -380,7 +380,7 @@ printf "\n=== Group 5: interactive dialogue ===\n"
 
 # Setup: a fake gh that always returns auth-OK + empty labels (so
 # init can run end-to-end with --no-forward).
-FAKE_BIN_INT=$(mktemp -d -t tinit-int.XXXXXX)
+FAKE_BIN_INT=$(mktemp -d "${TMPDIR:-/tmp}/tinit-int.XXXXXX")
 cat > "$FAKE_BIN_INT/gh" <<'EOF'
 #!/usr/bin/env bash
 case "$1 $2" in
@@ -395,7 +395,7 @@ chmod +x "$FAKE_BIN_INT/gh"
 # 5.1 prompt path: --backend and --repo missing, force interactive
 # via env var, pipe answers via stdin. Surface auto-detected from
 # pack-ops/ directory marker (BD-175).
-TR_INT1=$(mktemp -d -t tinit-int1.XXXXXX)
+TR_INT1=$(mktemp -d "${TMPDIR:-/tmp}/tinit-int1.XXXXXX")
 mkdir -p "$TR_INT1/pack-ops"  # BD-175: pack surface marker
 mkdir -p "$TR_INT1/.github/ISSUE_TEMPLATE"
 touch "$TR_INT1/.github/ISSUE_TEMPLATE/work-item.yml"
@@ -420,7 +420,7 @@ assert_eq "5.1 backend.repo from prompt" "DShaneNYC/x" \
 rm -rf "$TR_INT1"
 
 # 5.2 default-accept: blank lines accept the offered defaults.
-TR_INT2=$(mktemp -d -t tinit-int2.XXXXXX)
+TR_INT2=$(mktemp -d "${TMPDIR:-/tmp}/tinit-int2.XXXXXX")
 mkdir -p "$TR_INT2/pack-ops"  # BD-175: pack surface marker
 mkdir -p "$TR_INT2/.github/ISSUE_TEMPLATE"
 touch "$TR_INT2/.github/ISSUE_TEMPLATE/work-item.yml"
@@ -444,7 +444,7 @@ assert_eq "5.2 repo from prompt"           "DShaneNYC/y" "$(tracker_config_get "
 rm -rf "$TR_INT2"
 
 # 5.3 prompt path: empty repo answer → validation error.
-TR_INT3=$(mktemp -d -t tinit-int3.XXXXXX)
+TR_INT3=$(mktemp -d "${TMPDIR:-/tmp}/tinit-int3.XXXXXX")
 mkdir -p "$TR_INT3/pack-ops"  # BD-175: pack surface marker
 mkdir -p "$TR_INT3/.github/ISSUE_TEMPLATE"
 touch "$TR_INT3/.github/ISSUE_TEMPLATE/work-item.yml"
@@ -463,7 +463,7 @@ rm -rf "$TR_INT3"
 
 # 5.4 surface prompt: when both pack-ops/ and docs/pack/ absent (BD-175)
 # AND interactive mode, prompt for surface.
-TR_INT4=$(mktemp -d -t tinit-int4.XXXXXX)
+TR_INT4=$(mktemp -d "${TMPDIR:-/tmp}/tinit-int4.XXXXXX")
 mkdir -p "$TR_INT4/.github/ISSUE_TEMPLATE"
 touch "$TR_INT4/.github/ISSUE_TEMPLATE/work-item.yml"
 touch "$TR_INT4/.github/ISSUE_TEMPLATE/inbound.yml"
@@ -482,7 +482,7 @@ assert_contains "5.4 surface prompt visible"          "$output" "Surface (pack |
 rm -rf "$TR_INT4"
 
 # 5.5 invalid surface answer → validation.
-TR_INT5=$(mktemp -d -t tinit-int5.XXXXXX)
+TR_INT5=$(mktemp -d "${TMPDIR:-/tmp}/tinit-int5.XXXXXX")
 mkdir -p "$TR_INT5/.github/ISSUE_TEMPLATE"
 touch "$TR_INT5/.github/ISSUE_TEMPLATE/work-item.yml"
 touch "$TR_INT5/.github/ISSUE_TEMPLATE/inbound.yml"
@@ -500,7 +500,7 @@ rm -rf "$TR_INT5"
 # 5.6 --no-interactive disables prompts (regression: existing flag-only
 # tests in Group 1 already exercise this implicitly because tests run
 # in non-TTY context, but make the override explicit).
-TR_INT6=$(mktemp -d -t tinit-int6.XXXXXX)
+TR_INT6=$(mktemp -d "${TMPDIR:-/tmp}/tinit-int6.XXXXXX")
 mkdir -p "$TR_INT6/pack-ops"  # BD-175: pack surface marker
 err=$(
     tracker_init_run --repo-root "$TR_INT6" --no-interactive 2>&1) || true
@@ -509,7 +509,7 @@ assert_contains "5.6 still requires --backend"  "$err" "--backend is required"
 rm -rf "$TR_INT6"
 
 # 5.7 EOF on stdin (closed input) accepts default and proceeds.
-TR_INT7=$(mktemp -d -t tinit-int7.XXXXXX)
+TR_INT7=$(mktemp -d "${TMPDIR:-/tmp}/tinit-int7.XXXXXX")
 mkdir -p "$TR_INT7/pack-ops"  # BD-175: pack surface marker
 mkdir -p "$TR_INT7/.github/ISSUE_TEMPLATE"
 touch "$TR_INT7/.github/ISSUE_TEMPLATE/work-item.yml"

@@ -198,8 +198,10 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # ⇒ a [pack-root] leg would false-fail V-4/V-7 (and otherwise be a no-op). So it
 # is ONE new registry entry (87 → 88), NOT two (NOT 89); a second [pack-root]
 # tuple would RED the Check 59 count-gate at 89-vs-88. See the matching loud note
-# at the sole (91, …) tuple in validate-pack.py. (Next free numeric ID = 92.)
-CHECK_REGISTRY_EXPECTED_COUNT = 88
+# at the sole (91, …) tuple in validate-pack.py.
+# BD-276 adds Check 92 (BSD-mktemp `-t` portability regression guard — one new
+# registry entry): 88 → 89. (Next free numeric ID = 93.)
+CHECK_REGISTRY_EXPECTED_COUNT = 89
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []

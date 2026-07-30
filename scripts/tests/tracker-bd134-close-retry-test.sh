@@ -39,7 +39,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACK_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 LIB_DIR="$PACK_ROOT/scripts/lib"
 
-FIXTURE_BASE="$(mktemp -d -t bd134-retry.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/bd134-retry.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0
@@ -147,7 +147,7 @@ EOF
     # Seed the per-entry TREE (no monolith) for the C-5 forward read-side.
     mkdir -p "$repo/backlog"
     local _mono
-    _mono=$(mktemp -t bd134-mono.XXXXXX)
+    _mono=$(mktemp "${TMPDIR:-/tmp}/bd134-mono.XXXXXX")
     cat > "$_mono" <<'EOF'
 # Backlog
 

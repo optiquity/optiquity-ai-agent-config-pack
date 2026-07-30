@@ -250,7 +250,7 @@ t_pass "provision: issue-form family installed on the scratch repo"
 # `per_entry_decompose` idiom tracker-migrate-roundtrip-test.sh uses),
 # substitute the scratch slug into tracker.toml, snapshot the baseline.
 # ─────────────────────────────────────────────────────────────────
-WORK_BASE=$(mktemp -d -t bd204-oracle.XXXXXX)
+WORK_BASE=$(mktemp -d "${TMPDIR:-/tmp}/bd204-oracle.XXXXXX")
 WORK_ROOT="$WORK_BASE/repo"
 mkdir -p "$WORK_ROOT/pack-ops" "$WORK_ROOT/backlog" "$WORK_ROOT/.pack-tracker"
 per_entry_decompose "pack-backlog" "$FIXTURE_DIR/BACKLOG.md" "$WORK_ROOT/backlog" >/dev/null \

@@ -189,7 +189,7 @@ tracker_phase_task_parse() {
     # without leaking the python sentinel. Non-fatal parser warnings on
     # stderr are replayed unchanged.
     local _tpt_err _tpt_out _tpt_rc
-    _tpt_err=$(mktemp -t tpt-parse-err.XXXXXX)
+    _tpt_err=$(mktemp "${TMPDIR:-/tmp}/tpt-parse-err.XXXXXX")
     _tpt_out=$(python3 - "$path" 2>"$_tpt_err" <<'PYEOF'
 import json
 import re

@@ -52,7 +52,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACK_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-FIXTURE_BASE="$(mktemp -d -t test-migrator-core.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-migrator-core.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0

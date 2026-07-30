@@ -14,7 +14,7 @@ design rationale lives in
 | File | Owns |
 |---|---|
 | `core.py` | The shared SPINE + the 8 cross-module SEAM symbols + the `_parse_manifest_records` cross-module helper (below). |
-| `<category>.py` (15 modules) | The check bodies of one connected component — either a cluster of checks that share a non-`core` symbol (plus that cluster's private helpers + constants), OR a single genuinely-isolated check that gets its OWN module per the FIRM own-module-per-new-isolated-check convention (below). |
+| `<category>.py` (16 modules) | The check bodies of one connected component — either a cluster of checks that share a non-`core` symbol (plus that cluster's private helpers + constants), OR a single genuinely-isolated check that gets its OWN module per the FIRM own-module-per-new-isolated-check convention (below). |
 | `singletons.py` | The 17 genuinely-isolated checks that share no non-`core` symbol with any other check (the FROZEN split-time set — see the convention). |
 | `__init__.py` | Package marker (docstring only). |
 | `scripts/validate-pack.py` (the facade, NOT in this dir) | `from <module> import *` re-exports of every moved symbol, the registry assembler `_build_check_registry()`, `_resolve_only_check()`, `main()`, and `__main__`. |

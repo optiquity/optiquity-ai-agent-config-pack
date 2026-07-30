@@ -224,7 +224,7 @@ assert_not_contains "2.5 phase-3.3 admits NO BD- dep target" "$parsed_3_3_target
 # 2.7 (JC-1 error-guard) the parser REJECTS a `- BD-NNN` bullet in
 # dependency-TARGET position with a typed `validation` error and emits
 # NO JSON document. Tests the captured target position only.
-guard_fixture=$(mktemp -t tpt-bd-guard.XXXXXX)
+guard_fixture=$(mktemp "${TMPDIR:-/tmp}/tpt-bd-guard.XXXXXX")
 cat > "$guard_fixture" <<'GUARDEOF'
 ## Phase 5 — Guard
 
@@ -252,7 +252,7 @@ rm -f "$guard_fixture"
 # 2.8 (JC-1 error-guard) the guard does NOT false-positive on a
 # `BD-NNN` mention inside annotation free-text AFTER a valid
 # phase-/TD- target — only the captured target position is tested.
-ann_fixture=$(mktemp -t tpt-bd-ann.XXXXXX)
+ann_fixture=$(mktemp "${TMPDIR:-/tmp}/tpt-bd-ann.XXXXXX")
 cat > "$ann_fixture" <<'ANNEOF'
 ## Phase 6 — Annotation
 
@@ -297,7 +297,7 @@ roundtrip_parsed=$(tracker_phase_task_parse "$FIXTURES/ROUNDTRIP.md" 2>/dev/null
 emitted=$(tracker_phase_task_emit "$roundtrip_parsed")
 
 # 3.1 byte-identical round-trip
-tmp_emitted=$(mktemp -t tpt-emitted.XXXXXX)
+tmp_emitted=$(mktemp "${TMPDIR:-/tmp}/tpt-emitted.XXXXXX")
 printf '%s\n' "$emitted" > "$tmp_emitted"
 if diff -q "$FIXTURES/ROUNDTRIP.md" "$tmp_emitted" >/dev/null 2>&1; then
     t_pass "3.1 round-trip identity (parse → emit → diff = empty)"
@@ -317,7 +317,7 @@ assert_eq "3.2 emit is deterministic" "$emitted" "$emitted_again"
 # parser takes a file path, so write the re-emitted text to a tempfile
 # and re-parse it.
 re_emitted=$(tracker_phase_task_emit "$parsed")
-tmp_reemit=$(mktemp -t tpt-reemit.XXXXXX)
+tmp_reemit=$(mktemp "${TMPDIR:-/tmp}/tpt-reemit.XXXXXX")
 printf '%s\n' "$re_emitted" > "$tmp_reemit"
 re_parsed=$(tracker_phase_task_parse "$tmp_reemit" 2>/dev/null)
 rm -f "$tmp_reemit"
@@ -349,7 +349,7 @@ assert_contains "3.5 emit empty → typed error (→ Run:)"            "$emit_er
 # preconditions block.
 nc_parsed=$(tracker_phase_task_parse "$FIXTURES/ROUNDTRIP-NONCANONICAL.md" 2>/dev/null)
 nc_emitted=$(tracker_phase_task_emit "$nc_parsed")
-nc_tmp=$(mktemp -t tpt-nc-emit.XXXXXX)
+nc_tmp=$(mktemp "${TMPDIR:-/tmp}/tpt-nc-emit.XXXXXX")
 printf '%s\n' "$nc_emitted" > "$nc_tmp"
 if diff -q "$FIXTURES/ROUNDTRIP-NONCANONICAL.md" "$nc_tmp" >/dev/null 2>&1; then
     t_fail "3.6 non-canonical does NOT round-trip byte-identically" \
@@ -511,7 +511,7 @@ fallback=$(_tmr_phase_task_order "$m3" "phase-5")
 assert_eq "6.5 fallback ascending numeric" '["1", "2", "10"]' "$fallback"
 
 # 6.6 mapping JSON round-trips through save+load with task_order
-tmpdir=$(mktemp -d -t tpt-mapping.XXXXXX)
+tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/tpt-mapping.XXXXXX")
 mfile="$tmpdir/id-map.json"
 tmf_mapping_save "$mfile" "$m"
 loaded=$(tmf_mapping_load "$mfile")

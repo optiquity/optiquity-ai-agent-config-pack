@@ -238,7 +238,7 @@ tracker_header_snapshot_capture() {
     # round-trip via $() can drop one — atomic file write avoids that
     # ambiguity entirely).
     local tmp
-    tmp=$(mktemp -t ths-snap.XXXXXX) || return 1
+    tmp=$(mktemp "${TMPDIR:-/tmp}/ths-snap.XXXXXX") || return 1
     if ! tracker_header_snapshot_extract_preamble "$backlog_path" > "$tmp" 2>/dev/null; then
         rm -f "$tmp"
         return 1

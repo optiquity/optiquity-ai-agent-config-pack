@@ -89,7 +89,7 @@ _seed_pack_tree() {
     local mono="$2"
     mkdir -p "$repo/pack-ops" "$repo/backlog"
     local bd_only
-    bd_only=$(mktemp -t tmf-bdonly.XXXXXX)
+    bd_only=$(mktemp "${TMPDIR:-/tmp}/tmf-bdonly.XXXXXX")
     python3 - "$mono" > "$bd_only" <<'PY'
 import re, sys
 text = open(sys.argv[1]).read()
@@ -150,7 +150,7 @@ assert_contains "1.3 missing BACKLOG → not-found" "$err" "ERROR: not-found"
 printf "\n=== Group 2: helpers ===\n"
 
 # 2.1 mapping load on missing file → empty object
-tmpdir=$(mktemp -d -t tmf-test-helpers.XXXXXX)
+tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/tmf-test-helpers.XXXXXX")
 m=$(tmf_mapping_load "$tmpdir/nope.json")
 assert_eq "2.1 load missing → {}" "{}" "$(printf '%s' "$m" | jq -c .)"
 
@@ -442,7 +442,7 @@ assert_eq "2.9.4 single-record _tmf_gz64_encode byte-unchanged (additive)" "$s_e
 # 2.8.7 §3.3d PACING — the create loop sleeps >= the min-write interval before
 #       each create after the first (test seam: a counting fake sleep, no real
 #       wall-clock wait).
-PACE_LOG=$(mktemp -t tmf-pace-log.XXXXXX)
+PACE_LOG=$(mktemp "${TMPDIR:-/tmp}/tmf-pace-log.XXXXXX")
 cat > "$REPO_ROOT/scripts/tests/.tmf-fake-sleep.$$" <<FSLEEP
 #!/usr/bin/env bash
 printf '%s\n' "\$1" >> "$PACE_LOG"
@@ -464,7 +464,7 @@ unset TMF_PACING_SLEEP_CMD TMF_PACING_INTERVAL_OVERRIDE
 
 # 2.8.8 §3.3d retry-after — on a simulated 429/secondary-rate-limit, the
 #       backoff helper HONORS retry-after (backs off) rather than tight-retry.
-BACKOFF_LOG=$(mktemp -t tmf-backoff-log.XXXXXX)
+BACKOFF_LOG=$(mktemp "${TMPDIR:-/tmp}/tmf-backoff-log.XXXXXX")
 cat > "$REPO_ROOT/scripts/tests/.tmf-fake-sleep2.$$" <<FSLEEP2
 #!/usr/bin/env bash
 printf '%s\n' "\$1" >> "$BACKOFF_LOG"
@@ -510,15 +510,15 @@ printf "\n=== Group 3: integration with fake gh ===\n"
 # Set up a fake-gh bin dir + log file. The fake gh records each
 # invocation and can be programmed via env vars to return canned
 # stdout for `gh issue list` / `gh issue create` etc.
-FAKE_BIN=$(mktemp -d -t tmf-fakebin.XXXXXX)
-GH_LOG=$(mktemp -t tmf-ghlog.XXXXXX)
-ISSUE_COUNTER_FILE=$(mktemp -t tmf-counter.XXXXXX)
+FAKE_BIN=$(mktemp -d "${TMPDIR:-/tmp}/tmf-fakebin.XXXXXX")
+GH_LOG=$(mktemp "${TMPDIR:-/tmp}/tmf-ghlog.XXXXXX")
+ISSUE_COUNTER_FILE=$(mktemp "${TMPDIR:-/tmp}/tmf-counter.XXXXXX")
 # BD-132 F-7: track which issue numbers have been closed so the
 # `issue list --state closed --label X` poll (Part 1 stabilization)
 # returns a count that grows as `issue close` is called. This lets
 # the close-stabilization helper see the closes propagate, which is
 # what its label-scoped poll measures on a real repo.
-CLOSED_IDS_FILE=$(mktemp -t tmf-closed.XXXXXX)
+CLOSED_IDS_FILE=$(mktemp "${TMPDIR:-/tmp}/tmf-closed.XXXXXX")
 : > "$CLOSED_IDS_FILE"
 echo "100" > "$ISSUE_COUNTER_FILE"
 
@@ -625,7 +625,7 @@ fi
 
 # Build a temp repo seeded from the fixtures.
 # BD-204 C-5 (C2a): seed the BD-only per-entry tree (no monolith).
-TEST_REPO=$(mktemp -d -t tmf-repo.XXXXXX)
+TEST_REPO=$(mktemp -d "${TMPDIR:-/tmp}/tmf-repo.XXXXXX")
 _seed_pack_tree "$TEST_REPO" "$FIXTURES/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"          "$TEST_REPO/tracker.toml"
@@ -745,7 +745,7 @@ assert_eq "3.8 mapping count unchanged" "$n_mapped" "$n_mapped_2"
 
 # 3.9 dry-run mode: parser runs, no creates.
 > "$GH_LOG"
-TEST_REPO2=$(mktemp -d -t tmf-repo-dry.XXXXXX)
+TEST_REPO2=$(mktemp -d "${TMPDIR:-/tmp}/tmf-repo-dry.XXXXXX")
 _seed_pack_tree "$TEST_REPO2" "$FIXTURES/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO2/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml" "$TEST_REPO2/tracker.toml"
@@ -776,7 +776,7 @@ assert_contains "3.10 status reports last reverse run"    "$status_out" "last re
 # DELETED `pack-ops/BACKLOG.md` monolith. Plant a `_toc.md` (tree regen
 # index) AND a STALE `pack-ops/BACKLOG.md` sentinel; assert the status
 # line reflects the tree's mtime and NEVER consults the deleted monolith.
-TEST_REPO_ST=$(mktemp -d -t tmf-repo-status.XXXXXX)
+TEST_REPO_ST=$(mktemp -d "${TMPDIR:-/tmp}/tmf-repo-status.XXXXXX")
 _seed_pack_tree "$TEST_REPO_ST" "$FIXTURES/BACKLOG.md"   # pack-ops/ marker → pack surface
 cp "$FIXTURES/tracker.toml" "$TEST_REPO_ST/tracker.toml"
 printf '# Backlog index\n\n- BD-001\n' > "$TEST_REPO_ST/backlog/_toc.md"
@@ -813,7 +813,7 @@ rm -rf "$TEST_REPO_ST"
 # 3.11 missing tracker.toml: forward fails with typed error. (Only the
 # pack-ops/ surface marker is needed — forward errors at the tracker.toml
 # check before any entry read, so no tree seed is required.)
-TEST_REPO3=$(mktemp -d -t tmf-repo-noconf.XXXXXX)
+TEST_REPO3=$(mktemp -d "${TMPDIR:-/tmp}/tmf-repo-noconf.XXXXXX")
 mkdir -p "$TEST_REPO3/pack-ops"
 err=$(tracker_migrate_forward_run "$TEST_REPO3" 0 0 2>&1) || true
 assert_contains "3.11 missing tracker.toml → validation" "$err" "ERROR: validation"
@@ -828,7 +828,7 @@ printf "\n=== Group 4: review-fix verifications ===\n"
 # 4.1 Mirror-header idempotency (Finding #2): three consecutive runs
 # of _tmf_regen_mirror against a clean-body fixture produce byte-equal
 # files modulo the "Last regenerated" timestamp line.
-mtmp=$(mktemp -t tmf-mirror-idem.XXXXXX)
+mtmp=$(mktemp "${TMPDIR:-/tmp}/tmf-mirror-idem.XXXXXX")
 printf 'Some BACKLOG body content.\nLine two.\n' > "$mtmp"
 _tmf_regen_mirror "$mtmp" "test-org/test-repo"
 snap1=$(grep -v "Last regenerated:" "$mtmp")
@@ -869,9 +869,9 @@ fi
 
 # 4.3 Partial-write surfacing (Finding #5): fake gh that fails on
 # `issue close` produces an end-of-run partial-write typed error.
-FAKE_BIN_PF=$(mktemp -d -t tmf-fakebin-pf.XXXXXX)
-GH_LOG_PF=$(mktemp -t tmf-ghlog-pf.XXXXXX)
-ISSUE_COUNTER_PF=$(mktemp -t tmf-counter-pf.XXXXXX)
+FAKE_BIN_PF=$(mktemp -d "${TMPDIR:-/tmp}/tmf-fakebin-pf.XXXXXX")
+GH_LOG_PF=$(mktemp "${TMPDIR:-/tmp}/tmf-ghlog-pf.XXXXXX")
+ISSUE_COUNTER_PF=$(mktemp "${TMPDIR:-/tmp}/tmf-counter-pf.XXXXXX")
 echo "200" > "$ISSUE_COUNTER_PF"
 
 cat > "$FAKE_BIN_PF/gh" <<FAKEGH_PF
@@ -903,7 +903,7 @@ FAKEGH_PF
 chmod +x "$FAKE_BIN_PF/gh"
 
 # Run forward with fake-gh that fails on close. Expect rc=1 + partial-write.
-TEST_REPO_PF=$(mktemp -d -t tmf-repo-pf.XXXXXX)
+TEST_REPO_PF=$(mktemp -d "${TMPDIR:-/tmp}/tmf-repo-pf.XXXXXX")
 _seed_pack_tree "$TEST_REPO_PF" "$FIXTURES/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_PF/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml" "$TEST_REPO_PF/tracker.toml"
@@ -941,11 +941,11 @@ rm -rf "$FAKE_BIN_PF" "$GH_LOG_PF" "$ISSUE_COUNTER_PF" "$TEST_REPO_PF"
 # 4.4 Body-marker recovery (Findings #1 + #8): fake gh that returns
 # a search hit AND a matching body marker for BD-001 → BD-065 should
 # treat the entry as recovered (registered in mapping, not re-created).
-FAKE_BIN_REC=$(mktemp -d -t tmf-fakebin-rec.XXXXXX)
-GH_LOG_REC=$(mktemp -t tmf-ghlog-rec.XXXXXX)
-ISSUE_COUNTER_REC=$(mktemp -t tmf-counter-rec.XXXXXX)
+FAKE_BIN_REC=$(mktemp -d "${TMPDIR:-/tmp}/tmf-fakebin-rec.XXXXXX")
+GH_LOG_REC=$(mktemp "${TMPDIR:-/tmp}/tmf-ghlog-rec.XXXXXX")
+ISSUE_COUNTER_REC=$(mktemp "${TMPDIR:-/tmp}/tmf-counter-rec.XXXXXX")
 # BD-132 F-7: track closed ids so the stabilization poll sees them.
-CLOSED_IDS_REC=$(mktemp -t tmf-closed-rec.XXXXXX)
+CLOSED_IDS_REC=$(mktemp "${TMPDIR:-/tmp}/tmf-closed-rec.XXXXXX")
 : > "$CLOSED_IDS_REC"
 echo "300" > "$ISSUE_COUNTER_REC"
 
@@ -1042,7 +1042,7 @@ sed -i.bak \
 rm -f "$FAKE_BIN_REC/gh.bak"
 chmod +x "$FAKE_BIN_REC/gh"
 
-TEST_REPO_REC=$(mktemp -d -t tmf-repo-rec.XXXXXX)
+TEST_REPO_REC=$(mktemp -d "${TMPDIR:-/tmp}/tmf-repo-rec.XXXXXX")
 _seed_pack_tree "$TEST_REPO_REC" "$FIXTURES/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_REC/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml" "$TEST_REPO_REC/tracker.toml"
@@ -1070,8 +1070,8 @@ rm -rf "$FAKE_BIN_REC" "$GH_LOG_REC" "$ISSUE_COUNTER_REC" "$CLOSED_IDS_REC" "$TE
 # FAIL LOUD (typed validation error) rather than reading/regenerating a
 # deleted monolith. The per-entry tree under /backlog/ is the SSOT,
 # regenerated by the reverse/regen path (NOT a forward mirror-rebuild).
-GH_LOG_MO=$(mktemp -t tmf-ghlog-mo.XXXXXX)
-FAKE_BIN_MO=$(mktemp -d -t tmf-fakebin-mo.XXXXXX)
+GH_LOG_MO=$(mktemp "${TMPDIR:-/tmp}/tmf-ghlog-mo.XXXXXX")
+FAKE_BIN_MO=$(mktemp -d "${TMPDIR:-/tmp}/tmf-fakebin-mo.XXXXXX")
 cat > "$FAKE_BIN_MO/gh" <<FAKE_GH_MO
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >> "$GH_LOG_MO"
@@ -1079,7 +1079,7 @@ exit 0
 FAKE_GH_MO
 chmod +x "$FAKE_BIN_MO/gh"
 
-TEST_REPO_MO=$(mktemp -d -t tmf-repo-mo.XXXXXX)
+TEST_REPO_MO=$(mktemp -d "${TMPDIR:-/tmp}/tmf-repo-mo.XXXXXX")
 mkdir -p "$TEST_REPO_MO/pack-ops"   # surface marker → pack
 # Seed the per-entry tree (the pack SSOT). NO pack-ops/BACKLOG.md
 # monolith — it is deleted under BD-203.
@@ -1125,8 +1125,8 @@ rm -rf "$FAKE_BIN_MO" "$GH_LOG_MO" "$TEST_REPO_MO"
 # tree-rebuild work — `mirror-rebuild` still legitimately refreshes the
 # client BACKLOG.md mirror header (rc=0, header written, body
 # preserved). BD-207 owns the client repoint.
-GH_LOG_MOC=$(mktemp -t tmf-ghlog-moc.XXXXXX)
-FAKE_BIN_MOC=$(mktemp -d -t tmf-fakebin-moc.XXXXXX)
+GH_LOG_MOC=$(mktemp "${TMPDIR:-/tmp}/tmf-ghlog-moc.XXXXXX")
+FAKE_BIN_MOC=$(mktemp -d "${TMPDIR:-/tmp}/tmf-fakebin-moc.XXXXXX")
 cat > "$FAKE_BIN_MOC/gh" <<FAKE_GH_MOC
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >> "$GH_LOG_MOC"
@@ -1134,7 +1134,7 @@ exit 0
 FAKE_GH_MOC
 chmod +x "$FAKE_BIN_MOC/gh"
 
-TEST_REPO_MOC=$(mktemp -d -t tmf-repo-moc.XXXXXX)
+TEST_REPO_MOC=$(mktemp -d "${TMPDIR:-/tmp}/tmf-repo-moc.XXXXXX")
 mkdir -p "$TEST_REPO_MOC/docs/pack"   # surface marker → client (no pack-ops/)
 cp "$FIXTURES/tracker.toml" "$TEST_REPO_MOC/docs/pack/tracker.toml"
 printf '# BACKLOG\n\n**TD-001 — Client seed entry**\nStatus: Open\n' > "$TEST_REPO_MOC/BACKLOG.md"
@@ -1159,11 +1159,11 @@ rm -rf "$FAKE_BIN_MOC" "$GH_LOG_MOC" "$TEST_REPO_MOC"
 # #6 closure). Lower TMF_CHECKPOINT_INTERVAL=2 against the BD-only tree
 # (3 BD entries): expect a checkpoint write after entry 2, and the
 # checkpoint cleared after the post-loop step 11.
-FAKE_BIN_CP=$(mktemp -d -t tmf-fakebin-cp.XXXXXX)
-GH_LOG_CP=$(mktemp -t tmf-ghlog-cp.XXXXXX)
-ISSUE_COUNTER_CP=$(mktemp -t tmf-counter-cp.XXXXXX)
+FAKE_BIN_CP=$(mktemp -d "${TMPDIR:-/tmp}/tmf-fakebin-cp.XXXXXX")
+GH_LOG_CP=$(mktemp "${TMPDIR:-/tmp}/tmf-ghlog-cp.XXXXXX")
+ISSUE_COUNTER_CP=$(mktemp "${TMPDIR:-/tmp}/tmf-counter-cp.XXXXXX")
 # BD-132 F-7: track closed ids so the stabilization poll sees them.
-CLOSED_IDS_CP=$(mktemp -t tmf-closed-cp.XXXXXX)
+CLOSED_IDS_CP=$(mktemp "${TMPDIR:-/tmp}/tmf-closed-cp.XXXXXX")
 : > "$CLOSED_IDS_CP"
 echo "300" > "$ISSUE_COUNTER_CP"
 
@@ -1233,7 +1233,7 @@ exit 0
 FAKEGH_CP
 chmod +x "$FAKE_BIN_CP/gh"
 
-TEST_REPO_CP=$(mktemp -d -t tmf-repo-cp.XXXXXX)
+TEST_REPO_CP=$(mktemp -d "${TMPDIR:-/tmp}/tmf-repo-cp.XXXXXX")
 _seed_pack_tree "$TEST_REPO_CP" "$FIXTURES/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_CP/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"          "$TEST_REPO_CP/tracker.toml"
@@ -1294,7 +1294,7 @@ rm -rf "$FAKE_BIN" "$GH_LOG" "$ISSUE_COUNTER_FILE" "$CLOSED_IDS_FILE" "$TEST_REP
 printf "\n=== Group 5: BD-131 forward_complete write semantics ===\n"
 
 # 5.1 _tmf_update_tracker_toml round-trip.
-TOML_RT=$(mktemp -d -t tmf-bd131-rt.XXXXXX)
+TOML_RT=$(mktemp -d "${TMPDIR:-/tmp}/tmf-bd131-rt.XXXXXX")
 cat > "$TOML_RT/tracker.toml" <<'TOML'
 schema_version = 1
 
@@ -1357,7 +1357,7 @@ assert_contains "5.1c rejected write leaves forward_complete unchanged" \
 rm -rf "$TOML_RT"
 
 # 5.2 _tmf_verify_forward_complete helper.
-TOML_VF=$(mktemp -d -t tmf-bd131-vf.XXXXXX)
+TOML_VF=$(mktemp -d "${TMPDIR:-/tmp}/tmf-bd131-vf.XXXXXX")
 cat > "$TOML_VF/tracker.toml" <<'TOML'
 schema_version = 1
 [backend]
@@ -1391,9 +1391,9 @@ rm -rf "$TOML_VF"
 # Per BD-131 semantics the create surface is the strong signal —
 # a partial create means the mapping does not cover every entry,
 # so downstream `tracker_mode()` MUST keep resolving to flat-file.
-FAKE_BIN_C=$(mktemp -d -t tmf-fakebin-c.XXXXXX)
-GH_LOG_C=$(mktemp -t tmf-ghlog-c.XXXXXX)
-ISSUE_COUNTER_C=$(mktemp -t tmf-counter-c.XXXXXX)
+FAKE_BIN_C=$(mktemp -d "${TMPDIR:-/tmp}/tmf-fakebin-c.XXXXXX")
+GH_LOG_C=$(mktemp "${TMPDIR:-/tmp}/tmf-ghlog-c.XXXXXX")
+ISSUE_COUNTER_C=$(mktemp "${TMPDIR:-/tmp}/tmf-counter-c.XXXXXX")
 echo "0" > "$ISSUE_COUNTER_C"
 
 cat > "$FAKE_BIN_C/gh" <<FAKEGH_C
@@ -1445,7 +1445,7 @@ exit 0
 FAKEGH_C
 chmod +x "$FAKE_BIN_C/gh"
 
-TEST_REPO_C=$(mktemp -d -t tmf-repo-c.XXXXXX)
+TEST_REPO_C=$(mktemp -d "${TMPDIR:-/tmp}/tmf-repo-c.XXXXXX")
 _seed_pack_tree "$TEST_REPO_C" "$FIXTURES/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_C/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"          "$TEST_REPO_C/tracker.toml"
@@ -1516,9 +1516,9 @@ rm -rf "$FAKE_BIN_C" "$GH_LOG_C" "$ISSUE_COUNTER_C" "$TEST_REPO_C"
 # resume skip arm, or rebuilding completed_pack_ids from the mapping
 # without re-driving step 11) would fail this test immediately.
 
-FAKE_BIN_R1=$(mktemp -d -t tmf-fakebin-r1.XXXXXX)
-GH_LOG_R1=$(mktemp -t tmf-ghlog-r1.XXXXXX)
-ISSUE_COUNTER_R1=$(mktemp -t tmf-counter-r1.XXXXXX)
+FAKE_BIN_R1=$(mktemp -d "${TMPDIR:-/tmp}/tmf-fakebin-r1.XXXXXX")
+GH_LOG_R1=$(mktemp "${TMPDIR:-/tmp}/tmf-ghlog-r1.XXXXXX")
+ISSUE_COUNTER_R1=$(mktemp "${TMPDIR:-/tmp}/tmf-counter-r1.XXXXXX")
 echo "0" > "$ISSUE_COUNTER_R1"
 
 # Phase 1 fake gh: fails on the 3rd `issue create`. With the BD-only tree
@@ -1572,7 +1572,7 @@ exit 0
 FAKEGH_R1
 chmod +x "$FAKE_BIN_R1/gh"
 
-TEST_REPO_R=$(mktemp -d -t tmf-repo-r.XXXXXX)
+TEST_REPO_R=$(mktemp -d "${TMPDIR:-/tmp}/tmf-repo-r.XXXXXX")
 _seed_pack_tree "$TEST_REPO_R" "$FIXTURES/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_R/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"           "$TEST_REPO_R/tracker.toml"
@@ -1605,13 +1605,13 @@ mode_after_partial=$(tracker_mode "$TEST_REPO_R/tracker.toml")
 assert_eq "5.4 phase-1 tracker_mode() → flat-file" "flat-file" "$mode_after_partial"
 
 # ── Phase 2 — swap to all-success fake gh and resume ─────────────
-FAKE_BIN_R2=$(mktemp -d -t tmf-fakebin-r2.XXXXXX)
-GH_LOG_R2=$(mktemp -t tmf-ghlog-r2.XXXXXX)
-ISSUE_COUNTER_R2=$(mktemp -t tmf-counter-r2.XXXXXX)
+FAKE_BIN_R2=$(mktemp -d "${TMPDIR:-/tmp}/tmf-fakebin-r2.XXXXXX")
+GH_LOG_R2=$(mktemp "${TMPDIR:-/tmp}/tmf-ghlog-r2.XXXXXX")
+ISSUE_COUNTER_R2=$(mktemp "${TMPDIR:-/tmp}/tmf-counter-r2.XXXXXX")
 # BD-132 F-7: track closed ids so the stabilization poll sees them
 # (the fixture has a Resolved entry, so step 8 closes will fire and
 # step 8.5 will poll for state=closed).
-CLOSED_IDS_R2=$(mktemp -t tmf-closed-r2.XXXXXX)
+CLOSED_IDS_R2=$(mktemp "${TMPDIR:-/tmp}/tmf-closed-r2.XXXXXX")
 : > "$CLOSED_IDS_R2"
 # Continue the gh-id sequence past where phase 1 stopped (2 entries
 # created → next id is 3) so the resume's new creates do not collide
@@ -1759,13 +1759,13 @@ printf "\n=== Group 6: BD-108 cross-entity link routing (review F3) ===\n"
 
 # Mini-fixture repo with one BACKLOG entry that has `Blockers:
 # phase-3.2` and an IMPLEMENTATION-PLAN with a Dependencies bullet.
-TEST_REPO_BD108=$(mktemp -d -t tmf-bd108.XXXXXX)
+TEST_REPO_BD108=$(mktemp -d "${TMPDIR:-/tmp}/tmf-bd108.XXXXXX")
 mkdir -p "$TEST_REPO_BD108/pack-ops"   # surface marker → pack
 mkdir -p "$TEST_REPO_BD108/backlog"    # BD-204 C-5: per-entry tree (no monolith)
-BD108_MONO=$(mktemp -t tmf-bd108-mono.XXXXXX)
-FAKE_BIN_BD108=$(mktemp -d -t tmf-fakebin-bd108.XXXXXX)
-GH_LOG_BD108=$(mktemp -t tmf-ghlog-bd108.XXXXXX)
-ISSUE_COUNTER_BD108=$(mktemp -t tmf-counter-bd108.XXXXXX)
+BD108_MONO=$(mktemp "${TMPDIR:-/tmp}/tmf-bd108-mono.XXXXXX")
+FAKE_BIN_BD108=$(mktemp -d "${TMPDIR:-/tmp}/tmf-fakebin-bd108.XXXXXX")
+GH_LOG_BD108=$(mktemp "${TMPDIR:-/tmp}/tmf-ghlog-bd108.XXXXXX")
+ISSUE_COUNTER_BD108=$(mktemp "${TMPDIR:-/tmp}/tmf-counter-bd108.XXXXXX")
 echo "0" > "$ISSUE_COUNTER_BD108"
 
 # Two BACKLOG entries:
@@ -1998,14 +1998,14 @@ rm -rf "$FAKE_BIN_BD108" "$GH_LOG_BD108" "$ISSUE_COUNTER_BD108" "$TEST_REPO_BD10
 
 printf "\n=== Group 7: BD-204 close-reason CLI-boundary translation ===\n"
 
-TEST_REPO_CR=$(mktemp -d -t tmf-closereason.XXXXXX)
+TEST_REPO_CR=$(mktemp -d "${TMPDIR:-/tmp}/tmf-closereason.XXXXXX")
 mkdir -p "$TEST_REPO_CR/pack-ops"   # surface marker → pack
 mkdir -p "$TEST_REPO_CR/backlog"    # per-entry tree (no monolith)
-CR_MONO=$(mktemp -t tmf-cr-mono.XXXXXX)
-FAKE_BIN_CR=$(mktemp -d -t tmf-fakebin-cr.XXXXXX)
-GH_LOG_CR=$(mktemp -t tmf-ghlog-cr.XXXXXX)
-ISSUE_COUNTER_CR=$(mktemp -t tmf-counter-cr.XXXXXX)
-CLOSED_IDS_CR=$(mktemp -t tmf-closed-cr.XXXXXX)
+CR_MONO=$(mktemp "${TMPDIR:-/tmp}/tmf-cr-mono.XXXXXX")
+FAKE_BIN_CR=$(mktemp -d "${TMPDIR:-/tmp}/tmf-fakebin-cr.XXXXXX")
+GH_LOG_CR=$(mktemp "${TMPDIR:-/tmp}/tmf-ghlog-cr.XXXXXX")
+ISSUE_COUNTER_CR=$(mktemp "${TMPDIR:-/tmp}/tmf-counter-cr.XXXXXX")
+CLOSED_IDS_CR=$(mktemp "${TMPDIR:-/tmp}/tmf-closed-cr.XXXXXX")
 : > "$CLOSED_IDS_CR"
 echo "600" > "$ISSUE_COUNTER_CR"
 
@@ -2173,12 +2173,12 @@ rm -rf "$FAKE_BIN_CR" "$GH_LOG_CR" "$ISSUE_COUNTER_CR" "$CLOSED_IDS_CR" \
 
 printf "\n=== Group 8: BD-204 C-8 Blockers-cycle pre-pass ===\n"
 
-TEST_REPO_CY=$(mktemp -d -t tmf-cycle.XXXXXX)
+TEST_REPO_CY=$(mktemp -d "${TMPDIR:-/tmp}/tmf-cycle.XXXXXX")
 mkdir -p "$TEST_REPO_CY/pack-ops"   # surface marker → pack
 mkdir -p "$TEST_REPO_CY/backlog"    # per-entry tree (no monolith)
-CY_MONO=$(mktemp -t tmf-cy-mono.XXXXXX)
-FAKE_BIN_CY=$(mktemp -d -t tmf-fakebin-cy.XXXXXX)
-GH_LOG_CY=$(mktemp -t tmf-ghlog-cy.XXXXXX)
+CY_MONO=$(mktemp "${TMPDIR:-/tmp}/tmf-cy-mono.XXXXXX")
+FAKE_BIN_CY=$(mktemp -d "${TMPDIR:-/tmp}/tmf-fakebin-cy.XXXXXX")
+GH_LOG_CY=$(mktemp "${TMPDIR:-/tmp}/tmf-ghlog-cy.XXXXXX")
 
 # The BD-094/BD-095 mutual-block topology, renumbered: BD-701 and
 # BD-702 mutually blocked, both sharing the non-cyclic blocker BD-703

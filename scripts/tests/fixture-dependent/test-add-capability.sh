@@ -49,7 +49,7 @@ load_install_checks_fn() {
 
 make_clean_fixture_clone() {
     local d
-    d=$(mktemp -d -t bd048-tgt.XXXXXX)
+    d=$(mktemp -d "${TMPDIR:-/tmp}/bd048-tgt.XXXXXX")
     cp -R "$FIXTURE/." "$d/"
     git -C "$d" init -q . >/dev/null 2>&1
     git -C "$d" config user.email "test@example.com"

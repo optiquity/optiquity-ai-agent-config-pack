@@ -42,7 +42,7 @@ LIB_DIR="$REPO_ROOT/scripts/lib"
 # not committed reference fixtures, so we write them to a per-run
 # scratch dir instead of $REPO_ROOT/scripts/tests/fixtures/...
 # (which is reserved for committed reference content).
-FIXTURES=$(mktemp -d -t tcc-fix.XXXXXX)
+FIXTURES=$(mktemp -d "${TMPDIR:-/tmp}/tcc-fix.XXXXXX")
 trap 'rm -rf "$FIXTURES"' EXIT
 
 PASS=0
@@ -102,13 +102,13 @@ write_store() {
 printf "\n=== Group 1: K-value resolver ===\n"
 
 # 1.1 default K when no tracker.toml present
-empty_dir=$(mktemp -d -t tcc-empty.XXXXXX)
+empty_dir=$(mktemp -d "${TMPDIR:-/tmp}/tcc-empty.XXXXXX")
 k=$(tracker_cycle_check_get_k "$empty_dir")
 assert_eq "1.1 default K = 10 when no tracker.toml" "10" "$k"
 rm -rf "$empty_dir"
 
 # 1.2 reads [graph] cycle_check_k from tracker.toml
-cfg_dir=$(mktemp -d -t tcc-cfg.XXXXXX)
+cfg_dir=$(mktemp -d "${TMPDIR:-/tmp}/tcc-cfg.XXXXXX")
 cat > "$cfg_dir/tracker.toml" <<'EOF'
 schema_version = 1
 

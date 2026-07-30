@@ -531,6 +531,16 @@ from validate_checks.pack_ops_hygiene import *  # noqa: E402,F403  (BD-224 Check
 # trinity_markers.py; the facade carries no forked copy.
 from validate_checks.trinity_markers import *  # noqa: E402,F403  (BD-136 Check 91; single SSOT)
 
+# BD-276: Check 92 (check_mktemp_t_portability) lives in its own module
+# (validate_checks.mktemp_portability) per the FIRM own-module-per-new-check
+# convention — its candidate surface (git-tracked `*.sh` shell scripts) + its
+# module-private `_git_ls_sh_files()` / `_strip_shell_comment()` helpers share no
+# symbol with any cluster. Placed ABOVE _build_check_registry() so the registry's
+# bare `check_mktemp_t_portability` reference resolves at assembly. Single SSOT —
+# the guard body lives only in mktemp_portability.py; the facade carries no forked
+# copy.
+from validate_checks.mktemp_portability import *  # noqa: E402,F403  (BD-276 Check 92; single SSOT)
+
 # PER_ENTRY_LIB moved to validate_checks.per_entry_sync (BD-256 W7 — Cluster F
 # intra-cluster; sole source-consumer is Check 33's TOC-regenerator invocation)
 # — re-imported via the facade's `from validate_checks.per_entry_sync import *`
@@ -1371,6 +1381,21 @@ def _build_check_registry():
         # enumeration (git ls-files), O(lines), SKIP-lenient off a work tree.
         (91, "check_trinity_marker_wellformed[project-template]",
               lambda: check_trinity_marker_wellformed(REPO_ROOT / "project-template", "project-template"), W),
+        # Check 92 — BSD-mktemp `-t` portability regression guard (BD-276): FAILs
+        # on any REAL `mktemp [-d] -t <prefix>XXXXXX` invocation (command position,
+        # non-comment) in a git-TRACKED pack-side `*.sh` shell script, so the
+        # systemic class BD-276 swept cannot regress. The BSD `-t` form leaves a
+        # literal XXXXXX in the temp path on macOS; the portable fix is the
+        # full-path template `mktemp [-d] "${TMPDIR:-/tmp}/<prefix>.XXXXXX"`.
+        # invocation-vs-mention: comments (stripped, quote-aware) + `.md` docs
+        # (outside the `*.sh` set) are spared; the allowlist is EMPTY (the mentions
+        # are excluded by construction). git-TRACKED enumeration (git ls-files
+        # '*.sh', EXCLUDING project-template/), O(lines), one subprocess,
+        # SKIP-lenient off a work tree. Lives in its own module
+        # (validate_checks.mktemp_portability) per the FIRM own-module-per-new-check
+        # convention. Number 92 is the next free integer (highest wired was 91).
+        (92, "check_mktemp_t_portability",
+              check_mktemp_t_portability, W),
     ]
 
 

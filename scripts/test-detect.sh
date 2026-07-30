@@ -21,7 +21,7 @@ PACK_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # shellcheck source=lib/detect.sh
 source "$SCRIPT_DIR/lib/detect.sh"
 
-FIXTURE_BASE="$(mktemp -d -t test-detect.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-detect.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0

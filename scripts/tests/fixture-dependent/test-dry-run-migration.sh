@@ -43,8 +43,8 @@ printf 'T1 — happy path against %s\n' "$FIXTURE"
 if [[ ! -d "$FIXTURE" ]]; then
     t_fail "T1 fixture missing: $FIXTURE (run test-fixtures/build.sh --name v10-realistic-ot --clean)"
 else
-    t1_report="$(mktemp -t bd114-t1-report.XXXXXX)"
-    t1_log="$(mktemp -t bd114-t1-log.XXXXXX)"
+    t1_report="$(mktemp "${TMPDIR:-/tmp}/bd114-t1-report.XXXXXX")"
+    t1_log="$(mktemp "${TMPDIR:-/tmp}/bd114-t1-log.XXXXXX")"
     rc=0
     bash "$HARNESS" "$FIXTURE" --report-out "$t1_report" \
         > "$t1_log" 2>&1 || rc=$?
@@ -82,7 +82,7 @@ fi
 # ── T2: missing arg ────────────────────────────────────────────────────────
 
 printf 'T2 — missing required arg\n'
-t2_log="$(mktemp -t bd114-t2-log.XXXXXX)"
+t2_log="$(mktemp "${TMPDIR:-/tmp}/bd114-t2-log.XXXXXX")"
 rc=0
 bash "$HARNESS" > "$t2_log" 2>&1 || rc=$?
 if [[ "$rc" -eq 2 ]]; then
@@ -95,7 +95,7 @@ rm -f "$t2_log"
 # ── T3: bad local path ─────────────────────────────────────────────────────
 
 printf 'T3 — non-existent local path\n'
-t3_log="$(mktemp -t bd114-t3-log.XXXXXX)"
+t3_log="$(mktemp "${TMPDIR:-/tmp}/bd114-t3-log.XXXXXX")"
 rc=0
 bash "$HARNESS" /this/path/does/not/exist-bd114-test \
     > "$t3_log" 2>&1 || rc=$?
@@ -113,7 +113,7 @@ printf 'T4 — --tmp-dir outside /tmp / $TMPDIR\n'
 # under /tmp or $TMPDIR. The harness must refuse before any clone happens.
 t4_bad_tmp="$PACK_ROOT/.bd114-test-refused-tmp-$$"
 mkdir -p "$t4_bad_tmp"
-t4_log="$(mktemp -t bd114-t4-log.XXXXXX)"
+t4_log="$(mktemp "${TMPDIR:-/tmp}/bd114-t4-log.XXXXXX")"
 rc=0
 bash "$HARNESS" "$FIXTURE" --tmp-dir "$t4_bad_tmp" \
     > "$t4_log" 2>&1 || rc=$?

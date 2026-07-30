@@ -32,7 +32,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACK_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 LIB_DIR="$PACK_ROOT/scripts/lib"
 
-FIXTURE_BASE="$(mktemp -d -t bd132-race.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/bd132-race.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0

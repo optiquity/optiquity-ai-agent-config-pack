@@ -29,7 +29,7 @@ assert_contains() {
 # sufficient to pass migrator pre-flight. Working tree is clean (committed).
 make_v10_target() {
     local d cli
-    d=$(mktemp -d -t migrate10-tgt.XXXXXX)
+    d=$(mktemp -d "${TMPDIR:-/tmp}/migrate10-tgt.XXXXXX")
     git init -q "$d" >/dev/null
     git -C "$d" config user.email "test@example.com"
     git -C "$d" config user.name  "Test"
@@ -77,13 +77,13 @@ out=$(bash "$MIGRATE_SH" --bogus 2>&1) ; rc=$?
 assert_contains "1.2 --bogus typed error" "$out" "unknown option"
 
 # 1.3 missing PACK exits 10.
-T=$(mktemp -d -t migrate10-nopack.XXXXXX)
+T=$(mktemp -d "${TMPDIR:-/tmp}/migrate10-nopack.XXXXXX")
 out=$(unset PACK; bash "$MIGRATE_SH" "$T" 2>&1) ; rc=$?
 assert_eq "1.3 missing PACK rc=10" "10" "$rc"
 rm -rf "$T"
 
 # 1.4 not a git repo exits 11.
-T=$(mktemp -d -t migrate10-nogit.XXXXXX)
+T=$(mktemp -d "${TMPDIR:-/tmp}/migrate10-nogit.XXXXXX")
 out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$T" 2>&1) ; rc=$?
 assert_eq "1.4 not-a-git-repo rc=11" "11" "$rc"
 rm -rf "$T"
@@ -96,7 +96,7 @@ assert_eq "1.5 dirty tree rc=12" "12" "$rc"
 rm -rf "$T"
 
 # 1.6 not pack-configured exits 13.
-T=$(mktemp -d -t migrate10-bare.XXXXXX)
+T=$(mktemp -d "${TMPDIR:-/tmp}/migrate10-bare.XXXXXX")
 git init -q "$T" >/dev/null
 git -C "$T" config user.email "t@e"; git -C "$T" config user.name "t"
 git -C "$T" commit --allow-empty -q -m "init" 2>/dev/null
@@ -610,8 +610,8 @@ echo "# new name content" > "$T/IMPLEMENTATION-PLAN.md"
 git -C "$T" add -A >/dev/null
 git -C "$T" commit -q -m "both names present" 2>/dev/null
 # Capture stdout+stderr separately so we can assert ERROR block went to stderr.
-co_out=$(mktemp -t mig-co-out.XXXXXX)
-co_err=$(mktemp -t mig-co-err.XXXXXX)
+co_out=$(mktemp "${TMPDIR:-/tmp}/mig-co-out.XXXXXX")
+co_err=$(mktemp "${TMPDIR:-/tmp}/mig-co-err.XXXXXX")
 PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$T" >"$co_out" 2>"$co_err" ; rc=$?
 err_content=$(cat "$co_err")
 collision_ok=1
@@ -661,7 +661,7 @@ rm -rf "$T"
 
 printf "\n=== Group 6: BD-221 lift-into-bundle + gemini-retired-docs backup ===\n"
 
-G6=$(mktemp -d -t mig-retire.XXXXXX)
+G6=$(mktemp -d "${TMPDIR:-/tmp}/mig-retire.XXXXXX")
 G6T="$G6/proj"
 # Customized departing .gemini tree: an x- custom agent, a project-edited
 # env, and a legacy command. None has a v11 Antigravity target. Pre-create

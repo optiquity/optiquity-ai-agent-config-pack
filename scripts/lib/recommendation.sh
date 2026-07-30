@@ -320,7 +320,7 @@ recommendation_state_save() {
     local dir tmp
     dir=$(dirname "$path")
     mkdir -p "$dir"
-    tmp=$(mktemp -t rec-state.XXXXXX)
+    tmp=$(mktemp "${TMPDIR:-/tmp}/rec-state.XXXXXX")
     printf '%s\n' "$data" > "$tmp"
     mv "$tmp" "$path"
 }

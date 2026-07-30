@@ -28,7 +28,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACK_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 RENDER="$PACK_ROOT/scripts/dashboard-render.py"
 
-FIXTURE_BASE="$(mktemp -d -t test-dashboard-render.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-dashboard-render.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 # Belt-and-suspenders: never let git walk up out of the fixture into an

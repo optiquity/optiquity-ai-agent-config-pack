@@ -95,7 +95,7 @@ migrator_post_report_hook() { :; }
 # BD-095 dry-run test fixture.
 make_v10_target() {
     local d
-    d=$(mktemp -d -t migrate10-bd101.XXXXXX)
+    d=$(mktemp -d "${TMPDIR:-/tmp}/migrate10-bd101.XXXXXX")
     git init -q "$d" >/dev/null
     git -C "$d" config user.email "test@example.com"
     git -C "$d" config user.name  "Test"
@@ -113,7 +113,7 @@ make_v10_target() {
 # whole migrator.
 make_state_dir() {
     local d
-    d=$(mktemp -d -t gate1-state.XXXXXX)
+    d=$(mktemp -d "${TMPDIR:-/tmp}/gate1-state.XXXXXX")
     cat > "$d/dispositions.tsv" <<'EOF'
 unchanged-pack	trinity	CLAUDE.md	none	-	-	-
 pack-update-applied	trinity	AGENTS.md	copied	-	-	-
@@ -387,7 +387,7 @@ rm -rf "$T"
 printf "\n=== Group 2.6 — checkpoint_classify_sidecar (BD-095 contract) ===\n"
 
 # 2.6b: sidecar present + companion `.resolved` → resolved-flag.
-T=$(mktemp -d -t classify-flag.XXXXXX)
+T=$(mktemp -d "${TMPDIR:-/tmp}/classify-flag.XXXXXX")
 echo "x" > "$T/sample.v10-customized"
 touch "$T/sample.v10-customized.resolved"
 out=$(checkpoint_classify_sidecar "$T/sample.v10-customized") ; rc=$?
@@ -397,14 +397,14 @@ rm -rf "$T"
 
 # 2.6c: sidecar absent → resolved-removed (caller passes a path that
 # does not exist; this is the "user merged + rm'd" path).
-T=$(mktemp -d -t classify-removed.XXXXXX)
+T=$(mktemp -d "${TMPDIR:-/tmp}/classify-removed.XXXXXX")
 out=$(checkpoint_classify_sidecar "$T/never-existed.v10-customized") ; rc=$?
 assert_eq "2.6c classifier rc=0 (resolved-removed)" "0" "$rc"
 assert_eq "2.6c classifier echoes 'resolved-removed'" "resolved-removed" "$out"
 rm -rf "$T"
 
 # 2.6d: sidecar present, no `.resolved` → unresolved.
-T=$(mktemp -d -t classify-unresolved.XXXXXX)
+T=$(mktemp -d "${TMPDIR:-/tmp}/classify-unresolved.XXXXXX")
 echo "x" > "$T/sample.v10-customized"
 out=$(checkpoint_classify_sidecar "$T/sample.v10-customized") ; rc=$?
 assert_eq "2.6d classifier rc=0 (unresolved)" "0" "$rc"
@@ -595,7 +595,7 @@ if ! command -v jq >/dev/null 2>&1; then
     echo "  [skip] jq not on PATH; mapping-integer tests require jq"
 else
     # 5.1 PASS: all-integer mapping.
-    T=$(mktemp -d -t bd101-map-good.XXXXXX)
+    T=$(mktemp -d "${TMPDIR:-/tmp}/bd101-map-good.XXXXXX")
     mkdir -p "$T/.pack-tracker"
     echo '{"BD-001": 1, "BD-002": 5, "BD-003": 99}' > "$T/.pack-tracker/id-map.json"
     out=$(checkpoint_check_mapping_integrity "$T" 2>&1) ; rc=$?
@@ -605,7 +605,7 @@ else
 
     # 5.2 FAIL: float value (3.14) — pre-fix the bare predicate accepts
     # this; the tightened predicate rejects it because floor(3.14) != 3.14.
-    T=$(mktemp -d -t bd101-map-float.XXXXXX)
+    T=$(mktemp -d "${TMPDIR:-/tmp}/bd101-map-float.XXXXXX")
     mkdir -p "$T/.pack-tracker"
     echo '{"BD-001": 3.14, "BD-002": 5}' > "$T/.pack-tracker/id-map.json"
     out=$(checkpoint_check_mapping_integrity "$T" 2>&1) ; rc=$?
@@ -615,7 +615,7 @@ else
     rm -rf "$T"
 
     # 5.3 FAIL: zero (boundary) — must be rejected (positive only).
-    T=$(mktemp -d -t bd101-map-zero.XXXXXX)
+    T=$(mktemp -d "${TMPDIR:-/tmp}/bd101-map-zero.XXXXXX")
     mkdir -p "$T/.pack-tracker"
     echo '{"BD-001": 0, "BD-002": 5}' > "$T/.pack-tracker/id-map.json"
     out=$(checkpoint_check_mapping_integrity "$T" 2>&1) ; rc=$?

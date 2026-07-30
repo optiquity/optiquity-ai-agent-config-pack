@@ -20,7 +20,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPARE="$SCRIPT_DIR/compare-agent-trinity.py"
 
-FIXTURE_BASE="$(mktemp -d -t test-compare-trinity.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-compare-trinity.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0

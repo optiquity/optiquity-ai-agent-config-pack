@@ -79,7 +79,7 @@ PACK_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 GATE="$PACK_ROOT/project-template/scripts/validate-docs.sh"
 ALLOWLIST="$PACK_ROOT/project-template/scripts/.docs-gate-allowlist.txt"
 
-FIXTURE_BASE="$(mktemp -d -t test-vdocs-sessionstate.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-vdocs-sessionstate.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0

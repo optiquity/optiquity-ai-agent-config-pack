@@ -117,7 +117,7 @@ _gh_run() {
         tracker_gh_repo_setup
     fi
     local stderr_tmp
-    stderr_tmp=$(mktemp -t tracker-gh-stderr.XXXXXX)
+    stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tracker-gh-stderr.XXXXXX")
     local stdout
     stdout=$("$@" 2>"$stderr_tmp")
     local rc=$?
@@ -400,7 +400,7 @@ tracker_provider_gh_create() {
     fi
 
     local body_file
-    body_file=$(mktemp -t tracker-gh-body.XXXXXX)
+    body_file=$(mktemp "${TMPDIR:-/tmp}/tracker-gh-body.XXXXXX")
     printf '%s' "$body" > "$body_file"
 
     local args
@@ -446,7 +446,7 @@ tracker_provider_gh_update() {
     args=("issue" "edit" "$id")
     [[ -n "$title" ]] && args+=("--title" "$title")
     if [[ -n "$body" ]]; then
-        body_file=$(mktemp -t tracker-gh-body.XXXXXX)
+        body_file=$(mktemp "${TMPDIR:-/tmp}/tracker-gh-body.XXXXXX")
         printf '%s' "$body" > "$body_file"
         args+=("--body-file" "$body_file")
     fi
@@ -521,7 +521,7 @@ tracker_provider_gh_comment() {
         return 1
     fi
     local body_file
-    body_file=$(mktemp -t tracker-gh-comment.XXXXXX)
+    body_file=$(mktemp "${TMPDIR:-/tmp}/tracker-gh-comment.XXXXXX")
     printf '%s' "$body" > "$body_file"
     local url rc
     url=$(_gh_run gh issue comment "$id" --body-file "$body_file")
@@ -963,7 +963,7 @@ tracker_provider_gh_raw() {
     args=("api" "$path")
     [[ "$method" != "GET" ]] && args+=("-X" "$method")
     if [[ -n "$body" ]]; then
-        body_file=$(mktemp -t tracker-gh-raw.XXXXXX)
+        body_file=$(mktemp "${TMPDIR:-/tmp}/tracker-gh-raw.XXXXXX")
         printf '%s' "$body" > "$body_file"
         args+=("--input" "$body_file")
     fi

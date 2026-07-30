@@ -23,7 +23,7 @@
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
 - [BD-275](./BD-275.md) — Order-dependent test-v11-realistic-ot.sh (serial-suite flake; passes isolated)
-- [BD-276](./BD-276.md) — Systemic BSD-mktemp `-t` portability sweep (tests + runtime libs)
+- [BD-277](./BD-277.md) — Client-side (project-template) BSD-mktemp portability: sweep + guard assessment (client deliverable analog of BD-276)
 
 ## Deferred
 
@@ -274,6 +274,7 @@
 - [BD-272](./BD-272.md) — Eradicate the `pack td` boundary violation (mis-homed, client-advertised, never-shipped project-side TD-promotion workflow)
 - [BD-273](./BD-273.md) — Pack-side agent-scratch ownership isolation + deletion-boundary guard (pack dev-workflow safety)
 - [BD-274](./BD-274.md) — Project-side (client) agent-scratch ownership isolation (client deliverable analog of BD-273)
+- [BD-276](./BD-276.md) — Systemic BSD-mktemp portability sweep + Check 92 3-class regression guard + root-cause teaching-surface fix
 
 ## Deprecated
 

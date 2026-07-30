@@ -29,7 +29,7 @@ set -u
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 VALIDATE="$REPO_ROOT/scripts/validate-pack.py"
 
-SCRATCH="$(mktemp -d -t vp-check84.XXXXXX)"
+SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/vp-check84.XXXXXX")"
 trap 'rm -rf "$SCRATCH"' EXIT
 
 PASS=0

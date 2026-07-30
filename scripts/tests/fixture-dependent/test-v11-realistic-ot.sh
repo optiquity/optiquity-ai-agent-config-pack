@@ -105,7 +105,7 @@ require_fixture() {
 require_fixture "$FIXTURE_NAME"
 
 # Scratch dir for fresh-regeneration comparisons.
-SCRATCH=$(mktemp -d -t v11-realistic-ot-test.XXXXXX)
+SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/v11-realistic-ot-test.XXXXXX")
 trap 'rm -rf "$SCRATCH"' EXIT INT TERM
 
 # Source the BD-164 helpers (same load order as init-project.sh, the

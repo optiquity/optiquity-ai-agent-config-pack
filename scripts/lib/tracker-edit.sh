@@ -429,7 +429,7 @@ tracker_edit_entry() {
         fi
         if [[ -n "$ed_raw_body" ]]; then
             local _ted_tmp_raw _ted_parsed
-            _ted_tmp_raw=$(mktemp -t ted-rawbody.XXXXXX) || {
+            _ted_tmp_raw=$(mktemp "${TMPDIR:-/tmp}/ted-rawbody.XXXXXX") || {
                 tracker_error_emit "validation" \
                     "tracker_edit: mktemp failed (raw_body projection parse)"
                 return 1

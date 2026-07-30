@@ -131,7 +131,7 @@ EOF
 tracker_labels_ensure() {
     local existing missing_count=0 created=0 failed=0 already_present=0
     local pf_file
-    pf_file=$(mktemp -t tlbl-pf.XXXXXX)
+    pf_file=$(mktemp "${TMPDIR:-/tmp}/tlbl-pf.XXXXXX")
     : > "$pf_file"
 
     # BD-129 / D-1: export GH_REPO from the active tracker.toml so the

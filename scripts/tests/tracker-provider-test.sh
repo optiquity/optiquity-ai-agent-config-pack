@@ -82,7 +82,7 @@ assert_contains() {
 # Fake gh script setup
 # ─────────────────────────────────────────────────────────────────
 
-FAKE_BIN_DIR="$(mktemp -d -t tracker-prov-fakebin.XXXXXX)"
+FAKE_BIN_DIR="$(mktemp -d "${TMPDIR:-/tmp}/tracker-prov-fakebin.XXXXXX")"
 trap 'rm -rf "$FAKE_BIN_DIR"' EXIT
 
 cat > "$FAKE_BIN_DIR/gh" <<'FAKE_GH'
@@ -228,7 +228,7 @@ reset_fake_gh() {
 # Helper: write content to a tmp file and echo path.
 make_tmp_with() {
     local tmp
-    tmp=$(mktemp -t tracker-prov-test.XXXXXX)
+    tmp=$(mktemp "${TMPDIR:-/tmp}/tracker-prov-test.XXXXXX")
     printf '%s' "$1" > "$tmp"
     echo "$tmp"
 }
@@ -330,7 +330,7 @@ assert_eq "1.5 search items.length=2" "2" "$(printf '%s' "$out" | jq -r '.items 
 
 # 1.6 create — title required + url-derived number
 reset_fake_gh
-log=$(mktemp -t prov-log.XXXXXX); export FAKE_GH_LOG="$log"
+log=$(mktemp "${TMPDIR:-/tmp}/prov-log.XXXXXX"); export FAKE_GH_LOG="$log"
 url_file=$(make_tmp_with "https://github.com/optiquity/pack/issues/77")
 export FAKE_GH_STDOUT_FILE="$url_file"
 out=$(provider_create '{"title":"Test issue","body":"hello","labels":["foo"]}')
@@ -366,7 +366,7 @@ assert_eq "1.9 close state_reason=completed" "completed" "$(printf '%s' "$out" |
 # REJECTS any non-CLI-vocabulary reason, so this leg fails loudly if
 # the translation ever regresses.
 reset_fake_gh
-log=$(mktemp -t prov-close-log.XXXXXX); export FAKE_GH_LOG="$log"
+log=$(mktemp "${TMPDIR:-/tmp}/prov-close-log.XXXXXX"); export FAKE_GH_LOG="$log"
 out=$(provider_close 42 not_planned)
 rc19b=$?
 assert_eq "1.9b close not_planned rc=0 (vocabulary-enforcing fake accepts the translated reason)" "0" "$rc19b"
@@ -448,13 +448,13 @@ assert_eq "1.16 set_milestone v11.1" "v11.1" "$(printf '%s' "$out" | jq -r '.mil
 # captures every gh argv so we can assert the GraphQL mutation name +
 # arg ordering.
 reset_fake_gh
-LINK_DISPATCH_DIR=$(mktemp -d -t prov-link-dispatch.XXXXXX)
+LINK_DISPATCH_DIR=$(mktemp -d "${TMPDIR:-/tmp}/prov-link-dispatch.XXXXXX")
 printf '%s' "optiquity/pack" > "$LINK_DISPATCH_DIR/repo"
 printf '%s' "NODE_42"        > "$LINK_DISPATCH_DIR/api-issue-42"
 printf '%s' "NODE_99"        > "$LINK_DISPATCH_DIR/api-issue-99"
 cp "$FIXTURES/gh-add-blocked-by.json" "$LINK_DISPATCH_DIR/api-graphql"
 export FAKE_GH_DISPATCH_DIR="$LINK_DISPATCH_DIR"
-log=$(mktemp -t prov-link-log.XXXXXX); export FAKE_GH_LOG="$log"
+log=$(mktemp "${TMPDIR:-/tmp}/prov-link-log.XXXXXX"); export FAKE_GH_LOG="$log"
 
 # 1.17a kind=blocked-by — id 42 is blocked by 99 →
 #       addBlockedBy(issueId=NODE_42, blockingIssueId=NODE_99)
@@ -505,7 +505,7 @@ assert_contains "1.17b blockingIssueId=NODE_42"      "$log_contents" "blockingIs
 # the BD-111 fix-pass per F6 option (a).
 reset_fake_gh
 export FAKE_GH_DISPATCH_DIR="$LINK_DISPATCH_DIR"
-emu_err_file=$(mktemp -t prov-link-emu.XXXXXX)
+emu_err_file=$(mktemp "${TMPDIR:-/tmp}/prov-link-emu.XXXXXX")
 printf 'FORBIDDEN: Unauthorized; path: addBlockedBy\n' > "$emu_err_file"
 export FAKE_GH_STDERR_FILE="$emu_err_file"
 export FAKE_GH_EXIT=1
@@ -623,13 +623,13 @@ assert_contains "1.19 unlink duplicates → validation (comment-based)" "$err" "
 #   4. gh api graphql -f query=... -F issueId=... -F blockingIssueId=...
 #      → removeBlockedBy response fixture (gh-remove-blocked-by.json)
 reset_fake_gh
-UNLINK_DISPATCH_DIR=$(mktemp -d -t prov-unlink-dispatch.XXXXXX)
+UNLINK_DISPATCH_DIR=$(mktemp -d "${TMPDIR:-/tmp}/prov-unlink-dispatch.XXXXXX")
 printf '%s' "optiquity/pack" > "$UNLINK_DISPATCH_DIR/repo"
 printf '%s' "NODE_42"        > "$UNLINK_DISPATCH_DIR/api-issue-42"
 printf '%s' "NODE_99"        > "$UNLINK_DISPATCH_DIR/api-issue-99"
 cp "$FIXTURES/gh-remove-blocked-by.json" "$UNLINK_DISPATCH_DIR/api-graphql"
 export FAKE_GH_DISPATCH_DIR="$UNLINK_DISPATCH_DIR"
-log=$(mktemp -t prov-unlink-log.XXXXXX); export FAKE_GH_LOG="$log"
+log=$(mktemp "${TMPDIR:-/tmp}/prov-unlink-log.XXXXXX"); export FAKE_GH_LOG="$log"
 
 # 1.20a kind=blocked-by — id 42 no-longer blocked by 99 →
 #       removeBlockedBy(issueId=NODE_42, blockingIssueId=NODE_99)
@@ -679,7 +679,7 @@ assert_contains "1.20b blockingIssueId=NODE_42"         "$log_contents" "blockin
 # (FORBIDDEN form); cycle-detection N/A on remove.
 reset_fake_gh
 export FAKE_GH_DISPATCH_DIR="$UNLINK_DISPATCH_DIR"
-nf_err_file=$(mktemp -t prov-unlink-nf.XXXXXX)
+nf_err_file=$(mktemp "${TMPDIR:-/tmp}/prov-unlink-nf.XXXXXX")
 printf 'HTTP 404: Not Found\n' > "$nf_err_file"
 export FAKE_GH_STDERR_FILE="$nf_err_file"
 export FAKE_GH_EXIT=1
@@ -748,14 +748,14 @@ rm -f "$empty_file"
 # stub content works.
 reset_fake_gh
 _GH_SUB_ISSUE_EXT_CACHED="no"
-SUB_DISPATCH_DIR=$(mktemp -d -t prov-sub-dispatch.XXXXXX)
+SUB_DISPATCH_DIR=$(mktemp -d "${TMPDIR:-/tmp}/prov-sub-dispatch.XXXXXX")
 printf '%s' "NODE_100" > "$SUB_DISPATCH_DIR/api-issue-100"
 printf '%s' "NODE_42"  > "$SUB_DISPATCH_DIR/api-issue-42"
 printf '%s' "{}"       > "$SUB_DISPATCH_DIR/api-graphql"
 export FAKE_GH_DISPATCH_DIR="$SUB_DISPATCH_DIR"
 export FAKE_GH_REPO_VIEW_FAIL=1
 export GH_REPO="optiquity/pack"
-log=$(mktemp -t prov-sub-log.XXXXXX); export FAKE_GH_LOG="$log"
+log=$(mktemp "${TMPDIR:-/tmp}/prov-sub-log.XXXXXX"); export FAKE_GH_LOG="$log"
 out=$(provider_sub_issue_create 100 '{"existing_id":"42"}')
 rc21b=$?
 assert_eq "1.21b sub_issue_create succeeds via GH_REPO with repo-view dead (rc=0)" "0" "$rc21b"
@@ -927,7 +927,7 @@ printf "\n=== Group 4: Mode-3 pack edit path (tracker_edit_entry) ===\n"
 source "$REPO_ROOT/scripts/lib/tracker-edit.sh"
 
 # Offline harness: a scratch repo with an id-map mapping BD-001 → 42.
-TED_REPO="$(mktemp -d -t tracker-edit.XXXXXX)"
+TED_REPO="$(mktemp -d "${TMPDIR:-/tmp}/tracker-edit.XXXXXX")"
 mkdir -p "$TED_REPO/.pack-tracker"
 cat > "$TED_REPO/.pack-tracker/id-map.json" <<'EOF'
 { "BD-001": { "id": "42" } }
@@ -953,7 +953,7 @@ provider_reopen() { TED_CALLS="$TED_CALLS|reopen:$1"; return 0; }
 # mutations propagate to this (parent) shell; capture the return shape
 # separately into a tmp file.
 TED_CALLS=""
-ted_out=$(mktemp -t tracker-edit-out.XXXXXX)
+ted_out=$(mktemp "${TMPDIR:-/tmp}/tracker-edit-out.XXXXXX")
 tracker_edit_entry "BD-001" '{"body":"new prose"}' "$TED_REPO" > "$ted_out"
 assert_contains "4.1 body edit dispatches provider_update" "$TED_CALLS" "|update:42"
 if [[ "$TED_CALLS" == *"|close:"* || "$TED_CALLS" == *"|reopen:"* ]]; then
@@ -1164,7 +1164,7 @@ TED_CALLS=""
 TED_UPDATE_PAYLOAD=""
 ted_raw_wrong=$'**BD-002 — A different entry**\nType: TODO(version)\nStatus: Open\nDescription: Wrong-id span.\n'
 ted_patch=$(jq -n --arg rb "$ted_raw_wrong" '{raw_body:$rb}')
-ted_err_out=$(mktemp -t tracker-edit-err.XXXXXX)
+ted_err_out=$(mktemp "${TMPDIR:-/tmp}/tracker-edit-err.XXXXXX")
 rc47f=0
 tracker_edit_entry "BD-001" "$ted_patch" "$TED_REPO" >/dev/null 2>"$ted_err_out" || rc47f=1
 err=$(cat "$ted_err_out"); rm -f "$ted_err_out"
@@ -1184,7 +1184,7 @@ fi
 TED_CALLS=""
 ted_raw_multi=$'**BD-001 — Add foo to bar**\nType: TODO(version)\nStatus: Open\nDescription: First span.\n\n---\n\n**BD-002 — Second span**\nType: TODO(version)\nStatus: Open\nDescription: Second span.\n'
 ted_patch=$(jq -n --arg rb "$ted_raw_multi" '{raw_body:$rb}')
-ted_err_out=$(mktemp -t tracker-edit-err.XXXXXX)
+ted_err_out=$(mktemp "${TMPDIR:-/tmp}/tracker-edit-err.XXXXXX")
 rc47g=0
 tracker_edit_entry "BD-001" "$ted_patch" "$TED_REPO" >/dev/null 2>"$ted_err_out" || rc47g=1
 err=$(cat "$ted_err_out"); rm -f "$ted_err_out"
@@ -1221,7 +1221,7 @@ provider_get() {
 }
 TED_CALLS=""
 TED_UPDATE_PAYLOAD="__UNTOUCHED__"
-ted_err_out=$(mktemp -t tracker-edit-err.XXXXXX)
+ted_err_out=$(mktemp "${TMPDIR:-/tmp}/tracker-edit-err.XXXXXX")
 rc47h=0
 tracker_edit_entry "BD-001" \
     '{"status":"Resolved","old_status":"Open","resolution":"2026-06-12 — done."}' \
@@ -1348,8 +1348,8 @@ rm -rf "$TED_REPO"
 printf "\n=== Group 5: BD-204 OQ-A verbs (pack tracker edit / new-entry) ===\n"
 
 PACK_TRACKER_SH="$REPO_ROOT/scripts/pack-tracker.sh"
-G5_REPO=$(mktemp -d -t tracker-verbs.XXXXXX)
-G5_STATE=$(mktemp -d -t tracker-verbs-state.XXXXXX)
+G5_REPO=$(mktemp -d "${TMPDIR:-/tmp}/tracker-verbs.XXXXXX")
+G5_STATE=$(mktemp -d "${TMPDIR:-/tmp}/tracker-verbs-state.XXXXXX")
 mkdir -p "$G5_REPO/pack-ops" "$G5_REPO/.pack-tracker"
 cat > "$G5_REPO/tracker.toml" <<'EOF'
 schema_version = 1
@@ -1366,7 +1366,7 @@ mapping_file = ".pack-tracker/id-map.json"
 EOF
 printf '{}\n' > "$G5_REPO/.pack-tracker/id-map.json"
 
-G5_FAKE=$(mktemp -d -t tracker-verbs-fake.XXXXXX)
+G5_FAKE=$(mktemp -d "${TMPDIR:-/tmp}/tracker-verbs-fake.XXXXXX")
 cat > "$G5_FAKE/gh" <<'FG5'
 #!/usr/bin/env bash
 STATE="__G5_STATE__"
@@ -1428,7 +1428,7 @@ sed -i.bak "s|__G5_STATE__|$G5_STATE|" "$G5_FAKE/gh"
 rm -f "$G5_FAKE/gh.bak"
 chmod +x "$G5_FAKE/gh"
 
-G5_BODY=$(mktemp -t tracker-verbs-body.XXXXXX)
+G5_BODY=$(mktemp "${TMPDIR:-/tmp}/tracker-verbs-body.XXXXXX")
 cat > "$G5_BODY" <<'EOF'
 **BD-002 — New tracked entry**
 Type: TODO(version)
@@ -1514,7 +1514,7 @@ assert_contains "5.4 edit output reports updated=true"          "$out54" '"updat
 # 5.5 edit verb: content flags recompose blob + H2 via the lib's
 # composer path (the --raw-body-file bytes reach the issue body).
 : > "$G5_STATE/gh.log"
-G5_BODY2=$(mktemp -t tracker-verbs-body2.XXXXXX)
+G5_BODY2=$(mktemp "${TMPDIR:-/tmp}/tracker-verbs-body2.XXXXXX")
 cat > "$G5_BODY2" <<'EOF'
 **BD-002 — New tracked entry**
 Type: TODO(version)
@@ -1542,7 +1542,7 @@ assert_contains "5.6 refusal names empty patch" "$out56" "empty patch"
 # freshness stamp + the tree-rebuild finish are ordered strictly AFTER
 # a successful create). G5_CREATE_FAIL drives the fake gh's failing
 # `issue create` arm.
-G5_BODY3=$(mktemp -t tracker-verbs-body3.XXXXXX)
+G5_BODY3=$(mktemp "${TMPDIR:-/tmp}/tracker-verbs-body3.XXXXXX")
 cat > "$G5_BODY3" <<'EOF'
 **BD-004 — Create-failure probe**
 Type: TODO(version)
@@ -1571,7 +1571,7 @@ assert_eq "5.7 tracker.toml byte-unchanged (last_tracker_write NOT re-stamped)" 
 # pack-surface-only at v11.0 and refuses naming BD-207 — the same
 # fail-loud gate cmd_tree_rebuild / cmd_new_entry carry (reverse-suite
 # leg 8.4 pins the tree-rebuild side of this gate).
-G5_CLIENT=$(mktemp -d -t tracker-verbs-client.XXXXXX)
+G5_CLIENT=$(mktemp -d "${TMPDIR:-/tmp}/tracker-verbs-client.XXXXXX")
 mkdir -p "$G5_CLIENT/docs/pack"
 cat > "$G5_CLIENT/docs/pack/tracker.toml" <<'EOF'
 schema_version = 1

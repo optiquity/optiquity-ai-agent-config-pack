@@ -369,7 +369,7 @@ _tracker_cycle_check_store_add() {
     # jq idempotency: only insert if (source, target, kind) tuple is
     # not already present.
     local tmp
-    tmp=$(mktemp -t tcc-store.XXXXXX)
+    tmp=$(mktemp "${TMPDIR:-/tmp}/tcc-store.XXXXXX")
     if ! jq --arg s "$src" --arg t "$tgt" \
         '.edges = (.edges // []) | .edges = (
             if (.edges | map(select(.source == $s and .target == $t and .kind == "blocked-by")) | length) > 0

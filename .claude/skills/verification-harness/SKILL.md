@@ -44,14 +44,17 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACK_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-FIXTURE_BASE="$(mktemp -d -t test-<name>.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-<name>.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 ```
 
 Notes:
-- `mktemp -d -t <prefix>.XXXXXX` is the BSD form (no template path).
-  GNU's `mktemp -d` requires `--tmpdir` for the same effect; the BSD form
-  works on both macOS and Linux CI.
+- Use the portable full-path template `mktemp -d "${TMPDIR:-/tmp}/<prefix>.XXXXXX"`
+  — it works identically on BSD (macOS) and GNU (Linux), which both expand a
+  trailing-`XXXXXX` full path. Do NOT use `mktemp -d -t <prefix>.XXXXXX`: it is
+  NON-portable (BSD treats the `-t` argument as a literal prefix and appends its
+  own suffix, leaving a literal `XXXXXX` in the path), as is GNU-only `--tmpdir`
+  (BSD lacks it). CI Check 92 enforces this.
 - The `trap … EXIT` cleanup MUST be registered before any fixtures are
   created. A test failure mid-script must not leak `/tmp/` directories.
 - `set -uo pipefail` (NOT `set -e`) — let assertion failures be tallied

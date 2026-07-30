@@ -106,7 +106,7 @@ setup_state() {
     customization_preserve_init "$1" ".pre-update"
 }
 
-T2=$(mktemp -d -t cp-text.XXXXXX)
+T2=$(mktemp -d "${TMPDIR:-/tmp}/cp-text.XXXXXX")
 state="$T2/state"
 
 # 2.1 unchanged-pack: base==ours==theirs.
@@ -233,7 +233,7 @@ rm -rf "$T2"
 
 printf "\n=== Group 3: structured config (JSON) ===\n"
 
-T3=$(mktemp -d -t cp-json.XXXXXX)
+T3=$(mktemp -d "${TMPDIR:-/tmp}/cp-json.XXXXXX")
 state="$T3/state"
 setup_state "$state"
 
@@ -270,7 +270,7 @@ rm -rf "$T3"
 #    property behind wiring the client deletion-boundary hook as a SEPARATE
 #    element rather than appending its command INTO the commit-gate element
 #    (per BD-273-OWNERSHIP-ISOLATION-AS-BUILT.md §6 "Wiring").
-T3B=$(mktemp -d -t cp-json-hook.XXXXXX)
+T3B=$(mktemp -d "${TMPDIR:-/tmp}/cp-json-hook.XXXXXX")
 state="$T3B/state"
 setup_state "$state"
 
@@ -377,7 +377,7 @@ rm -rf "$T3B"
 
 printf "\n=== Group 4: structured config (TOML) ===\n"
 
-T4=$(mktemp -d -t cp-toml.XXXXXX)
+T4=$(mktemp -d "${TMPDIR:-/tmp}/cp-toml.XXXXXX")
 state="$T4/state"
 setup_state "$state"
 
@@ -443,7 +443,7 @@ assert_eq "5.3 .gemini/.env → generic (gemini-env retired)" \
 
 printf "\n=== Group 6: custom-agent / custom-script preservation ===\n"
 
-T6=$(mktemp -d -t cp-x.XXXXXX)
+T6=$(mktemp -d "${TMPDIR:-/tmp}/cp-x.XXXXXX")
 state="$T6/state"
 setup_state "$state"
 
@@ -528,7 +528,7 @@ rm -rf "$T6"
 printf "\n=== Group 6b: init guard for _CP_PACK_ROOT (B1) ===\n"
 
 # Subshell so unsetting _CP_PACK_ROOT doesn't leak into later tests.
-T6B=$(mktemp -d -t cp-init.XXXXXX)
+T6B=$(mktemp -d "${TMPDIR:-/tmp}/cp-init.XXXXXX")
 init_rc=$(
     bash -c '
         SCRIPT_DIR="'"$LIB_DIR"'"
@@ -586,7 +586,7 @@ flat_d=$(_cp_flat_name "tests/lib/three-way.sh")
 
 # 6c.4 end-to-end: drive _cp_write_diff via the text strategy for the
 # collision pair and confirm two distinct diff files land on disk.
-T6C=$(mktemp -d -t cp-collide.XXXXXX)
+T6C=$(mktemp -d "${TMPDIR:-/tmp}/cp-collide.XXXXXX")
 state="$T6C/state"
 setup_state "$state"
 
@@ -633,7 +633,7 @@ rm -rf "$T6C"
 
 printf "\n=== Group 7: truthful report ===\n"
 
-T7=$(mktemp -d -t cp-rep.XXXXXX)
+T7=$(mktemp -d "${TMPDIR:-/tmp}/cp-rep.XXXXXX")
 state="$T7/state"
 setup_state "$state"
 
@@ -711,7 +711,7 @@ run_fixture() {
     fi
 
     local work
-    work=$(mktemp -d -t "cp-$fname.XXXXXX")
+    work=$(mktemp -d "${TMPDIR:-/tmp}/cp-$fname.XXXXXX")
     local proj="$work/proj"
     local state="$work/state"
     mkdir -p "$proj"

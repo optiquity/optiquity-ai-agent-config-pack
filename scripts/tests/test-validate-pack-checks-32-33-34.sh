@@ -95,7 +95,7 @@ assert_not_contains() {
 }
 
 # Track per-test scratch dirs for cleanup.
-SCRATCH_ROOT=$(mktemp -d -t validate-checks-tests.XXXXXX)
+SCRATCH_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/validate-checks-tests.XXXXXX")
 trap 'rm -rf "$SCRATCH_ROOT"' EXIT INT TERM
 
 # Smoke: validate-pack.py exists and is executable Python.

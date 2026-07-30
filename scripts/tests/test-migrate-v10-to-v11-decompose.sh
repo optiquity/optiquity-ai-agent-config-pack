@@ -77,7 +77,7 @@ assert_not_contains() {
 # Echoes the target absolute path on stdout.
 make_v10_target_with_project_docs() {
     local d
-    d=$(mktemp -d -t migrate10-bd165.XXXXXX)
+    d=$(mktemp -d "${TMPDIR:-/tmp}/migrate10-bd165.XXXXXX")
     git init -q "$d" >/dev/null
     git -C "$d" config user.email "test@example.com"
     git -C "$d" config user.name  "Test"

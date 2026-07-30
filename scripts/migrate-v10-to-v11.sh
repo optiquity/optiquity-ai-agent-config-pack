@@ -819,7 +819,7 @@ _v10_to_v11_translate_capability_tokens() {
             continue
         fi
 
-        tmp=$(mktemp -t pack-cap-rename.XXXXXX) || \
+        tmp=$(mktemp "${TMPDIR:-/tmp}/pack-cap-rename.XXXXXX") || \
             fail_stage S5 "S5c-translate: mktemp failed for $rel"
         linenum=0
         had_change=0

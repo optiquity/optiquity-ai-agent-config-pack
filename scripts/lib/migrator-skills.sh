@@ -250,7 +250,7 @@ migrator_skill_rename() {
         # Cheap fast path: skip if the file has no stale references at all.
         grep -q "\\b${old}\\b" "$f" || continue
 
-        tmp=$(mktemp -t pack-skill-rename.XXXXXX) || {
+        tmp=$(mktemp "${TMPDIR:-/tmp}/pack-skill-rename.XXXXXX") || {
             if declare -F fail_stage >/dev/null; then
                 fail_stage S5 "migrator_skill_rename: mktemp failed for $rel"
             else

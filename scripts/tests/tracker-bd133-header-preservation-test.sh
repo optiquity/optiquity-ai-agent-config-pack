@@ -100,7 +100,7 @@ Items use BD-NNN identifiers (Backlog Description).
 printf "\n=== Group 1: tracker-header-snapshot.sh module API ===\n"
 
 # 1.1 capture: substantive preamble → snapshot file written.
-TMP_REPO=$(mktemp -d -t bd133-1.XXXXXX)
+TMP_REPO=$(mktemp -d "${TMPDIR:-/tmp}/bd133-1.XXXXXX")
 mkdir -p "$TMP_REPO/.pack-tracker"
 cat > "$TMP_REPO/BACKLOG.md" <<EOF
 ${SENTINEL_PREAMBLE}
@@ -126,7 +126,7 @@ fi
 rm -rf "$TMP_REPO"
 
 # 1.2 capture is first-write-wins: second call does not overwrite.
-TMP_REPO=$(mktemp -d -t bd133-1b.XXXXXX)
+TMP_REPO=$(mktemp -d "${TMPDIR:-/tmp}/bd133-1b.XXXXXX")
 mkdir -p "$TMP_REPO/.pack-tracker"
 cat > "$TMP_REPO/BACKLOG.md" <<EOF
 # First version preamble
@@ -147,7 +147,7 @@ assert_eq "1.2 first-write-wins (second capture is no-op)" "$first_snap" "$secon
 rm -rf "$TMP_REPO"
 
 # 1.3 trivial preamble (just `# BACKLOG`) → no snapshot written.
-TMP_REPO=$(mktemp -d -t bd133-1c.XXXXXX)
+TMP_REPO=$(mktemp -d "${TMPDIR:-/tmp}/bd133-1c.XXXXXX")
 mkdir -p "$TMP_REPO/.pack-tracker"
 cat > "$TMP_REPO/BACKLOG.md" <<'EOF'
 # BACKLOG
@@ -162,7 +162,7 @@ tracker_header_snapshot_capture "$TMP_REPO"
 rm -rf "$TMP_REPO"
 
 # 1.4 missing BACKLOG.md → no-op (no failure).
-TMP_REPO=$(mktemp -d -t bd133-1d.XXXXXX)
+TMP_REPO=$(mktemp -d "${TMPDIR:-/tmp}/bd133-1d.XXXXXX")
 mkdir -p "$TMP_REPO/.pack-tracker"
 tracker_header_snapshot_capture "$TMP_REPO"
 rc=$?
@@ -173,7 +173,7 @@ assert_eq "1.4 missing BACKLOG.md → rc=0 (no-op)" "0" "$rc"
 rm -rf "$TMP_REPO"
 
 # 1.5 apply: snapshot replaces leading `# BACKLOG\n\n` and prepends.
-TMP_REPO=$(mktemp -d -t bd133-1e.XXXXXX)
+TMP_REPO=$(mktemp -d "${TMPDIR:-/tmp}/bd133-1e.XXXXXX")
 mkdir -p "$TMP_REPO/.pack-tracker"
 printf '%s' "$SENTINEL_PREAMBLE" > "$TMP_REPO/.pack-tracker/backlog-header.snapshot"
 # Simulate _tmr_emit_backlog output — entries-only with bare title.
@@ -197,7 +197,7 @@ assert_eq "1.5 apply collapses to exactly one title line" "1" "$n_titles"
 rm -rf "$TMP_REPO"
 
 # 1.6 apply: missing snapshot → no-op (entries-only output unchanged).
-TMP_REPO=$(mktemp -d -t bd133-1f.XXXXXX)
+TMP_REPO=$(mktemp -d "${TMPDIR:-/tmp}/bd133-1f.XXXXXX")
 mkdir -p "$TMP_REPO/.pack-tracker"
 cat > "$TMP_REPO/BACKLOG.md" <<'EOF'
 # BACKLOG

@@ -76,7 +76,7 @@ Occurrences feeding arithmetic/string comparison:
 ### Sweep 3 — BSD/macOS-only shell constructs (§EE-C)
 - `sed -i ''`, `stat -f`, `readlink -f`, `date -j`: **none** in wired tests.
 - `date -r` once (`tracker-migrate-forward-test.sh:783`) — BSD-ism, but `-r` is also GNU-`date` "reference file" and the line has `… || echo ""`; ran in passing shard 3. LATENT-low; note it.
-- `mktemp -d -t PREFIX.XXXXXX` (promote tests + several others): **portable** — accepted by both BSD and GNU mktemp; the promote tests' Groups 1–3 (SCRATCH-derived worktrees) PASSED on CI, empirically ruling mktemp OUT as a cause.
+- `mktemp -d -t PREFIX.XXXXXX` (promote tests + several others): NOT portable — the BSD `-t` form leaves a literal XXXXXX in the path (swept in BD-276); but it was NOT the CI-failure cause here — the promote tests' Groups 1–3 (SCRATCH-derived worktrees) still PASSED on CI (a literal XXXXXX in a scratch dir name is harmless), empirically ruling mktemp OUT as a cause.
 - `echo -e`: bash-builtin-safe (CI runs `bash`, not `sh`). Not a bug.
 
 ### Sweep 4 — unstubbed live-`gh` calls in tracker mode (the Class-C class) (§EE-I)

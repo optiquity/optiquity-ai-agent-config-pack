@@ -43,7 +43,7 @@ PATH_SAVED="$PATH"
 # and the ONLY project-surface read source).
 _setup_flat_repo() {
     local repo
-    repo=$(mktemp -d -t tar-flat.XXXXXX)
+    repo=$(mktemp -d "${TMPDIR:-/tmp}/tar-flat.XXXXXX")
     # BD-204 C-6: pack BD-* SSOT is the per-entry tree at /backlog/.
     # Each file IS the entry (with a line-1 back-pointer per Addendum-2
     # §2, stripped on agent-read output).
@@ -85,7 +85,7 @@ EOF
 # Build a tracker-mode test repo.
 _setup_tracker_repo() {
     local repo
-    repo=$(mktemp -d -t tar-tracker.XXXXXX)
+    repo=$(mktemp -d "${TMPDIR:-/tmp}/tar-tracker.XXXXXX")
     touch "$repo/PACK-CHAT.md"   # surface=pack
     cat > "$repo/tracker.toml" <<'EOF'
 schema_version = 1
@@ -141,7 +141,7 @@ FG
 printf "\n=== Group 1: mode detection ===\n"
 
 # 1.1 No tracker.toml → flat-file
-TR_NONE=$(mktemp -d -t tar-none.XXXXXX)
+TR_NONE=$(mktemp -d "${TMPDIR:-/tmp}/tar-none.XXXXXX")
 mode=$(tracker_agent_read_mode "$TR_NONE")
 assert_eq "1.1 no tracker.toml → flat-file" "flat-file" "$mode"
 rm -rf "$TR_NONE"
@@ -219,7 +219,7 @@ assert_contains "2.6 bad repo-root → validation" "$err" "ERROR: validation"
 
 # 2.7 No per-entry tree → not-found (BD-204 C-6: NO pack monolith
 # fallback — the deleted pack-ops/BACKLOG.md is never consulted).
-TR_EMPTY=$(mktemp -d -t tar-empty.XXXXXX)
+TR_EMPTY=$(mktemp -d "${TMPDIR:-/tmp}/tar-empty.XXXXXX")
 err=$(tracker_agent_read_entry "BD-001" "$TR_EMPTY" 2>&1 1>/dev/null) || true
 assert_contains "2.7 no tree → not-found"        "$err" "ERROR: not-found"
 assert_contains "2.7 BD-* fail-loud names the per-entry tree (no monolith)" \
@@ -247,7 +247,7 @@ rm -rf "$REPO_F"
 printf "\n=== Group 3: tracker-mode read ===\n"
 
 REPO_T=$(_setup_tracker_repo)
-FAKE_T=$(mktemp -d -t tar-fake.XXXXXX)
+FAKE_T=$(mktemp -d "${TMPDIR:-/tmp}/tar-fake.XXXXXX")
 _build_fake_gh_for_tracker "$FAKE_T"
 
 export PATH="$FAKE_T:$PATH_SAVED"
@@ -280,7 +280,7 @@ assert_contains "3.3 missing in mapping → not-found" "$err" "ERROR: not-found"
 assert_contains "3.3 message names BD-999"           "$err" "BD-999"
 
 # 3.4 Tracker mode + missing mapping file → not-found
-TR_NOMAP=$(mktemp -d -t tar-nomap.XXXXXX)
+TR_NOMAP=$(mktemp -d "${TMPDIR:-/tmp}/tar-nomap.XXXXXX")
 touch "$TR_NOMAP/PACK-CHAT.md"
 cat > "$TR_NOMAP/tracker.toml" <<'EOF'
 schema_version = 1
@@ -347,7 +347,7 @@ printf "\n=== Group 5: no-monolith fall-through + prefer-branch ===\n"
 # read them; the fall-through must fail loud).
 _setup_project_fallback_repo() {
     local repo
-    repo=$(mktemp -d -t tar-projfb.XXXXXX)
+    repo=$(mktemp -d "${TMPDIR:-/tmp}/tar-projfb.XXXXXX")
     mkdir -p "$repo/docs/project"
     cat > "$repo/docs/project/BACKLOG.md" <<'EOF'
 **TD-005 — STALE MONOLITH (must never be read)**
@@ -396,7 +396,7 @@ EOF
 # mirrors (prefer-branch shape).
 _setup_project_per_entry_repo() {
     local repo
-    repo=$(mktemp -d -t tar-projpe.XXXXXX)
+    repo=$(mktemp -d "${TMPDIR:-/tmp}/tar-projpe.XXXXXX")
     mkdir -p "$repo/docs/project"
     mkdir -p "$repo/docs/project/backlog"
     mkdir -p "$repo/docs/project/implementation-plan"

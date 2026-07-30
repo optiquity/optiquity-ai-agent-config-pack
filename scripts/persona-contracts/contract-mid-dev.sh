@@ -100,7 +100,7 @@ printf '  pack:     %s\n' "$PACK_ROOT"
 # This makes the contract auto-evolve: if the BD-115 fixture grows new
 # user files, they're picked up automatically.
 
-PRE_SNAPSHOT="$(mktemp -t pack-contract-mid-dev-pre.XXXXXX)"
+PRE_SNAPSHOT="$(mktemp "${TMPDIR:-/tmp}/pack-contract-mid-dev-pre.XXXXXX")"
 
 while IFS= read -r f; do
     rel="${f#"$SANDBOX/"}"
@@ -115,7 +115,7 @@ printf '  user-domain files snapshotted: %s\n' "$pre_count"
 
 # Snapshot the pre-install .gitignore so we can verify pack append-only.
 if [[ -f "$SANDBOX/.gitignore" ]]; then
-    PRE_GITIGNORE="$(mktemp -t pack-contract-gitignore.XXXXXX)"
+    PRE_GITIGNORE="$(mktemp "${TMPDIR:-/tmp}/pack-contract-gitignore.XXXXXX")"
     cp "$SANDBOX/.gitignore" "$PRE_GITIGNORE"
 fi
 

@@ -78,7 +78,7 @@ PYEOF
 build_fixture() {
     local body="$1"
     local d
-    d=$(mktemp -d -t rec-state-fix.XXXXXX)
+    d=$(mktemp -d "${TMPDIR:-/tmp}/rec-state-fix.XXXXXX")
     if [[ -n "$body" ]]; then
         mkdir -p "$d/.pack-tracker"
         printf '%s\n' "$body" > "$d/.pack-tracker/recommendation-state.json"

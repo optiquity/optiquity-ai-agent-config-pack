@@ -35,7 +35,7 @@ LIB="$PACK_ROOT/project-template/scripts/groupings-lib.sh"
 VALIDATE="$PACK_ROOT/project-template/scripts/validate.sh"
 IPRULES="$PACK_ROOT/project-template/docs/project/implementation-plan/_rules.md"
 
-FIXTURE_BASE="$(mktemp -d -t test-status-generate.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-status-generate.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0

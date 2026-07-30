@@ -212,7 +212,7 @@ tmf_mapping_save() {
     dir=$(dirname "$path")
     mkdir -p "$dir"
     local tmp
-    tmp=$(mktemp -t tmf-map.XXXXXX)
+    tmp=$(mktemp "${TMPDIR:-/tmp}/tmf-map.XXXXXX")
     printf '%s\n' "$data" > "$tmp"
     mv "$tmp" "$path"
 }
@@ -322,7 +322,7 @@ tmf_checkpoint_write() {
     dir=$(dirname "$path")
     mkdir -p "$dir"
     local tmp
-    tmp=$(mktemp -t tmf-ckp.XXXXXX)
+    tmp=$(mktemp "${TMPDIR:-/tmp}/tmf-ckp.XXXXXX")
     printf '%s\n' "$state" > "$tmp"
     mv "$tmp" "$path"
 }
@@ -619,7 +619,7 @@ tmf_parse_backlog_tree() {
     # the canonical sort order pe_list_entry_files returns. The temp file
     # lets the shared file-based parser core run unchanged.
     local stream_file f rc
-    stream_file=$(mktemp -t tmf-tree-stream.XXXXXX) || {
+    stream_file=$(mktemp "${TMPDIR:-/tmp}/tmf-tree-stream.XXXXXX") || {
         tracker_error_emit "validation" "tmf_parse_backlog_tree: mktemp failed"
         return 1
     }
@@ -726,7 +726,7 @@ PYEOF
 tmf_blockers_cycle_precheck() {
     local entries="$1"
     local tmp
-    tmp=$(mktemp -t tmf-cyclepre.XXXXXX)
+    tmp=$(mktemp "${TMPDIR:-/tmp}/tmf-cyclepre.XXXXXX")
     printf '%s' "$entries" > "$tmp"
     local cycles rc=0
     cycles=$(python3 - "$tmp" <<'PYEOF'
@@ -1473,7 +1473,7 @@ tracker_migrate_forward_run() {
     # Partial-failure tracking (V1 §9.6 partial-write surface).
     # File-backed because bash 3.2 arrays do not survive subshells.
     local partial_failures
-    partial_failures=$(mktemp -t tmf-pf.XXXXXX)
+    partial_failures=$(mktemp "${TMPDIR:-/tmp}/tmf-pf.XXXXXX")
     : > "$partial_failures"
 
     # BD-131: explicit creation-success flag. Set to 0 immediately
@@ -1566,7 +1566,7 @@ tracker_migrate_forward_run() {
                 # BD-204 §3.3d: pace before each create after the first.
                 _tmf_pace_before_create
                 local create_err
-                create_err=$(mktemp -t tmf-create-err.XXXXXX)
+                create_err=$(mktemp "${TMPDIR:-/tmp}/tmf-create-err.XXXXXX")
                 if ! result=$(provider_create "$payload" 2>"$create_err"); then
                     # BD-204 §3.3d: on a secondary-rate-limit / abuse class
                     # failure, BACK OFF (honor retry-after) and retry ONCE —
@@ -1694,7 +1694,7 @@ tracker_migrate_forward_run() {
     # (the live C-8 flip retried the same swallowed BD-095 -> BD-094
     # cycle refusal 3x because the bare step-7 line named no cause).
     local link_err
-    link_err=$(mktemp -t tmf-linkerr.XXXXXX)
+    link_err=$(mktemp "${TMPDIR:-/tmp}/tmf-linkerr.XXXXXX")
     local lidx=0 linked_parent=0 linked_blocked=0
     while [[ $lidx -lt $entry_count ]]; do
         local entry pack_id gh_id
@@ -1828,7 +1828,7 @@ tracker_migrate_forward_run() {
         # phase deps linked" with no diagnostic — violating V3.3 §5.6
         # ("no silent retry / no silent fallback") and V1 §9.6
         # partial-write contract.
-        pt_err=$(mktemp -t tmf-pt-err.XXXXXX)
+        pt_err=$(mktemp "${TMPDIR:-/tmp}/tmf-pt-err.XXXXXX")
         if pt_doc=$(tracker_phase_task_parse "$plan_path" 2>"$pt_err"); then
             rm -f "$pt_err"
             local pt_pairs
@@ -1906,7 +1906,7 @@ tracker_migrate_forward_run() {
     # Successes are added to `closed`; persistent failures are
     # surfaced via partial_failures (preserving today's contract).
     local failed_closes
-    failed_closes=$(mktemp -t tmf-fc.XXXXXX)
+    failed_closes=$(mktemp "${TMPDIR:-/tmp}/tmf-fc.XXXXXX")
     : > "$failed_closes"
     local cidx=0
     while [[ $cidx -lt $entry_count ]]; do

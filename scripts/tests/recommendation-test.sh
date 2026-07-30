@@ -42,7 +42,7 @@ printf "\n=== Group 1: signal computation ===\n"
 # signal counts canonical `BD-NNN.md` entry files (BD-211 — no suffix),
 # Open/Unblocked = active. 5 entries: 3 active (Open/Open/Unblocked) +
 # Resolved + Cancelled.
-TR_PACK=$(mktemp -d -t rec-pack.XXXXXX)
+TR_PACK=$(mktemp -d "${TMPDIR:-/tmp}/rec-pack.XXXXXX")
 mkdir -p "$TR_PACK/backlog"
 cat > "$TR_PACK/backlog/BD-001.md" <<'EOF'
 <!-- per-entry source: /backlog/BD-001.md; contract: /backlog/_rules.md -->
@@ -87,7 +87,7 @@ assert_eq "1.1 backlog_growth_30d=0 (no git)" "0" \
 # The signal counts canonical entry files (`TD-NNN.md` / `phase-N.md`),
 # Open/Unblocked = active. 3 TD entries: 2 active (Open/Open) + Resolved;
 # 3 phase files; supporting files (leading underscore) excluded.
-TR_CLI=$(mktemp -d -t rec-cli.XXXXXX)
+TR_CLI=$(mktemp -d "${TMPDIR:-/tmp}/rec-cli.XXXXXX")
 mkdir -p "$TR_CLI/docs/project/backlog" "$TR_CLI/docs/project/implementation-plan"
 cat > "$TR_CLI/docs/project/backlog/TD-001.md" <<'EOF'
 **TD-001 — Doc**
@@ -128,7 +128,7 @@ assert_eq "1.2 phase_count=3 (phase-N.md files; _rules.md excluded)" "3" \
 
 # 1.2b — per-entry-tree active-status counting: Open + Unblocked are
 # active; the active count tracks Status in each canonical entry file.
-TR_CLI_DOCS=$(mktemp -d -t rec-cli-docs.XXXXXX)
+TR_CLI_DOCS=$(mktemp -d "${TMPDIR:-/tmp}/rec-cli-docs.XXXXXX")
 mkdir -p "$TR_CLI_DOCS/docs/project/backlog" "$TR_CLI_DOCS/docs/project/implementation-plan"
 cat > "$TR_CLI_DOCS/docs/project/backlog/TD-001.md" <<'EOF'
 **TD-001 — A**
@@ -182,7 +182,7 @@ assert_eq "2.1 default user_re_enable_count=0" "0" \
     "$(printf '%s' "$def_state" | jq -r '.user_re_enable_count')"
 
 # 2.2 missing file → default; round-trip
-TR_S=$(mktemp -d -t rec-state.XXXXXX)
+TR_S=$(mktemp -d "${TMPDIR:-/tmp}/rec-state.XXXXXX")
 state_path="$TR_S/.pack-tracker/recommendation-state.json"
 loaded=$(recommendation_state_load "$state_path" "client")
 assert_eq "2.2 missing file → default surface=client" "client" \
@@ -226,7 +226,7 @@ result=$(recommendation_should_recommend "$sigs_at_thr" "$state_default" "pack" 
 assert_eq "Test-1a: 82 BDs (over 80), no prior state → fires" "true" "$result"
 
 # After firing, record snapshot. Same signals next session — no re-fire.
-TR_S2=$(mktemp -d -t rec-s2.XXXXXX)
+TR_S2=$(mktemp -d "${TMPDIR:-/tmp}/rec-s2.XXXXXX")
 state_path="$TR_S2/.pack-tracker/recommendation-state.json"
 recommendation_state_save "$state_path" "$state_default"
 recommendation_record_shown "$state_path" "$sigs_at_thr"
@@ -272,7 +272,7 @@ assert_eq "Test-5: tracker mode → never fires (Guard 1)" "false" "$result"
 # Test 7 of §28.1.10 — cross-machine: a fresh state file (default) on a
 # new machine treats the project as un-refused. Verified by loading a
 # missing file and confirming persistent_refusal=false.
-TR_S3=$(mktemp -d -t rec-s3.XXXXXX)
+TR_S3=$(mktemp -d "${TMPDIR:-/tmp}/rec-s3.XXXXXX")
 fresh_machine=$(recommendation_state_load "$TR_S3/.pack-tracker/recommendation-state.json" "pack")
 assert_eq "Test-7: new-machine fresh state → persistent_refusal=false" "false" \
     "$(printf '%s' "$fresh_machine" | jq -r '.persistent_refusal')"
@@ -289,7 +289,7 @@ rm -rf "$TR_S2" "$TR_S3"
 # again when set. Verified by checking that the lib does NOT mutate
 # state on a "not now" — the same state still permits re-evaluation
 # in a future session.
-TR_S4=$(mktemp -d -t rec-s4.XXXXXX)
+TR_S4=$(mktemp -d "${TMPDIR:-/tmp}/rec-s4.XXXXXX")
 state_path="$TR_S4/.pack-tracker/recommendation-state.json"
 recommendation_state_save "$state_path" "$state_default"
 state_before=$(cat "$state_path")
@@ -348,7 +348,7 @@ prompt=$(recommendation_render_prompt "$sigs_multi" "pack")
 printf "\n=== Group 5: enable-recommendations verb (BD-073) ===\n"
 
 # 5.1 verb runs and flips persistent_refusal=true → false on disk.
-TR_V=$(mktemp -d -t rec-verb.XXXXXX)
+TR_V=$(mktemp -d "${TMPDIR:-/tmp}/rec-verb.XXXXXX")
 touch "$TR_V/PACK-CHAT.md"  # forces surface=pack auto-detect
 state_path="$TR_V/.pack-tracker/recommendation-state.json"
 mkdir -p "$TR_V/.pack-tracker"
@@ -377,7 +377,7 @@ assert_eq "5.2 second run increments count to 2" "2" \
     "$(jq -r '.user_re_enable_count' "$state_path")"
 
 # 5.3 missing state file: verb still works (loads default, then flips).
-TR_V2=$(mktemp -d -t rec-verb2.XXXXXX)
+TR_V2=$(mktemp -d "${TMPDIR:-/tmp}/rec-verb2.XXXXXX")
 touch "$TR_V2/PACK-CHAT.md"
 output=$(bash "$REPO_ROOT/scripts/pack-tracker.sh" enable-recommendations --repo-root "$TR_V2" 2>&1)
 rc=$?

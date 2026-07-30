@@ -64,7 +64,7 @@ source "$LIB_DIR/tracker-labels.sh"
 # `gh label list` so tracker_labels_ensure exercises the full path.
 # ─────────────────────────────────────────────────────────────────
 
-WORKDIR=$(mktemp -d -t bd129.XXXXXX)
+WORKDIR=$(mktemp -d "${TMPDIR:-/tmp}/bd129.XXXXXX")
 trap 'rm -rf "$WORKDIR"' EXIT
 
 export GH_LOG="$WORKDIR/gh.log"

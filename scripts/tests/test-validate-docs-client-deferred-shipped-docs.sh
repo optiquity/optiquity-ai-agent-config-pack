@@ -33,7 +33,7 @@ SRC_INST="$PACK_ROOT/supporting-docs/INSTALL-PROCEDURES.md"
 GATE="$PACK_ROOT/project-template/scripts/validate-docs.sh"
 ALLOWLIST="$PACK_ROOT/project-template/scripts/.docs-gate-allowlist.txt"
 
-FIXTURE_BASE="$(mktemp -d -t test-vdocs-client-deferred.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-vdocs-client-deferred.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0

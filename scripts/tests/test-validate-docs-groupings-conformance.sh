@@ -45,7 +45,7 @@ ALLOWLIST="$PACK_ROOT/project-template/scripts/.docs-gate-allowlist.txt"
 IP_RULES="$PACK_ROOT/project-template/docs/project/implementation-plan/_rules.md"
 GRP_RULES="$PACK_ROOT/project-template/docs/project/groupings/_rules.md"
 
-FIXTURE_BASE="$(mktemp -d -t test-vdocs-grp-conformance.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-vdocs-grp-conformance.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0

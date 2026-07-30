@@ -86,7 +86,7 @@ ID_MAP=$(cat "$FIXTURES/id-map.json")
 
 # Per-test scratch dir for cycle-graph stores (each test gets a fresh
 # store so we don't carry state between assertions).
-SCRATCH=$(mktemp -d -t tlk.XXXXXX)
+SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/tlk.XXXXXX")
 trap 'rm -rf "$SCRATCH"' EXIT
 
 mk_store() {
@@ -230,7 +230,7 @@ source "$LIB_DIR/tracker-phase-task.sh"
 # Forward parse → reverse emit produces byte-identical text.
 src1="$FIXTURES/BACKLOG-phase-task-blockers.md"
 parsed1=$(tmf_parse_backlog "$src1")
-out1=$(mktemp -t tlk-backlog-rt.XXXXXX)
+out1=$(mktemp "${TMPDIR:-/tmp}/tlk-backlog-rt.XXXXXX")
 _tmr_emit_backlog "$parsed1" "fixture-org/fixture-repo" "$out1"
 src1_sha=$(shasum -a 256 "$src1"  | awk '{print $1}')
 out1_sha=$(shasum -a 256 "$out1"  | awk '{print $1}')
@@ -245,7 +245,7 @@ rm -f "$out1"
 src2="$FIXTURES/IMPLEMENTATION-PLAN-deps.md"
 parsed2=$(tracker_phase_task_parse "$src2" 2>/dev/null)
 emitted2=$(tracker_phase_task_emit "$parsed2")
-out2=$(mktemp -t tlk-plan-rt.XXXXXX)
+out2=$(mktemp "${TMPDIR:-/tmp}/tlk-plan-rt.XXXXXX")
 printf '%s\n' "$emitted2" > "$out2"
 src2_sha=$(shasum -a 256 "$src2" | awk '{print $1}')
 out2_sha=$(shasum -a 256 "$out2" | awk '{print $1}')

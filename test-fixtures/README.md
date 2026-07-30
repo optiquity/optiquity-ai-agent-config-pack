@@ -96,7 +96,7 @@ the fixture directly. Pattern:
 
 ```sh
 # Each test run gets its own throwaway clone:
-WORK=$(mktemp -d -t pack-test.XXXXXX)
+WORK=$(mktemp -d "${TMPDIR:-/tmp}/pack-test.XXXXXX")
 git clone test-fixtures/v10-realistic-ot "$WORK/target"
 
 # Run the thing being tested against the throwaway clone:

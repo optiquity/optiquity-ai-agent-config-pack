@@ -66,7 +66,7 @@ trap cleanup EXIT
 # clean. Echoes the install dir path on stdout.
 make_swift_only_install() {
     local src
-    src=$(mktemp -d -t bd200-swift.XXXXXX)
+    src=$(mktemp -d "${TMPDIR:-/tmp}/bd200-swift.XXXXXX")
     CLEANUP_DIRS+=("$src")
     git init -q "$src" >/dev/null 2>&1
     git -C "$src" config user.email "test@example.com"
@@ -101,7 +101,7 @@ EOF
 # Group-1 Swift-only→removes-python assertion.
 make_python_only_install() {
     local src
-    src=$(mktemp -d -t bd257-python.XXXXXX)
+    src=$(mktemp -d "${TMPDIR:-/tmp}/bd257-python.XXXXXX")
     CLEANUP_DIRS+=("$src")
     git init -q "$src" >/dev/null 2>&1
     git -C "$src" config user.email "test@example.com"
@@ -133,7 +133,7 @@ EOF
 # machine with no pack present. Echoes the clone path.
 clone_no_pack() {
     local src="$1" dst
-    dst=$(mktemp -d -t bd200-clone.XXXXXX)
+    dst=$(mktemp -d "${TMPDIR:-/tmp}/bd200-clone.XXXXXX")
     CLEANUP_DIRS+=("$dst")
     rm -rf "$dst"
     git clone -q "$src" "$dst" >/dev/null 2>&1

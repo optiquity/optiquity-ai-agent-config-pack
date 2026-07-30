@@ -79,7 +79,7 @@ require_fixture() {
     fi
 }
 
-FIXTURE_BASE="$(mktemp -d -t test-migrator-skills.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-migrator-skills.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0
@@ -160,7 +160,7 @@ mkdir -p "$G1_DIR/project/.pack-migrate-v10-to-v11"
 # wrapper around migrator_skill_rename; we still test it via this
 # extraction pattern so we exercise the full call site, not the library
 # in isolation.
-HELPER_TMP="$(mktemp -t bd147-helper.XXXXXX.sh)"
+HELPER_TMP="$(mktemp "${TMPDIR:-/tmp}/bd147-helper.XXXXXX")"
 awk '
     /^_v10_to_v11_rename_python_architecture_refs\(\) \{/ { capture = 1 }
     capture { print }

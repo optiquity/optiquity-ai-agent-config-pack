@@ -98,7 +98,7 @@ fi
 # scripts/lib/migrate-v10-to-v11/resume.sh §header). This mirrors the
 # BD-088 default-accept path.
 
-migrate_log="$(mktemp -t pack-contract-migrate.XXXXXX)"
+migrate_log="$(mktemp "${TMPDIR:-/tmp}/pack-contract-migrate.XXXXXX")"
 PACK="$PACK_ROOT" bash "$MIGRATE_SH" "$SANDBOX" >"$migrate_log" 2>&1
 apply_rc=$?
 
@@ -118,7 +118,7 @@ if [[ "${#sidecars[@]}" -gt 0 ]]; then
     for s in "${sidecars[@]}"; do
         touch "${s}.resolved"
     done
-    resume_log="$(mktemp -t pack-contract-resume.XXXXXX)"
+    resume_log="$(mktemp "${TMPDIR:-/tmp}/pack-contract-resume.XXXXXX")"
     if PACK="$PACK_ROOT" bash "$MIGRATE_SH" --resume "$SANDBOX" >"$resume_log" 2>&1; then
         t_pass "migrator --resume exit 0 after sidecar reconciliation"
         rm -f "$resume_log" "$migrate_log"

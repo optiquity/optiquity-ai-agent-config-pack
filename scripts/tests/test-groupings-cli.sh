@@ -45,7 +45,7 @@ CLI="$PACK_ROOT/project-template/scripts/groupings.sh"
 LIB="$PACK_ROOT/project-template/scripts/groupings-lib.sh"
 IPRULES="$PACK_ROOT/project-template/docs/project/implementation-plan/_rules.md"
 
-FIXTURE_BASE="$(mktemp -d -t test-groupings-cli.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-groupings-cli.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0

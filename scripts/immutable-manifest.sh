@@ -115,7 +115,7 @@ _generate() {
     fi
 
     manifest="$root/docs/project/immutable-manifest.txt"
-    tmp="$(mktemp -t immutable-manifest.XXXXXX)" || { err "mktemp failed"; return 1; }
+    tmp="$(mktemp "${TMPDIR:-/tmp}/immutable-manifest.XXXXXX")" || { err "mktemp failed"; return 1; }
 
     {
         printf '%s\n' '# immutable-manifest.txt — sha256 content checksums for client-immutable files'

@@ -68,7 +68,7 @@ GATE="$PACK_ROOT/project-template/scripts/validate-docs.sh"
 ALLOWLIST="$PACK_ROOT/project-template/scripts/.docs-gate-allowlist.txt"
 RULES="$PACK_ROOT/project-template/docs/project/implementation-plan/_rules.md"
 
-FIXTURE_BASE="$(mktemp -d -t test-vdocs-target-coherence.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-vdocs-target-coherence.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0

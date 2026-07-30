@@ -467,7 +467,7 @@ _state_issue_count() {
 _setup_test_repo() {
     local fixture_dir="$1"
     local test_repo
-    test_repo=$(mktemp -d -t rtrip.XXXXXX)
+    test_repo=$(mktemp -d "${TMPDIR:-/tmp}/rtrip.XXXXXX")
     # BD-204 C-5 (C2a): the pack-surface forward read-side now enumerates
     # the per-entry TREE under `/backlog/` (the no-monolith SSOT), pairing
     # with C-4's tree EMIT on reverse for a monolith-free round-trip. Seed
@@ -483,7 +483,7 @@ _setup_test_repo() {
     # decompose — decompose appends non-matching (TD-*) blocks to the
     # preceding BD file, so a clean BD-only tree requires the pre-filter.
     local _bd_only
-    _bd_only=$(mktemp -t rtrip-bdonly.XXXXXX)
+    _bd_only=$(mktemp "${TMPDIR:-/tmp}/rtrip-bdonly.XXXXXX")
     python3 - "$fixture_dir/BACKLOG.md" > "$_bd_only" <<'PY'
 import re, sys
 text = open(sys.argv[1]).read()
@@ -509,7 +509,7 @@ FIXTURE_V11_0="$FIXTURES_ROOT/bd-v11.0"
 [[ -f "$FIXTURE_V11_0/BACKLOG.md" ]] || { echo "FATAL: bd-v11.0 fixture missing"; exit 2; }
 
 REPO1=$(_setup_test_repo "$FIXTURE_V11_0")
-FAKE1=$(mktemp -d -t rtrip-fake1.XXXXXX)
+FAKE1=$(mktemp -d "${TMPDIR:-/tmp}/rtrip-fake1.XXXXXX")
 STATE1="$REPO1/.pack-tracker/fake-tracker-state.json"
 _build_stateful_fake_gh "$FAKE1" "$STATE1"
 
@@ -850,7 +850,7 @@ rm -rf "$REPO1" "$FAKE1"
 printf "\n=== Group 4: BD-204 NO sidecar on pack reverse (DP-2) ===\n"
 
 REPO2=$(_setup_test_repo "$FIXTURE_V11_0")
-FAKE2=$(mktemp -d -t rtrip-fake2.XXXXXX)
+FAKE2=$(mktemp -d "${TMPDIR:-/tmp}/rtrip-fake2.XXXXXX")
 STATE2="$REPO2/.pack-tracker/fake-tracker-state.json"
 _build_stateful_fake_gh "$FAKE2" "$STATE2"
 
@@ -935,7 +935,7 @@ done
 printf "\n=== Group 6: BD-204 run-3 re-run idempotency + post-CRUD reverse (Defects B + C) ===\n"
 
 REPO6=$(_setup_test_repo "$FIXTURE_V11_0")
-FAKE6=$(mktemp -d -t rtrip-fake6.XXXXXX)
+FAKE6=$(mktemp -d "${TMPDIR:-/tmp}/rtrip-fake6.XXXXXX")
 STATE6="$REPO6/.pack-tracker/fake-tracker-state.json"
 _build_stateful_fake_gh "$FAKE6" "$STATE6"
 
@@ -986,7 +986,7 @@ tmf_mapping_save "$REPO6/.pack-tracker/id-map.json" "$map6"
 # oracle used: parsed description (+ this entry's File/Symbol) + the
 # flipped raw_body; resolution stays EMPTY because the entry is
 # unresolved (`Resolved: n/a`) — the exact Defect-C case.
-bd2_tmp=$(mktemp -t rtrip-bd2.XXXXXX)
+bd2_tmp=$(mktemp "${TMPDIR:-/tmp}/rtrip-bd2.XXXXXX")
 pe_strip_backpointer_stdin < "$REPO6/backlog/BD-002.md" \
     | sed 's/^Status: Unblocked$/Status: Deferred/' > "$bd2_tmp"
 bd2_raw=$(cat "$bd2_tmp"; printf X); bd2_raw="${bd2_raw%X}"

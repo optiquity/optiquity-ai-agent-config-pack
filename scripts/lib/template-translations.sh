@@ -123,7 +123,7 @@ template_translations_resolve_chain() {
     # so we cannot also pipe data to stdin. Pass the manifest via a
     # temp file as argv[3].
     local manifest_file
-    manifest_file=$(mktemp -t tt-manifest.XXXXXX)
+    manifest_file=$(mktemp "${TMPDIR:-/tmp}/tt-manifest.XXXXXX")
     printf '%s' "$manifest" > "$manifest_file"
     python3 - "$from" "$to" "$manifest_file" <<'PYEOF'
 import json, sys
@@ -195,7 +195,7 @@ template_translations_apply_rules() {
     fi
     # Use temp file to avoid heredoc-stdin collision.
     local body_file
-    body_file=$(mktemp -t tt-body.XXXXXX)
+    body_file=$(mktemp "${TMPDIR:-/tmp}/tt-body.XXXXXX")
     printf '%s' "$body" > "$body_file"
     python3 - "$body_file" "$rules" <<'PYEOF'
 import re, sys, json

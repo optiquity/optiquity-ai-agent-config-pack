@@ -30,7 +30,7 @@ assert_contains() {
 # Set up a minimal target directory: empty git repo, clean working tree.
 make_target() {
     local d
-    d=$(mktemp -d -t init-tgt.XXXXXX)
+    d=$(mktemp -d "${TMPDIR:-/tmp}/init-tgt.XXXXXX")
     git init -q "$d" >/dev/null
     git -C "$d" config user.email "test@example.com"
     git -C "$d" config user.name  "Test"
@@ -414,7 +414,7 @@ printf "\n=== Group 5: BD-166 sub-step 7 idempotency (proof loop) ===\n"
 # rather than stat mtime: cmp -s is the canonical zero-mtime-churn
 # signal the helper itself uses, and avoids stat -f (BSD) vs stat -c
 # (GNU) portability surface area.
-pre_snap_dir=$(mktemp -d -t bd166-snap.XXXXXX)
+pre_snap_dir=$(mktemp -d "${TMPDIR:-/tmp}/bd166-snap.XXXXXX")
 for rel in \
     "docs/project/backlog/_toc.md" \
     "docs/project/implementation-plan/_toc.md" \
@@ -572,7 +572,7 @@ git -C "$T6" commit -q -m "user-authored entries" 2>/dev/null
 # the byte-compare below pass vacuously).
 find "$T6" -type f -name "*.pre-update" \
     -not -path "*/.pack-update/*" -not -path "*/.git/*" -delete
-snap6=$(mktemp -d -t bd263-snap.XXXXXX)
+snap6=$(mktemp -d "${TMPDIR:-/tmp}/bd263-snap.XXXXXX")
 for rel in \
     "docs/project/groupings/_rules.md" \
     "docs/project/groupings/_intro.md" \
@@ -603,7 +603,7 @@ rm -rf "$snap6"
 
 # §P5 C2 bite probe: hand-edit the installed groupings _rules.md →
 # installed verify-immutable.sh fails naming the file; restore → clean.
-vi_orig=$(mktemp -t bd263-rules.XXXXXX)
+vi_orig=$(mktemp "${TMPDIR:-/tmp}/bd263-rules.XXXXXX")
 cp "$T6/docs/project/groupings/_rules.md" "$vi_orig"
 printf '\nhand-edit: client must not do this\n' \
     >> "$T6/docs/project/groupings/_rules.md"
@@ -632,7 +632,7 @@ rm -rf "$T6"
 
 printf "\n=== Group 7: BD-263 S11 template guard (staged copy, FAIL side) ===\n"
 
-STAGED=$(mktemp -d -t bd263-staged.XXXXXX)
+STAGED=$(mktemp -d "${TMPDIR:-/tmp}/bd263-staged.XXXXXX")
 ( cd "$REPO_ROOT" && git ls-files -z | tar --null -T - -cf - ) \
     | tar -C "$STAGED" -xf -
 if [[ -f "$STAGED/scripts/init-project.sh" \

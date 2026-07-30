@@ -58,7 +58,7 @@ assert_byte_identical() {
 . "$LIB_DIR/toc-regenerate.sh"
 
 # Track per-test scratch dirs for cleanup.
-SCRATCH_ROOT=$(mktemp -d -t per-entry-tests.XXXXXX)
+SCRATCH_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/per-entry-tests.XXXXXX")
 trap 'rm -rf "$SCRATCH_ROOT"' EXIT INT TERM
 
 # ─────────────────────────────────────────────────────────────────
@@ -219,7 +219,7 @@ assert_eq "1.9b project-implementation-plan known supporting INCLUDES _index.md 
     "yes" "$(pe_supporting_files_known_for_stream project-implementation-plan | grep -q '_index.md' && echo yes || echo no)"
 
 # pe_stream_for_path walks the trailing path suffix.
-TMP_DIR1=$(mktemp -d -t pe-pathlookup.XXXXXX)
+TMP_DIR1=$(mktemp -d "${TMPDIR:-/tmp}/pe-pathlookup.XXXXXX")
 mkdir -p "$TMP_DIR1/backlog"
 mkdir -p "$TMP_DIR1/docs/project/changelog"
 assert_eq "1.10 pe_stream_for_path resolves pack-backlog suffix" "pack-backlog" "$(pe_stream_for_path "$TMP_DIR1/backlog")"
@@ -243,7 +243,7 @@ ACTUAL_BP_TD=$(pe_backpointer_line project-backlog TD-001)
 assert_eq "2.2 project-backlog back-pointer line shape" "$EXPECT_BP_TD" "$ACTUAL_BP_TD"
 
 # Strip is idempotent + only removes a line-1 match.
-TMP_BP=$(mktemp -t pe-bp.XXXXXX)
+TMP_BP=$(mktemp "${TMPDIR:-/tmp}/pe-bp.XXXXXX")
 {
     echo '<!-- per-entry source: /backlog/BD-100.md; contract: /backlog/_rules.md -->'
     echo '**BD-100 — Sample**'
@@ -253,7 +253,7 @@ STRIPPED=$(pe_strip_backpointer_stdin <"$TMP_BP")
 assert_eq "2.3 strip removes line-1 back-pointer" "**BD-100 — Sample**
 Type: TODO(version)" "$STRIPPED"
 # Strip on a file WITHOUT a back-pointer is a no-op.
-TMP_BP2=$(mktemp -t pe-bp2.XXXXXX)
+TMP_BP2=$(mktemp "${TMPDIR:-/tmp}/pe-bp2.XXXXXX")
 {
     echo '**BD-100 — Sample**'
     echo 'Type: TODO(version)'
@@ -388,7 +388,7 @@ assert_eq "12.2 project-groupings support set (no _kinds.md, no _index.md)" \
 assert_eq "12.3 project-groupings dir-suffix" \
     "docs/project/groupings" \
     "$(pe_dir_suffix_for_stream project-groupings)"
-TMP_GRP_PATH=$(mktemp -d -t pe-grp-path.XXXXXX)
+TMP_GRP_PATH=$(mktemp -d "${TMPDIR:-/tmp}/pe-grp-path.XXXXXX")
 mkdir -p "$TMP_GRP_PATH/docs/project/groupings"
 assert_eq "12.4 pe_stream_for_path resolves docs/project/groupings" \
     "project-groupings" \

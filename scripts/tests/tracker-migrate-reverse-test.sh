@@ -292,7 +292,7 @@ printf "\n=== Group 2: reconstruction ===\n"
 # answers the fixture slug and the catch-all arm answers `gh api
 # graphql` with empty output, so the fetch degrades to [] exactly as
 # the offline baseline. No behavior-assertion changes.
-FAKE_G2=$(mktemp -d -t tmr-fake-g2.XXXXXX); _build_fake_gh "$FAKE_G2"
+FAKE_G2=$(mktemp -d "${TMPDIR:-/tmp}/tmr-fake-g2.XXXXXX"); _build_fake_gh "$FAKE_G2"
 export PATH="$FAKE_G2:$PATH_SAVED"
 
 issue=$(jq -n '{
@@ -545,7 +545,7 @@ rm -rf "$FAKE_G2"
 printf "\n=== Group 3: mirror header strip ===\n"
 
 # 3.1 header present → stripped cleanly
-tmp=$(mktemp -t tmr-3.XXXXXX)
+tmp=$(mktemp "${TMPDIR:-/tmp}/tmr-3.XXXXXX")
 {
     echo "<!--"
     echo "  Header line 1"
@@ -560,7 +560,7 @@ assert_eq "3.1 strip leaves only body line 1+2" "Body line 1" "$(head -n 1 "$tmp
 rm -f "$tmp"
 
 # 3.2 no-header → file unchanged
-tmp=$(mktemp -t tmr-3b.XXXXXX)
+tmp=$(mktemp "${TMPDIR:-/tmp}/tmr-3b.XXXXXX")
 echo "Just a body" > "$tmp"
 before=$(cat "$tmp")
 tracker_mirror_header_strip "$tmp"
@@ -570,7 +570,7 @@ assert_contains "3.2 no-header file body preserved" "$after" "Just a body"
 rm -f "$tmp"
 
 # 3.3 idempotent (strip twice → same as strip once)
-tmp=$(mktemp -t tmr-3c.XXXXXX)
+tmp=$(mktemp "${TMPDIR:-/tmp}/tmr-3c.XXXXXX")
 { echo "<!--"; echo "  H"; echo "-->"; echo ""; echo "Body"; } > "$tmp"
 tracker_mirror_header_strip "$tmp"
 snap=$(cat "$tmp")
@@ -580,7 +580,7 @@ assert_eq "3.3 strip twice = strip once" "$snap" "$snap2"
 rm -f "$tmp"
 
 # 3.4 write+strip round-trip preserves body
-tmp=$(mktemp -t tmr-3d.XXXXXX)
+tmp=$(mktemp "${TMPDIR:-/tmp}/tmr-3d.XXXXXX")
 echo "Original body" > "$tmp"
 tracker_mirror_header_write "$tmp" "x/y"
 tracker_mirror_header_strip "$tmp"
@@ -594,9 +594,9 @@ rm -f "$tmp"
 
 printf "\n=== Group 4: end-to-end reverse ===\n"
 
-FAKE=$(mktemp -d -t tmr-fakegh.XXXXXX)
+FAKE=$(mktemp -d "${TMPDIR:-/tmp}/tmr-fakegh.XXXXXX")
 _build_fake_gh "$FAKE"
-REPO=$(mktemp -d -t tmr-repo.XXXXXX)
+REPO=$(mktemp -d "${TMPDIR:-/tmp}/tmr-repo.XXXXXX")
 _build_test_repo "$REPO"
 
 export PATH="$FAKE:$PATH_SAVED"
@@ -703,7 +703,7 @@ assert_eq "4.7 mode flipped to flat-file via --disable" "flat-file" \
 # BD-204 C-4 (§3.3 T8): the pack backup/restore set is the /backlog/*.md
 # TREE (pe_list_entry_files), so plant a recognizable original tree entry
 # and verify it is restored after the failed emit.
-REPO_ATOMIC=$(mktemp -d -t tmr-atomic.XXXXXX); _build_test_repo "$REPO_ATOMIC"
+REPO_ATOMIC=$(mktemp -d "${TMPDIR:-/tmp}/tmr-atomic.XXXXXX"); _build_test_repo "$REPO_ATOMIC"
 mkdir -p "$REPO_ATOMIC/backlog"
 ORIGINAL_BODY=$'<!-- per-entry source: /backlog/BD-001.md; contract: /backlog/_rules.md -->\n**BD-001 — ORIGINAL**\nThis content must survive the failed disable.\n'
 printf '%s' "$ORIGINAL_BODY" > "$REPO_ATOMIC/backlog/BD-001.md"
@@ -712,7 +712,7 @@ printf '%s' "$ORIGINAL_BODY" > "$REPO_ATOMIC/backlog/BD-001.md"
 saved_emit=$(declare -f _tmr_emit_status)
 _tmr_emit_status() { return 1; }
 
-FAKE_ATOMIC=$(mktemp -d -t tmr-fake-atomic.XXXXXX); _build_fake_gh "$FAKE_ATOMIC"
+FAKE_ATOMIC=$(mktemp -d "${TMPDIR:-/tmp}/tmr-fake-atomic.XXXXXX"); _build_fake_gh "$FAKE_ATOMIC"
 export PATH="$FAKE_ATOMIC:$PATH_SAVED"
 # BD-132: force=1 bypasses race-detection so we exercise the
 # emit-failure atomicity path (the original purpose of this test).
@@ -744,13 +744,13 @@ rm -rf "$REPO_ATOMIC" "$FAKE_ATOMIC"
 # 4.7b Sidecar dated-filename stability (PACK-REVIEW-BD066-068 #12 fix):
 # emitting a second sidecar removes any prior date file so disk
 # state stays bounded.
-REPO_DATED=$(mktemp -d -t tmr-dated.XXXXXX); _build_test_repo "$REPO_DATED"
+REPO_DATED=$(mktemp -d "${TMPDIR:-/tmp}/tmr-dated.XXXXXX"); _build_test_repo "$REPO_DATED"
 mkdir -p "$REPO_DATED/.pack-tracker"
 # Plant a fake older sidecar from yesterday.
 touch "$REPO_DATED/.pack-tracker/reverse.sidecar.2025-01-01.md"
 # Emit a current sidecar.
 mapping_for_test=$(cat "$REPO_DATED/.pack-tracker/id-map.json" 2>/dev/null || echo '{}')
-FAKE_DATED=$(mktemp -d -t tmr-fake-dated.XXXXXX); _build_fake_gh "$FAKE_DATED"
+FAKE_DATED=$(mktemp -d "${TMPDIR:-/tmp}/tmr-fake-dated.XXXXXX"); _build_fake_gh "$FAKE_DATED"
 export PATH="$FAKE_DATED:$PATH_SAVED"
 tracker_sidecar_emit "$REPO_DATED" "$mapping_for_test" 0 >/dev/null 2>&1
 export PATH="$PATH_SAVED"
@@ -774,9 +774,9 @@ _tmsc_reactions_for_entry() {
     echo "👍 5  ❤️ 2  (overridden for test)"
 }
 
-REPO_OVR=$(mktemp -d -t tmr-ovr.XXXXXX); _build_test_repo "$REPO_OVR"
+REPO_OVR=$(mktemp -d "${TMPDIR:-/tmp}/tmr-ovr.XXXXXX"); _build_test_repo "$REPO_OVR"
 mapping_ovr=$(cat "$REPO_OVR/.pack-tracker/id-map.json" 2>/dev/null || echo '{}')
-FAKE_OVR=$(mktemp -d -t tmr-fake-ovr.XXXXXX); _build_fake_gh "$FAKE_OVR"
+FAKE_OVR=$(mktemp -d "${TMPDIR:-/tmp}/tmr-fake-ovr.XXXXXX"); _build_fake_gh "$FAKE_OVR"
 export PATH="$FAKE_OVR:$PATH_SAVED"
 tracker_sidecar_emit "$REPO_OVR" "$mapping_ovr" 0 >/dev/null 2>&1
 export PATH="$PATH_SAVED"
@@ -802,8 +802,8 @@ rm -rf "$FAKE" "$REPO"
 
 printf "\n=== Group 5: idempotency ===\n"
 
-FAKE=$(mktemp -d -t tmr-fake5.XXXXXX); _build_fake_gh "$FAKE"
-REPO=$(mktemp -d -t tmr-repo5.XXXXXX); _build_test_repo "$REPO"
+FAKE=$(mktemp -d "${TMPDIR:-/tmp}/tmr-fake5.XXXXXX"); _build_fake_gh "$FAKE"
+REPO=$(mktemp -d "${TMPDIR:-/tmp}/tmr-repo5.XXXXXX"); _build_test_repo "$REPO"
 
 export PATH="$FAKE:$PATH_SAVED"
 tracker_migrate_reverse_run "$REPO" >/dev/null 2>&1
@@ -828,7 +828,7 @@ rm -rf "$FAKE" "$REPO"
 # temp file. The JSON value below contains an *escaped* triple-quote
 # so the JSON itself is valid; the description text the user wrote
 # is the literal three-character sequence `"""`.
-TQ_OUT=$(mktemp -t tmr-tq.XXXXXX)
+TQ_OUT=$(mktemp "${TMPDIR:-/tmp}/tmr-tq.XXXXXX")
 entries_with_tq=$(jq -nc '[{
     pack_id: "BD-001",
     title: "Triple quote test",
@@ -867,7 +867,7 @@ rm -f "$TQ_OUT"
 
 printf "\n=== Group 6: doctor verb ===\n"
 
-REPO_DR=$(mktemp -d -t tmr-doctor.XXXXXX)
+REPO_DR=$(mktemp -d "${TMPDIR:-/tmp}/tmr-doctor.XXXXXX")
 _build_test_repo "$REPO_DR"
 mkdir -p "$REPO_DR/.github/ISSUE_TEMPLATE"
 touch "$REPO_DR/.github/ISSUE_TEMPLATE/work-item.yml"
@@ -876,7 +876,7 @@ touch "$REPO_DR/.github/ISSUE_TEMPLATE/work-item.yml"
 # provider_list on tracker-mode pack fixtures — keep the suite hermetic
 # by serving the fake gh for every Group 6 doctor invocation (zero live
 # gh/network calls).
-FAKE_DR=$(mktemp -d -t tmr-fake-doctor.XXXXXX); _build_fake_gh "$FAKE_DR"
+FAKE_DR=$(mktemp -d "${TMPDIR:-/tmp}/tmr-fake-doctor.XXXXXX"); _build_fake_gh "$FAKE_DR"
 export PATH="$FAKE_DR:$PATH_SAVED"
 
 # Source the doctor function (defined in scripts/tracker-migrate.sh).
@@ -912,7 +912,7 @@ assert_contains "6.1a doctor surfaces schema-reshape on capability diff (INFO; a
 rm -rf "$REPO_DR"
 
 # 6.2 doctor surfaces malformed pack-id
-REPO_BAD=$(mktemp -d -t tmr-doctor-bad.XXXXXX)
+REPO_BAD=$(mktemp -d "${TMPDIR:-/tmp}/tmr-doctor-bad.XXXXXX")
 _build_test_repo "$REPO_BAD"
 mkdir -p "$REPO_BAD/.github/ISSUE_TEMPLATE"
 touch "$REPO_BAD/.github/ISSUE_TEMPLATE/work-item.yml"
@@ -931,7 +931,7 @@ rm -rf "$REPO_BAD"
 # 6.3 doctor template-version freshness check (PACK-REVIEW-BD062-069-071
 # Finding #7 fix). Build a repo whose form-level template_version
 # matches an empty manifest → reports "current".
-REPO_FRESH=$(mktemp -d -t tmr-doctor-fresh.XXXXXX)
+REPO_FRESH=$(mktemp -d "${TMPDIR:-/tmp}/tmr-doctor-fresh.XXXXXX")
 _build_test_repo "$REPO_FRESH"
 mkdir -p "$REPO_FRESH/.github/ISSUE_TEMPLATE"
 cat > "$REPO_FRESH/.github/ISSUE_TEMPLATE/work-item.yml" <<'EOF'
@@ -1032,7 +1032,7 @@ assert_contains "7.2c legacy-only: BD-002 still extracted" "$g72c_blockers" "BD-
 
 # 7.3 _tmr_fetch_first_class_blocked_by parses a fake GraphQL response.
 # Build a fake gh that returns the BD-111 fixture content for `api graphql`.
-FAKE_G7=$(mktemp -d -t tmr-fake-g7.XXXXXX)
+FAKE_G7=$(mktemp -d "${TMPDIR:-/tmp}/tmr-fake-g7.XXXXXX")
 G7_FIXTURE="$REPO_ROOT/scripts/tests/fixtures/tracker-provider/gh-list-blocked-by.json"
 [[ -f "$G7_FIXTURE" ]] || { echo "FATAL: gh-list-blocked-by.json fixture missing"; exit 2; }
 cat > "$FAKE_G7/gh" <<FG7
@@ -1066,7 +1066,7 @@ rm -rf "$FAKE_G7"
 # best-effort → silent [] Blockers loss on GHE reverse migrations).
 # The fake gh logs its argv and DIES on `repo view`, so this leg also
 # proves the GH_REPO value (not the fallback) supplied the slug.
-FAKE_G73B=$(mktemp -d -t tmr-fake-g73b.XXXXXX)
+FAKE_G73B=$(mktemp -d "${TMPDIR:-/tmp}/tmr-fake-g73b.XXXXXX")
 G73B_LOG="$FAKE_G73B/gh.log"
 cat > "$FAKE_G73B/gh" <<FG73B
 #!/usr/bin/env bash
@@ -1106,7 +1106,7 @@ PATH="$PATH_SAVED"
 rm -rf "$FAKE_G73B"
 
 # 7.4 fetch helper degrades to [] on missing/empty response.
-FAKE_G74=$(mktemp -d -t tmr-fake-g74.XXXXXX)
+FAKE_G74=$(mktemp -d "${TMPDIR:-/tmp}/tmr-fake-g74.XXXXXX")
 cat > "$FAKE_G74/gh" <<'FG74'
 #!/usr/bin/env bash
 # Empty stdout + nonzero exit on api graphql → fetch must return [].
@@ -1129,7 +1129,7 @@ rm -rf "$FAKE_G74"
 # an issue JSON inline (number=42, body has no comment marker), set
 # up a fake gh that serves the fixture for `api graphql`, and assert
 # the reconstructed entry's blockers list contains BD-002 + BD-003.
-FAKE_G75=$(mktemp -d -t tmr-fake-g75.XXXXXX)
+FAKE_G75=$(mktemp -d "${TMPDIR:-/tmp}/tmr-fake-g75.XXXXXX")
 cat > "$FAKE_G75/gh" <<FG75
 #!/usr/bin/env bash
 # End-to-end fake gh for Group 7.5: serve fixture on api graphql,
@@ -1161,7 +1161,7 @@ rm -rf "$FAKE_G75"
 # 7.6 backward-compat: legacy-only environment (fake gh returns no
 # first-class edges) still reconstructs Blockers from body comment
 # markers. Confirms the BD-111 retrofit is additive, not replacing.
-FAKE_G76=$(mktemp -d -t tmr-fake-g76.XXXXXX)
+FAKE_G76=$(mktemp -d "${TMPDIR:-/tmp}/tmr-fake-g76.XXXXXX")
 cat > "$FAKE_G76/gh" <<'FG76'
 #!/usr/bin/env bash
 # Legacy-only fake gh: empty graphql response → fetch returns [];
@@ -1199,8 +1199,8 @@ PACK_TRACKER_SH="$REPO_ROOT/scripts/pack-tracker.sh"
 # 8.1 (plan leg 1) tree-rebuild happy path: tree files + _toc.md
 # regenerated; last_tree_regen stamped; mode.state UNCHANGED; NO
 # STATUS.md / IMPLEMENTATION-PLAN.md at the fixture root; no monolith.
-FAKE8=$(mktemp -d -t tmr-fake8.XXXXXX); _build_fake_gh "$FAKE8"
-REPO8=$(mktemp -d -t tmr-repo8.XXXXXX); _build_test_repo "$REPO8"
+FAKE8=$(mktemp -d "${TMPDIR:-/tmp}/tmr-fake8.XXXXXX"); _build_fake_gh "$FAKE8"
+REPO8=$(mktemp -d "${TMPDIR:-/tmp}/tmr-repo8.XXXXXX"); _build_test_repo "$REPO8"
 export PATH="$FAKE8:$PATH_SAVED"
 out8=$(bash "$PACK_TRACKER_SH" tree-rebuild --repo-root "$REPO8" 2>&1)
 rc8=$?
@@ -1266,7 +1266,7 @@ rm -rf "$FAKE8" "$REPO8"
 # 8.4 (plan leg 9) client-surface refusal names BD-207. A client-shaped
 # repo (docs/pack/ marker, NO pack-ops/) auto-detects surface=client;
 # tree_only is pack-surface-only at v11.0.
-REPO84=$(mktemp -d -t tmr-repo84.XXXXXX)
+REPO84=$(mktemp -d "${TMPDIR:-/tmp}/tmr-repo84.XXXXXX")
 mkdir -p "$REPO84/docs/pack"
 cat > "$REPO84/docs/pack/tracker.toml" <<'EOF'
 schema_version = 1
@@ -1328,7 +1328,7 @@ assert_eq "8.5 unit: blob without a Status line skips (field-faithful)" "0" "$rc
 # labels/state project Open, blob says Status: Resolved.
 DIV_RAWBODY=$'**BD-001 — Add foo to bar**\nType: TODO(version)\nStatus: Resolved\nFile/Symbol: scripts/foo.sh\nDescription: Implements foo on bar.\n'
 DIV_BLOB=$(printf '%s' "$DIV_RAWBODY" | _tmf_gz64_encode)
-FAKE85=$(mktemp -d -t tmr-fake85.XXXXXX)
+FAKE85=$(mktemp -d "${TMPDIR:-/tmp}/tmr-fake85.XXXXXX")
 cat > "$FAKE85/gh" <<'FG85'
 #!/usr/bin/env bash
 label=""
@@ -1355,7 +1355,7 @@ FG85
 sed -i.bak "s|@@DIV_BLOB@@|$DIV_BLOB|" "$FAKE85/gh"
 rm -f "$FAKE85/gh.bak"
 chmod +x "$FAKE85/gh"
-REPO85=$(mktemp -d -t tmr-repo85.XXXXXX)
+REPO85=$(mktemp -d "${TMPDIR:-/tmp}/tmr-repo85.XXXXXX")
 cat > "$REPO85/tracker.toml" <<'EOF'
 schema_version = 1
 [backend]
@@ -1420,8 +1420,8 @@ fi
 # `|| emit_failed=1` seam in tracker_migrate_reverse_run, exercised
 # deterministically (no disk-failure simulation); the override is
 # scoped to the command-substitution subshell and never leaks.
-FAKE87=$(mktemp -d -t tmr-fake87.XXXXXX); _build_fake_gh "$FAKE87"
-REPO87=$(mktemp -d -t tmr-repo87.XXXXXX); _build_test_repo "$REPO87"
+FAKE87=$(mktemp -d "${TMPDIR:-/tmp}/tmr-fake87.XXXXXX"); _build_fake_gh "$FAKE87"
+REPO87=$(mktemp -d "${TMPDIR:-/tmp}/tmr-repo87.XXXXXX"); _build_test_repo "$REPO87"
 export PATH="$FAKE87:$PATH_SAVED"
 out87=$(
     _tmr_emit_pack_tree() { echo "SIMULATED EMIT FAILURE (8.7)" >&2; return 1; }

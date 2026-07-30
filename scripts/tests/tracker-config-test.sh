@@ -94,7 +94,7 @@ assert_eq "1.9 tracker_id_prefix"    "BD"       "$(tracker_id_prefix "$FIXTURES/
 assert_eq "1.9 tracker_mapping_file" ".pack-tracker/id-map.json" "$(tracker_mapping_file "$FIXTURES/tracker-mode.toml")"
 
 # 1.10 read tolerates inline comments
-inline_tmp=$(mktemp -t tcfg-inline.XXXXXX)
+inline_tmp=$(mktemp "${TMPDIR:-/tmp}/tcfg-inline.XXXXXX")
 cat > "$inline_tmp" <<'EOF'
 schema_version = 1  # this is the schema version
 [backend]
@@ -147,7 +147,7 @@ assert_contains "3.2 schema_version_check on schema_version=99 → validation" "
 assert_contains "3.2 schema_version_check error names actual version"        "$err" "schema_version=99"
 
 # 3.3 schema_version_check fail when key missing
-no_ver_tmp=$(mktemp -t tcfg-noschema.XXXXXX)
+no_ver_tmp=$(mktemp "${TMPDIR:-/tmp}/tcfg-noschema.XXXXXX")
 printf 'name = "x"\n' > "$no_ver_tmp"
 err=$(tracker_schema_version_check "$no_ver_tmp" 2>&1 1>/dev/null) || true
 assert_contains "3.3 schema_version_check missing key → validation" "$err" "missing required key"
@@ -158,7 +158,7 @@ rm -f "$no_ver_tmp"
 # tracker-provider's _tracker_provider_backend() returns "stub".
 
 # Build a minimal stub-routing tracker.toml
-stub_toml=$(mktemp -t tcfg-stub.XXXXXX)
+stub_toml=$(mktemp "${TMPDIR:-/tmp}/tcfg-stub.XXXXXX")
 cat > "$stub_toml" <<'EOF'
 schema_version = 1
 [backend]

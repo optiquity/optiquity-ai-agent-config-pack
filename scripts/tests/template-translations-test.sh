@@ -49,7 +49,7 @@ out=$(template_translations_load "")
 assert_eq "1.2 empty path → []" "[]" "$out"
 
 # 1.3 Empty file → empty array.
-empty=$(mktemp -t tt-empty.XXXXXX)
+empty=$(mktemp "${TMPDIR:-/tmp}/tt-empty.XXXXXX")
 out=$(template_translations_load "$empty")
 assert_eq "1.3 empty file → []" "[]" "$out"
 rm -f "$empty"
@@ -66,7 +66,7 @@ n_rules=$(printf '%s' "$out" | jq '.[0].rules | length')
 assert_eq "1.4 first transition has 3 rules" "3" "$n_rules"
 
 # 1.5 Malformed YAML → typed validation error.
-malformed=$(mktemp -t tt-malformed.XXXXXX)
+malformed=$(mktemp "${TMPDIR:-/tmp}/tt-malformed.XXXXXX")
 printf '[ this is not\n  valid : yaml :\n' > "$malformed"
 err=$(template_translations_load "$malformed" 2>&1 1>/dev/null) || true
 assert_contains "1.5 malformed → validation" "$err" "ERROR: validation"
@@ -184,7 +184,7 @@ printf "\n=== Group 4: update-templates verb ===\n"
 
 # 4.1 No tracker.toml / no mapping → "no upgrades available" or
 # "nothing to upgrade" message + rc=0.
-TR_NOMAP=$(mktemp -d -t tt-nomap.XXXXXX)
+TR_NOMAP=$(mktemp -d "${TMPDIR:-/tmp}/tt-nomap.XXXXXX")
 touch "$TR_NOMAP/PACK-CHAT.md"
 mkdir -p "$TR_NOMAP/.github/ISSUE_TEMPLATE"
 touch "$TR_NOMAP/.github/ISSUE_TEMPLATE/work-item.yml"
@@ -197,7 +197,7 @@ rm -rf "$TR_NOMAP"
 
 # 4.2 Production manifest is empty (no shipped translations.yaml at v11.0
 # in templates-archive root). Verb reports "no upgrades available."
-TR_PROD=$(mktemp -d -t tt-prod.XXXXXX)
+TR_PROD=$(mktemp -d "${TMPDIR:-/tmp}/tt-prod.XXXXXX")
 touch "$TR_PROD/PACK-CHAT.md"
 mkdir -p "$TR_PROD/.github/ISSUE_TEMPLATE" "$TR_PROD/.pack-tracker"
 touch "$TR_PROD/.github/ISSUE_TEMPLATE/work-item.yml"
@@ -210,7 +210,7 @@ assert_contains "4.2 reports no upgrades"       "$out" "no upgrades available"
 rm -rf "$TR_PROD"
 
 # 4.3 Synthetic manifest + dry-run → reports plan with transitions.
-TR_SYN=$(mktemp -d -t tt-syn.XXXXXX)
+TR_SYN=$(mktemp -d "${TMPDIR:-/tmp}/tt-syn.XXXXXX")
 touch "$TR_SYN/PACK-CHAT.md"
 mkdir -p "$TR_SYN/.github/ISSUE_TEMPLATE" "$TR_SYN/.pack-tracker"
 # Live work-item.yml carries the form-level template_version marker
@@ -249,7 +249,7 @@ assert_contains "4.3 dry-run stops after summary"       "$out" "stopping after p
 rm -rf "$TR_SYN"
 
 # 4.4 Bad scope value → typed validation error.
-TR_BAD=$(mktemp -d -t tt-bad.XXXXXX)
+TR_BAD=$(mktemp -d "${TMPDIR:-/tmp}/tt-bad.XXXXXX")
 touch "$TR_BAD/PACK-CHAT.md"
 mkdir -p "$TR_BAD/.github/ISSUE_TEMPLATE"
 touch "$TR_BAD/.github/ISSUE_TEMPLATE/work-item.yml"

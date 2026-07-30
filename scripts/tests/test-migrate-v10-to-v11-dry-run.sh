@@ -41,7 +41,7 @@ assert_contains() {
 # Shared fixture: minimal v10-shaped target.
 make_v10_target() {
     local d
-    d=$(mktemp -d -t migrate10-bd095.XXXXXX)
+    d=$(mktemp -d "${TMPDIR:-/tmp}/migrate10-bd095.XXXXXX")
     git init -q "$d" >/dev/null
     git -C "$d" config user.email "test@example.com"
     git -C "$d" config user.name  "Test"

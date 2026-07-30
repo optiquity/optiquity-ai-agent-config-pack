@@ -38,7 +38,7 @@ printf "\n=== Group 1: detect_pack_surface ===\n"
 # no-mirror SSOT). The pack-surface branch of detect_pack_surface is
 # repointed to the tree; include a second canonical entry (BD-211: no
 # letter suffix) to exercise the detection regex.
-TR_PACK=$(mktemp -d -t ph-pack.XXXXXX)
+TR_PACK=$(mktemp -d "${TMPDIR:-/tmp}/ph-pack.XXXXXX")
 mkdir -p "$TR_PACK/backlog"
 cat > "$TR_PACK/backlog/BD-001.md" <<'EOF'
 <!-- per-entry source: /backlog/BD-001.md; contract: /backlog/_rules.md -->
@@ -58,7 +58,7 @@ rm -rf "$TR_PACK"
 # `docs/project/backlog/` per-entry tree carrying `TD-NNN.md` entry files
 # (the no-mirror SSOT), PARALLEL to the pack-surface `/backlog/` tree
 # probe. No legacy monolith present.
-TR_CLI_TREE=$(mktemp -d -t ph-clitree.XXXXXX)
+TR_CLI_TREE=$(mktemp -d "${TMPDIR:-/tmp}/ph-clitree.XXXXXX")
 mkdir -p "$TR_CLI_TREE/docs/project/backlog"
 cat > "$TR_CLI_TREE/docs/project/backlog/TD-001.md" <<'EOF'
 <!-- per-entry source: docs/project/backlog/TD-001.md -->
@@ -77,7 +77,7 @@ rm -rf "$TR_CLI_TREE"
 # 1.2 client repo: docs/project/BACKLOG.md monolith with TD-NNN entries
 # (pre-v11 fallback — a client mid-migration may still carry the monolith
 # INPUT; the legacy probe stays inside the DENY-LIST-CONTENT markers).
-TR_CLI=$(mktemp -d -t ph-cli.XXXXXX)
+TR_CLI=$(mktemp -d "${TMPDIR:-/tmp}/ph-cli.XXXXXX")
 mkdir -p "$TR_CLI/docs/project"
 cat > "$TR_CLI/docs/project/BACKLOG.md" <<'EOF'
 **TD-001 — A**
@@ -88,7 +88,7 @@ assert_eq "1.2 client repo (docs/project/ monolith fallback) → client" \
 rm -rf "$TR_CLI"
 
 # 1.3 client repo with BACKLOG.md at root (legacy v9 layout).
-TR_LEG=$(mktemp -d -t ph-leg.XXXXXX)
+TR_LEG=$(mktemp -d "${TMPDIR:-/tmp}/ph-leg.XXXXXX")
 cat > "$TR_LEG/BACKLOG.md" <<'EOF'
 **TD-001 — A**
 Status: Open
@@ -98,7 +98,7 @@ assert_eq "1.3 client repo (root BACKLOG.md, TD entries) → client" \
 rm -rf "$TR_LEG"
 
 # 1.4 ambiguous: both BD- and TD- entries in the same BACKLOG.
-TR_AMB=$(mktemp -d -t ph-amb.XXXXXX)
+TR_AMB=$(mktemp -d "${TMPDIR:-/tmp}/ph-amb.XXXXXX")
 cat > "$TR_AMB/BACKLOG.md" <<'EOF'
 **BD-001 — A**
 Status: Open
@@ -113,7 +113,7 @@ rm -rf "$TR_AMB"
 # 1.4b ambiguous: both the pack `/backlog/` per-entry tree AND the client
 # `docs/project/backlog/` per-entry tree present (BD-206 O5 — the two
 # per-entry probes both fire → ambiguous, caller decides).
-TR_AMB2=$(mktemp -d -t ph-amb2.XXXXXX)
+TR_AMB2=$(mktemp -d "${TMPDIR:-/tmp}/ph-amb2.XXXXXX")
 mkdir -p "$TR_AMB2/backlog" "$TR_AMB2/docs/project/backlog"
 cat > "$TR_AMB2/backlog/BD-001.md" <<'EOF'
 **BD-001 — A**
@@ -128,7 +128,7 @@ assert_eq "1.4b both per-entry trees (pack + client) → ambiguous" \
 rm -rf "$TR_AMB2"
 
 # 1.5 ambiguous: no BACKLOG.md at all.
-TR_NB=$(mktemp -d -t ph-nb.XXXXXX)
+TR_NB=$(mktemp -d "${TMPDIR:-/tmp}/ph-nb.XXXXXX")
 assert_eq "1.5 no BACKLOG.md → ambiguous" \
     "pack-surface: ambiguous" "$(detect_pack_surface "$TR_NB")"
 rm -rf "$TR_NB"
@@ -169,7 +169,7 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$REPO_ROOT" 2>/dev/null)
 # HELP-FRAGMENT.md ships now (the deferred-tracker fragment is deleted).
 # Assert the client header + client-only verb are present, tracker
 # advertising is absent, and the `pack td` rows are absent (BD-272).
-TR_CLI2=$(mktemp -d -t ph-cli2.XXXXXX)
+TR_CLI2=$(mktemp -d "${TMPDIR:-/tmp}/ph-cli2.XXXXXX")
 mkdir -p "$TR_CLI2/docs/project" "$TR_CLI2/docs/pack"
 cat > "$TR_CLI2/docs/project/BACKLOG.md" <<'EOF'
 **TD-001 — A**
@@ -216,7 +216,7 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$REPO_ROOT" --surface pa
 # BD-175: pack-side fragments live at pack-ops/ — mirror the canonical
 # layout in the fixture so pack-help.sh's pack-ops-first resolution
 # fires the post-reorg code path.
-TR_OV=$(mktemp -d -t ph-ov.XXXXXX)
+TR_OV=$(mktemp -d "${TMPDIR:-/tmp}/ph-ov.XXXXXX")
 mkdir -p "$TR_OV/pack-ops"
 cp "$REPO_ROOT/pack-ops/HELP-FRAGMENT-PACK.md" "$TR_OV/pack-ops/"
 output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$TR_OV" --surface pack 2>/dev/null)
@@ -226,7 +226,7 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$TR_OV" --surface pack 2
 rm -rf "$TR_OV"
 
 # 2.4 ambiguous tree (no BACKLOG.md at all): exit non-zero with helpful stderr.
-TR_NONE=$(mktemp -d -t ph-none.XXXXXX)
+TR_NONE=$(mktemp -d "${TMPDIR:-/tmp}/ph-none.XXXXXX")
 err=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$TR_NONE" 2>&1 >/dev/null) || true
 rc=$?
 [[ "$err" == *"no HELP-FRAGMENT-*.md found"* ]] \
@@ -236,7 +236,7 @@ rm -rf "$TR_NONE"
 
 # 2.5 fragment is emitted verbatim (single-fragment cat; BD-243 NUCLEAR
 # removed the sibling-include inlining path).
-TR_VER=$(mktemp -d -t ph-ver.XXXXXX)
+TR_VER=$(mktemp -d "${TMPDIR:-/tmp}/ph-ver.XXXXXX")
 cat > "$TR_VER/HELP-FRAGMENT-PACK.md" <<'EOF'
 # header
 FRAGMENT-CONTENT-MARKER

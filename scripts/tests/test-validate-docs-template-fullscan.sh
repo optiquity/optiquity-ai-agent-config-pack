@@ -76,7 +76,7 @@ SRC_INST="$PACK_ROOT/supporting-docs/INSTALL-PROCEDURES.md"
 # L2 floor: measured IN-set is 108 docs; any >=19-doc family loss trips.
 IN_SET_FLOOR=90
 
-FIXTURE_BASE="$(mktemp -d -t test-vdocs-fullscan.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-vdocs-fullscan.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0

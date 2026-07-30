@@ -41,7 +41,7 @@ PACK_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TOOL="$PACK_ROOT/project-template/scripts/target-sweep.sh"
 RULES_SRC="$PACK_ROOT/project-template/docs/project/implementation-plan/_rules.md"
 
-FIXTURE_BASE="$(mktemp -d -t test-target-sweep.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-target-sweep.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0

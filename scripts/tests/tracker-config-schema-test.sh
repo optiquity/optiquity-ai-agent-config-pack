@@ -92,7 +92,7 @@ build_fixture() {
     local pack_body="$1"
     local client_body="$2"
     local d
-    d=$(mktemp -d -t tracker-cfg-fix.XXXXXX)
+    d=$(mktemp -d "${TMPDIR:-/tmp}/tracker-cfg-fix.XXXXXX")
     mkdir -p "$d/project-template"
     printf '%s\n' "$pack_body"   > "$d/tracker.toml.pack-example"
     printf '%s\n' "$client_body" > "$d/project-template/tracker.toml.project-example"

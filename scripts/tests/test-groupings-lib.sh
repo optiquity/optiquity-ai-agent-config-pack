@@ -39,7 +39,7 @@ IPRULES="$PACK_ROOT/project-template/docs/project/implementation-plan/_rules.md"
 GATE="$PACK_ROOT/project-template/scripts/validate-docs.sh"
 ALLOWLIST="$PACK_ROOT/project-template/scripts/.docs-gate-allowlist.txt"
 
-FIXTURE_BASE="$(mktemp -d -t test-groupings-lib.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-groupings-lib.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0

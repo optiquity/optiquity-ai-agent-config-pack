@@ -343,7 +343,7 @@ _tmr_decode_severity() {
 _tmr_extract_section() {
     local heading="$1"
     local tmp
-    tmp=$(mktemp -t tmrext.XXXXXX)
+    tmp=$(mktemp "${TMPDIR:-/tmp}/tmrext.XXXXXX")
     cat > "$tmp"
     python3 - "$tmp" "$heading" <<'PYEOF'
 import re, sys
@@ -837,7 +837,7 @@ _tmr_check_blob_h2_divergence() {
     # forward parser (a single-entry file = the verbatim span). Recompute each
     # H2 field VALUE through the REAL neutralizer the composer uses.
     local _tmp_raw
-    _tmp_raw=$(mktemp -t tmrdiv.XXXXXX)
+    _tmp_raw=$(mktemp "${TMPDIR:-/tmp}/tmrdiv.XXXXXX")
     printf '%s' "$raw_body" > "$_tmp_raw"
     local parsed
     parsed=$(_tmf_parse_backlog_file "$_tmp_raw" 2>/dev/null)
@@ -1009,7 +1009,7 @@ _tmr_emit_backlog() {
     # description text containing `"""` would terminate the embedded
     # string early. File-passing is robust against any payload.
     local entries_file
-    entries_file=$(mktemp -t tmr-emit-backlog.XXXXXX)
+    entries_file=$(mktemp "${TMPDIR:-/tmp}/tmr-emit-backlog.XXXXXX")
     printf '%s' "$entries" > "$entries_file"
     python3 - "$out_path" "$entries_file" <<'PYEOF'
 import json, sys
@@ -1102,7 +1102,7 @@ _tmr_emit_pack_tree() {
     # File-pass per Finding #13 (PACK-REVIEW-BD066-068): description text
     # containing `"""` would terminate an embedded triple-quoted string.
     local entries_file
-    entries_file=$(mktemp -t tmr-emit-pack-tree.XXXXXX)
+    entries_file=$(mktemp "${TMPDIR:-/tmp}/tmr-emit-pack-tree.XXXXXX")
     printf '%s' "$entries" > "$entries_file"
 
     # Render each entry body (everything from line 2 onward — the line-1
@@ -1112,7 +1112,7 @@ _tmr_emit_pack_tree() {
     # to a temp FILE — bash command substitution `$(...)` strips NUL bytes,
     # so the stream is read from disk via `read -r -d ''`, not captured.
     local rendered_file
-    rendered_file=$(mktemp -t tmr-pack-tree-render.XXXXXX)
+    rendered_file=$(mktemp "${TMPDIR:-/tmp}/tmr-pack-tree-render.XXXXXX")
     python3 - "$entries_file" >"$rendered_file" <<'PYEOF'
 import json, sys
 with open(sys.argv[1]) as f:
@@ -1175,7 +1175,7 @@ _tmr_emit_implementation_plan() {
     fi
     # File-pass per Finding #13 (PACK-REVIEW-BD066-068).
     local phases_file
-    phases_file=$(mktemp -t tmr-emit-plan.XXXXXX)
+    phases_file=$(mktemp "${TMPDIR:-/tmp}/tmr-emit-plan.XXXXXX")
     printf '%s' "$phases" > "$phases_file"
     python3 - "$out_path" "$phases_file" <<'PYEOF'
 import json, sys
@@ -1202,8 +1202,8 @@ _tmr_emit_status() {
     local out_path="$3"
     # File-pass per Finding #13 (PACK-REVIEW-BD066-068).
     local entries_file phases_file
-    entries_file=$(mktemp -t tmr-emit-status-e.XXXXXX)
-    phases_file=$(mktemp  -t tmr-emit-status-p.XXXXXX)
+    entries_file=$(mktemp "${TMPDIR:-/tmp}/tmr-emit-status-e.XXXXXX")
+    phases_file=$(mktemp "${TMPDIR:-/tmp}/tmr-emit-status-p.XXXXXX")
     printf '%s' "$entries" > "$entries_file"
     printf '%s' "$phases"  > "$phases_file"
     python3 - "$out_path" "$entries_file" "$phases_file" <<'PYEOF'
@@ -1458,7 +1458,7 @@ tracker_migrate_reverse_run() {
     # silent loss; if any skips occurred we exit non-zero unless
     # the caller passes --force).
     local skipped_log
-    skipped_log=$(mktemp -t tmr-skipped.XXXXXX)
+    skipped_log=$(mktemp "${TMPDIR:-/tmp}/tmr-skipped.XXXXXX")
     : > "$skipped_log"
 
     local n_roster i_roster=0 gh_id pack_id issue

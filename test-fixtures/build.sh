@@ -146,7 +146,7 @@ _setup_v10_pack_src() {
     if [[ -n "${V10_PACK_SRC_DIR:-}" && -d "$V10_PACK_SRC_DIR" ]]; then
         return 0
     fi
-    V10_PACK_SRC_DIR=$(mktemp -d -t v10-pack-src.XXXXXX)
+    V10_PACK_SRC_DIR=$(mktemp -d "${TMPDIR:-/tmp}/v10-pack-src.XXXXXX")
     trap '[[ -n "${V10_PACK_SRC_DIR:-}" ]] && rm -rf "$V10_PACK_SRC_DIR"' EXIT
     git clone --depth 1 --branch v10 "$PACK_ROOT" "$V10_PACK_SRC_DIR" \
         >/dev/null 2>&1
@@ -983,7 +983,7 @@ _verify() {
 _materialize_for_contract() {
     local persona="${1:?_materialize_for_contract requires <persona>}"
     local sandbox
-    sandbox=$(mktemp -d -t pack-contract-"$persona".XXXXXX)
+    sandbox=$(mktemp -d "${TMPDIR:-/tmp}/pack-contract-$persona.XXXXXX")
     case "$persona" in
         greenfield)
             # Fresh empty git repo; deterministic identity. The contract

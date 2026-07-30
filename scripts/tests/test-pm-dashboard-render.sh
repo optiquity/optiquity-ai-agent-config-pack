@@ -33,8 +33,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACK_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 RENDER="$PACK_ROOT/project-template/scripts/pm-dashboard-render.py"
 
-FIXTURE_BASE="$(mktemp -d -t test-pm-dashboard-render.XXXXXX)"
-NONGIT_BASE="$(mktemp -d -t test-pm-dashboard-nongit.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-pm-dashboard-render.XXXXXX")"
+NONGIT_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-pm-dashboard-nongit.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE" "$NONGIT_BASE"' EXIT
 
 # Belt-and-suspenders: never let git walk up out of the fixtures into an

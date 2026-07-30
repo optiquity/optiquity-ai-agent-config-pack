@@ -37,7 +37,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACK_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-FIXTURE_BASE="$(mktemp -d -t test-bd144-translate.XXXXXX)"
+FIXTURE_BASE="$(mktemp -d "${TMPDIR:-/tmp}/test-bd144-translate.XXXXXX")"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
 
 passes=0
@@ -115,7 +115,7 @@ MIGRATOR_OWN_SIDECAR_SUFFIX="v10-customized"
 # via awk into a temp script, source that, and call. This isolates the
 # unit-under-test from the dispatch machinery without touching the
 # adapter's structure.
-HELPER_TMP="$(mktemp -t bd144-helper.XXXXXX.sh)"
+HELPER_TMP="$(mktemp "${TMPDIR:-/tmp}/bd144-helper.XXXXXX")"
 awk '
     /^_v10_to_v11_translate_capability_tokens\(\) \{/ { capture = 1 }
     capture { print }
