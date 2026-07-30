@@ -24,6 +24,7 @@
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
 - [BD-275](./BD-275.md) — Order-dependent test-v11-realistic-ot.sh (serial-suite flake; passes isolated)
 - [BD-277](./BD-277.md) — Client-side (project-template) BSD-mktemp portability: sweep + guard assessment (client deliverable analog of BD-276)
+- [BD-278](./BD-278.md) — Client `validate.sh` enforcement: opt-in pre-push hook installer + `/pm-startup` detect-and-suggest (client deliverable)
 
 ## Deferred
 

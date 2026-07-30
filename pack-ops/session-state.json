@@ -1,17 +1,20 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "3b39aed",
+  "boundary_commit": "a24d270",
   "checkpoint": "2026-07-30T00:00:00Z",
-  "active": ["BD-277", "BD-275"],
-  "in_flight_agents": [],
-  "queue": ["BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "SERIAL mini-batch: BD-276 (pack: mktemp sweep + Check 92 3-class guard + verification-harness/test-fixtures-README root-cause fix) SHIPPED + RESOLVED. NEXT BD-277 (CLIENT companion): sweep the SOLE client occurrence project-template/agent-run.sh line 347 + assess/add a client-side guard; the client ships validators but NO CI workflow, so guard placement is a P-missed-7 architect assessment (SEPARATE client copy, no-dual-use). Then BD-275 (order-dependent serial-suite flake; reproduce-in-fresh-clone then fix shared test-fixtures state). Then the ruled spine.",
-  "wave": "BD-136 + BD-276 SHIPPED + RESOLVED. Off-spine chores continuing: BD-277 (client-only mktemp companion) NEXT -> then BD-275. Then the ruled spine BD-236 -> BD-210 -> BD-205 -> BD-093. Push is user-approved + batched (after the mini-batch).",
-  "pending_decisions": [
-    "BD-277 (client companion) next: AWAITING user approval to spawn pack-architect (per architect-spawn-protocol) for the client-guard placement assessment (client has validators validate.sh / validate-docs.sh, NO .github/workflows). Then planner -> coder: sweep agent-run.sh line 347 + a client-appropriate guard (SEPARATE client copy). Census ground-truth: 1 client occurrence, zero --tmpdir/-p, no client teaching surface.",
-    "BD-275 after BD-277: reproduce the serial-suite flake in a FRESH CLONE (fixture is gitignored - must build) against the CURRENT post-BD-136/276 suite, diagnose the shared test-fixtures state vector, fix (general shared-state isolation / per-test reset), review, commit.",
-    "BD-205 carries the user-directed pre-merge main->v11-dev reconciliation (per-commit user-approved keep/drop; keepers merged INTO v11-dev first so the final merge is a clean overwrite).",
-    "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no other SHAs/dates, no hex agent IDs, <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/ (pack side)."
+  "active": ["BD-277", "BD-278", "BD-275"],
+  "in_flight_agents": [
+    "coder-bd277-clientguard -- BD-277 (RW, isolated worktree): implementing the user-approved plan as ONE project-only commit -- fix project-template/agent-run.sh line 347 (mktemp -t -> portable full-path form) + NEW client bash project-template/scripts/validate-shell.sh (3 portability classes, empty allowlist, git-tracked SKIP-lenient scan, client-audience zero-pack-vocab, --self-test, mode 100755) + a new always-on leg in project-template/scripts/validate.sh. Verifies incl. a scratch init-project install proving SHIPPED+EXEC+WIRED end-to-end. Then bounded review/fix cycle -> user commit -> tear down worktree. Orchestrator regenerates test-fixtures manifest at push (SEPARATE pack-only commit, BD-274 precedent)."
   ],
-  "cycle_position": "BD-276 done + committed + worktree torn down. BD-277 (client companion) next -> architect-spawn gate. Then BD-275, then the ruled spine BD-236."
+  "queue": ["BD-236", "BD-210", "BD-205", "BD-093"],
+  "parallelization": "SERIAL client mini-batch: BD-277 (CLIENT mktemp fix + validate-shell.sh guard leg) coder IN FLIGHT -> BD-278 (CLIENT validate.sh enforcement: opt-in pre-push hook installer + pm-startup detect-and-suggest; user idea, needs a focused architect assessment) -> BD-275 (order-dependent serial-suite flake; reproduce-in-fresh-clone then fix shared test-fixtures state). Then the ruled spine. BD-277 + BD-278 are both client-only; BD-278's hook runs validate.sh which includes BD-277's guard leg.",
+  "wave": "BD-136 + BD-276 SHIPPED + RESOLVED. Client mini-batch: BD-277 (mktemp fix + guard leg) coder IN FLIGHT; BD-278 (validate.sh push-hook enforcement) OPENED, next (architect-spawn gate pending); then BD-275. Then the ruled spine BD-236 -> BD-210 -> BD-205 -> BD-093. Push user-approved + batched.",
+  "pending_decisions": [
+    "BD-277: coder returns -> bounded review/fix cycle (dedicated review of the NEW client guard: bites the 3 classes + spares mentions + client-audience zero-pack-vocab + SHIPPED+WIRED end-to-end + no pack-battery regression) -> user commit (project-only) -> tear down worktree. Orchestrator regenerates the fixture manifest at push (separate pack-only commit).",
+    "BD-278 (opened, user-approved to open): AWAITING user approval to spawn pack-architect (per architect-spawn-protocol) for the enforcement design -- pre-push vs pre-commit, the pm-startup + pm-refresh detect-and-suggest, the opt-in installer (precedents: client install-immutable-hook.sh + pack /pack-startup Step 5); all client-audience + OPT-IN + user-consent-gated (installing a git hook is persistent config).",
+    "BD-275 after BD-278: reproduce the serial-suite flake in a FRESH CLONE (fixture is gitignored - must build) against the current post-BD-136/276 suite, diagnose the shared test-fixtures state vector, fix (general shared-state isolation), review, commit.",
+    "BD-205 carries the user-directed pre-merge main->v11-dev reconciliation (per-commit user-approved keep/drop; keepers merged INTO v11-dev first so the final merge is a clean overwrite).",
+    "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no other SHAs, no dates outside checkpoint, no hex agent IDs, no dated handoff paths -- an 8-digit YYYYMMDD stamp reads as a SHA and trips Check 79; <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/ (pack side)."
+  ],
+  "cycle_position": "BD-277 coder in flight (client mktemp fix + guard leg). BD-278 opened (push-hook enforcement) -> architect-spawn gate next. Then BD-275, then the ruled spine BD-236."
 }
