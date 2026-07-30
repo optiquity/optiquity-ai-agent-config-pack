@@ -4,7 +4,7 @@
   "checkpoint": "2026-07-28T00:00:00Z",
   "active": ["BD-136"],
   "in_flight_agents": [
-    "coder-bd136-c9b-goldenreprep -- C9b (OI-C9-1, pack-only, RW isolated): re-prep the committed golden test-fixtures/v11-trinity-marker-prepped/ trinity (relocate the invalid PREAMBLE markers to a valid Shape A/B placement, preserve project content) + update its README pair-counts + FLIP the C9 M-8 assertion to clean merged-with-customization. Fixture is NOT a build.sh fixture -> manifest unaffected. Then end-to-end review + resolve."
+    "coder-bd136-c9b-goldenreprep -- C9b (OI-C9-1, pack-only, RW isolated): DONE (golden preamble markers -> ### Repository overview H3 in the Project-addenda seed; fixture README + M-8 flipped to clean merged-with-customization; C9 test 58/0; manifest unaffected). RE-ENGAGED for OI-C9b-3 (top-level test-fixtures/README.md pair-count 15/14/15 -> 14/13/14, enumerate-encoding-surfaces). Then CI-verify + commit; then end-to-end review + resolve."
   ],
   "queue": ["BD-236", "BD-210", "BD-275", "BD-276", "BD-205", "BD-093"],
   "parallelization": "SERIAL. Queue re-ordered to the ruled closeout spine 189->224->257->136->236->210->205->093; BD-257 resolved so BD-136 is next. BD-275/276 (off-spine chores) slotted after the spine, before BD-205's final audit. BD-136 = LARGE-BD deterministic pipeline starting.",
