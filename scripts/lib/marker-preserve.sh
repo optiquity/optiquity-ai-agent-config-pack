@@ -56,7 +56,7 @@
 # original Shape B sections appended after the spine, and each Shape A
 # project block re-grafted at the tail of its (adopted) host section body.
 # Coarsening to whole-file conflict only WIDENS a conflict, never narrows
-# safety (BD-136 architecture §1.2).
+# safety (maintenance-docs/v11-implementation/ARCHITECTURE-BD136.md §1.2).
 #
 # ── Fail-loud gates (all route to the sidecar / needs-reconciliation path
 #    with a SPECIFIC message; never a silent merge; the driver runs under
@@ -128,8 +128,9 @@ _mp_conditional_headings() {
     ' "$1"
 }
 
-# BD-136 L-9 Step-1 hoist, BASE-AWARE (POQ-1 fix — arch ARCHITECTURE-BD136-POQ1
-# §3.1). Return 0 (FIRE the fail-loud hoist) iff a `[CONDITIONAL]` section is
+# BD-136 L-9 Step-1 hoist, BASE-AWARE (POQ-1 fix — arch
+# maintenance-docs/v11-implementation/ARCHITECTURE-BD136-POQ1.md §3.1). Return 0
+# (FIRE the fail-loud hoist) iff a `[CONDITIONAL]` section is
 # un-auto-retirable; return 1 (do NOT fire → the section is the v10 default and
 # will be cleanly adopted from THEIRS by the markerless fallback).
 #   - no `[CONDITIONAL]` heading in OURS        → 1 (nothing to fire on)
@@ -495,7 +496,7 @@ EOF
     ours_heads=$(_mp_h2_list "$ours")
 
     # Preamble reconciliation (pack-owned; a project preamble edit is caught).
-    # SYMMETRIC skeleton compare (BLOCKER-1 / arch §1.2 `ours-skel == theirs-skel`):
+    # SYMMETRIC skeleton compare (BLOCKER-1 / maintenance-docs/v11-implementation/ARCHITECTURE-BD136.md §1.2 `ours-skel == theirs-skel`):
     # strip markers from ALL THREE sides so a marker THEIRS/BASE carries (e.g. a
     # future v11 BASE with the seed pair) never spuriously mismatches.
     _mp_extract_preamble "$ours"   | _mp_strip_marker_blocks > "$work/o_pre"
@@ -533,7 +534,7 @@ EOF
             return 0
         fi
 
-        # SYMMETRIC skeleton compare (BLOCKER-1 / arch §1.2): strip markers from
+        # SYMMETRIC skeleton compare (BLOCKER-1 / maintenance-docs/v11-implementation/ARCHITECTURE-BD136.md §1.2): strip markers from
         # ALL THREE sides. THEIRS ships the empty seed pair under `## Project
         # addenda`; an OURS-stripped-vs-THEIRS-unstripped compare would mismatch
         # on that section for EVERY client on EVERY init --update.
