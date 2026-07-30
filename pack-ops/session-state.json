@@ -1,18 +1,21 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "55f479c",
+  "boundary_commit": "752aad2",
   "checkpoint": "2026-07-30T00:00:00Z",
   "active": ["BD-278", "BD-275"],
-  "in_flight_agents": [],
-  "queue": ["BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "SERIAL client mini-batch: BD-277 (CLIENT mktemp fix + validate-shell.sh guard leg) SHIPPED + RESOLVED (project-only). NEXT BD-278 (CLIENT validate.sh enforcement: opt-in pre-push hook installer + pm-startup/pm-refresh detect-and-suggest; needs a focused architect assessment). Then BD-275 (order-dependent serial-suite flake; reproduce-in-fresh-clone then fix shared test-fixtures state). Then the ruled spine. BD-277's fixture manifest is pending a push-time regen (separate pack-only commit).",
-  "wave": "BD-136 + BD-276 + BD-277 SHIPPED + RESOLVED. Client mini-batch continuing: BD-278 (validate.sh push-hook enforcement) NEXT -> architect-spawn gate; then BD-275. Then the ruled spine BD-236 -> BD-210 -> BD-205 -> BD-093. Push user-approved + batched (regen the BD-277 fixture manifest at push).",
-  "pending_decisions": [
-    "BD-278 (opened, user-approved to open): AWAITING user approval to spawn pack-architect (per architect-spawn-protocol) for the enforcement design -- pre-push vs pre-commit, the pm-startup + pm-refresh detect-and-suggest, the opt-in installer (precedents: client install-immutable-hook.sh + pack /pack-startup Step 5); all client-audience + OPT-IN + user-consent-gated.",
-    "BD-275 after BD-278: reproduce the serial-suite flake in a FRESH CLONE (fixture is gitignored - must build) against the current post-BD-136/276/277 suite, diagnose the shared test-fixtures state vector, fix (general shared-state isolation), review, commit.",
-    "PUSH-time (batched, user-approved): regenerate test-fixtures/manifest.txt for BD-277 (fixture inputs shifted by the client project-template edits) via manifest-sync.sh -> a SEPARATE pack-only commit (BD-274 precedent); then push + confirm CI-green.",
-    "BD-205 carries the user-directed pre-merge main->v11-dev reconciliation (per-commit user-approved keep/drop; keepers merged INTO v11-dev first so the final merge is a clean overwrite).",
-    "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary_commit only, no other SHAs, no dates outside checkpoint, no hex agent IDs, no dated handoff paths; <4096 bytes); modes review=itemized, intervention=full, isolation=full; canonical scratch root $XDG_STATE_HOME/optiquity-pack-handoff/ (pack side)."
+  "in_flight_agents": [
+    "coder-bd278-enforcement -- BD-278 (RW, worktree PRESERVED on disk, uncommitted): impl + post-review F1/F2/F3 fix DONE + Pack-Chat-verified (F1 executor-bind matcher: FE1/FE2 co-presence mentions now unenforced, the 5 true-positives enforced, sibling validate-shell.sh unenforced, --self-test PASS, no self-trip, tests 136/0, vocab grep 0; battery green modulo the 2 new-file dangling-refs that clear on git add). 6 files: Commit A project-only (install-validate-hook.sh 755 + detect-validate-enforcement.sh 755 + pm-startup Step 6b + pm-refresh re-check + PM-CHAT consent clause); Commit B pack-only (test-init-project.sh). The INDEPENDENT re-review was BLOCKED by the 200-agent session cap.",
+    "reviewer-bd278-refix -- BD-278 NOT YET SPAWNED (was cap-blocked). ON RESUME (cap now 1000 in .claude/settings.local.json): spawn the fresh re-review of the matcher rework (confirm no remaining false-enforced; executor-bind false-negatives are the SAFE direction; the real-fence never-fails test bites) -> sync the 6 files to this checkout -> user commit A + B -> flip BD-278 Resolved -> tear down the worktree."
   ],
-  "cycle_position": "BD-277 done + committed + Resolved; worktree torn down. BD-278 (push-hook enforcement) next -> architect-spawn gate. Then BD-275, then the ruled spine BD-236."
+  "queue": ["BD-236", "BD-210", "BD-205", "BD-093"],
+  "parallelization": "SERIAL: BD-278 fix DONE+verified -> (on resume) re-review + commit A/B + push-time manifest C -> BD-275 (order-dependent serial-suite flake; reproduce-in-fresh-clone then fix the shared test-fixtures state) -> the ruled spine BD-236 -> BD-210 -> BD-205 -> BD-093.",
+  "wave": "BD-136 + BD-276 + BD-277 SHIPPED + RESOLVED. BD-278 (validate.sh push-hook enforcement) fix DONE + Pack-Chat-verified; the independent re-review + commit were BLOCKED by the 200-agent session cap. Cap raised to 1000 in .claude/settings.local.json (gitignored) -> RESTART the session to resume: re-review -> commit BD-278 -> BD-275 -> the ruled spine. Nothing pushed yet.",
+  "pending_decisions": [
+    "RESUME on restart: the BD-278 6 files sit VERIFIED in the coder worktree (on disk). Spawn the fresh independent re-review (now uncapped) -> sync + user-commit A (project-only) + B (pack-only) -> flip BD-278 Resolved -> tear down the worktree -> regen test-fixtures/manifest.txt at push (separate pack-only commit).",
+    "PUSH-time (batched, user-approved): regen test-fixtures/manifest.txt for BD-277 + BD-278 (both shifted fixture inputs) -> a SEPARATE pack-only commit; then push BD-136/276/277/278 + confirm CI-green.",
+    "BD-275 after BD-278: reproduce the serial-suite flake in a FRESH CLONE against the current suite, diagnose the shared test-fixtures state vector, fix, review, commit.",
+    "BD-205 carries the user-directed pre-merge main->v11-dev reconciliation (per-commit user-approved keep/drop; keepers merged INTO v11-dev first so the final merge is a clean overwrite).",
+    "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary only, no other SHAs, no dates outside checkpoint, no hex agent IDs, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
+  ],
+  "cycle_position": "BD-278 fix done + Pack-Chat-verified; the independent re-review + commit are cap-BLOCKED -> cap raised to 1000 (.claude/settings.local.json) -> RESTART to resume. Then BD-275, then the ruled spine BD-236."
 }
