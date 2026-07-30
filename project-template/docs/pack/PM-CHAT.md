@@ -131,6 +131,11 @@ directory map.
 | `AGENTS.md` | Direct read (full) | Root-level; Codex agent context file |
 | `GEMINI.md` | Direct read (full) | Root-level; Antigravity CLI context file; referenced when generating Antigravity agent prompts |
 
+**Editing the trinity files.** `CLAUDE.md`, `AGENTS.md`, and `GEMINI.md` are
+pack-owned templates; to add project-owned content that survives a pack update,
+wrap it in project-owned markers — see § How to add project-owned content to
+trinity files (near the bottom of this file) before your first trinity edit.
+
 ### RAG ingestion manifest
 
 This project's RAG index (`mcp-local-rag`) ingests exactly **one**
@@ -1215,6 +1220,271 @@ between machines:
 3. Resume the session if it exists on this machine; start fresh if not
 4. Run the appropriate startup procedure to re-read state files
 5. Never sync session files between machines — let the repo be the truth
+
+---
+
+
+## How to add project-owned content to trinity files
+
+The three trinity files — `CLAUDE.md`, `AGENTS.md`, and `GEMINI.md` — are
+**pack-owned templates**. A pack update (a version migration, or an in-place
+refresh via `init-project.sh --update`) refreshes their canonical body. Two
+things share these files: the update process owns and refreshes everything
+**outside** your markers, and your project owns everything **inside** its
+markers. To keep your own additions across an update, wrap them in
+**project-owned markers**:
+
+```
+<!-- BEGIN project-owned -->
+...your content...
+<!-- END project-owned -->
+```
+
+Content inside a well-formed marker pair survives an update byte-for-byte.
+Content you add **outside** the markers is not protected — a later update may
+overwrite it. You will never lose it silently (an update that cannot cleanly
+merge saves your whole prior copy beside the refreshed file as a `.pre-update`
+sidecar for you to reconcile by hand), but the point of the markers is to avoid
+that manual reconciliation. Wrap every edit. You may use as many marker pairs
+as you need per file.
+
+### The two shapes
+
+Every marker pair is one of two shapes.
+
+**Shape A — add to a section the pack ships.** The pack owns the `## Heading`
+and its canonical body; you add your lines inside a marker pair placed
+**within** the section body. The heading stays **outside** (above) the markers.
+
+```
+## Security
+
+...the pack's canonical body — leave it alone...
+
+<!-- BEGIN project-owned -->
+- Your project's extra security rule.
+- Another one.
+<!-- END project-owned -->
+```
+
+**Shape B — a whole section is yours.** The marker pair wraps the heading line
+**and** the entire body, ending at the next same-or-higher-level heading. Use
+Shape B for a brand-new section, a renamed former-optional section, or an
+override of a pack section.
+
+```
+<!-- BEGIN project-owned -->
+## Trading-desk runbook
+
+The whole section — heading and body — is yours and lives inside the markers.
+<!-- END project-owned -->
+```
+
+### Which shape to use (P-1 / P-4)
+
+- Adding a few bullets, a paragraph, or a filled-in value **to a section the
+  pack already ships** → **Shape A** (wrap only your additions; leave the pack
+  heading and body in place).
+- Overriding a pack section's whole body, **renaming** a former-optional
+  section, or adding a **wholly new** section of your own → **Shape B** (wrap
+  the heading line and the entire body).
+
+**WRONG — a new section of yours, but only the body is wrapped:**
+
+```
+## My deployment notes
+<!-- BEGIN project-owned -->
+- deploy steps...
+<!-- END project-owned -->
+```
+
+`## My deployment notes` sits outside the markers, so the update treats the
+heading as pack-owned text — it is unprotected and can be dropped on the next
+refresh (and if it sits above the first pack heading, the update rejects the
+file: a marker region needs an enclosing pack heading for Shape A, or must
+wrap the heading itself for Shape B).
+
+**RIGHT — wrap the whole section, heading included (Shape B):**
+
+```
+<!-- BEGIN project-owned -->
+## My deployment notes
+- deploy steps...
+<!-- END project-owned -->
+```
+
+**WRONG — a heading in the middle of a Shape A body (a "partial wrap"):**
+
+```
+## Security
+
+<!-- BEGIN project-owned -->
+- an extra rule
+### My sub-rules
+- ...
+<!-- END project-owned -->
+```
+
+A heading that appears **after** body text inside a Shape A region is a partial
+wrap, and the update rejects it. Either keep your Shape A additions
+heading-free, or promote the block to its own top-level Shape B section.
+
+### Never edit pack text outside your markers (P-2)
+
+Do not change the pack's canonical body outside a marker pair. If you edit
+pack-owned text in place, the next update cannot tell your edit from a stale
+copy, so it routes the whole file to a `.pre-update` reconciliation sidecar
+(safe — your copy is preserved — but you lose the clean automatic merge and
+must reconcile by hand). Keep every change inside a marker pair.
+
+Before editing a trinity file, re-read the pack's own canonical version of that
+file and diff your working copy against it, so you can see exactly which lines
+are pack-owned. If you find you genuinely need the pack's own text to change,
+that is a change to the pack itself, not a project edit — either convert the
+section to a Shape B override (below), or note it in `PACK-FEEDBACK.md` so the
+change can be made in the pack.
+
+### Filling in placeholders (P-3)
+
+The trinity ships fill-in placeholders you are meant to complete for your
+project — for example `[PROJECT_NAME]`, `[PLATFORM_DEFAULTS]`,
+`[PLATFORM_TARGETS]`, `[TRANSPORT]`, `[PLATFORM_TESTING]`,
+`[PLATFORM_ARCHITECTURE]`, `[LANGUAGE_RULES]`, `[GRPC_RULES]`,
+`[PLATFORM_SECURITY]`, `[PLATFORM_ANTIPATTERNS]`, and the `**Active skills:**`
+list.
+
+A filled-in value is a change to pack-owned body, so **wrap each filled value in
+a Shape A marker pair** (markers on their own lines — see the grammar rules
+below) so it survives updates. Without the wrap, an update reverts your value
+back to the placeholder:
+
+```
+## Language-specific coding rules
+
+<!-- BEGIN project-owned -->
+**Active skills:** apple-architecture-core, swift-testing
+<!-- END project-owned -->
+```
+
+### Replacing or renaming a pack section — the override (P-4 / P-8)
+
+A Shape B section whose heading **exactly matches** a pack section's heading
+replaces (suppresses) the pack version on update — that is the override
+mechanism. If your replacement uses a **different** name than the pack section
+it replaces, name the original in a `renamed-from` annotation on the BEGIN
+marker so the update knows which pack section to suppress:
+
+```
+<!-- BEGIN project-owned: renamed-from "## iOS 26 / Xcode 26.3 platform features" -->
+## Xcode 26.4 platform features
+
+...your replacement body...
+<!-- END project-owned -->
+```
+
+Without the annotation, a renamed override leaves you with **both** headings
+(the pack's and yours) after an update. One Shape B section may succeed several
+pack sections — list every original name, comma-separated:
+
+```
+<!-- BEGIN project-owned: renamed-from "## Architecture rules — platform-specific", "## Language-specific coding rules" -->
+## Swift coding rules
+
+...one section replacing two...
+<!-- END project-owned -->
+```
+
+Each name in `renamed-from` must be an exact heading line — the `## ` or `### `
+prefix included, double-quoted, byte-for-byte as the pack ships it.
+
+**One name, one place (P-4 / L-4).** A heading name may appear only once per
+file — never in both a Shape A and a Shape B region, and never in two Shape B
+regions. A duplicate name makes the override ambiguous, and the update rejects
+the file.
+
+### Retiring a former-optional section (P-6)
+
+Older packs marked optional sections with a `[CONDITIONAL]` prefix on the
+heading. v11 drops that prefix; each optional section now carries a short
+`<!-- OPTIONAL: ... -->` hint above it instead. If your file still has a heading
+with the literal `[CONDITIONAL]` prefix (carried over from an older init),
+decide per section:
+
+- **Keep it** → rename it to a bare heading for your project and wrap the whole
+  section (heading + body) in Shape B; add a `renamed-from` annotation naming
+  the old `## [CONDITIONAL] ...` heading if you keep custom content.
+- **Drop it** → delete the entire section from all three trinity files.
+
+The literal `[CONDITIONAL]` prefix must never remain in a committed file.
+
+### Adding a whole new section of your own (P-7)
+
+For a brand-new project section, use **Shape B at the top level**: wrap your own
+`## Heading` and body in a marker pair, placed among the pack sections where it
+belongs semantically. Keep project-original sections anchored at their own
+top-level heading — do **not** relocate them into the `## Project addenda` seed
+slot, and do **not** leave a bare `## Heading` outside any marker pair (it is
+unprotected).
+
+```
+<!-- BEGIN project-owned -->
+## Trading-desk runbook
+
+A real project section — top-level Shape B, not an addenda subsection.
+<!-- END project-owned -->
+```
+
+The `## Project addenda` seed slot is for **short additions only**, and it is
+the one place a Shape A body may itself contain `###`/`####` subheadings:
+
+```
+## Project addenda
+
+<!-- BEGIN project-owned -->
+### Deployment quick-reference
+
+- ...
+
+### On-call rotation
+
+- ...
+<!-- END project-owned -->
+```
+
+If a note grows into a real section, give it its own top-level Shape B heading
+(above) — do not leave it buried as a bare `## H2` under `## Project addenda`.
+
+### Diff against your own canonical, not a sibling (P-5)
+
+When you review a trinity edit, diff each file against **its own** pack
+canonical — never against a sibling trinity file. `CLAUDE.md`, `AGENTS.md`, and
+`GEMINI.md` are intentionally **not** byte-identical; making one look like
+another is a pack-level decision, not a project edit. If you think the three
+should converge, note it in `PACK-FEEDBACK.md` — do not hand-restructure one
+file to mirror another.
+
+### Marker grammar — the exact rules an update respects
+
+- **Marker spelling.** Open with `<!-- BEGIN project-owned -->` and close with
+  `<!-- END project-owned -->` (add `: renamed-from "..."` to a BEGIN only for
+  an override). Nothing else counts as a marker.
+- **One marker per line.** Put every marker on its own line — BEGIN on one
+  line, your content on the lines between, END on its own line. Never put BEGIN
+  and END on the same line, and never bury a marker in the middle of a sentence
+  (a filled placeholder still gets its own marker lines around it).
+- **Pair them.** Every BEGIN needs exactly one matching END after it — no
+  orphan, no missing close, no nesting (a second BEGIN before the first END).
+- **One name per file.** A heading name appears at most once (see P-4 above).
+- **Fenced examples are inert.** A marker inside a triple-backtick code fence
+  (like every example in this section) is illustrative only — the update
+  ignores it. Fence an example with exactly three backticks; do not use `~~~`
+  or four-or-more backticks, and always close the fence.
+
+An update that finds a broken marker (orphan, nesting, partial wrap, a
+duplicate name, or a `renamed-from` naming no real section) never guesses — it
+saves your whole copy as a `.pre-update` sidecar and refreshes the file so you
+reconcile by hand. Well-formed markers merge automatically, with no
+reconciliation.
 
 ---
 
