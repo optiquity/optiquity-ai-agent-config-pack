@@ -121,7 +121,10 @@ def run_check16(claude_md, agents_md, gemini_md, label='test'):
     return (len(new_failures), captured)
 
 # T1: PASS — minimal trinity, all 3 carry ## Project addenda + placeholder.
-valid = "## Foo\n\nbody\n\n## Project addenda\n\n<!-- Project addenda go here. Project-original H2 sections... -->\n"
+# Placeholder uses the C4 (BD-136) phrasing: the heading is pack-owned and the
+# empty project-owned seed marker pair below is the landing slot (no bare-H2
+# invite — the OLD "Project-original H2 sections..." wording was retired by C4).
+valid = "## Foo\n\nbody\n\n## Project addenda\n\n<!-- Project addenda go here. This heading is pack-owned; put project-original content in the seed marker pair below as `###` subsections. See docs/pack/PM-CHAT.md. -->\n"
 fc, out = run_check16(valid, valid, valid, label='synth-pt-pass')
 if fc != 0:
     failures.append(f"T1 PASS expected 0 failures, got {fc}: {out}")

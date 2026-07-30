@@ -521,6 +521,16 @@ from validate_checks.wired_test_fragility import *  # noqa: E402,F403  (BD-222 C
 # pack_ops_hygiene.py; the facade carries no forked copy.
 from validate_checks.pack_ops_hygiene import *  # noqa: E402,F403  (BD-224 Checks 86/87/88; single SSOT)
 
+# BD-136: Check 91 (check_trinity_marker_wellformed) lives in its own module
+# (validate_checks.trinity_markers) per the FIRM own-module-per-new-isolated-check
+# convention (O-6) — its candidate set (the client trinity + token-filtered seed
+# marker files) shares no symbol with any cluster, and a dedicated module also
+# shrinks the BD-136↔BD-236 singletons.py co-edit surface. Placed ABOVE
+# _build_check_registry() so the registry's bare `check_trinity_marker_wellformed`
+# reference resolves at assembly. Single SSOT — the V-1..V-8 body lives only in
+# trinity_markers.py; the facade carries no forked copy.
+from validate_checks.trinity_markers import *  # noqa: E402,F403  (BD-136 Check 91; single SSOT)
+
 # PER_ENTRY_LIB moved to validate_checks.per_entry_sync (BD-256 W7 — Cluster F
 # intra-cluster; sole source-consumer is Check 33's TOC-regenerator invocation)
 # — re-imported via the facade's `from validate_checks.per_entry_sync import *`
@@ -1346,6 +1356,21 @@ def _build_check_registry():
         # (highest wired was 89).
         (90, "check_help_fragment_command_skill_parity_client",
               check_help_fragment_command_skill_parity_client, W),
+        # ── Check 91 — CLIENT trinity marker-section well-formedness (BD-136
+        # V-1..V-8). LOUD DEVIATION — REGISTERED EXACTLY ONCE (project-template
+        # only). This INTENTIONALLY BREAKS the 16/18/19 double-register pattern
+        # (each of those registers TWICE — [project-template] + [pack-root]).
+        # Check 91 does NOT get a [pack-root] tuple: pack-root trinity ships
+        # ZERO markers / ZERO `## Project addenda` H2 / ZERO `[CONDITIONAL]`
+        # (EEB-RC1b), so V-4/V-7 would FALSE-FAIL there and a pack-root leg would
+        # otherwise be a pure no-op. Consequence: ONE new registry entry, so
+        # CHECK_REGISTRY_EXPECTED_COUNT goes 87 → 88 (NOT 89) — see the matching
+        # loud note at the constant in core.py. A second [pack-root] tuple here
+        # would land the count at 89 and RED the Check 59 count-gate. Number 91
+        # is the next free integer (highest wired was 90). git-TRACKED candidate
+        # enumeration (git ls-files), O(lines), SKIP-lenient off a work tree.
+        (91, "check_trinity_marker_wellformed[project-template]",
+              lambda: check_trinity_marker_wellformed(REPO_ROOT / "project-template", "project-template"), W),
     ]
 
 

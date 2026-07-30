@@ -188,10 +188,18 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # refinement adds Check 88 (dashboard shell↔spec sync-guard): 84 → 85.
 # BD-224's HELP-FRAGMENT command↔skill parity adds Check 89: 85 → 86.
 # BD-257's CLIENT HELP-FRAGMENT /pm-* command↔skill parity adds Check 90 (the
-# client analog of Check 89): 86 → 87. (Next free numeric ID = 90; the count
-# goes 86 → 87 — these are DISTINCT numbers: the ID is the next free integer,
-# the constant is the registry ENTRY COUNT.)
-CHECK_REGISTRY_EXPECTED_COUNT = 87
+# client analog of Check 89): 86 → 87. (Next free numeric ID = 91 after Check 90
+# landed; the count goes 86 → 87 — these are DISTINCT numbers: the ID is the next
+# free integer, the constant is the registry ENTRY COUNT.)
+# BD-136 adds Check 91 (client trinity marker-section well-formedness, V-1..V-8):
+# 87 → 88. LOUD DEVIATION — Check 91 registers EXACTLY ONCE (project-template
+# only), INTENTIONALLY breaking the 16/18/19 double-register pattern, because
+# pack-root trinity ships ZERO markers / `## Project addenda` / `[CONDITIONAL]`
+# ⇒ a [pack-root] leg would false-fail V-4/V-7 (and otherwise be a no-op). So it
+# is ONE new registry entry (87 → 88), NOT two (NOT 89); a second [pack-root]
+# tuple would RED the Check 59 count-gate at 89-vs-88. See the matching loud note
+# at the sole (91, …) tuple in validate-pack.py. (Next free numeric ID = 92.)
+CHECK_REGISTRY_EXPECTED_COUNT = 88
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
