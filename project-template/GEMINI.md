@@ -53,7 +53,8 @@ Default preference only:
 
 [PLATFORM_DEFAULTS — fill in per project type]
 
-## [CONDITIONAL] iOS 26 / Xcode 26.3 platform features
+<!-- OPTIONAL: keep this section if your project targets iOS 26 / macOS 26; delete the entire section if not applicable -->
+## iOS 26 / Xcode 26.3 platform features
 
 - **Liquid Glass** is the current iOS 26 / macOS 26 design language for materials and visual effects. Use `.glassEffect()` and related modifiers rather than custom `Material` or `UIVisualEffectView` implementations.
 - **FoundationModels** is Apple's on-device LLM framework (iOS 26+). Evaluate before reaching for third-party ML inference.
@@ -75,15 +76,18 @@ These rules apply regardless of which architecture pattern this project uses.
 - Services are stateless by default. Stateful services explicitly document their state variables, threading guarantees, and invalidation policy.
 - Navigation logic lives outside view and view-model types. Use Coordinator, NavigationStack with a typed path, or a Router depending on the chosen pattern.
 
-## [CONDITIONAL] Architecture rules — platform-specific
+<!-- OPTIONAL: keep this section if your project targets a specific platform with its own architecture rules; delete the entire section if not applicable -->
+## Architecture rules — platform-specific
 
 [PLATFORM_ARCHITECTURE — fill in from loaded skills]
 
-## [CONDITIONAL] Language-specific coding rules
+<!-- OPTIONAL: keep this section if your project targets a specific language with its own coding rules; delete the entire section if not applicable -->
+## Language-specific coding rules
 
 [LANGUAGE_RULES — fill in from loaded skills]
 
-## [CONDITIONAL] gRPC and Proto3 rules
+<!-- OPTIONAL: keep this section if your project targets gRPC / Proto3; delete the entire section if not applicable -->
+## gRPC and Proto3 rules
 
 [GRPC_RULES — fill in from grpc-patterns skill, or delete section]
 
@@ -340,7 +344,8 @@ language you are writing (`//` for Swift/C/C++/Objective-C, `#` for Python):
 - When citing a code location in a report, use the symbol name not the line number.
   Line numbers drift with every edit; symbol names are stable.
 
-## [CONDITIONAL] Anti-patterns — never introduce these
+<!-- OPTIONAL: keep this section if your project targets Swift / gRPC; delete the entire section if not applicable -->
+## Anti-patterns — never introduce these
 
 - Massive view controllers or God ViewModels accumulating unrelated logic.
 - Calling generated gRPC stubs directly from ViewModels or Views.
@@ -539,9 +544,13 @@ When acting in this repo:
 
 ## Project addenda
 
-<!-- Project addenda go here. Project-original H2 sections that don't
-fit into pack-defined sections above land under this heading when you
-reconcile your customizations during a v10 → v11 migration. See
-MIGRATION-v10-to-v11.md § "Step 2 — Review the migration report" for
-the reconciliation workflow. New projects start with this H2 empty.
-The marker is preserved across pack upgrades. -->
+<!-- Project addenda go here. This heading is pack-owned. The empty
+project-owned marker pair below is a seed slot the pack preserves
+across updates: put project-original content there as `###` subsections,
+or wrap a whole project-original `##` section in its own project-owned
+marker pair among the sections above. Do not add a bare `##` heading
+directly under this heading. See docs/pack/PM-CHAT.md for how to add
+project-owned content to trinity files. -->
+
+<!-- BEGIN project-owned -->
+<!-- END project-owned -->
