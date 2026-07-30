@@ -11,7 +11,6 @@
 - [BD-093](./BD-093.md) — v11.0 release pin (tag, README, CHANGELOG, MIGRATION cross-link)
 - [BD-109](./BD-109.md) — Project-side `auditor-issue-tracking` sub-agent
 - [BD-110](./BD-110.md) — Pack-side `pack-auditor` agent
-- [BD-136](./BD-136.md) — Trinity marker-section preservation pattern (Shape A + Shape B) + PM-chat authoring procedure
 - [BD-171](./BD-171.md) — Real-OT scratch-clone FLAT-FILE v10→v11 migration test harness
 - [BD-172](./BD-172.md) — Extend Gate 2 (Phase A verify) to cover post-dispatch operations (BD-104 rename + BD-035 advisory + BD-144 advisory)
 - [BD-187](./BD-187.md) — Standalone entry-type instruction doc for external-tool consumption
@@ -169,6 +168,7 @@
 - [BD-133](./BD-133.md) — Reverse migration preserves BACKLOG.md header preamble
 - [BD-134](./BD-134.md) — Tracker forward close retry-with-backoff (eliminate ~5% partial-write rate)
 - [BD-135](./BD-135.md) — Disambiguate `tracker.toml.example` filename pair (rename pack-side and client-side)
+- [BD-136](./BD-136.md) — Trinity marker-section preservation pattern (Shape A + Shape B) + PM-chat authoring procedure
 - [BD-137](./BD-137.md) — Retire `scripts/test-migrator-behavior-preservation.sh` (BD-119 byte-equivalence harness)
 - [BD-138](./BD-138.md) — Schedule BD-136 implementation as a v11.0 batch (no v11.1 deferral)
 - [BD-139](./BD-139.md) — BD-104 audit fix-follow (1 MAJOR + 2 MINOR + 2 NIT)
