@@ -344,7 +344,7 @@ run_agy_auditor() {
     fi
 
     local tmpdir
-    tmpdir="$(mktemp -d -t agy-auditor-XXXXXX)"
+    tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/agy-auditor.XXXXXX")"
     trap 'rm -rf "$tmpdir"' EXIT
 
     echo "[auditor] Starting Antigravity (agy) auditor orchestration"

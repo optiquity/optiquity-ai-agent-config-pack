@@ -52,6 +52,10 @@ echo "[validate] running verify-immutable.sh (pack-shipped immutable-file integr
 echo "[validate] running status-generate.sh --check (STATUS.md class-1 drift gate)"
 "$SCRIPT_DIR/status-generate.sh" --check || EXIT_CODE=1
 
+# Always run (language-independent): shell portability lint.
+echo "[validate] running validate-shell.sh (shell portability)"
+"$SCRIPT_DIR/validate-shell.sh" || EXIT_CODE=1
+
 if has_swift; then
   RAN_SOMETHING=1
   echo "[validate] Swift detected — running validate-swift.sh"
