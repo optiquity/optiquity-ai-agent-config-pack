@@ -128,19 +128,46 @@ Exit codes (reference):
 
 ---
 
+## Customizing the trinity files
+
+`CLAUDE.md`, `AGENTS.md`, and `GEMINI.md` are **pack-owned** — the pack
+rewrites their canonical body on every update. To make your own edits
+survive an update byte-for-byte, wrap them in a **project-owned marker
+pair**. Content INSIDE a pair is yours and is preserved; content OUTSIDE
+is pack-owned and may be overwritten. There are two shapes:
+
+- **Shape A — body wrap.** Keep the pack's `##` heading and wrap only the
+  body lines you own between `<!-- BEGIN project-owned -->` and
+  `<!-- END project-owned -->`. Use this to add project text under a
+  section the pack also owns.
+- **Shape B — whole-section wrap.** Wrap an entire `##` section, heading
+  included, in the marker pair. Use this for a section you keep and
+  customize (including a former optional section — see Step 4) or a
+  brand-new project-only section.
+
+The trinity ships an empty seed pair under `## Project addenda` to start
+from. For the full procedure — placeholders, fill-in defaults, and the
+same-name override — see `docs/pack/PM-CHAT.md` for how to add
+project-owned content to trinity files.
+
+---
+
 ## Step 4 — Fill in context file placeholders
 
-`CLAUDE.md`, `AGENTS.md`, `GEMINI.md` have `[PLACEHOLDER]` and
-`[CONDITIONAL]` sections. The PM chat will fill most of them in during
-kickoff (Step 10), but a minimum set should be filled in manually
-first:
+`CLAUDE.md`, `AGENTS.md`, `GEMINI.md` have `[PLACEHOLDER]` placeholders
+and optional sections (each marked by an `<!-- OPTIONAL: … -->` hint above
+its heading). The PM chat will fill most of them in during kickoff
+(Step 10), but a minimum set should be filled in manually first:
 
 1. Fill `[PROJECT_NAME]`, `[PLATFORM_TARGETS]`, `[TRANSPORT]` in all
    three files.
 2. Fill `[PLATFORM_DEFAULTS]` for your project type (examples in the
    HTML comments inside each file).
-3. Delete `[CONDITIONAL]` sections that don't apply (e.g., remove the
-   iOS availability-guard section for a Python-only server project).
+3. Delete the optional sections that don't apply — each is preceded by an
+   `<!-- OPTIONAL: keep this section … -->` hint (e.g., remove the iOS
+   section for a Python-only server project). If you keep and customize
+   one, wrap it in a project-owned marker pair (**Shape B**) so your edits
+   survive updates — see **Customizing the trinity files** above.
 4. Leave `[PLATFORM_ARCHITECTURE]`, `[LANGUAGE_RULES]`, `[GRPC_RULES]`,
    `[PLATFORM_SECURITY]`, `[PLATFORM_TESTING]`,
    `[PLATFORM_ANTIPATTERNS]` for the PM chat to fill during kickoff

@@ -503,6 +503,24 @@ tool-specific.
      `## iOS 26 / Xcode 26.3 platform features` (or rename per project)
    - `## [CONDITIONAL] Anti-patterns — never introduce these` →
      `## Anti-patterns — never introduce these`
+
+   *v11+ — the `[CONDITIONAL]` prefix is retired pack-wide.* From v11 on, the
+   pack no longer ships the `[CONDITIONAL]` prefix: these optional sections
+   ship as bare H2s, each preceded by an
+   `<!-- OPTIONAL: keep this section if your project targets <X>; delete the entire section if not applicable -->`
+   hint. A v11 (or migrated v10→v11) trinity file therefore has no prefix to
+   strip — step 5 applies only to legacy v10-templated content. When a
+   project keeps and customizes an optional section and wants the edits to
+   survive future pack updates byte-for-byte, it wraps the whole section in a
+   project-owned marker pair (`<!-- BEGIN project-owned -->` /
+   `<!-- END project-owned -->`) — this whole-section wrap (**Shape B**) is
+   the canonical post-init state for a kept-and-customized optional section.
+   The full Shape A (body-wrap) / Shape B (whole-section) authoring procedure
+   lives in `docs/pack/PM-CHAT.md` (how to add project-owned content to
+   trinity files), and applies on every entry path: fresh install
+   (`SETUP-NEW.md` § Customizing the trinity files), existing-project
+   adoption (`SETUP-EXISTING.md` § Customizing the trinity files), and
+   v10→v11 migration.
 6. **Trinity rule check (HARD GATE).**
    ```
    diff <(grep '^## ' CLAUDE.md) <(grep '^## ' AGENTS.md)

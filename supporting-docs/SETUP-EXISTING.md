@@ -128,16 +128,52 @@ at the end. Copy or note this prompt — Step 8 uses it.
 
 ---
 
+## Customizing the trinity files
+
+`CLAUDE.md`, `AGENTS.md`, and `GEMINI.md` are **pack-owned** — the pack
+rewrites their canonical body on every update. To make your own edits
+survive an update byte-for-byte, wrap them in a **project-owned marker
+pair**. Content INSIDE a pair is yours and is preserved; content OUTSIDE
+is pack-owned and may be overwritten. There are two shapes:
+
+- **Shape A — body wrap.** Keep the pack's `##` heading and wrap only the
+  body lines you own between `<!-- BEGIN project-owned -->` and
+  `<!-- END project-owned -->`. Use this to add project text under a
+  section the pack also owns.
+- **Shape B — whole-section wrap.** Wrap an entire `##` section, heading
+  included, in the marker pair. Use this for a section you keep and
+  customize (including a former optional section — see Step 4) or a
+  brand-new project-only section.
+
+**Adopting a project that already has overlapping content.** An existing
+project often already carries content that overlaps a pack-owned trinity
+section. To keep your version, wrap it as **Shape B using the same `##`
+heading** as the pack section — a same-name Shape B pair overrides the pack
+body wholesale on every update. If your heading differs from the pack's,
+name the pack's original heading in a `renamed-from` annotation on the BEGIN
+marker (e.g. `<!-- BEGIN project-owned: renamed-from "## Anti-patterns — never introduce these" -->`)
+so the pack treats your section as a replacement, not a new one.
+
+The trinity ships an empty seed pair under `## Project addenda` to start
+from. For the full procedure — placeholders, the same-name override, and
+the `renamed-from` annotation — see `docs/pack/PM-CHAT.md` for how to add
+project-owned content to trinity files.
+
+---
+
 ## Step 4 — Fill in context file placeholders
 
-The pack ships `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` with
-`[PLACEHOLDER]` and `[CONDITIONAL]` sections. Fill in a minimum set
-now; the PM chat will finish the rest during kickoff (Step 10):
+The pack ships `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` with `[PLACEHOLDER]`
+placeholders and optional sections (each marked by an `<!-- OPTIONAL: … -->`
+hint above its heading). Fill in a minimum set now; the PM chat will finish
+the rest during kickoff (Step 10):
 
 1. Fill `[PROJECT_NAME]`, `[PLATFORM_TARGETS]`, `[TRANSPORT]` in all
    three files.
 2. Fill `[PLATFORM_DEFAULTS]` for your project type.
-3. Delete `[CONDITIONAL]` sections that don't apply.
+3. Delete the optional (`<!-- OPTIONAL: … -->`-hinted) sections that don't
+   apply; if you keep and customize one, wrap it as Shape B (see
+   **Customizing the trinity files** above).
 4. Leave `[PLATFORM_ARCHITECTURE]`, `[LANGUAGE_RULES]`, `[GRPC_RULES]`,
    `[PLATFORM_SECURITY]`, `[PLATFORM_TESTING]`,
    `[PLATFORM_ANTIPATTERNS]` for the PM chat.
@@ -247,8 +283,8 @@ the kickoff workflow:
    - Where your existing architecture aligns with pack conventions.
    - Where your existing architecture diverges (noted for your
      review — no automatic changes).
-   - Any `[CONDITIONAL]` sections in the context files that your
-     project does not use (candidates for removal).
+   - Any optional sections (each `<!-- OPTIONAL: … -->`-hinted) in the
+     context files that your project does not use (candidates for removal).
 4. Surfaces these decisions for your approval before committing.
 
 Commit the trinity-file placeholder fills and any small doc updates
