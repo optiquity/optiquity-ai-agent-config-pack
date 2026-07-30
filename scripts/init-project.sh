@@ -1370,6 +1370,8 @@ cmd_update() {
     say ""
     say "Update complete. $count files processed."
     say "Report: $report"
+    say "Trinity files include marker-pair seed slots for project customizations —"
+    say "see docs/pack/PM-CHAT.md (project-owned marker authoring) before editing."
     if grep -q "needs-reconciliation" "$state_dir/dispositions.tsv" 2>/dev/null; then
         say ""
         say "NOTE: one or more files need manual reconciliation. Search the"
@@ -1604,6 +1606,8 @@ main() {
     say ""
     say "Initialization complete. Review \`git diff\` / \`git status\`, then"
     say "start a PM chat session with the kickoff prompt above."
+    say "Trinity files include marker-pair seed slots for project customizations —"
+    say "see docs/pack/PM-CHAT.md (project-owned marker authoring) before editing."
 }
 
 main "$@"

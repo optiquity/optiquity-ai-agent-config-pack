@@ -49,24 +49,76 @@ listed in `report.md` under one of:
 
 ### 1. `trinity` — `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`
 
-**Strategy:** 3-way merge against the previous-pack baseline.
+**Strategy:** marker-aware graft via `scripts/lib/marker-preserve.sh`
+(`marker_preserve_trinity`), with a markerless-trinity fallback to the
+legacy 3-way text dispatch.
 
-The migrator extracts the v10 baseline from the pack repo's `v10` git
-tag, compares against the project's current trinity content, and adopts
-new pack template content while preserving project-side customizations
-(stack defaults, custom agents, project-specific operating notes).
+A project wraps its trinity customizations in HTML-comment marker pairs
+(`<!-- BEGIN project-owned -->` … `<!-- END project-owned -->`) so they
+survive byte-identical across a pack refresh. Two shapes:
 
-**What's preserved:** every line outside the pack-template marker
-sections — the entire body of project-specific content, custom
-agents, project addenda, etc.
+- **Shape A** — the pack owns the H2 heading + canonical body; the
+  project's additions are wrapped INSIDE the section body (the H2 sits
+  OUTSIDE the markers). The pack body outside the markers is refreshed;
+  the marked region is preserved verbatim.
+- **Shape B** — the project owns a whole section: the marker pair wraps
+  the heading line + entire body. Used for new project sections, renamed
+  optional sections, and overrides — a Shape B pair whose H2 name matches
+  a pack section suppresses the pack version; a `renamed-from` annotation
+  extends the override match key (multi-name supported).
 
-**What gets updated:** the pack-template-managed sections (Capability
-policy, Core priorities, etc.) when those have evolved between the
-baseline and the new pack.
+**BASE-preferred, degrade-safe.** The engine reconciles each pack
+section's out-of-marker body under one of two regimes and emits a clean
+`merged-with-customization` graft ONLY when that reconciliation is
+provably safe — otherwise it routes to the SAME sidecar /
+`needs-reconciliation` path the legacy classes use. The worst
+case for a marked trinity is exactly today's behavior (a safe, loud
+sidecar), never a silent overwrite or silent keep.
 
-**On `customization-detected-needs-reconciliation`:** the migrator
-writes the new pack template to `<file>.md` and saves your pre-update
-copy as `<file>.md.v10-customized` (migrator) or `<file>.md.pre-update`
+- **Regime A — BASE present (migrator).** The previous-pack baseline
+  (extracted from the pack repo's `v10` git tag) attributes each
+  divergence: an out-of-marker body equal to BASE → the project did not
+  edit it → adopt the new pack body (clean graft); an out-of-marker body
+  ≠ BASE → the project edited pack body outside its markers → sidecar
+  (never silent). This is the real 3-way with teeth.
+- **Regime B — BASE absent (`init-project.sh --update`, or a not-found
+  baseline).** No baseline can attribute the divergence, so the engine
+  degrades conservatively: an out-of-marker body equal to the new pack
+  body → clean graft; anything else → sidecar / `needs-reconciliation`
+  (never a silent pack-body adoption).
+
+The graft is whole-file: if ANY pack section's out-of-marker body (or the
+preamble) conflicts under the active regime, the WHOLE file routes to the
+sidecar. On a fully-clean file the engine emits the new pack's canonical
+section sequence with the project's Shape B overrides spliced in at their
+canonical position, project-original Shape B sections appended, and each
+Shape A block re-grafted at the tail of its adopted host section.
+
+**`[CONDITIONAL]` retirement (BASE-aware).** A trinity arriving with a
+`## `/`### ` heading carrying the literal `[CONDITIONAL]` prefix is
+adjudicated before the marker branch. BASE present and the section body
+is unedited (base == ours) → the section auto-adopts the pack's
+already-retired canonical (bare heading + `<!-- OPTIONAL: … -->` hint),
+no sidecar. BASE present with a customized `[CONDITIONAL]` body, or BASE
+absent → fail loud to a sidecar with a keep-vs-delete message (the
+literal prefix must not remain).
+
+**`renamed-from` with no canonical match (BASE-aware soft-classify).**
+BASE proves the named section existed and the new pack dropped it
+(retirement) → benign soft no-op; BASE never had it (typo) → hard
+conflict; BASE absent → conservative conflict whose message names the
+retirement possibility.
+
+**What's preserved:** every project marker region, byte-identical —
+Shape A additions inside a pack section and whole Shape B project
+sections alike.
+
+**What gets updated:** the pack-owned skeleton (headings + out-of-marker
+canonical body) when it evolved between the baseline and the new pack.
+
+**On `customization-detected-needs-reconciliation`:** the merge writes
+the new pack template to `<file>.md` and saves your pre-update copy as
+`<file>.md.v10-customized` (migrator) or `<file>.md.pre-update`
 (`init-project.sh --update`). Open both, manually merge the project
 content into the new template, delete the sidecar, and `git add`.
 
