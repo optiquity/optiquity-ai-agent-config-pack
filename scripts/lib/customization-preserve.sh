@@ -70,6 +70,30 @@
 # renderer's section dispatcher.
 : "${_CP_DISP_NEEDS_RECONCILIATION:=customization-detected-needs-reconciliation}"
 
+# BD-136: the `trinity` class delegates to the marker-aware two-regime merge
+# engine. Source the sibling here so every caller of customization-preserve.sh
+# gets it; guarded so a caller that already sourced it is not re-sourced. The
+# engine only DEFINES functions (marker_preserve_trinity + _mp_* helpers), so
+# source order relative to the _cp_* definitions below does not matter —
+# marker_preserve_trinity resolves _cp_record / _cp_write_diff / _cp_strategy_text
+# at call time.
+if ! declare -F marker_preserve_trinity >/dev/null 2>&1; then
+    _cp_this_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -f "$_cp_this_dir/marker-preserve.sh" ]]; then
+        # shellcheck disable=SC1091
+        . "$_cp_this_dir/marker-preserve.sh"
+    else
+        # NIT-2: fail loud at SOURCE time naming the missing sibling, rather than
+        # degrading to a `command not found` at first `trinity` dispatch. The two
+        # files are committed siblings shipped together; this is purely defensive.
+        printf 'error: customization-preserve.sh requires the sibling BD-136 trinity merge engine, but it was not found at %s\n' \
+            "$_cp_this_dir/marker-preserve.sh" >&2
+        unset _cp_this_dir
+        return 1
+    fi
+    unset _cp_this_dir
+fi
+
 _cp_require_three_way() {
     if ! declare -F three_way_classify >/dev/null 2>&1; then
         printf 'error: customization-preserve.sh requires three-way.sh to be sourced first\n' >&2
@@ -445,7 +469,15 @@ customization_preserve() {
     fi
 
     case "$class" in
-        trinity|pack-agent|pack-script|pm-chat|generic)
+        trinity)
+            # BD-136: trinity delegates to the marker-aware two-regime merge
+            # engine (marker-preserve.sh). A markerless trinity falls back to
+            # the legacy byte-unaware 3-way text path INSIDE that engine (so
+            # legacy projects + Check 25 stay green). The signature is
+            # unchanged — BASE was always the first positional.
+            marker_preserve_trinity "$base" "$ours" "$theirs" "$rel" "$dest"
+            ;;
+        pack-agent|pack-script|pm-chat|generic)
             _cp_strategy_text "$class" "$base" "$ours" "$theirs" "$rel" "$dest"
             ;;
         custom-agent|custom-script)

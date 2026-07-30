@@ -1,0 +1,8 @@
+# marker-fence-grammar cross-parser contract (BD-136 S2).
+# <filename>\t<expected number of REAL (out-of-fence) marker tokens>
+# Consumed by BOTH the bash merger test (test-marker-preserve-bd136.sh) and
+# the Python Check-91 test (test-validate-pack-check-91.sh). `#`/blank lines
+# ignored.
+fenced-inert.md	0
+mixed.md	2
+tilde-not-a-fence.md	2
