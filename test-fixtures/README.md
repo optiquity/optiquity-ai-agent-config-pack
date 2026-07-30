@@ -39,16 +39,27 @@ Fixture directory names follow one of two patterns:
 
 - **`<vN>-<persona>` for version-pinned fixtures.** The `vN` prefix
   (`v10-`, `v11-`, …) anchors the fixture to a specific pack-version
-  baseline — either a tagged release (`v10-minimal` is built from the
-  `v10` tag) or the current pack `HEAD` for the named major
-  (`v11-flat-file`, `v11-tracker-on`). The `<persona>` half names the
-  shape the fixture represents (`minimal`, `realistic-ot`, `flat-file`,
-  `tracker-on`). When v12 lands, expect `v12-flat-file`,
+  baseline; the `<persona>` half names the shape the fixture represents
+  (`minimal`, `realistic-ot`, `flat-file`, `tracker-on`,
+  `trinity-marker-prepped`). When v12 lands, expect `v12-flat-file`,
   `v12-tracker-on`, etc., as siblings — never overwrite a v11 fixture
-  in place. In the **Available fixtures** table above, version-pinned
-  rows take the form `<vN>-pinned` in the `Versioning` column
-  (`v10-pinned`, `v11-pinned`, …); the version-agnostic class uses
-  the literal value `version-agnostic`.
+  in place. In the **Available fixtures** table above, all three
+  version-pinned subclasses (below) take the form `<vN>-pinned` in the
+  `Versioning` column (`v10-pinned`, `v11-pinned`, …) — a fixture is
+  version-pinned whether its baseline is a tag, the pack `HEAD`, or a
+  real-world commit; the version-agnostic class uses the literal value
+  `version-agnostic`. The pinned baseline is one of three subclasses:
+  - **tagged release** — built from a git tag (`v10-minimal` is built
+    from the `v10` tag). Byte-stable as long as the tag does not move.
+  - **current pack `HEAD`** — built from the pack's current `HEAD` for
+    the named major (`v11-flat-file`, `v11-tracker-on`). The SHA drifts
+    whenever the pack's v11 surface changes.
+  - **frozen real-world snapshot** — a real project's files captured at
+    a specific commit and committed verbatim (`v11-trinity-marker-prepped`
+    is an OT trinity snapshot). NOT built by `build.sh`: it is absent
+    from `FIXTURE_NAMES` / `manifest.txt` and is committed through the
+    per-directory exceptions in `test-fixtures/.gitignore`, never
+    regenerated.
 - **Bare descriptor for version-agnostic fixtures.** When the fixture
   models something that does not depend on a pack version (e.g.,
   `existing-project-mid-dev` models a generic in-progress project the
