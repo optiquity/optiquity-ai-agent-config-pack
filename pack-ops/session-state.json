@@ -1,17 +1,19 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "0950585",
+  "boundary_commit": "04351ef",
   "checkpoint": "2026-07-31T00:00:00Z",
   "active": ["BD-275"],
-  "in_flight_agents": [],
+  "in_flight_agents": [
+    "coder-bd275-diagnose -- BD-275 IN-FLIGHT (RW class, isolation=full, own worktree at HEAD; DIAGNOSIS-ONLY, no fix): reproduce the order-dependent serial-suite flake in a fresh-build env (build.sh fixtures -> serial full-suite run) + pin the shared-state vector (which preceding test mutates the shared tree / test-fixtures/ and which check test-v11-realistic-ot.sh reads flips) + propose fix options. NO tracked-file edits, no patch, no commit. ON REPORT: Pack-Chat reads the diagnosis -> user decides the fix (isolate shared state vs per-test reset) -> fresh fix-coder implements under the bounded review/fix cycle."
+  ],
   "queue": ["BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "SERIAL: BD-278 DONE + Resolved (commits A project-only / B pack-only / C pack-chat-only landed) -> BD-275 (order-dependent serial-suite flake; reproduce-in-fresh-clone then fix the shared test-fixtures state) -> the ruled spine BD-236 -> BD-210 -> BD-205 -> BD-093.",
-  "wave": "BD-136 + BD-276 + BD-277 + BD-278 SHIPPED + RESOLVED (committed, NOT yet pushed). Nothing in flight. The BD-278 coder worktree is torn down as the immediate post-commit-C step. Next: BD-275.",
+  "parallelization": "SERIAL: BD-275 reproduce-and-diagnose in flight -> user picks the fix -> fix-coder + bounded cycle -> commit -> the ruled spine BD-236 -> BD-210 -> BD-205 -> BD-093.",
+  "wave": "BD-136 + BD-276 + BD-277 + BD-278 SHIPPED + RESOLVED + PUSHED + CI-GREEN (origin/v11-dev at the boundary; Validate Pack success). Manifest regenerated + committed at push (v11 fixtures shifted). Now on BD-275: reproduce-and-diagnose coder in flight.",
   "pending_decisions": [
-    "PUSH-time (batched, user-approved): regen test-fixtures/manifest.txt for BD-277 + BD-278 (both shifted fixture inputs) -> a SEPARATE pack-only commit; then push the BD-136/276/277/278 batch + confirm CI-green.",
-    "BD-275 NEXT: reproduce the serial-suite flake in a FRESH CLONE against the current suite, diagnose the shared test-fixtures state vector, fix, review, commit.",
+    "AWAITING coder-bd275-diagnose report -> Pack-Chat surfaces the root cause + fix options to the user (review=itemized) -> user picks the fix -> fresh fix-coder implements -> bounded review/fix cycle -> commit. BD-275 is a chore (test infra, NOT client-shipped); base flow, adversarial passes elective.",
     "BD-205 carries the user-directed pre-merge main->v11-dev reconciliation (per-commit user-approved keep/drop; keepers merged INTO v11-dev first so the final merge is a clean overwrite).",
+    "Housekeeping DONE: 42 stale worktree-agent-* branches (all ancestors of HEAD) deleted; branch list clean.",
     "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary only, no other SHAs, no dates outside checkpoint, no hex agent IDs, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-278 Resolved + committed (A project-only client deliverable, B pack-only Group 8 tests, C pack-chat-only resolve). Worktree teardown = immediate post-C step. Next: BD-275 (serial-suite flake), then the ruled spine BD-236."
+  "cycle_position": "BD-278 fully DONE (pushed + CI-green). BD-275 reproduce-and-diagnose IN-FLIGHT (coder-bd275-diagnose; diagnosis-only). On report -> user picks fix -> fix-coder + bounded cycle. Then the ruled spine BD-236."
 }
