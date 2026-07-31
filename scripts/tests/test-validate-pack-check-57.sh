@@ -22,21 +22,37 @@
 # phrase is missing OR a surface is absent — all in a synthetic /tmp tree (it
 # NEVER mutates the real tree).
 #
+# Check 57 is PER-TIER (BD-236): trinity 8 / agent defs 13 / launcher 13 (the
+# def+launcher tiers add the publish/index ops add/commit/push/tag + `git apply`
+# the trinity omits). The harness body-builders are TIER-AWARE — each defaults
+# to its own tier's set — so body_for() builds each surface with its tier-correct
+# verbs (a uniform list would false-fail the defs or build an unfaithful trinity).
+#
 # Coverage:
-#   Group 0: module import + Check 57 symbol registration
-#   Group 1: synthetic-tree end-to-end (mod.REPO_ROOT pointed at /tmp):
-#            T1 PASS — all 52 surfaces carry every verb (+ trinity phrase)
-#            T2 FAIL — one surface drops a verb (e.g. `worktree` in trinity)
-#            T3 FAIL — a trinity surface drops the catch-all principle phrase
-#            T4 FAIL — one surface absent
-#            T5 PASS — an agent file (NOT trinity) lacks the catch-all phrase
-#                      (the phrase is asserted ONLY on the trinity → no FAIL)
-#            T6 PASS — word-boundary + slash-run safety: `cleanup` ≠ `clean`,
-#                      and a 3-member `(add/remove/prune)` parenthetical does
-#                      NOT false-match `add` (which is not an asserted verb
-#                      anyway) — a well-formed Codex slash-list surface PASSes
-#            T7 FAIL — the launcher form `Bash(git <verb>:*)` is honored:
-#                      dropping a verb from the launcher flag block FAILs
+#   Group 0: module import + Check 57 symbol registration (per-tier verb tuples)
+#   Group 1: synthetic-tree end-to-end (mod.REPO_ROOT pointed at /tmp); the
+#            body-builders default to their tier's set (trinity 8 / defs 13 /
+#            launcher 13):
+#            T1  PASS — all 52 surfaces carry their tier's full verb set (+
+#                       trinity catch-all phrase)
+#            T2  FAIL — a trinity surface drops a verb (e.g. `worktree`)
+#            T3  FAIL — a trinity surface drops the catch-all principle phrase
+#            T4  FAIL — one surface absent
+#            T5  PASS — an agent file (NOT trinity) lacks the catch-all phrase
+#                       (the phrase is asserted ONLY on the trinity → no FAIL)
+#            T6  PASS — word-boundary + slash-run safety: `cleanup` ≠ `clean`,
+#                       and a benign 3-member `(add/remove/prune)` parenthetical
+#                       does NOT false-match — a well-formed Codex slash-list
+#                       def surface (carrying its full 13) PASSes
+#            T7  FAIL — the launcher form `Bash(git <verb>:*)` is honored:
+#                       dropping a verb from the launcher flag block FAILs
+#            T8  FAIL — a DEF drops a def-only verb (commit): the per-tier
+#                       reshape enforces the def-13 set (the widened guard bites)
+#            T9  FAIL — the launcher drops a def-only verb (tag): Tier-C-13
+#            T10 PASS — faithfulness: the trinity carries only its 8 (no
+#                       commit/push) and still PASSes; the default trinity_body
+#                       must NOT carry a def-only verb (catches a future
+#                       uniform-DEF_VERBS regression)
 #   Group 2: end-to-end validate-pack.py exit-status on HEAD (Check 57 clean)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-57.sh
@@ -74,7 +90,9 @@ required = [
     '_CHECK_57_PROJECT_AGENTS',
     '_CHECK_57_AGENT_DIRS',
     '_CHECK_57_LAUNCHER_SURFACE',
-    '_CHECK_57_CANONICAL_VERBS',
+    '_CHECK_57_TRINITY_VERBS',
+    '_CHECK_57_DEF_VERBS',
+    '_CHECK_57_LAUNCHER_VERBS',
     '_CHECK_57_PRINCIPLE_PHRASE',
 ]
 missing = [n for n in required if not hasattr(mod, n)]
@@ -119,7 +137,14 @@ def _patch_root(mod, root):
 
 failures = []
 
-VERBS = list(mod._CHECK_57_CANONICAL_VERBS)
+# Per-tier verb sets (BD-236 Check 57 per-tier reshape): each body-builder
+# defaults to ITS tier's set so body_for() is automatically tier-aware —
+# trinity 8 / defs 13 / launcher 13. Do NOT collapse these to a single uniform
+# list: a uniform DEF_VERBS would build an UNFAITHFUL trinity carrying
+# commit/push (check-correct but semantically wrong — T10 guards that).
+TRINITY_VERBS = list(mod._CHECK_57_TRINITY_VERBS)
+DEF_VERBS = list(mod._CHECK_57_DEF_VERBS)
+LAUNCHER_VERBS = list(mod._CHECK_57_LAUNCHER_VERBS)
 PHRASE = mod._CHECK_57_PRINCIPLE_PHRASE
 TRINITY = list(mod._CHECK_57_TRINITY_SURFACES)
 AGENTS = list(mod._CHECK_57_PROJECT_AGENTS)
@@ -140,7 +165,7 @@ def trinity_body(verbs=None, include_phrase=True):
     a git-verb token + the catch-all principle phrase. (No backticks — this
     body is built inside an unquoted heredoc; the matcher keys on 'git <verb>'
     prose, not on backtick fences.)"""
-    vs = VERBS if verbs is None else verbs
+    vs = TRINITY_VERBS if verbs is None else verbs
     lines = ["- No destructive operations without explicit approval. Before"]
     lines += [f"  any git {v}," for v in vs]
     if include_phrase:
@@ -150,21 +175,21 @@ def trinity_body(verbs=None, include_phrase=True):
 def agent_prose_body(verbs=None):
     """A well-formed agent Hard rule (Claude + Antigravity bundle .md prose
     form). No backticks (unquoted heredoc)."""
-    vs = VERBS if verbs is None else verbs
+    vs = DEF_VERBS if verbs is None else verbs
     lst = ", ".join(f"git {v}" for v in vs)
     return ("- No state-changing git operations, ever. Read-only git verbs "
             f"only. You MAY NOT run {lst}. Inspect via git show <ref>:<path>.\n")
 
 def codex_slash_body(verbs=None):
     """A well-formed Codex auditor .toml Hard rule (slash-list form)."""
-    vs = VERBS if verbs is None else verbs
+    vs = DEF_VERBS if verbs is None else verbs
     # >=4-member slash list so the matcher's slash-run rule applies.
     return ("- **No state-changing git operations, ever.** Read-only git verbs "
             f"only (status/diff/log/show). Forbidden: {'/'.join(vs)}.\n")
 
 def launcher_body(verbs=None):
     """A well-formed agent-run.sh launcher flag block (Bash(git <verb>:*))."""
-    vs = VERBS if verbs is None else verbs
+    vs = LAUNCHER_VERBS if verbs is None else verbs
     flags = " ".join(f'"Bash(git {v}:*)"' for v in vs)
     return f"CLAUDE_READONLY_FLAGS=(\n    \"--disallowedTools\"\n    {flags}\n)\n"
 
@@ -211,7 +236,7 @@ if n != 0:
     failures.append(f"T1 (all consistent) expected PASS, got {n}: {cap}")
 
 # T2: FAIL — a trinity surface drops a verb (worktree).
-short = [v for v in VERBS if v != "worktree"]
+short = [v for v in TRINITY_VERBS if v != "worktree"]
 n, cap = run(overrides={"project-template/CLAUDE.md": trinity_body(verbs=short)})
 if n < 1 or "worktree" not in cap or "CLAUDE.md" not in cap:
     failures.append(f"T2 (dropped verb in trinity) expected FAIL naming worktree+CLAUDE.md, got {n}: {cap}")
@@ -244,9 +269,42 @@ if n != 0:
 
 # T7: FAIL — the launcher Bash(git <verb>:*) form is honored: drop a verb from
 # the launcher flag block → FAIL naming the launcher + the dropped verb.
-n, cap = run(overrides={LAUNCHER: launcher_body(verbs=[v for v in VERBS if v != "stash"])})
+n, cap = run(overrides={LAUNCHER: launcher_body(verbs=[v for v in LAUNCHER_VERBS if v != "stash"])})
 if n < 1 or "stash" not in cap or "agent-run.sh" not in cap:
     failures.append(f"T7 (dropped verb in launcher Bash(git ...:*) form) expected FAIL naming stash+agent-run.sh, got {n}: {cap}")
+
+# T8: FAIL — a DEF drops a def-only verb (commit). Under the per-tier reshape
+# the def tier expects 13 (trinity 8 + add/commit/push/tag/apply); an agent Hard
+# rule silently dropping commit must now FAIL naming commit + the def file. This
+# is the enforcement the widened guard adds over the old flat-8 (which never
+# asserted commit on a def).
+n, cap = run(overrides={"project-template/.claude/agents/coder.md": agent_prose_body(verbs=[v for v in DEF_VERBS if v != "commit"])})
+if n < 1 or "commit" not in cap or "coder.md" not in cap:
+    failures.append(f"T8 (def drops def-only verb commit) expected FAIL naming commit+coder.md, got {n}: {cap}")
+
+# T9: FAIL — the launcher drops a def-only verb (tag). Tier-C expects 13
+# (identical to the def set); dropping tag from the --disallowedTools array must
+# FAIL naming tag + agent-run.sh (tag being the verb that completes the launcher
+# publish-op deny set).
+n, cap = run(overrides={LAUNCHER: launcher_body(verbs=[v for v in LAUNCHER_VERBS if v != "tag"])})
+if n < 1 or "tag" not in cap or "agent-run.sh" not in cap:
+    failures.append(f"T9 (launcher drops def-only verb tag) expected FAIL naming tag+agent-run.sh, got {n}: {cap}")
+
+# T10: PASS + FAITHFULNESS — the trinity tier expects only its 8 (NOT 13), so a
+# trinity carrying only checkout/clean/merge/rebase/reset/restore/stash/worktree
+# still PASSes (no false-fail). Beyond the default run() PASS, assert the DEFAULT
+# trinity_body() does NOT carry a def-only verb — this catches a future
+# uniform-DEF_VERBS regression that would build an UNFAITHFUL trinity carrying
+# commit/push (check-correct but semantically wrong) rather than let it pass
+# silently.
+default_trinity = trinity_body()
+unfaithful = [v for v in ("commit", "push", "tag", "apply")
+              if mod._check_57_verb_present(default_trinity, v)]
+n, cap = run()  # default build across all tiers → trinity carries only its 8
+if n != 0:
+    failures.append(f"T10 (trinity carries only its 8, expects PASS) expected PASS, got {n}: {cap}")
+if unfaithful:
+    failures.append(f"T10 (faithfulness) default trinity_body() UNFAITHFULLY carries def-only verb(s) {unfaithful} — trinity_body must default to TRINITY_VERBS (8), not DEF_VERBS (13)")
 
 if failures:
     print("FAILURES")
@@ -256,7 +314,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "End-to-end synthetic-tree tests T1-T7 (parity PASS + dropped-verb/dropped-trinity-phrase/absent-surface FAIL + trinity-only-phrase + word-boundary/slash-run safety + launcher-form honored)" ;;
+    0) t_pass "End-to-end synthetic-tree tests T1-T10 (tier-aware parity PASS + dropped-verb/dropped-trinity-phrase/absent-surface FAIL + trinity-only-phrase + word-boundary/slash-run safety + launcher-form honored + per-tier def/launcher drop FAIL + trinity-8 faithfulness)" ;;
     *) t_fail "End-to-end check_project_destructive_git_verb_parity tests failed (see Python output)" ;;
 esac
 

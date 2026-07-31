@@ -1367,33 +1367,40 @@ def check_project_rw_ro_two_class() -> None:
 #   - C7b is therefore PRESENT (not dropped); the plan's "may drop to 11
 #     commits if folded" branch does not apply (this guard is standalone).
 #
-# MEASURE-THEN-BOUND (ci-guard-design-measure-then-bound), live at C7b
-# commit-time (HEAD 3457569, 2026-06-14): the asserted CANONICAL set is the
-# 8-verb INTERSECTION measured present-and-consistent across ALL 52 project
-# surfaces (trinity ×3 + 48 agent files + agent-run.sh) with the
-# `_check_57_verb_present` matcher below:
-#     checkout, clean, merge, rebase, reset, restore, stash, worktree
-# EXCLUDED verbs + WHY (each measured NOT consistent across all 52, so
-# asserting it would FALSE-FAIL a legitimately-divergent surface):
-#   - `commit`/`push`/`apply`/`tag`: absent from the project TRINITY
-#     "No destructive operations" bullet (3/3 trinity files) — that rule is
-#     the human/PM needs-approval rule scoped to working-tree/ref mutators;
-#     publish/index ops + `git apply` live in the AGENT ban, not the trinity.
-#   - `add`: the only trinity hit is "`git worktree` (add/remove/prune)" — a
-#     worktree-subcommand description, NOT the `git add` verb; the matcher's
-#     ≥4-member slash-run rule correctly rejects that 3-member parenthetical,
-#     so `add` measures 49/52 (trinity-absent) and is EXCLUDED.
-#   - `rm`/`mv`/`config`/`switch`/`cherry-pick`/`revert`/`am`/etc.: not
-#     enumerated consistently across the project families (e.g. `rm` is in
-#     the trinity + launcher but not the agent Hard rules; `config` never
-#     appears as a project deny verb).
-# The 8-verb intersection is the verb-precise project-consistent set: it is
-# the set of working-tree/ref mutators that the project trinity rule, the
-# agent Hard rules, AND the launcher flags ALL enumerate. `git apply` (the
-# verb-precise deny, §5.1 G-4) IS in the agent ban + launcher but NOT the
-# trinity, so it is NOT in the consistent intersection — Check 56 (pack)
-# already covers `apply` parity; Check 57 covers only the project-consistent
-# intersection. Sized to the measured-consistent set, no broader.
+# MEASURE-THEN-BOUND (ci-guard-design-measure-then-bound): the guard asserts a
+# PER-TIER canonical verb set — each surface family carries exactly the verbs
+# it structurally enumerates, so no surface FALSE-FAILs on a verb its family
+# never lists. Re-measured with the `_check_57_verb_present` matcher below
+# across all 52 project surfaces (trinity ×3 + 48 agent files + agent-run.sh):
+#   - Tier-A trinity (3 surfaces) — 8 verbs, present 3/3:
+#         checkout, clean, merge, rebase, reset, restore, stash, worktree
+#     the working-tree/ref mutators the open needs-approval "No destructive
+#     operations" bullet enumerates.
+#   - Tier-B agent defs (48 surfaces = 16 agents × 3 CLIs) — 13 verbs, present
+#     48/48: the trinity 8 PLUS the publish/index ops (add, commit, push, tag)
+#     + `git apply` that the agents-never-commit Hard rule adds.
+#   - Tier-C launcher (agent-run.sh) — 13 verbs, present 1/1: identical to the
+#     def set; the --disallowedTools array denies the same publish/index ops +
+#     apply (`Bash(git tag:*)` completes the launcher publish-op deny set).
+# WHY per-tier, not a flat 8-verb intersection: the publish/index ops +
+# `git apply` are absent from the TRINITY "No destructive operations" bullet
+# (that rule is the human/PM needs-approval rule scoped to working-tree/ref
+# mutators) but PRESENT in every agent Hard rule + the launcher. The old flat-8
+# INTERSECTION under-covered Tier-B/C: a def or the launcher could silently
+# drop commit/push/tag/apply and still pass. The per-tier sizing binds each
+# family to its full measured set — a dropped def-only verb now FAILs.
+# EXCLUDED from every tier (measured NOT enumerated as a deny verb anywhere
+# consistent, so asserting it would FALSE-FAIL a legitimately-divergent
+# surface): `rm`/`mv`/`config`/`switch`/`cherry-pick`/`revert`/`am`/etc.
+# (`rm`/`mv` are in the trinity + launcher but NOT the agent Hard rules;
+# `config` never appears as a project deny verb). `git apply` IS in the def +
+# launcher tiers here; Check 56 (pack) covers pack-side `apply` parity.
+#
+# PRESENCE-MODEL LIMITATION (once-per-surface): the matcher tests each verb's
+# PRESENCE once per surface; it does not count occurrences or verify ordering
+# (Check 57 is set-presence, order-agnostic). A surface enumerating a verb once
+# satisfies its tier; a reshape of WHICH verbs a tier carries must move here +
+# in test-validate-pack-check-57.sh in lock-step (enumerate-encoding-surfaces).
 #
 # PRINCIPLE PHRASE (measure-then-bound, surface-scoped): the catch-all
 # `including but not limited to` is asserted ONLY on the 3 trinity surfaces
@@ -1446,16 +1453,27 @@ _CHECK_57_AGENT_DIRS = (
     ("project-template/.agents-plugin/optiquity-agents/agents", "md"),
 )
 _CHECK_57_LAUNCHER_SURFACE = "project-template/agent-run.sh"
-# The CANONICAL project-consistent verb set — the 8-verb INTERSECTION
-# measured present in ALL 52 project surfaces (HEAD 3457569, 2026-06-14).
-# These are the working-tree/ref mutators the project trinity rule, the agent
-# Hard rules, AND the launcher --disallowedTools ALL enumerate. Sized to the
-# measured-consistent set (see the measure-then-bound block above for every
-# excluded verb + why).
-_CHECK_57_CANONICAL_VERBS = (
+# The PER-TIER canonical verb sets (see the measure-then-bound block above for
+# the per-tier sizing rationale + every excluded verb). Each surface family is
+# bound to exactly the set it structurally enumerates: trinity 8 / defs 13 /
+# launcher 13. A tuple per tier lets the check TIER-SELECT the expected set per
+# surface — a def or the launcher silently dropping commit/push/tag/apply now
+# FAILs (the old flat-8 intersection under-covered Tier-B/C).
+# Tier-A (trinity ×3): 8 — the working-tree/ref mutators the open
+# needs-approval "No destructive operations" bullet enumerates.
+_CHECK_57_TRINITY_VERBS = (
     "checkout", "clean", "merge", "rebase",
     "reset", "restore", "stash", "worktree",
 )
+# Tier-B (48 agent Hard rules): 13 — the trinity 8 + the publish/index ops
+# (add, commit, push, tag) + `git apply` the agents-never-commit ban adds.
+_CHECK_57_DEF_VERBS = _CHECK_57_TRINITY_VERBS + (
+    "add", "commit", "push", "tag", "apply",
+)
+# Tier-C (agent-run.sh launcher --disallowedTools): 13 — identical to the def
+# set; the deny-flag array enumerates the same publish/index ops + apply
+# (`Bash(git tag:*)` completes the launcher publish-op deny set).
+_CHECK_57_LAUNCHER_VERBS = _CHECK_57_DEF_VERBS
 # The catch-all principle phrase — asserted ONLY on the trinity surfaces
 # (the open needs-approval rule); the agent files carry a closed enumeration
 # with no catch-all (measure-then-bound, surface-scoped).
@@ -1531,8 +1549,17 @@ def check_project_destructive_git_verb_parity() -> None:
             fail(f"Check 57 (Guard-C project) — could not read {surface}.")
             continue
         checked += 1
+        # TIER-SELECT the expected verb set per surface family (per-tier
+        # measure-then-bound): trinity 8 / def 13 / launcher 13. A def or the
+        # launcher silently dropping commit/push/tag/apply now FAILs.
+        if surface in _CHECK_57_TRINITY_SURFACES:
+            expected = _CHECK_57_TRINITY_VERBS
+        elif surface == _CHECK_57_LAUNCHER_SURFACE:
+            expected = _CHECK_57_LAUNCHER_VERBS
+        else:
+            expected = _CHECK_57_DEF_VERBS
         missing_verbs = [
-            v for v in _CHECK_57_CANONICAL_VERBS
+            v for v in expected
             if not _check_57_verb_present(text, v)
         ]
         if missing_verbs:
@@ -1567,9 +1594,11 @@ def check_project_destructive_git_verb_parity() -> None:
             f"Check 57 (Guard-C project) — destructive-git-verb enumeration "
             f"parity holds across {checked} project surface(s) (trinity ×3, "
             f"48 agent Hard rules [16 agents × 3 CLIs], agent-run.sh "
-            f"--disallowedTools): all {len(_CHECK_57_CANONICAL_VERBS)} "
-            f"canonical project-consistent verbs present in each; the "
-            f"catch-all principle phrase present on each trinity surface."
+            f"--disallowedTools): the full per-tier canonical verb set present "
+            f"in each surface (trinity {len(_CHECK_57_TRINITY_VERBS)} / defs "
+            f"{len(_CHECK_57_DEF_VERBS)} / launcher "
+            f"{len(_CHECK_57_LAUNCHER_VERBS)}); the catch-all principle phrase "
+            f"present on each trinity surface."
         )
 
 
@@ -2804,7 +2833,9 @@ __all__ = [
     "_CHECK_57_PROJECT_AGENTS",
     "_CHECK_57_AGENT_DIRS",
     "_CHECK_57_LAUNCHER_SURFACE",
-    "_CHECK_57_CANONICAL_VERBS",
+    "_CHECK_57_TRINITY_VERBS",
+    "_CHECK_57_DEF_VERBS",
+    "_CHECK_57_LAUNCHER_VERBS",
     "_CHECK_57_PRINCIPLE_PHRASE",
     "_check_57_verb_present",
     "check_project_destructive_git_verb_parity",
