@@ -443,12 +443,13 @@ assert_eq "2.9.4 single-record _tmf_gz64_encode byte-unchanged (additive)" "$s_e
 #       each create after the first (test seam: a counting fake sleep, no real
 #       wall-clock wait).
 PACE_LOG=$(mktemp "${TMPDIR:-/tmp}/tmf-pace-log.XXXXXX")
-cat > "$REPO_ROOT/scripts/tests/.tmf-fake-sleep.$$" <<FSLEEP
+FAKE_SLEEP=$(mktemp "${TMPDIR:-/tmp}/tmf-fake-sleep.XXXXXX")
+cat > "$FAKE_SLEEP" <<FSLEEP
 #!/usr/bin/env bash
 printf '%s\n' "\$1" >> "$PACE_LOG"
 FSLEEP
-chmod +x "$REPO_ROOT/scripts/tests/.tmf-fake-sleep.$$"
-export TMF_PACING_SLEEP_CMD="$REPO_ROOT/scripts/tests/.tmf-fake-sleep.$$"
+chmod +x "$FAKE_SLEEP"
+export TMF_PACING_SLEEP_CMD="$FAKE_SLEEP"
 export TMF_PACING_INTERVAL_OVERRIDE=1
 _TMF_CREATES_DONE=0
 # First create: NOT paced.
@@ -459,18 +460,19 @@ _TMF_CREATES_DONE=1
 _tmf_pace_before_create
 paced=$(cat "$PACE_LOG")
 assert_eq "2.8.7 second create sleeps >= interval (=1)" "1" "$paced"
-rm -f "$PACE_LOG" "$REPO_ROOT/scripts/tests/.tmf-fake-sleep.$$"
+rm -f "$PACE_LOG" "$FAKE_SLEEP"
 unset TMF_PACING_SLEEP_CMD TMF_PACING_INTERVAL_OVERRIDE
 
 # 2.8.8 §3.3d retry-after — on a simulated 429/secondary-rate-limit, the
 #       backoff helper HONORS retry-after (backs off) rather than tight-retry.
 BACKOFF_LOG=$(mktemp "${TMPDIR:-/tmp}/tmf-backoff-log.XXXXXX")
-cat > "$REPO_ROOT/scripts/tests/.tmf-fake-sleep2.$$" <<FSLEEP2
+FAKE_SLEEP2=$(mktemp "${TMPDIR:-/tmp}/tmf-fake-sleep2.XXXXXX")
+cat > "$FAKE_SLEEP2" <<FSLEEP2
 #!/usr/bin/env bash
 printf '%s\n' "\$1" >> "$BACKOFF_LOG"
 FSLEEP2
-chmod +x "$REPO_ROOT/scripts/tests/.tmf-fake-sleep2.$$"
-export TMF_PACING_SLEEP_CMD="$REPO_ROOT/scripts/tests/.tmf-fake-sleep2.$$"
+chmod +x "$FAKE_SLEEP2"
+export TMF_PACING_SLEEP_CMD="$FAKE_SLEEP2"
 # A secondary-rate-limit error WITH a Retry-After hint → backoff returns 0
 # (caller may retry) and sleeps the hinted seconds.
 if _tmf_create_backoff "ERROR: rate-limit-secondary
@@ -488,7 +490,7 @@ else
     t_pass "2.8.8 backoff returns 1 (abort) on a non-pacing error"
 fi
 [[ ! -s "$BACKOFF_LOG" ]] && t_pass "2.8.8 no backoff sleep on a non-pacing error" || t_fail "2.8.8 no sleep on non-pacing error"
-rm -f "$BACKOFF_LOG" "$REPO_ROOT/scripts/tests/.tmf-fake-sleep2.$$"
+rm -f "$BACKOFF_LOG" "$FAKE_SLEEP2"
 unset TMF_PACING_SLEEP_CMD
 
 # 2.7 mirror header
