@@ -1,19 +1,17 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "104edc1",
+  "boundary_commit": "3ef29ec",
   "checkpoint": "2026-07-31T00:00:00Z",
-  "active": ["BD-275"],
-  "in_flight_agents": [
-    "coder-bd275-fix -- BD-275 IN-FLIGHT (RW, isolation=full, own worktree): implement the APPROVED reconciliation design (handoff bd275-reconcile-arch) MECHANICALLY -- Fix1 decouple test-v11-realistic-ot.sh C.1 (replace the whole-battery global-exit-0 with a scoped awk 'no FAIL in the Check 32'/33/34 sections' assertion; drop the unused VALIDATOR_RC; trim the stale Group-C comment clause) + Fix2 (SEPARATE: relocate tracker-migrate-forward-test.sh .tmf-fake-sleep{,2} stubs off the real tree into $TMPDIR mktemp) + BD-275.md re-scope (architect-authored text) + Status->Resolved + _toc regen. Verification incl. the red-36 pre/post decoupling proof + the injected-FAIL bite. NO commit, no patch. ON REPORT: bounded review/fix cycle -> commits."
-  ],
+  "active": [],
+  "in_flight_agents": [],
   "queue": ["BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "SERIAL: BD-275 fix-coder in flight -> bounded review/fix cycle -> commits (i) Fix1 pack-only, (ii) BD-275 re-scope+Resolved pack-chat-only, (iii) Fix2 BARE fix pack-only [user OI-A(ii): no BD-279] -> push batched (with the prior unpushed session-state commits) -> the ruled spine BD-236 -> BD-210 -> BD-205 -> BD-093.",
-  "wave": "BD-136/276/277/278 SHIPPED+RESOLVED+PUSHED+CI-GREEN. BD-275: diagnosis + adversarial challenge + reconciliation-architect design ALL COMPLETE + user-approved (order/shared-state REFUTED; C.1 repo-state coupling is the cause, live-reproduced). Fix-coder implementing the design now. Several unpushed pack-chat-only session-state commits accumulated since the last push.",
+  "parallelization": "SERIAL: BD-275 DONE + Resolved (3 commits landed, NOT yet pushed) -> push the accumulated batch + confirm CI-green -> the ruled spine BD-236 -> BD-210 -> BD-205 -> BD-093.",
+  "wave": "BD-136/276/277/278 SHIPPED+RESOLVED+PUSHED+CI-GREEN. BD-275 SHIPPED+RESOLVED (diagnosis + adversarial challenge + reconciliation-architect design + fix-coder + bounded review CLEAN; the order/shared-state premise was REFUTED, C.1 repo-state coupling fixed via a scoped 32'/33/34 no-FAIL assertion; OI-2 tracker-migrate tmpdir hygiene fixed as a separate bare-fix commit; NIT-1 line-refs stripped). 3 BD-275 commits + several pack-chat-only session-state commits are UNPUSHED since the last push. Nothing in flight.",
   "pending_decisions": [
-    "USER DECISIONS LOCKED: (1) accept the converged diagnosis + implement the scoped-assertion fix; (2) re-scope BD-275 IN PLACE; (3) fix OI-2 NOW as a SEPARATE test-hygiene commit; OI-A -> (ii) BARE fix commit for OI-2 (no BD-279); design APPROVED.",
-    "AWAITING coder-bd275-fix report -> bounded review/fix cycle (fresh reviewer) -> triage to user -> commits (i)/(ii)/(iii) with user approval -> flip complete -> push the accumulated batch + confirm CI-green.",
+    "PUSH (user-approved, Pack-Chat-executed): run manifest-sync (expect NO-OP -- BD-275 touched only scripts/tests + backlog, no project-template fixture inputs) -> push the accumulated batch (BD-275 fix commits + the session-state commits) -> confirm CI-green (Validate Pack).",
+    "NEXT after push: BD-236 (project-side agent-def discipline-parity guards incomplete -- Check 57 covers 8/13 verbs, Check 11 informational-only; investigate + design a coherent project-side parity-enforcement strategy) -- the ruled spine head. Likely a LARGE BD (structural / cross-surface) -> the deterministic large-BD pipeline (researcher -> architect -> adversarial -> reconcile -> planner -> ... ) with user gates.",
     "BD-205 carries the user-directed pre-merge main->v11-dev reconciliation (per-commit user-approved keep/drop; keepers merged INTO v11-dev first so the final merge is a clean overwrite).",
     "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary only, no other SHAs, no dates outside checkpoint, no hex agent IDs, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-275 design APPROVED; fix-coder IN-FLIGHT (coder-bd275-fix; 3 edits per design). On report -> bounded review/fix cycle -> commits (i)/(ii)/(iii) -> push batch. Then the ruled spine BD-236."
+  "cycle_position": "BD-275 DONE + Resolved (3 commits landed locally, unpushed). Nothing in flight. NEXT: push the accumulated batch + CI-green, then the ruled spine BD-236."
 }
