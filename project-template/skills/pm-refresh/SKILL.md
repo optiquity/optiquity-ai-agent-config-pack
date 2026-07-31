@@ -96,8 +96,34 @@ fi
    was edited away — report it and point to restoring that file (a user action).
    Green = note it on the Step-3 confirm line.
 
+## Step 2c — Re-check quality-gate enforcement (report-only)
+
+Recompute whether the shipped `validate.sh` quality gate is enforced and report
+ONE line. This is a light re-check: it never fails, installs nothing, and does
+NOT re-suggest the hook (that suggestion belongs to `/pm-startup`). Detection
+delegates to the shipped helper — the matching is never re-implemented here:
+
+```bash
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+DET="$ROOT/scripts/detect-validate-enforcement.sh"
+if [ ! -f "$DET" ]; then
+  gate="unavailable"
+else
+  gate="$(bash "$DET" 2>/dev/null || echo unenforced)"
+  case "$gate" in
+    'enforced (ci-workflow)'|'enforced (git-hook)'|unenforced) ;;
+    *) gate="unenforced" ;;
+  esac
+fi
+echo "quality gate: $gate"
+```
+
+Note the result on the Step-3 confirm line as `quality gate: <verdict>`. Do not
+suggest or run any installer.
+
 ## Step 3 — Confirm
 
 Report ONE line, e.g. `Reloaded: rules + session-state + modes (review=<r>,
-intervention=<i>, isolation=<s>); modes hooks: <the Step-2b re-heal result>.` Do
-not restart the session and do not re-sync.
+intervention=<i>, isolation=<s>); modes hooks: <the Step-2b re-heal result>;
+quality gate: <the Step-2c verdict>.` Do not restart the session and do not
+re-sync.

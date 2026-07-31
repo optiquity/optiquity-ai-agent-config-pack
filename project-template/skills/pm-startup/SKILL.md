@@ -287,6 +287,61 @@ was edited away — report it and point to restoring that file. Combine the two
 outputs for the Step-7 report's `**Modes:**` line: `review=<r>, intervention=<i>,
 isolation=<s>; enforce: <the canary result>`.
 
+## Step 6b — Quality-gate enforcement (detect + suggest; LOCAL, never fails startup)
+
+Detect whether the shipped `validate.sh` quality gate is actually ENFORCED —
+run before code leaves the machine — and, when it is not, SUGGEST the opt-in
+pre-push hook. This step is DETECT + REPORT + SUGGEST ONLY: it writes no file,
+installs nothing, and never fails the session. Its output feeds the Step-7
+report's `**Quality gate:**` line.
+
+**This step NEVER runs any install script.** Installing the hook is a separate
+action the PM chat performs only after the developer explicitly approves it
+(see `PM-CHAT.md` § Behavioral rules) — never from inside this step.
+
+Detection delegates to the shipped helper `scripts/detect-validate-enforcement.sh`,
+which reads (never writes) the two enforcement channels and prints one verdict
+token. This step only DRIVES that helper and formats the result — it does not
+re-implement the matching:
+
+```bash
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+DET="$ROOT/scripts/detect-validate-enforcement.sh"
+if [ ! -f "$DET" ]; then
+  gate="unavailable"          # detector not present in this clone — benign
+else
+  gate="$(bash "$DET" 2>/dev/null || echo unenforced)"
+  case "$gate" in
+    'enforced (ci-workflow)'|'enforced (git-hook)'|unenforced) ;;
+    *) gate="unenforced" ;;   # empty / unknown token → safe default
+  esac
+fi
+echo "quality gate: $gate"
+```
+
+**Report + suggest by verdict:**
+
+- `enforced (ci-workflow)` / `enforced (git-hook)` — report `Quality gate:
+  enforced (<CI workflow | git hook>)`. No suggestion.
+- `unenforced` — report `Quality gate: unenforced` and SUGGEST, in one terse
+  line: *"`validate.sh` is not enforced before pushes on this clone. If you
+  approve, I can install an opt-in local pre-push hook that runs it — the
+  installer is `scripts/install-validate-hook.sh`. It is advisory; bypass any
+  push with `git push --no-verify`. (This is a best-effort local check — if you
+  already run `validate.sh` via a CI system or a wrapper I can't see, just
+  decline.)"* The installer runs only after the developer's explicit approval,
+  as a separate action — never from this step.
+- `unavailable` — report `Quality gate: check unavailable (detector not present
+  in this clone)`. No suggestion.
+
+**Safe bias.** When detection is uncertain, report UNENFORCED and re-suggest —
+never a speculative "enforced." A false "unenforced" costs one declined
+suggestion; a false "enforced" silently rots the gate. Detection is a
+best-effort local heuristic covering GitHub Actions workflows and the local
+pre-push / pre-commit hook bodies; it does not see other CI systems or wrapper
+targets, so a project enforced another way may still see this suggestion — that
+is the safe bias, not a bug.
+
 ## Step 7 — Report current state
 
 Read the project name from the heading at the top of `PM-CHAT.md` — it will be
@@ -308,6 +363,7 @@ Output a summary in exactly this format:
 **Active skills:** [list from project context file, or "not set — populate during kickoff"]
 **RAG:** [diff from Step 4 — one of: "N ingested, N stale, N orphans" / "N ingested, N stale, N orphans removed: [<paths>]" / "N ingested, stale=N/A (timestamp unavailable; re-ingested unconditionally), N orphans" / "not available — skipped" / "manifest not found — skipped" (defect — surface to developer) / "manifest target missing — run install/migration" (manifest path not on disk; surface to developer)]
 **Modes:** [from the Step 6 Modes readiness step — `review=<r>, intervention=<i>, isolation=<s>; enforce: <readiness>`, where <readiness> is one of: `wired (isolation self-test PASS, commit-gate self-test PASS, deletion-boundary self-test PASS) — Claude-only` / `wired (isolation self-test PASS, commit-gate self-test PASS, deletion-boundary self-test FAIL — inspect) — Claude-only` / `wiring MISSING — restore .claude/settings.json` / `hook body absent (feature not built in this clone)` / `n/a (non-Claude CLI)`]
+**Quality gate:** [from the Step 6b enforcement check — one of: `enforced (ci-workflow)` / `enforced (git-hook)` / `unenforced (pre-push hook suggested)` / `check unavailable (detector not present in this clone)`]
 **Resume:** [from `docs/project/pm-session-state.json` — `no resume frontier — fresh session` if absent, else `active: <work item> @ <sub-step>; in-flight: <agents to re-spawn>; queue: <order>; mode: <serial|parallel>; pending: <decisions>; cycle: <position>; boundary <sha8>`]
 
 **Awaiting instructions.**

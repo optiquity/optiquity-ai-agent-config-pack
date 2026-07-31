@@ -185,6 +185,13 @@ These rules are non-negotiable and always apply on all tools:
   below.
 - **Plan before executing.** For any change beyond reading files, present a plan
   and wait for explicit approval before doing anything.
+- **Quality-gate hook install is consent-gated.** The startup quality-gate
+  check may SUGGEST installing an opt-in pre-push hook that runs the project's
+  quality gate before every push, when that gate is unenforced. Installing that
+  hook is a persistent local-config change: run the installer ONLY in a separate
+  turn after the developer's explicit approval; NEVER auto-install; NEVER run it
+  from inside a skill step. The startup step's suggestion names the exact
+  installer command.
 - **Open questions surface to user, never decided unilaterally.**
   When the PM chat encounters a question about cadence
   (audit/architect frequency, review checkpoints), concurrency
