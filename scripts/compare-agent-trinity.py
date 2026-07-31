@@ -2,10 +2,11 @@
 # pack-internal: true  (CI helper; not a user-facing verb)
 """
 compare-agent-trinity.py — verify trinity-rule symmetry across the three
-tool variants of a pack-roster agent file.
+tool variants of a project-template roster agent file.
 
 Per BD-059 success criterion #7 (trinity rule compliance), every
-pack-roster agent ships in three formats parallel across the three tools:
+project-template roster agent ships in three formats parallel across the
+three tools:
 
   .claude/agents/<name>.md                          (Markdown with YAML frontmatter)
   .codex/agents/<name>.toml                         (TOML; body in `developer_instructions`)
@@ -212,7 +213,7 @@ def compare_one(pack: Path, name: str, verbose: bool = True, strict: bool = Fals
     return 0 if symmetric else 2
 
 
-def list_pack_agents(pack: Path) -> list[str]:
+def list_project_agents(pack: Path) -> list[str]:
     """Return sorted list of agent names from .claude/agents/, excluding x-*."""
     agent_dir = pack / "project-template" / ".claude" / "agents"
     if not agent_dir.is_dir():
@@ -227,7 +228,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("name", nargs="?", help="Agent name (e.g., 'coder')")
     ap.add_argument("--pack", default=".", help="Pack repo path (default: cwd)")
-    ap.add_argument("--all", action="store_true", help="Compare every agent in the pack roster")
+    ap.add_argument("--all", action="store_true", help="Compare every agent in the project-template roster")
     ap.add_argument("--summary-only", action="store_true", help="In --all mode, suppress per-agent details on PASS")
     ap.add_argument("--strict", action="store_true",
                     help="Strict comparison: keep Markdown formatting chars (backticks etc.) in body diff. "
@@ -241,9 +242,9 @@ def main() -> int:
         return 1
 
     if args.all:
-        names = list_pack_agents(pack)
+        names = list_project_agents(pack)
         if not names:
-            print("error: no pack agents found in project-template/.claude/agents/", file=sys.stderr)
+            print("error: no project agents found in project-template/.claude/agents/", file=sys.stderr)
             return 1
         any_diverged = False
         diverged_names: list[str] = []

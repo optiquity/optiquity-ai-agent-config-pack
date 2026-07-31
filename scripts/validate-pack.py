@@ -30,10 +30,10 @@ Checks:
       `**Problem:**`, `**Goal:**`, `**Success criteria:**`, and a
       file-based completion-report indicator (`REPORT FILE:` or
       `**Completion report:**`).
-  11. Pack agent trinity-rule symmetry (informational): pack-roster
-      agent file content stays in lockstep across .claude/.codex + the
-      Antigravity pack-agents plugin bundle (BD-082-era informational
-      guard).
+  11. Project agent trinity-rule symmetry (informational):
+      project-template roster agent file content stays in lockstep across
+      .claude/.codex + the Antigravity optiquity-agents plugin bundle
+      (BD-082-era informational guard).
   16. Trinity ## Project addenda H2 (BD-059): v10 trinity templates
       carry the `## Project addenda` H2 anchor required by Procedure
       5-S Task B.

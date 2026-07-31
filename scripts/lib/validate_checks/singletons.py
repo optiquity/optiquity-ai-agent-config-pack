@@ -381,23 +381,25 @@ def check_init_project_structure() -> None:
 
 
 def check_pack_agent_trinity() -> None:
-    """Check 11 — pack-roster agent trinity-rule symmetry (informational).
+    """Check 11 — project-template roster agent trinity-rule symmetry (informational).
 
-    Per BD-059 success criterion #7, every pack-roster agent ships in
-    parallel across the tools (.claude/.md, .codex/.toml, and the
-    Antigravity pack-agents plugin bundle .md). The trinity rule says
-    behavioral content must match unless a divergence is provably
+    Per BD-059 success criterion #7, every project-template roster agent
+    ships in parallel across the three tools (.claude/agents/*.md,
+    .codex/agents/*.toml, and the Antigravity optiquity-agents plugin
+    bundle .agents-plugin/optiquity-agents/agents/*.md). The trinity rule
+    says behavioral content must match unless a divergence is provably
     tool-specific.
 
-    This check runs scripts/compare-agent-trinity.py --all in lenient mode
-    (whitespace + Markdown formatting normalized) and reports the count of
-    agents whose body content diverges across the three. The check is
-    INFORMATIONAL: it always exits OK with the count. Hard-failure
-    enforcement requires a "trinity-asymmetry-by-design" marker convention
-    the pack does not yet have. Until then, the count is a regression
-    signal — reviewers should question any change that increases it.
+    This check runs scripts/compare-agent-trinity.py --all --pack REPO_ROOT
+    in lenient mode (whitespace + Markdown formatting normalized) over those
+    project surfaces and reports the count of agents whose body content
+    diverges across the three. The check is INFORMATIONAL: it always exits
+    OK with the count. Hard-failure enforcement requires a
+    "trinity-asymmetry-by-design" marker convention the pack does not yet
+    have. Until then, the count is a regression signal — reviewers should
+    question any change that increases it.
     """
-    print("\n── Check 11: Pack agent trinity-rule symmetry (informational) ──")
+    print("\n── Check 11: Project agent trinity-rule symmetry (informational) ──")
     script = REPO_ROOT / "scripts" / "compare-agent-trinity.py"
     if not script.is_file():
         fail(f"{script.relative_to(REPO_ROOT)} — comparator script missing")
