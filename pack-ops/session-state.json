@@ -1,21 +1,17 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "752aad2",
-  "checkpoint": "2026-07-30T00:00:00Z",
-  "active": ["BD-278", "BD-275"],
-  "in_flight_agents": [
-    "coder-bd278-enforcement -- BD-278 (RW, worktree PRESERVED on disk, uncommitted): impl + post-review F1/F2/F3 fix DONE + Pack-Chat-verified. F1 = executor-bind matcher rework (_tokenize + rewritten _line_is_invocation): FE1/FE2 co-presence now unenforced, 5 true-positives still enforced, sibling validate-shell.sh unenforced, --self-test 15 vectors PASS, no self-trip, test-init-project.sh 136/0, vocab grep 0. 6 files: Commit A project-only (install-validate-hook.sh 755 + detect-validate-enforcement.sh 755 + pm-startup Step 6b + pm-refresh Step 2c + PM-CHAT consent clause); Commit B pack-only (test-init-project.sh). validate-pack red ONLY on the 2 new-file dangling-refs that clear on git add.",
-    "reviewer-bd278-rereview -- BD-278 IN-FLIGHT (spawned this session; RO, isolation=full -> cd to the coder worktree): fresh independent re-review of the matcher rework + full battery. ON REPORT: if CLEAN -> sync 6 files to this checkout -> user commit A + B -> flip BD-278 Resolved -> tear down the worktree. If findings -> Pack-Chat triage to user -> fix-coder REUSES the same worktree -> re-review (bounded cycle)."
-  ],
+  "boundary_commit": "0950585",
+  "checkpoint": "2026-07-31T00:00:00Z",
+  "active": ["BD-275"],
+  "in_flight_agents": [],
   "queue": ["BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "SERIAL: BD-278 re-review in flight -> (on CLEAN) commit A/B + push-time manifest C -> BD-275 (order-dependent serial-suite flake; reproduce-in-fresh-clone then fix the shared test-fixtures state) -> the ruled spine BD-236 -> BD-210 -> BD-205 -> BD-093.",
-  "wave": "BD-136 + BD-276 + BD-277 SHIPPED + RESOLVED. BD-278 (validate.sh push-hook enforcement) fix DONE + Pack-Chat-verified; the independent re-review is now IN-FLIGHT (reviewer-bd278-rereview) after the session restart lifted the 200-agent cap. Nothing pushed yet.",
+  "parallelization": "SERIAL: BD-278 DONE + Resolved (commits A project-only / B pack-only / C pack-chat-only landed) -> BD-275 (order-dependent serial-suite flake; reproduce-in-fresh-clone then fix the shared test-fixtures state) -> the ruled spine BD-236 -> BD-210 -> BD-205 -> BD-093.",
+  "wave": "BD-136 + BD-276 + BD-277 + BD-278 SHIPPED + RESOLVED (committed, NOT yet pushed). Nothing in flight. The BD-278 coder worktree is torn down as the immediate post-commit-C step. Next: BD-275.",
   "pending_decisions": [
-    "AWAITING reviewer-bd278-rereview report -> Pack-Chat triage (review=itemized) -> if CLEAN: sync + user-commit A (project-only) + B (pack-only) -> flip BD-278 Resolved -> tear down the worktree; if findings: triage to user -> fix-coder reuses the worktree -> bounded re-review.",
-    "PUSH-time (batched, user-approved): regen test-fixtures/manifest.txt for BD-277 + BD-278 (both shifted fixture inputs) -> a SEPARATE pack-only commit; then push BD-136/276/277/278 + confirm CI-green.",
-    "BD-275 after BD-278: reproduce the serial-suite flake in a FRESH CLONE against the current suite, diagnose the shared test-fixtures state vector, fix, review, commit.",
+    "PUSH-time (batched, user-approved): regen test-fixtures/manifest.txt for BD-277 + BD-278 (both shifted fixture inputs) -> a SEPARATE pack-only commit; then push the BD-136/276/277/278 batch + confirm CI-green.",
+    "BD-275 NEXT: reproduce the serial-suite flake in a FRESH CLONE against the current suite, diagnose the shared test-fixtures state vector, fix, review, commit.",
     "BD-205 carries the user-directed pre-merge main->v11-dev reconciliation (per-commit user-approved keep/drop; keepers merged INTO v11-dev first so the final merge is a clean overwrite).",
     "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary only, no other SHAs, no dates outside checkpoint, no hex agent IDs, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-278 re-review IN-FLIGHT (reviewer-bd278-rereview reviewing the executor-bind matcher rework in the coder worktree); awaiting report -> triage -> commit or fix-cycle. Then BD-275, then the ruled spine BD-236."
+  "cycle_position": "BD-278 Resolved + committed (A project-only client deliverable, B pack-only Group 8 tests, C pack-chat-only resolve). Worktree teardown = immediate post-C step. Next: BD-275 (serial-suite flake), then the ruled spine BD-236."
 }
