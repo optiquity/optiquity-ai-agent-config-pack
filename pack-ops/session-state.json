@@ -1,17 +1,17 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "3ef29ec",
+  "boundary_commit": "55d3806",
   "checkpoint": "2026-07-31T00:00:00Z",
   "active": [],
   "in_flight_agents": [],
   "queue": ["BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "SERIAL: BD-275 DONE + Resolved (3 commits landed, NOT yet pushed) -> push the accumulated batch + confirm CI-green -> the ruled spine BD-236 -> BD-210 -> BD-205 -> BD-093.",
-  "wave": "BD-136/276/277/278 SHIPPED+RESOLVED+PUSHED+CI-GREEN. BD-275 SHIPPED+RESOLVED (diagnosis + adversarial challenge + reconciliation-architect design + fix-coder + bounded review CLEAN; the order/shared-state premise was REFUTED, C.1 repo-state coupling fixed via a scoped 32'/33/34 no-FAIL assertion; OI-2 tracker-migrate tmpdir hygiene fixed as a separate bare-fix commit; NIT-1 line-refs stripped). 3 BD-275 commits + several pack-chat-only session-state commits are UNPUSHED since the last push. Nothing in flight.",
+  "parallelization": "SERIAL: PAUSED (user). Next on user go: the ruled spine BD-236 -> BD-210 -> BD-205 -> BD-093.",
+  "wave": "BD-136/276/277/278 + BD-275 ALL SHIPPED+RESOLVED+PUSHED+CI-GREEN (origin/v11-dev; Validate Pack success). BD-275: order/shared-state premise REFUTED, C.1 repo-state coupling fixed (scoped 32'/33/34 no-FAIL assertion) + OI-2 tracker-migrate tmpdir hygiene (separate bare-fix) + NIT-1 line-refs stripped, via the full pipeline (diagnosis -> adversarial challenge (live-reproduced) -> reconciliation architect -> fix-coder -> bounded review CLEAN). Dashboard re-rendered + committed (unpushed). Nothing in flight.",
   "pending_decisions": [
-    "PUSH (user-approved, Pack-Chat-executed): run manifest-sync (expect NO-OP -- BD-275 touched only scripts/tests + backlog, no project-template fixture inputs) -> push the accumulated batch (BD-275 fix commits + the session-state commits) -> confirm CI-green (Validate Pack).",
-    "NEXT after push: BD-236 (project-side agent-def discipline-parity guards incomplete -- Check 57 covers 8/13 verbs, Check 11 informational-only; investigate + design a coherent project-side parity-enforcement strategy) -- the ruled spine head. Likely a LARGE BD (structural / cross-surface) -> the deterministic large-BD pipeline (researcher -> architect -> adversarial -> reconcile -> planner -> ... ) with user gates.",
+    "PAUSED per user (push + dashboard done). UNPUSHED: the pack-only dashboard re-render commit + this session-state commit -- both ride with the next push (no action while paused).",
+    "NEXT on user go: BD-236 (project-side agent-def discipline-parity guards incomplete -- Check 57 covers 8/13 git verbs, Check 11 informational-only; investigate + design a coherent project-side parity-enforcement strategy). Likely a LARGE BD (structural / cross-surface) -> deterministic large-BD pipeline (researcher -> architect -> adversarial -> reconcile -> planner -> adversarial -> reconcile -> user gates -> coder waves). User to decide: scope-first vs kick off the researcher/architect stage.",
     "BD-205 carries the user-directed pre-merge main->v11-dev reconciliation (per-commit user-approved keep/drop; keepers merged INTO v11-dev first so the final merge is a clean overwrite).",
     "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary only, no other SHAs, no dates outside checkpoint, no hex agent IDs, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-275 DONE + Resolved (3 commits landed locally, unpushed). Nothing in flight. NEXT: push the accumulated batch + CI-green, then the ruled spine BD-236."
+  "cycle_position": "PAUSED. BD-275 DONE (pushed + CI-green). Dashboard re-rendered + committed (unpushed). NEXT on user go: the ruled spine BD-236."
 }
