@@ -109,7 +109,7 @@ KNOWN_CLIS=(claude codex agy)
 CLAUDE_READONLY_FLAGS=(
     "--permission-mode" "bypassPermissions"
     "--disallowedTools"
-    "Bash(git commit:*)" "Bash(git push:*)"
+    "Bash(git commit:*)" "Bash(git push:*)" "Bash(git tag:*)"
     "Bash(git add:*)" "Bash(git mv:*)" "Bash(git rm:*)"
     "Bash(git stash:*)" "Bash(git reset:*)" "Bash(git restore:*)"
     "Bash(git checkout:*)" "Bash(git apply:*)" "Bash(git worktree:*)"
@@ -184,8 +184,8 @@ Agent roster (16):
 Read-only agents — automatically receive CLI-appropriate flags:
   claude: --permission-mode bypassPermissions
           --disallowedTools denies state-changing git verbs (commit, push,
-          add, mv, rm, stash, reset, restore, checkout, apply, worktree,
-          clean, rebase, merge) — git diff stays allowed for patch emit
+          tag, add, mv, rm, stash, reset, restore, checkout, apply,
+          worktree, clean, rebase, merge) — git diff stays allowed for patch emit
   codex:  --sandbox workspace-write  (.git protected read-only by sandbox)
           -a never
   agy:    --sandbox  (workspace + .git protected; agent instructed not to
