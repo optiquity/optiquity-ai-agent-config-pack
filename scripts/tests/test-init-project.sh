@@ -662,6 +662,188 @@ assert_contains "7.1 failure names the missing canonical template" "$out" \
 rm -rf "$STAGED" "$T7"
 
 # ─────────────────────────────────────────────────────────────────────────
+# Group 8: BD-278 client validate.sh enforcement deliverable.
+#
+#   S7  — SHIP: the opt-in installer (install-validate-hook.sh) and the
+#         detection helper (detect-validate-enforcement.sh) ship on a fresh
+#         install AND survive a fresh→update refresh (absent from the S9
+#         language roster). The exec assertion runs on the UPDATE path, where
+#         cp preserves the COMMITTED 755 (fresh install chmod +x's everything,
+#         so a fresh-only exec check is spurious).
+#   S7b — the matcher/never-fails regression: the helper's own --self-test
+#         PASSes (pins the sibling-leg + comment false-positive vectors and the
+#         true-positive invocation); the G1 skill driver stays benign (rc 0 +
+#         a valid token) against an absent / erroring / garbage helper (the
+#         never-fails floor); the consent-structural grep (no install
+#         invocation reachable from a skill fence or the helper); and the
+#         delegation grep (both skills call the helper and neither re-implements
+#         a channel probe).
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 8: BD-278 validate.sh enforcement (ship + matcher/never-fails) ===\n"
+
+VE_INSTALLER="project-template/scripts/install-validate-hook.sh"
+VE_DETECTOR="project-template/scripts/detect-validate-enforcement.sh"
+VE_PMSTART="project-template/skills/pm-startup/SKILL.md"
+VE_PMREFRESH="project-template/skills/pm-refresh/SKILL.md"
+
+# Extract the content of every ```bash fenced block from a markdown file.
+ve_bash_fences() { awk '/^```bash$/{f=1;next} /^```$/{f=0} f' "$1"; }
+
+# Extract the REAL G1 driver fence from a shipped skill — the ```bash block that
+# references the detector. Running the ACTUAL shipped fence (not a verbatim
+# copy) means a future drift in the skill's guard/sanitize block FAILS the
+# never-fails-floor test below (F2).
+ve_extract_driver_fence() {  # $1 = SKILL.md → stdout = the driver fence body
+    awk '
+      /^```bash$/ { inblk=1; buf=""; next }
+      /^```$/     { if (inblk && buf ~ /detect-validate-enforcement\.sh/) printf "%s", buf; inblk=0; next }
+      inblk       { buf = buf $0 "\n" }
+    ' "$1"
+}
+
+# Run a skill's REAL driver fence in a fresh scratch git repo whose
+# scripts/detect-validate-enforcement.sh is the given BROKEN helper (or absent),
+# and echo "<rc>|<the 'quality gate: <token>' line>". The fence resolves the
+# detector via git-toplevel, so a scratch git repo drives it end-to-end.
+ve_run_real_fence() {  # $1 = SKILL.md ; $2 = absent|erroring|garbage|unreadable
+    local skill="$1" kind="$2" wd fence fsh hp out rc
+    wd=$(make_target)
+    mkdir -p "$wd/scripts"
+    fence=$(ve_extract_driver_fence "$skill")
+    fsh="$wd/.real-fence.sh"
+    printf '%s\n' "$fence" > "$fsh"
+    hp="$wd/scripts/detect-validate-enforcement.sh"
+    case "$kind" in
+        absent)     : ;;
+        erroring)   printf '#!/usr/bin/env bash\nexit 3\n'                 > "$hp"; chmod +x  "$hp" ;;
+        garbage)    printf '#!/usr/bin/env bash\necho "totally-bogus"\n'   > "$hp"; chmod +x  "$hp" ;;
+        unreadable) printf '#!/usr/bin/env bash\necho unenforced\n'        > "$hp"; chmod 000 "$hp" ;;
+    esac
+    out=$( cd "$wd" && bash "$fsh" 2>/dev/null ) ; rc=$?
+    [ -e "$hp" ] && chmod 644 "$hp" 2>/dev/null || true
+    rm -rf "$wd"
+    printf '%s|%s\n' "$rc" "$out"
+}
+
+# --- S7 SHIP: fresh install ships both scripts (present ⇒ S9 did not remove) ---
+T8=$(make_target)
+PACK="$REPO_ROOT" bash "$INIT_SH" "$T8" <<<"y" >/dev/null 2>&1 ; rc=$?
+assert_eq "8.1 fresh install rc=0 (Group 8 base tree)" "0" "$rc"
+[[ -f "$T8/scripts/install-validate-hook.sh" ]] \
+    && t_pass "8.1 install-validate-hook.sh present after fresh install (not removed by S9)" \
+    || t_fail "8.1 install-validate-hook.sh missing after fresh install"
+[[ -f "$T8/scripts/detect-validate-enforcement.sh" ]] \
+    && t_pass "8.1 detect-validate-enforcement.sh present after fresh install (not removed by S9)" \
+    || t_fail "8.1 detect-validate-enforcement.sh missing after fresh install"
+
+# --- S7b: the SHIPPED helper's own --self-test passes (matcher regression) ---
+st_out=$( bash "$T8/scripts/detect-validate-enforcement.sh" --self-test 2>&1 ) ; st_rc=$?
+assert_eq "8.2 detect-validate-enforcement.sh --self-test rc=0" "0" "$st_rc"
+assert_contains "8.2 --self-test reports PASS" "$st_out" "PASS"
+
+# --- helper end-to-end on a fresh client (no hook, no workflows) ⇒ unenforced ---
+de_out=$( cd "$T8" && bash scripts/detect-validate-enforcement.sh 2>/dev/null ) ; de_rc=$?
+assert_eq "8.3 detector rc=0 on a fresh client" "0" "$de_rc"
+assert_eq "8.3 fresh client (no hook, no workflow) ⇒ unenforced" "unenforced" "$de_out"
+
+rm -rf "$T8"
+
+# --- G3 never-fails floor (F2): run the REAL shipped driver fence of BOTH
+#     skills against a broken helper; each must print a benign token + rc 0. ---
+for sk_rel in "$VE_PMSTART" "$VE_PMREFRESH"; do
+    sk="$REPO_ROOT/$sk_rel"
+    sk_name="$(basename "$(dirname "$sk_rel")")"
+    fence=$(ve_extract_driver_fence "$sk")
+    if [ -n "$fence" ] && printf '%s\n' "$fence" | bash -n 2>/dev/null; then
+        t_pass "8.4 $sk_name: real driver fence extracted + valid bash"
+    else
+        t_fail "8.4 $sk_name: could not extract a valid driver fence"
+    fi
+    res=$(ve_run_real_fence "$sk" absent);     rc="${res%%|*}"; tok="${res#*|}"
+    assert_eq "8.5 $sk_name real fence rc=0 (ABSENT helper)" "0" "$rc"
+    assert_contains "8.5 $sk_name ABSENT ⇒ unavailable (benign)" "$tok" "quality gate: unavailable"
+    res=$(ve_run_real_fence "$sk" erroring);   rc="${res%%|*}"; tok="${res#*|}"
+    assert_eq "8.6 $sk_name real fence rc=0 (ERRORING helper)" "0" "$rc"
+    assert_contains "8.6 $sk_name ERRORING ⇒ unenforced (safe default)" "$tok" "quality gate: unenforced"
+    res=$(ve_run_real_fence "$sk" garbage);    rc="${res%%|*}"; tok="${res#*|}"
+    assert_eq "8.6 $sk_name real fence rc=0 (GARBAGE helper)" "0" "$rc"
+    assert_contains "8.6 $sk_name GARBAGE ⇒ unenforced (safe default)" "$tok" "quality gate: unenforced"
+    res=$(ve_run_real_fence "$sk" unreadable); rc="${res%%|*}"; tok="${res#*|}"
+    assert_eq "8.6 $sk_name real fence rc=0 (UNREADABLE helper)" "0" "$rc"
+    assert_contains "8.6 $sk_name UNREADABLE ⇒ unenforced (safe default)" "$tok" "quality gate: unenforced"
+done
+
+# --- S7 SHIP on the UPDATE path: both scripts arrive exec-preserved (755) ---
+# Simulate a pre-BD-278 install (scripts absent), then --update re-adds them.
+# cp preserves the committed 755 for the newly-arriving files, so the exec
+# assertion is meaningful here (unlike fresh install, which chmod +x's all).
+T8u=$(make_target)
+PACK="$REPO_ROOT" bash "$INIT_SH" "$T8u" <<<"y" >/dev/null 2>&1 ; rc=$?
+assert_eq "8.7 fresh install rc=0 (update-path base)" "0" "$rc"
+git -C "$T8u" add -A >/dev/null 2>&1
+git -C "$T8u" commit -q -m "fresh install" 2>/dev/null
+rm -f "$T8u/scripts/install-validate-hook.sh" "$T8u/scripts/detect-validate-enforcement.sh"
+git -C "$T8u" add -A >/dev/null 2>&1
+git -C "$T8u" commit -q -m "simulate pre-BD-278 install (enforcement scripts absent)" 2>/dev/null
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T8u" 2>&1) ; rc=$?
+assert_eq "8.7 --update rc=0 (re-adds the enforcement scripts)" "0" "$rc"
+[[ -f "$T8u/scripts/install-validate-hook.sh" ]] \
+    && t_pass "8.7 install-validate-hook.sh present after --update" \
+    || t_fail "8.7 install-validate-hook.sh missing after --update"
+[[ -f "$T8u/scripts/detect-validate-enforcement.sh" ]] \
+    && t_pass "8.7 detect-validate-enforcement.sh present after --update" \
+    || t_fail "8.7 detect-validate-enforcement.sh missing after --update"
+[[ -x "$T8u/scripts/install-validate-hook.sh" ]] \
+    && t_pass "8.8 install-validate-hook.sh executable after --update (committed 755 preserved)" \
+    || t_fail "8.8 install-validate-hook.sh NOT executable after --update"
+[[ -x "$T8u/scripts/detect-validate-enforcement.sh" ]] \
+    && t_pass "8.8 detect-validate-enforcement.sh executable after --update (committed 755 preserved)" \
+    || t_fail "8.8 detect-validate-enforcement.sh NOT executable after --update"
+rm -rf "$T8u"
+
+# --- S7b CONSENT-structural: no install invocation reachable from a skill ---
+# The installer name may appear ONLY in suggestion/report PROSE, never inside a
+# ```bash fence, and NEVER anywhere in the helper (a pure read-only probe).
+for sk in "$VE_PMSTART" "$VE_PMREFRESH"; do
+    rel="${sk#project-template/skills/}"
+    if ve_bash_fences "$REPO_ROOT/$sk" | grep -q 'install-validate-hook.sh'; then
+        t_fail "8.9 consent: install-validate-hook.sh found INSIDE a bash fence of $rel"
+    else
+        t_pass "8.9 consent: no install invocation in $rel bash fences"
+    fi
+done
+if grep -q 'install-validate-hook.sh' "$REPO_ROOT/$VE_DETECTOR"; then
+    t_fail "8.9 consent: install-validate-hook.sh present in the detector helper (must be install-free)"
+else
+    t_pass "8.9 consent: detector helper is install-invocation-free"
+fi
+if grep -q 'install-validate-hook.sh' "$REPO_ROOT/$VE_PMREFRESH"; then
+    t_fail "8.9 consent: pm-refresh unexpectedly names the installer"
+else
+    t_pass "8.9 consent: pm-refresh names no installer"
+fi
+
+# --- S7b DELEGATION: both skills call the helper; neither re-implements a probe ---
+for sk in "$VE_PMSTART" "$VE_PMREFRESH"; do
+    rel="${sk#project-template/skills/}"
+    grep -q 'detect-validate-enforcement.sh' "$REPO_ROOT/$sk" \
+        && t_pass "8.10 delegation: $rel calls the detector helper" \
+        || t_fail "8.10 delegation: $rel does not call the detector helper"
+    if grep -qE -- '--git-path hooks|\.github/workflows' "$REPO_ROOT/$sk"; then
+        t_fail "8.10 delegation: $rel re-implements a channel probe (must delegate)"
+    else
+        t_pass "8.10 delegation: $rel carries no inline channel probe"
+    fi
+done
+if grep -qE -- '--git-path hooks' "$REPO_ROOT/$VE_DETECTOR" \
+   && grep -qE -- '\.github/workflows' "$REPO_ROOT/$VE_DETECTOR"; then
+    t_pass "8.10 delegation: the helper carries both channel probes (probe SSOT)"
+else
+    t_fail "8.10 delegation: the helper is missing a channel-probe token"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────────────
 
