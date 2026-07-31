@@ -274,19 +274,42 @@ done
 # destructive `git rm`; Pack Chat performs the deletion + the FINAL
 # full-green validate-pack run before committing — the coder/Pack-Chat
 # verification split). Until the `git rm`, Check 32′ is EXPECTED-RED
-# (monolith still present while tree exists) and C.1 will report
-# non-zero — that is by design, not a test defect.
+# (monolith still present while tree exists).
 
 echo
 echo "=== Group C: validate-pack.py Check 32′/33/34 post-conversion behavior ==="
 
 VALIDATOR_OUT="$SCRATCH/validate-pack.out"
-VALIDATOR_RC=0
-python3 "$VALIDATOR" >"$VALIDATOR_OUT" 2>&1 || VALIDATOR_RC=$?
-
-assert_eq "C.1 validate-pack.py exits 0 (post-conversion: tree present + monolith deleted)" "0" "$VALIDATOR_RC"
-
+# BD-275: run the whole validator ONCE and capture its output; C.2–C.10 parse
+# the captured text. We DO NOT judge this test on validate-pack's GLOBAL exit
+# code — that battery includes checks driven by repo state orthogonal to this
+# fixture (the HEAD-driven Check 36; every live-working-tree content check), so a
+# global exit-0 assertion coupled this fixture-integration test to unrelated repo
+# state. We judge only the three checks the test legitimately owns (32′/33/34).
+python3 "$VALIDATOR" >"$VALIDATOR_OUT" 2>&1 || true
 VALIDATOR_TEXT=$(cat "$VALIDATOR_OUT")
+
+# C.1 (scoped, BD-275) — extract the contiguous Check 32′/33/34 banner-delimited
+# sections and assert none reports a FAIL. `fail()` renders `FAIL:` at column 0,
+# `ok()` renders `  OK:` (scripts/lib/validate_checks/core.py). The banner
+# classifier keys on section membership, so it BITES on a 32′/33/34 FAIL even
+# when a matched PASS line (C.2–C.9) is still present, and is INERT to any
+# unrelated red check (Check 36, a dirty-tree content check) whose FAIL lands in
+# a later, non-owned section.
+OWNED_SECTIONS=$(printf '%s\n' "$VALIDATOR_TEXT" | awk '
+    /^── Check / {
+        inowned = (index($0, "no pack monolith exists (BD-203)") \
+                || index($0, "per-entry _toc.md is in-sync") \
+                || index($0, "cross-reference integrity (BD-168)"))
+    }
+    inowned { print }
+')
+if ! printf '%s\n' "$OWNED_SECTIONS" | grep -q '^FAIL:'; then
+    t_pass "C.1 Checks 32′/33/34 owned sections report no FAIL (decoupled from unrelated validate-pack state — BD-275)"
+else
+    t_fail "C.1 Checks 32′/33/34 owned sections report no FAIL (decoupled from unrelated validate-pack state — BD-275)" \
+        "a FAIL: line appeared within the Check 32′/33/34 sections: $(printf '%s\n' "$OWNED_SECTIONS" | grep '^FAIL:' | head -3)"
+fi
 
 # Check 32′ banner present and the post-conversion PASS line (tree
 # present, NO monolith, filenames conform — the no-mirror SSOT state).
