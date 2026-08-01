@@ -19,7 +19,6 @@
 - [BD-205](./BD-205.md) — v11.0 final repo readiness audit + full test/audit/fix cycle (the last gate before launch)
 - [BD-210](./BD-210.md) — v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs
 - [BD-223](./BD-223.md) — Ship a committed (public) test-fixtures suite + a separate private gitignored suite
-- [BD-236](./BD-236.md) — Project-side agent-def discipline-parity guards are incomplete (Check 57 covers 8 of the 13 enumerated git verbs; Check 11 cross-surface symmetry is informational-only) — investigate + design a coherent project-side parity-enforcement strategy
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
 
@@ -238,6 +237,7 @@
 - [BD-231](./BD-231.md) — Dangling `.mcp.json.example` references: the file is absent from `project-template/` (add-file vs. repoint is a user decision)
 - [BD-232](./BD-232.md) — Reorganize + reduce Pack Chat's out-of-repo memory cache (architect-designed reorg, coder-rewritten content; Pack Chat installs only)
 - [BD-234](./BD-234.md) — Assess Graphify real usage + cost stats after burn-in; revisit the graph's cadence / knobs / index scope
+- [BD-236](./BD-236.md) — Project-side agent-def discipline-parity guards are incomplete (Check 57 covers 8 of the 13 enumerated git verbs; Check 11 cross-surface symmetry is informational-only) — investigate + design a coherent project-side parity-enforcement strategy
 - [BD-237](./BD-237.md) — Graphify graph-freshness mechanism is broken in production: redesign the auto-refresh + add verification checks (BD-225 shipped an un-verified, hand-installed, fragile hook that never ran)
 - [BD-238](./BD-238.md) — Codify the PACK-SIDE large-BD development pipeline as an official, size-tiered standard (optional researchers → architect → adversarial architect → planner → adversarial planner, + reconciliation rounds + parallel worktree coder waves)
 - [BD-239](./BD-239.md) — Codify the PROJECT-SIDE large-phase development pipeline as an official, size-tiered standard (optional researchers → architect → adversarial architect → planner → adversarial planner, + reconciliation rounds + parallel worktree coder waves)
