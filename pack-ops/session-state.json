@@ -1,20 +1,20 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "24ccde0",
+  "boundary_commit": "4435716",
   "checkpoint": "2026-08-01T00:00:00Z",
   "active": [],
   "in_flight_agents": [
-    "(none) — BD-236 COMPLETE: all serial coder waves landed + entry flipped Resolved. No agent in flight.",
-    "NEXT (orchestrator, user-approved): push-time REAL manifest regen (scripts/manifest-sync.sh) -> separate pack-only manifest commit -> git push origin v11-dev -> confirm CI-green via gh run list. Then advance to BD-210."
+    "(none) — BD-236 COMPLETE: Resolved, pushed, CI-green. PAUSED before BD-210 at user request.",
+    "ON RESUME: start BD-210 (v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs) per the queue."
   ],
   "queue": ["BD-210", "BD-205", "BD-093"],
-  "parallelization": "SERIAL (user-chosen) COMPLETE: BD-236 coder waves C1 + C2 + BD-197 addendum + C3 + C4 + C5 ALL LANDED (6 commits), plus the pack-chat-only Resolved-flip + session-state commit. Nothing parallel pending.",
-  "wave": "BD-136/276/277/278 + BD-275 SHIPPED+RESOLVED+PUSHED+CI-GREEN. BD-236 COMPLETE: full design+plan pipeline + serial coder waves C1..C5 all landed; entry flipped Resolved. UNPUSHED: the whole BD-236 batch (C1..C5 + BD-197 addendum + this Resolved-flip) plus the earlier dashboard + session-state commits -> all ride the single BD-236 batch push.",
+  "parallelization": "SERIAL (user-chosen) COMPLETE for BD-236: coder waves C1 + C2 + BD-197 addendum + C3 + C4 + C5, the Resolved-flip, and the push-time manifest regen all committed + pushed. Nothing parallel pending.",
+  "wave": "BD-136/276/277/278 + BD-275 + BD-236 all SHIPPED+RESOLVED+PUSHED+CI-GREEN. BD-236: full design+plan pipeline + serial coder waves + Resolved flip + manifest regen -> pushed (17-commit batch) -> Validate Pack CI GREEN. PAUSED before BD-210. Nothing unpushed.",
   "pending_decisions": [
-    "PUSH-time (USER-APPROVED then Pack-Chat-executed): (1) run scripts/manifest-sync.sh -- REAL regen (C1/C4 shifted project-template/* fixture inputs -> MANIFEST-CHANGED) -> stage manifest -> separate pack-only commit; (2) git push origin v11-dev; (3) confirm CI-green via gh run list. THEN advance to BD-210.",
+    "PAUSED before BD-210 (user-requested). On resume: BD-210 -> BD-205 -> BD-093.",
     "OI-P6 (for BD-109 scheduling): when BD-109 is scheduled, surface its stale .gemini/agents path + the Check-57/55/27 roster-lockstep (BD-109 adds a 17th project agent). No Check-27 phrase caveat (D3=(a)-only).",
-    "OI-1 (from C3 re-review) LEFT AS-IS: Check 7 'Pack agent roster' is a DIFFERENT check tied to a shipped PACK-CHAT.md '## Pack agent roster' anchor -- out of BD-236 scope; not actioned.",
+    "OI-1 (from BD-236 C3 re-review) LEFT AS-IS: Check 7 'Pack agent roster' is a DIFFERENT check tied to a shipped PACK-CHAT.md '## Pack agent roster' anchor -- out of BD-236 scope; not actioned.",
     "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary only, no other SHAs, no dates outside checkpoint, no hex agent IDs, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-236 COMPLETE — all 6 commits landed (5 coder waves + BD-197 addendum) + Resolved flip. NEXT: push-time manifest regen -> pack-only manifest commit -> push the batch -> confirm CI-green. Then BD-210."
+  "cycle_position": "BD-236 COMPLETE — Resolved + pushed (17-commit batch) + Validate Pack CI GREEN. No agent in flight; nothing unpushed. PAUSED before BD-210 at user request."
 }
