@@ -86,6 +86,9 @@ reason: G2 — the regenerated monolithic BACKLOG mirror (flat-file per-entry is
 token: CHANGELOG.md
 reason: G2 — the regenerated monolithic CHANGELOG mirror.
 
+token: IMPLEMENTATION-PLAN.md
+reason: G2 — the regenerated monolithic IMPLEMENTATION-PLAN mirror (flat-file per-entry is SSOT; the name is referenced where the rule describes the mirror).
+
 token: IMPLEMENTATION_PLAN.md
 reason: G2 — the pre-rename plan filename cited in the v10->v11 migration rename step (historical naming).
 
@@ -103,6 +106,9 @@ reason: G2 — the project BACKLOG path cited by Wave-D/C-pending operating-doc 
 
 token: docs/project/CHANGELOG.md
 reason: G2 — the project CHANGELOG path cited by Wave-D/C-pending operating-doc prose BD-206 repoints to the per-entry tree (no regenerated mirror under no-mirror); sized to the live ref set until those repoints land.
+
+token: docs/project/IMPLEMENTATION-PLAN.md
+reason: G2 — the project IMPLEMENTATION-PLAN path cited by Wave-D/C-pending operating-doc prose BD-206 repoints to the per-entry tree (no regenerated mirror under no-mirror); sized to the live ref set until those repoints land.
 
 token: docs/STATUS.md
 reason: G2 — a STATUS search-location reference in the install procedure (regenerated view).
