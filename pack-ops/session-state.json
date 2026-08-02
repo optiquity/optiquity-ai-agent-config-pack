@@ -1,20 +1,22 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "aa5d225",
+  "boundary_commit": "ab1219d",
   "checkpoint": "2026-08-02T00:00:00Z",
-  "active": [],
+  "active": ["BD-205"],
   "in_flight_agents": [
-    "(none) — BD-210 COMPLETE: pushed + Validate Pack CI GREEN. PAUSED at user request. No agent in flight.",
-    "ON RESUME: BD-205 (v11.0 final repo-readiness audit + full test/audit/fix cycle — the last gate before launch; large multi-agent effort). Then BD-093."
+    "(none) -- BD-205 Phase-0 census DONE (CENSUS-BD205.md) + target repo read-only-inspected (local handoff only; identity kept OUT of this public-bound repo). PAUSED at user request after the census. No agent in flight.",
+    "ON RESUME: spawn the ONE overarching architect (coverage matrix + test-environment architecture incl. substrate decision + audit decomposition + fix-loop/reconciliation strategy). Census + target-repo shape feed it -> the architect can make the substrate call."
   ],
-  "queue": ["BD-205", "BD-093"],
-  "parallelization": "SERIAL. All landed + pushed + CI-green: BD-136/276/277/278 + BD-275 + BD-236 + BD-279 + BD-210. Nothing in flight; PAUSED before BD-205.",
-  "wave": "BD-210 COMPLETE (pushed, CI-green): 861 superseded maintenance-docs cleaned (66 live kept) + allowlist remediation + README/comment fix + Resolved flip + §28.1 correction. Opened BD-280 (dashboard doc-index staleness follow-up, v11.0 non-blocking). PAUSED before BD-205. Unpushed: only this pack-chat-only pause snapshot + the BD-280 open.",
+  "queue": ["BD-093"],
+  "parallelization": "SERIAL. BD-205 ACTIVE (final readiness gate, LARGE): Phase-0 census DONE -> PAUSED before the architect. BD-093 (release pin) after.",
+  "wave": "BD-205 ACTIVE: pack-side census DONE -- 122 wired tests + validate-pack (Check 92) STRONG; HEADLINE gap = ZERO real-app-code coverage (6/7 fixtures synthetic; the 1 real-target-derived fixture = 3 trinity docs). 6 gaps: D7 real-app, D6 live-GH dog-food, D10 real-project testbed, D11 main->v11-dev reconcile, D8a Check-23 recursion, D9 assert idiom. Target repo read-only-inspected (local handoff): a small PRIVATE GitHub repo -- both substrates feasible, GitHub option must be private. PAUSED before the architect.",
   "pending_decisions": [
-    "PAUSED before BD-205 (user-requested). On resume: BD-205 -> BD-093. BD-280 (dashboard doc-index, v11.0 non-blocking) slots whenever convenient.",
-    "BD-210 broad dangling-ref set (~940) ACCEPTED per fail-loud. NOT swept (surface if BD-205 wants): 14 out-of-scope top-level maintenance-docs (one a live BD-254 input); the conservatively-preserved lean-DELETE ambiguous; §6-A archive-relocate option-c.",
-    "OI-P6 (for BD-109 scheduling): BD-109 adds a 17th project agent -> Check-57/55/27 roster-lockstep + verify its .gemini/agents path. No Check-27 phrase caveat.",
-    "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; deletions Pack-Chat-retained (user-approved); intervention commit-gate live (fresh token, separate step); session-state COMPACT (one SHA boundary only, no other SHAs, no dates outside checkpoint, no hex agent IDs, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
+    "BD-205 NEXT (on resume): spawn the ONE overarching architect (+adv +recon) -> user design gate -> planner (+adv +recon) -> user gate -> waves. CENSUS-BD205.md + the target-repo shape doc (in the BD-205 census handoff dir bd205-census-* under $XDG_STATE_HOME/optiquity-pack-handoff/) feed it.",
+    "BD-205 substrate decision (architect, target-repo facts captured): all-local bare mirror vs PRIVATE GitHub testbed (target repo is PRIVATE + small -> both feasible; GitHub cleanup = archive-not-delete per PAT) vs both. Isolation-integrity gate MANDATORY.",
+    "BD-205 census open items for the architect: OI-1 Check-23 recurse into persona-contracts (rec fix); OI-2 mid-dev rationale comment (rec fix); OI-3 assert exact-match idiom 6 sites (rec fix); OI-4 real-project substrate (decide); OI-5 read-only main->v11-dev reconciliation-enumerator worksheet (rec); OI-6 memory-anchor breadcrumbs (no action).",
+    "BD-205 LEAK-PREVENTION (public-bound pack): scrub ALL target-project name/metadata + REMOVE target-derived content before launch. Tier-2 finding: pre-existing target-name refs (backlog/BD-059.md, changelog/v8.md, some maintenance-docs, dashboard.html) + the v11-trinity-marker-prepped fixture = 3 REAL target trinity docs. Fold into BD-205 audit or a dedicated item -- user to scope.",
+    "OI-P6 (for BD-109 scheduling): BD-109 adds a 17th project agent -> Check-57/55/27 roster-lockstep + verify its .gemini/agents path.",
+    "Standing: PUBLIC-BOUND PACK -- NEVER leak target-project files/docs/code; prefer no target name/metadata in committed pack surfaces (real identity stays in local handoff only). push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; deletions Pack-Chat-retained; intervention commit-gate live (fresh token, separate step); session-state COMPACT (one SHA boundary only, no other SHAs, no dates outside checkpoint, no hex agent IDs, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-210 COMPLETE (pushed + CI-green) + BD-280 opened (follow-up). PAUSED before BD-205 at user request. On resume: brief + start BD-205 (large final-readiness audit)."
+  "cycle_position": "BD-205 Phase-0 census DONE + target-repo shape captured (local handoff). PAUSED before the architect (user request). ON RESUME: spawn the overarching architect. Then planner -> waves. BD-093 after."
 }
