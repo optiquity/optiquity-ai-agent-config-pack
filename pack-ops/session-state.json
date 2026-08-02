@@ -1,20 +1,20 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "123942e",
+  "boundary_commit": "aa5d225",
   "checkpoint": "2026-08-02T00:00:00Z",
   "active": [],
   "in_flight_agents": [
-    "(none) — BD-210 COMPLETE: 861 superseded maintenance-docs cleaned + ref-staleness fixed + entry flipped Resolved. No agent in flight.",
-    "NEXT (orchestrator, user-approved): re-render dashboard (pack-only) -> push the BD-210 batch (deletion + fix + wrap-up + dashboard) -> confirm CI-green. Then BD-205."
+    "(none) — BD-210 COMPLETE: pushed + Validate Pack CI GREEN. PAUSED at user request. No agent in flight.",
+    "ON RESUME: BD-205 (v11.0 final repo-readiness audit + full test/audit/fix cycle — the last gate before launch; large multi-agent effort). Then BD-093."
   ],
   "queue": ["BD-205", "BD-093"],
-  "parallelization": "SERIAL. BD-236 + BD-279 COMPLETE (pushed). BD-210 COMPLETE (unpushed batch): census -> Pack-Chat git rm 861 -> allowlist remediation -> RO reviewer CLEAN -> fix-coder (README + 5 script comments) -> fix reviewer CLEAN -> Resolved flip + §28.1 correction. Nothing parallel pending.",
-  "wave": "BD-136/276/277/278 + BD-275 + BD-236 + BD-279 COMPLETE (pushed, CI-green). BD-210 COMPLETE: 861 superseded maintenance-docs cleaned (66 live kept), allowlisted the exposed IMPLEMENTATION-PLAN mirror refs, README layout + dead-pointer comments reconciled, Resolved flip + §28.1 correction. UNPUSHED: the BD-210 batch (deletion + ref-fix, 2 commits) + this pack-chat-only wrap-up + a pending dashboard re-render.",
+  "parallelization": "SERIAL. All landed + pushed + CI-green: BD-136/276/277/278 + BD-275 + BD-236 + BD-279 + BD-210. Nothing in flight; PAUSED before BD-205.",
+  "wave": "BD-210 COMPLETE (pushed, CI-green): 861 superseded maintenance-docs cleaned (66 live kept) + allowlist remediation + README/comment fix + Resolved flip + §28.1 correction. Opened BD-280 (dashboard doc-index staleness follow-up, v11.0 non-blocking). PAUSED before BD-205. Unpushed: only this pack-chat-only pause snapshot + the BD-280 open.",
   "pending_decisions": [
-    "PUSH-time (USER-APPROVED then Pack-Chat-executed): re-render dashboard -> push the BD-210 batch -> confirm CI-green via gh run list. No manifest regen (no fixture inputs changed). THEN advance to BD-205.",
-    "BD-210 broad dangling-ref set (~940) ACCEPTED per fail-loud (reference-doc cross-refs + historical script docstrings; CI-green, not misleading). NOT swept: 14 out-of-scope top-level maintenance-docs (one a live BD-254 input); conservatively-preserved ambiguous; §6-A archive-relocate option-c. Surface if BD-205 wants them.",
+    "PAUSED before BD-205 (user-requested). On resume: BD-205 -> BD-093. BD-280 (dashboard doc-index, v11.0 non-blocking) slots whenever convenient.",
+    "BD-210 broad dangling-ref set (~940) ACCEPTED per fail-loud. NOT swept (surface if BD-205 wants): 14 out-of-scope top-level maintenance-docs (one a live BD-254 input); the conservatively-preserved lean-DELETE ambiguous; §6-A archive-relocate option-c.",
     "OI-P6 (for BD-109 scheduling): BD-109 adds a 17th project agent -> Check-57/55/27 roster-lockstep + verify its .gemini/agents path. No Check-27 phrase caveat.",
     "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; deletions Pack-Chat-retained (user-approved); intervention commit-gate live (fresh token, separate step); session-state COMPACT (one SHA boundary only, no other SHAs, no dates outside checkpoint, no hex agent IDs, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-210 COMPLETE — deletion + ref-fix committed (2 commits) + Resolved flip + §28.1 correction. NEXT: dashboard re-render (pack-only) -> push the BD-210 batch -> confirm CI-green. Then BD-205."
+  "cycle_position": "BD-210 COMPLETE (pushed + CI-green) + BD-280 opened (follow-up). PAUSED before BD-205 at user request. On resume: brief + start BD-205 (large final-readiness audit)."
 }
