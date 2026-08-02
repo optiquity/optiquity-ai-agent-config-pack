@@ -21,6 +21,7 @@
 - [BD-223](./BD-223.md) — Ship a committed (public) test-fixtures suite + a separate private gitignored suite
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
+- [BD-279](./BD-279.md) — Code-optimization methodology: skill(s) + existing-agent pipeline for intentional net-positive refactors of EXISTING code (pack + project, mirror-but-customize)
 
 ## Deferred
 
