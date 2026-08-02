@@ -1,20 +1,20 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "4435716",
-  "checkpoint": "2026-08-01T00:00:00Z",
+  "boundary_commit": "123942e",
+  "checkpoint": "2026-08-02T00:00:00Z",
   "active": [],
   "in_flight_agents": [
-    "(none) — BD-236 COMPLETE: Resolved, pushed, CI-green. PAUSED before BD-210 at user request.",
-    "ON RESUME: start BD-210 (v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs) per the queue."
+    "(none) — BD-210 COMPLETE: 861 superseded maintenance-docs cleaned + ref-staleness fixed + entry flipped Resolved. No agent in flight.",
+    "NEXT (orchestrator, user-approved): re-render dashboard (pack-only) -> push the BD-210 batch (deletion + fix + wrap-up + dashboard) -> confirm CI-green. Then BD-205."
   ],
-  "queue": ["BD-210", "BD-205", "BD-093"],
-  "parallelization": "SERIAL (user-chosen) COMPLETE for BD-236: coder waves C1 + C2 + BD-197 addendum + C3 + C4 + C5, the Resolved-flip, and the push-time manifest regen all committed + pushed. Nothing parallel pending.",
-  "wave": "BD-136/276/277/278 + BD-275 + BD-236 all SHIPPED+RESOLVED+PUSHED+CI-GREEN. BD-236: full design+plan pipeline + serial coder waves + Resolved flip + manifest regen -> pushed (17-commit batch) -> Validate Pack CI GREEN. PAUSED before BD-210. Nothing unpushed.",
+  "queue": ["BD-205", "BD-093"],
+  "parallelization": "SERIAL. BD-236 + BD-279 COMPLETE (pushed). BD-210 COMPLETE (unpushed batch): census -> Pack-Chat git rm 861 -> allowlist remediation -> RO reviewer CLEAN -> fix-coder (README + 5 script comments) -> fix reviewer CLEAN -> Resolved flip + §28.1 correction. Nothing parallel pending.",
+  "wave": "BD-136/276/277/278 + BD-275 + BD-236 + BD-279 COMPLETE (pushed, CI-green). BD-210 COMPLETE: 861 superseded maintenance-docs cleaned (66 live kept), allowlisted the exposed IMPLEMENTATION-PLAN mirror refs, README layout + dead-pointer comments reconciled, Resolved flip + §28.1 correction. UNPUSHED: the BD-210 batch (deletion + ref-fix, 2 commits) + this pack-chat-only wrap-up + a pending dashboard re-render.",
   "pending_decisions": [
-    "PAUSED before BD-210 (user-requested). On resume: BD-210 -> BD-205 -> BD-093.",
-    "OI-P6 (for BD-109 scheduling): when BD-109 is scheduled, surface its stale .gemini/agents path + the Check-57/55/27 roster-lockstep (BD-109 adds a 17th project agent). No Check-27 phrase caveat (D3=(a)-only).",
-    "OI-1 (from BD-236 C3 re-review) LEFT AS-IS: Check 7 'Pack agent roster' is a DIFFERENT check tied to a shipped PACK-CHAT.md '## Pack agent roster' anchor -- out of BD-236 scope; not actioned.",
-    "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; intervention commit-gate live (fresh token, separate step) EXCEPT autonomous session-state refreshes; session-state COMPACT (one SHA boundary only, no other SHAs, no dates outside checkpoint, no hex agent IDs, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
+    "PUSH-time (USER-APPROVED then Pack-Chat-executed): re-render dashboard -> push the BD-210 batch -> confirm CI-green via gh run list. No manifest regen (no fixture inputs changed). THEN advance to BD-205.",
+    "BD-210 broad dangling-ref set (~940) ACCEPTED per fail-loud (reference-doc cross-refs + historical script docstrings; CI-green, not misleading). NOT swept: 14 out-of-scope top-level maintenance-docs (one a live BD-254 input); conservatively-preserved ambiguous; §6-A archive-relocate option-c. Surface if BD-205 wants them.",
+    "OI-P6 (for BD-109 scheduling): BD-109 adds a 17th project agent -> Check-57/55/27 roster-lockstep + verify its .gemini/agents path. No Check-27 phrase caveat.",
+    "Standing: push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; deletions Pack-Chat-retained (user-approved); intervention commit-gate live (fresh token, separate step); session-state COMPACT (one SHA boundary only, no other SHAs, no dates outside checkpoint, no hex agent IDs, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-236 COMPLETE — Resolved + pushed (17-commit batch) + Validate Pack CI GREEN. No agent in flight; nothing unpushed. PAUSED before BD-210 at user request."
+  "cycle_position": "BD-210 COMPLETE — deletion + ref-fix committed (2 commits) + Resolved flip + §28.1 correction. NEXT: dashboard re-render (pack-only) -> push the BD-210 batch -> confirm CI-green. Then BD-205."
 }

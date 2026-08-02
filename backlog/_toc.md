@@ -17,7 +17,6 @@
 - [BD-192](./BD-192.md) — v11.1+ Product Specialist (PS) implementation (architect/planner/coder cycle)
 - [BD-202](./BD-202.md) — Universal `pack update` propagation engine (delete + clean-modify correctness across asset classes; `x-`-safe, customization-preserving)
 - [BD-205](./BD-205.md) — v11.0 final repo readiness audit + full test/audit/fix cycle (the last gate before launch)
-- [BD-210](./BD-210.md) — v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs
 - [BD-223](./BD-223.md) — Ship a committed (public) test-fixtures suite + a separate private gitignored suite
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
@@ -224,6 +223,7 @@
 - [BD-206](./BD-206.md) — Project-side per-entry no-mirror application (apply the corrected standard to client assets)
 - [BD-208](./BD-208.md) — Pack Chat editing-scope rule: coder does all MAJOR edits (incl. PM-only files, scoped in) under the standard review/fix cycle; Pack Chat does only MINOR edits to the small PM-only set + commits + irreducible destructive ops
 - [BD-209](./BD-209.md) — Rename the `PM-only` commit-scope keyword → `pack-chat-only` (overloaded name; misleads agents)
+- [BD-210](./BD-210.md) — v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs
 - [BD-211](./BD-211.md) — Canonicalize the per-entry header grammar: eliminate suffix sub-entry forms + normalize title parentheticals; validator-enforced (BD-204 prerequisite)
 - [BD-214](./BD-214.md) — Tracker-deferral cleanup: strip tracker artifacts, block the mode flip (pack + project)
 - [BD-219](./BD-219.md) — CI runtime optimization: tests-job matrix-sharding + `validate-pack --only-check` (effectiveness-preserving)
