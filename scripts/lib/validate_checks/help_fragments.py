@@ -104,8 +104,7 @@ def check_trinity_addenda_h2(
     `label` parameter matches an exempt surface, this check short-
     circuits with an `OK (surface exempt)` message after printing
     its section header (so CI logs retain a uniform per-check
-    structure). See IMPLEMENTATION-REPORT-BD-183.md §2.4 + §3.7 for
-    the design record and the triage that landed Option (b).
+    structure).
     """
     # Sentinel pattern: callers in main() pass explicit (trinity_root, label).
     # `None` default kept for backward-compat with no-arg callers (test suite

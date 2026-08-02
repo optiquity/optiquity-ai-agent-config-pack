@@ -187,7 +187,7 @@ def check_tracker_phase_task_invariants() -> None:
 # ── Check 36 / 37 / 38: BD-175 pack/project boundary prevention ────────────
 #
 # These three checks implement Architect C's M5a/M5b/M5c CI enforcement
-# layer per maintenance-docs/archive/v11/ARCHITECTURE-BOUNDARY-PREVENTION-MECHANISMS.md §8.
+# layer.
 #   - Check 36 (M5a): commit-scope honesty — catches TYPE-1/TYPE-3.
 #   - Check 37 (M5b): project-side deny-list — catches TYPE-4.
 #   - Check 38 (M5c): pack-only-file siting — catches mis-located content.
@@ -730,9 +730,7 @@ def _iter_project_side_files() -> list[Path]:
 # Contract: see `maintenance-docs/v11-implementation/ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md`
 # §2.3 (constant) and §2.4 (fence-placement plan per file). The 2 remaining
 # dual-surface entries (METHODOLOGY.md, INSTALL-PROCEDURES.md) were added
-# 2026-05-24 per the H.12/H.13 reorder — see
-# `IMPLEMENTATION-REPORT-BD-173-Batch-19c-REORDER-H.12-H.13.md` for the
-# STOP-AND-ESCALATE evidence that drove the expansion. The scripts/ pair
+# 2026-05-24 per the H.12/H.13 reorder. The scripts/ pair
 # (detect.sh, pack-help.sh) was DROPPED per BD-257: both are de-shipped
 # (empty pack→client ship-allowlist), so Check 37 no longer walks them as
 # client surfaces — their fence membership was consulted zero times and is
@@ -755,8 +753,7 @@ _CHECK_37_PER_LINE_FENCE_FILES = (
     "supporting-docs/METHODOLOGY.md",
     "supporting-docs/INSTALL-PROCEDURES.md",
     # PACK-FEEDBACK.md (added 2026-05-24 during H.13 implementation —
-    # architect-spec gap discovery, IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.13.md
-    # §7). Architect §2.3 originally classified this file as
+    # architect-spec gap discovery). Architect §2.3 originally classified this file as
     # anchor-phrase-legitimate (and thus NOT on the per-line fence list),
     # but empirically the file's `Pack Chat` references throughout the
     # template body lack the ±2-line "feedback" anchor in every context
@@ -1897,13 +1894,6 @@ _CHECK_43_ALLOWLIST: dict[str, str] = {
     "report.md": "Generic agent report filename; no real file at HEAD (template / generated)",
     "PROMPT-TEMPLATES.md": "Legacy doc name; not in pack repo at HEAD (referenced for legacy continuity)",
     "FEATURES.md": "Generic feature-list basename; no real file at HEAD (template / placeholder)",
-    # NOTE: `V10-DESIGN.md` was previously allowlisted as "not in pack repo
-    # at HEAD" — but it EXISTS at maintenance-docs/archive/V10-DESIGN.md, so
-    # the rationale was stale and the entry admitted a STRIP-classified leak
-    # (BD-195 K4.1, README:9 bare-prose). Removed per ci-guard-measure-then-
-    # bound (an allowlist entry must not admit a pack-only leak); the JC-2
-    # bare-prose axis now correctly fires on it. The C3a recipe strips the
-    # README:9 cite.
     "MIGRATION-v9-to-v10.md": "Legacy migration doc; sunset in v11 per BD-121 (no real file at HEAD)",
     "migrate-v9-to-v10.sh": "Legacy migration script; sunset in v11 per BD-121 (no real file at HEAD)",
     "migrate-vN-to-vM.sh": "Migrator framework filename pattern (placeholder per BD-119 architect doc)",
@@ -1980,7 +1970,7 @@ _CHECK_43_EXTRA_WALK_SUFFIXES = ("example", "proto")
 #     ALSO has a project-side / client-installed instance (e.g.
 #     `ARCHITECTURE.md`, `README.md`, `IMPLEMENTATION-PLAN.md`) is NOT a
 #     pack-only-doc and is excluded — only basenames that resolve
-#     EXCLUSIVELY into pack-only territory (e.g. `V10-DESIGN.md`,
+#     EXCLUSIVELY into pack-only territory (e.g.
 #     `V10-CODEX-MCP-RESEARCH.md`, `MERGE-STRATEGY.md`) are targets. A
 #     client surface that names one of these in NON-backtick prose (or
 #     inside a qualified `docs/pack/<basename>` path the bare-ref regex's
@@ -2058,8 +2048,8 @@ def _build_pack_only_doc_basenames() -> set[str] | None:
     The "every-location-pack-only" rule is the over-fire bound: basenames
     with a project-side / client-installed instance (`ARCHITECTURE.md`,
     `README.md`, `IMPLEMENTATION-PLAN.md`, …) are excluded; only
-    exclusively-pack-only docs (`V10-DESIGN.md`,
-    `V10-CODEX-MCP-RESEARCH.md`, `MERGE-STRATEGY.md`) remain. `.git/` is
+    exclusively-pack-only docs (`V10-CODEX-MCP-RESEARCH.md`,
+    `MERGE-STRATEGY.md`) remain. `.git/` is
     skipped; the basename index's archive-exclusion does NOT apply here
     (archive docs ARE pack-only and must be catchable)."""
     rels = _git_tracked_relpaths()

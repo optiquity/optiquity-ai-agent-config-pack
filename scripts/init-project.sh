@@ -3,7 +3,7 @@
 # a new or existing project directory, OR refresh an existing pack
 # install (--update) without destroying project customization.
 #
-# Per V10-DESIGN §7.3..§7.8 the default flow classifies the target into
+# The default flow classifies the target into
 # one of five project classes, stops (exit 20) if AI config is already
 # present, prints a preview report, asks for explicit confirmation
 # (default No), then executes stages S0..S11 with inline verification
@@ -695,7 +695,7 @@ stage_s6_docs_pack() {
         [[ -e "$f" ]] || continue
         cp "$f" "$TARGET/docs/pack/prompts/"
     done
-    # METHODOLOGY.md lives at `docs/pack/METHODOLOGY.md` per V10-DESIGN.md Part 7 §7.6.
+    # METHODOLOGY.md lives at `docs/pack/METHODOLOGY.md`.
     # Source path is `$PACK/supporting-docs/METHODOLOGY.md`; the docs/pack/*.md loop
     # above iterates `$PACK/project-template/docs/pack/`, which does not contain
     # METHODOLOGY — keep this as a separate copy.
@@ -719,7 +719,7 @@ stage_s6_docs_pack() {
         fi
     fi
     # Stale-root cleanup advisory: init-project.sh does NOT delete project files
-    # (per V10-F-D-DESIGN §5.3 — init warns; migrators remove. The historical
+    # (init warns; migrators remove. The historical
     # v9->v10 migrator was sunset in v11 per BD-121; the v10->v11 migrator and
     # any future migrators handle removals on their own paths.)
     if [[ "$CLASS" == existing-* && -f "$TARGET/METHODOLOGY.md" ]]; then

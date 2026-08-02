@@ -10,8 +10,7 @@
 # Usage:    bash scripts/test-detect.sh
 # Exit 0 on all pass; exit 1 on any failure.
 #
-# Phase 4 deliverable per V10-IMPLEMENTATION-PLAN line 45 (B5
-# obligation) and V10-PHASE-4-PLAN.md C-V10-14.
+# Phase 4 deliverable of the v10 implementation.
 
 set -uo pipefail
 

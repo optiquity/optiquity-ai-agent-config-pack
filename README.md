@@ -181,18 +181,9 @@ maintenance-docs/                           Pack maintainer docs (design records
 ├── TOOL-COMPARISON.md                      Cross-tool capability reference
 ├── VERIFIED-NOTES.md                       Verified facts from official docs
 ├── RECOMMENDATIONS.md                      Practical recommendations for new projects
-├── archive/                                Superseded design records, plans, verifications, audits (v9, v10, v11, and earlier; per-version subdirectories — v11/ added by BD-150 Pattern B sweep per BD-159 maintainability principle)
-│   ├── V9-DESIGN.md                        v9 architecture design record
-│   ├── V9-AUDIT-REPORT.md                  v9 audit report
-│   ├── V10-DESIGN.md                       v10 architecture design record
-│   ├── V10-IMPLEMENTATION-PLAN.md          v10 implementation plan
-│   ├── V10-DESIGN-PROCESS-PLAN.md
-│   ├── V10-AUDIT-REPORT.md, V10-AUDIT-REPORT-2.md
-│   ├── V10-PROMPT-STRUCTURE-{DESIGN,PLAN}.md
-│   ├── V10-PHASE-3B-{DESIGN,PLAN}{,-v2}.md
-│   ├── V10-PHASE-4-PLAN.md, V10-PHASE-4-VERIFICATION{,-PLAN}{,-v2}.md
-│   ├── V10-F-{A,D,E-F-F,G}-{DESIGN,PLAN}.md  v10 feature designs and plans
-│   └── v10-working/                        v10 working drafts (step-NN, phase-3 reviews, V10-DESIGN-2 drafts)
+├── archive/v11/                            History extracted from operating docs (kept out of the live docs)
+│   ├── BOUNDARY-DEFINITION-HISTORY.md
+│   └── CONCEPTUAL-REVIEW-METHODOLOGY-HISTORY.md
 ├── origins/                                Source material and chat transcripts
 └── guides/                                 Per-version setup guides
 
