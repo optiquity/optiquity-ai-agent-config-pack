@@ -1,21 +1,21 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "f4d0fed",
+  "boundary_commit": "e47a236",
   "checkpoint": "2026-08-03T00:00:00Z",
   "active": ["BD-205"],
   "in_flight_agents": [
-    "(none) -- BD-205 architect pipeline COMPLETE: census -> architect -> adversarial (1 BLOCKER: leak bigger than the literal name) -> reconciliation -> USER DESIGN GATE PASSED (all 7 OIs resolved). No agent in flight.",
-    "ON RESUME: spawn the PLANNER (turn RECONCILE-BD205.md + DECISIONS-BD205.md into the execution plan: wave/task breakdown, commit sequencing, verification) -> adversarial planner -> reconciliation -> user planner-to-coder gate -> coder waves."
+    "(none) -- BD-205 planner pipeline COMPLETE: planner -> adversarial planner (1 BLOCKER: guard leg-2 git-grep engine-blindness) -> reconciliation -> USER PLANNER-TO-CODER GATE PASSED (plan approved; OI-R1 locked = add the word-boundary bare-OT idiom to guard leg-2). PAUSED before the coder waves at user request. No agent in flight.",
+    "ON RESUME: start the W0..W5 coder waves. Authoritative plan = RECONCILE-PLAN-BD205.md + PLAN-BD205.md + PLANNER-GATE-BD205.md (gate decision) in the local handoff dirs bd205-plan* / bd205-planreconcile* under $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
   "queue": ["BD-093"],
-  "parallelization": "SERIAL. BD-205 ACTIVE (final readiness gate): design pipeline DONE + design gate PASSED. Planner next. BD-093 (release pin) after.",
-  "wave": "BD-205 design APPROVED (RECONCILE-BD205.md + DECISIONS-BD205.md, local handoff). Reworked leak-prevention two-tier (HARD 28 client/public files gate-blocking + PREFERRED ~46 internal keep-list; two-leg guard); synthetic fixture swap (14/13/14 geometry); 6 audit waves W0..W5; NO in-place history rewrite (scrubbed public COPY at launch); substrate BOTH tiered; user-gated testbed; cross-BD coordinate BD-192/187/202, fold BD-171. 7 OI decisions locked.",
+  "parallelization": "SERIAL. BD-205 ACTIVE (final readiness gate): design + plan pipelines DONE, both gates PASSED. Coder waves W0..W5 next. BD-093 (release pin) after.",
+  "wave": "BD-205 PLAN APPROVED (planner-to-coder gate PASSED). 6 waves: W0 baseline -> W1 launch-gate-BD verify + W2 whole-repo/contamination/leak audit (both parallel RO) -> W4 15 fix commits (10 leak-scrub families + Check-93 two-leg guard + census OI fixes) -> W3 user-gated real-content testbed -> W5 main->v11-dev reconciliation (13 commits user-adjudicated) -> PASS -> BD-093. Guard leg-2 = domain vocab + hyphenated-OT + word-boundary bare-OT (Python re), leg-1 = literal name (13 files). PAUSED before the coder waves.",
   "pending_decisions": [
-    "BD-205 NEXT (on resume): PLANNER (+adv +recon) -> user planner-to-coder gate -> coder waves. Inputs: RECONCILE-BD205.md (design) + DECISIONS-BD205.md (the 7 gate decisions) in the local handoff dir bd205-reconcile-* under $XDG_STATE_HOME/optiquity-pack-handoff/.",
-    "BD-205 gate decisions locked: substrate BOTH-tiered; history = HEAD-scrub+guard now, scrubbed-public-COPY at launch (NOT in-place rewrite); rule wording indirect; testbed user-gated; -FROM-OT body-scrub+keep-filename (coord BD-192); internal shorthand keep-list; x-brokerage-api keep-row-scrub-cell.",
-    "BD-205 LEAK is bigger than the literal name (adversarial B-1): target DOMAIN content ships to CLIENTS today (project-template skills/docs) -> HARD-tier scrub (28 files) + two-leg guard fix it; public safety at launch = the scrubbed public COPY.",
+    "BD-205 NEXT (on resume): start W0 (full CI battery baseline) -> W1/W2 parallel RO audits -> triage (itemized) -> W4 fix commits (each: fresh coder, isolated worktree, bounded review/fix, user commit) -> W3 user-gated testbed -> W5 reconciliation (per-commit user keep/drop) -> gate PASS. Authoritative plan in the local handoff (RECONCILE-PLAN-BD205.md + PLAN-BD205.md + PLANNER-GATE-BD205.md).",
+    "BD-205 gate decisions locked: design 7 OIs (substrate BOTH; scrubbed-public-copy at launch; indirect rule; user-gated testbed; -FROM-OT body-scrub+keep-filename coord BD-192; internal-shorthand keep-list; x-brokerage keep-row-scrub-cell) + plan OI-R1 (add word-boundary bare-OT to guard leg-2, Python re, fixture-names excluded).",
+    "BD-205 cross-BD: coordinate BD-192 (same files: -FROM-OT + REQUIREMENTS docs), serialize BD-202 (INSTALL-PROCEDURES), fold BD-171 (=testbed), sequence BD-093 after, BD-223 pre-satisfied.",
     "OI-P6 (for BD-109 scheduling): BD-109 adds a 17th project agent -> Check-57/55/27 roster-lockstep + verify its .gemini/agents path.",
     "Standing: PUBLIC-BOUND PACK -- NEVER leak target files/docs/code; prefer no target name/metadata (real identity in local handoffs only). push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; deletions Pack-Chat-retained; intervention commit-gate live (fresh token, separate step); session-state COMPACT (one SHA boundary only, no other SHAs, no dates outside checkpoint, no hex agent IDs, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-205 design pipeline COMPLETE + USER DESIGN GATE PASSED (7 OIs locked). NEXT: spawn the planner. Then adversarial planner -> reconciliation -> user planner-to-coder gate -> coder waves. BD-093 after."
+  "cycle_position": "BD-205 design + plan pipelines COMPLETE; BOTH user gates PASSED (design 7 OIs + plan OI-R1 locked). PAUSED before the coder waves (user request). ON RESUME: start W0. Then W1/W2 -> W4 -> W3 -> W5 -> PASS -> BD-093."
 }
