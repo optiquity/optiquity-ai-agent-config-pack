@@ -1,22 +1,21 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "ab1219d",
-  "checkpoint": "2026-08-02T00:00:00Z",
+  "boundary_commit": "f4d0fed",
+  "checkpoint": "2026-08-03T00:00:00Z",
   "active": ["BD-205"],
   "in_flight_agents": [
-    "(none) -- BD-205 Phase-0 census DONE (CENSUS-BD205.md) + target repo read-only-inspected (local handoff only; identity kept OUT of this public-bound repo). PAUSED at user request after the census. No agent in flight.",
-    "ON RESUME: spawn the ONE overarching architect (coverage matrix + test-environment architecture incl. substrate decision + audit decomposition + fix-loop/reconciliation strategy). Census + target-repo shape feed it -> the architect can make the substrate call."
+    "(none) -- BD-205 architect pipeline COMPLETE: census -> architect -> adversarial (1 BLOCKER: leak bigger than the literal name) -> reconciliation -> USER DESIGN GATE PASSED (all 7 OIs resolved). No agent in flight.",
+    "ON RESUME: spawn the PLANNER (turn RECONCILE-BD205.md + DECISIONS-BD205.md into the execution plan: wave/task breakdown, commit sequencing, verification) -> adversarial planner -> reconciliation -> user planner-to-coder gate -> coder waves."
   ],
   "queue": ["BD-093"],
-  "parallelization": "SERIAL. BD-205 ACTIVE (final readiness gate, LARGE): Phase-0 census DONE -> PAUSED before the architect. BD-093 (release pin) after.",
-  "wave": "BD-205 ACTIVE: pack-side census DONE -- 122 wired tests + validate-pack (Check 92) STRONG; HEADLINE gap = ZERO real-app-code coverage (6/7 fixtures synthetic; the 1 real-target-derived fixture = 3 trinity docs). 6 gaps: D7 real-app, D6 live-GH dog-food, D10 real-project testbed, D11 main->v11-dev reconcile, D8a Check-23 recursion, D9 assert idiom. Target repo read-only-inspected (local handoff): a small PRIVATE GitHub repo -- both substrates feasible, GitHub option must be private. PAUSED before the architect.",
+  "parallelization": "SERIAL. BD-205 ACTIVE (final readiness gate): design pipeline DONE + design gate PASSED. Planner next. BD-093 (release pin) after.",
+  "wave": "BD-205 design APPROVED (RECONCILE-BD205.md + DECISIONS-BD205.md, local handoff). Reworked leak-prevention two-tier (HARD 28 client/public files gate-blocking + PREFERRED ~46 internal keep-list; two-leg guard); synthetic fixture swap (14/13/14 geometry); 6 audit waves W0..W5; NO in-place history rewrite (scrubbed public COPY at launch); substrate BOTH tiered; user-gated testbed; cross-BD coordinate BD-192/187/202, fold BD-171. 7 OI decisions locked.",
   "pending_decisions": [
-    "BD-205 NEXT (on resume): spawn the ONE overarching architect (+adv +recon) -> user design gate -> planner (+adv +recon) -> user gate -> waves. CENSUS-BD205.md + the target-repo shape doc (in the BD-205 census handoff dir bd205-census-* under $XDG_STATE_HOME/optiquity-pack-handoff/) feed it.",
-    "BD-205 substrate decision (architect, target-repo facts captured): all-local bare mirror vs PRIVATE GitHub testbed (target repo is PRIVATE + small -> both feasible; GitHub cleanup = archive-not-delete per PAT) vs both. Isolation-integrity gate MANDATORY.",
-    "BD-205 census open items for the architect: OI-1 Check-23 recurse into persona-contracts (rec fix); OI-2 mid-dev rationale comment (rec fix); OI-3 assert exact-match idiom 6 sites (rec fix); OI-4 real-project substrate (decide); OI-5 read-only main->v11-dev reconciliation-enumerator worksheet (rec); OI-6 memory-anchor breadcrumbs (no action).",
-    "BD-205 LEAK-PREVENTION (public-bound pack) SCOPED into the BD-205 audit (Scope + AC): architect designs the pre-existing target-name-ref scrub (backlog/BD-059.md, changelog/v8.md, some maintenance-docs, dashboard.html) + a SYNTHETIC replacement for the target-derived v11-trinity-marker-prepped fixture (3 real target trinity docs, BD-136 test) + a history-rewrite recommendation + a standing no-leak GUARD (CI check + trinity pack-memory rule).",
+    "BD-205 NEXT (on resume): PLANNER (+adv +recon) -> user planner-to-coder gate -> coder waves. Inputs: RECONCILE-BD205.md (design) + DECISIONS-BD205.md (the 7 gate decisions) in the local handoff dir bd205-reconcile-* under $XDG_STATE_HOME/optiquity-pack-handoff/.",
+    "BD-205 gate decisions locked: substrate BOTH-tiered; history = HEAD-scrub+guard now, scrubbed-public-COPY at launch (NOT in-place rewrite); rule wording indirect; testbed user-gated; -FROM-OT body-scrub+keep-filename (coord BD-192); internal shorthand keep-list; x-brokerage-api keep-row-scrub-cell.",
+    "BD-205 LEAK is bigger than the literal name (adversarial B-1): target DOMAIN content ships to CLIENTS today (project-template skills/docs) -> HARD-tier scrub (28 files) + two-leg guard fix it; public safety at launch = the scrubbed public COPY.",
     "OI-P6 (for BD-109 scheduling): BD-109 adds a 17th project agent -> Check-57/55/27 roster-lockstep + verify its .gemini/agents path.",
-    "Standing: PUBLIC-BOUND PACK -- NEVER leak target-project files/docs/code; prefer no target name/metadata in committed pack surfaces (real identity stays in local handoff only). push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; deletions Pack-Chat-retained; intervention commit-gate live (fresh token, separate step); session-state COMPACT (one SHA boundary only, no other SHAs, no dates outside checkpoint, no hex agent IDs, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
+    "Standing: PUBLIC-BOUND PACK -- NEVER leak target files/docs/code; prefer no target name/metadata (real identity in local handoffs only). push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; deletions Pack-Chat-retained; intervention commit-gate live (fresh token, separate step); session-state COMPACT (one SHA boundary only, no other SHAs, no dates outside checkpoint, no hex agent IDs, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-205 Phase-0 census DONE + target-repo shape captured (local handoff). PAUSED before the architect (user request). ON RESUME: spawn the overarching architect. Then planner -> waves. BD-093 after."
+  "cycle_position": "BD-205 design pipeline COMPLETE + USER DESIGN GATE PASSED (7 OIs locked). NEXT: spawn the planner. Then adversarial planner -> reconciliation -> user planner-to-coder gate -> coder waves. BD-093 after."
 }
