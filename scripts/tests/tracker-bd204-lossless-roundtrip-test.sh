@@ -86,6 +86,13 @@ assert_eq()           { if [[ "$2" == "$3" ]]; then t_pass "$1"; else t_fail "$1
 assert_contains()     { if [[ "$2" == *"$3"* ]]; then t_pass "$1"; else t_fail "$1" "needle='$3' missing"; fi; }
 assert_not_contains() { if [[ "$2" != *"$3"* ]]; then t_pass "$1"; else t_fail "$1" "needle='$3' unexpectedly present"; fi; }
 
+# BD-205 (OI-3 / D9): shared exact-whole-line matcher for count assertions.
+# Substring assert_contains is prefix-vulnerable ("created:    2" matches
+# "created:    20"); assert_contains_line requires a whole-line match so a
+# wrong count FAILS. Dispatches to this file's t_pass/t_fail reporters.
+# shellcheck source=scripts/tests/lib/assert-line-eq.sh
+source "$REPO_ROOT/scripts/tests/lib/assert-line-eq.sh"
+
 # Hard abort: a failed live-infrastructure step makes every later leg
 # meaningless — surface, archive (via trap), exit non-zero.
 die() {
@@ -330,7 +337,7 @@ if [[ "$FWD1_RC" -ne 0 ]]; then
     die "forward run 1 failed (rc=$FWD1_RC) — see diagnostics above"
 fi
 assert_contains "forward 1: completed" "$FWD1_OUT" "forward: complete."
-assert_contains "forward 1: created every baseline entry" "$FWD1_OUT" "created:    $N_BASELINE"
+assert_contains_line "forward 1: created every baseline entry" "$FWD1_OUT" "created:    $N_BASELINE"
 # KU-OPS-2/3: no rate-limit / abuse classification anywhere in the run.
 assert_not_contains "forward 1: no secondary-rate-limit / abuse error (KU-OPS-2/3)" "$FWD1_OUT" "rate-limit"
 assert_not_contains "forward 1: no abuse flag (KU-OPS-2/3)" "$FWD1_OUT" "abuse"
@@ -369,7 +376,7 @@ gh_id_for() {
 # before reaching it); the per-issue state read pins the canary live.
 # ─────────────────────────────────────────────────────────────────
 echo "── BD-909 close-path canary (not_planned → 'not planned') ──"
-assert_contains "close canary: forward 1 closed every closed-status entry" \
+assert_contains_line "close canary: forward 1 closed every closed-status entry" \
     "$FWD1_OUT" "closed:     $N_CLOSED_BASELINE"
 _909_gid=$(gh_id_for "BD-909")
 [[ -n "$_909_gid" ]] || die "close canary: BD-909 has no id-map entry"
@@ -717,7 +724,7 @@ FWD2_RC=$?
 [[ "$FWD2_RC" -eq 0 ]] || printf '%s\n' "$FWD2_OUT" | tail -10 >&2
 assert_eq "repeated-cycle: forward 2 rc=0" "0" "$FWD2_RC"
 assert_contains "repeated-cycle: forward 2 created NOTHING (idempotent)" "$FWD2_OUT" "created:    0"
-assert_contains "repeated-cycle: forward 2 skipped every entry" "$FWD2_OUT" "skipped:    $N_BASELINE"
+assert_contains_line "repeated-cycle: forward 2 skipped every entry" "$FWD2_OUT" "skipped:    $N_BASELINE"
 N_ISSUES_2=$(count_scratch_issues)
 assert_eq "repeated-cycle: issue count unchanged after forward 2" "$N_BASELINE" "$N_ISSUES_2"
 live_step "tracker_migrate_reverse_run (cycle 2)"
@@ -811,7 +818,7 @@ FWD3_RC=$?
 [[ "$FWD3_RC" -eq 0 ]] || printf '%s\n' "$FWD3_OUT" | tail -10 >&2
 assert_eq "CRUD: re-forward rc=0" "0" "$FWD3_RC"
 assert_contains "CRUD: re-forward created NOTHING (state already on the tracker)" "$FWD3_OUT" "created:    0"
-assert_contains "CRUD: re-forward sees all $((N_BASELINE + 1)) entries" "$FWD3_OUT" "entries:    $((N_BASELINE + 1))"
+assert_contains_line "CRUD: re-forward sees all $((N_BASELINE + 1)) entries" "$FWD3_OUT" "entries:    $((N_BASELINE + 1))"
 
 # ─────────────────────────────────────────────────────────────────
 # DISPOSAL (§3.LF.7 leg 8): ARCHIVE the scratch repo (tool-performed
