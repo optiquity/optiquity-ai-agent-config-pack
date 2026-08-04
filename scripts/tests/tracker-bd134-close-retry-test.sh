@@ -77,6 +77,13 @@ assert_not_contains() {
     fi
 }
 
+# BD-205 (OI-3 / D9): shared exact-whole-line matcher for count assertions.
+# Substring assert_contains is prefix-vulnerable ("closed:     2" matches
+# "closed:     20"); assert_contains_line requires a whole-line match so a
+# wrong count FAILS. Dispatches to this file's pass/fail reporters.
+# shellcheck source=scripts/tests/lib/assert-line-eq.sh
+source "$PACK_ROOT/scripts/tests/lib/assert-line-eq.sh"
+
 # Keep all retry sleeps at zero so the suite runs in well under 1s.
 export TMF_CLOSE_RETRY_BACKOFF_SECS="0 0 0 0 0"
 # Keep BD-132 stabilization fast too.
@@ -314,12 +321,12 @@ assert_not_contains "1.2 no partial-write surfaced (transient closes recovered)"
     "$out" "ERROR: partial-write"
 assert_contains "1.3 forward summary mentions retry sweep" \
     "$out" "close-retry sweep"
-assert_contains "1.4 retry sweep names recovered count" \
+assert_contains_field "1.4 retry sweep names recovered count" \
     "$out" "recovered=2"
 assert_contains "1.5 retry sweep shows persistent=0 for transient case" \
     "$out" "persistent=0"
 # Both BD-001 and BD-002 should appear closed in the forward summary.
-assert_contains "1.6 forward summary shows closed: 2" \
+assert_contains_line "1.6 forward summary shows closed: 2" \
     "$out" "closed:     2"
 # The fake gh logged "seen:<id>" for each close that was attempted.
 seen_count=$(grep -c '^seen:' "$STATE" 2>/dev/null || true)
@@ -352,7 +359,7 @@ assert_contains "2.4 partial-write line names BD-001" \
     "$out2" "BD-001"
 assert_contains "2.5 partial-write line cites attempt count" \
     "$out2" "failed after 3 attempts"
-assert_contains "2.6 retry sweep persistent count surfaces" \
+assert_contains_field "2.6 retry sweep persistent count surfaces" \
     "$out2" "persistent=2"
 
 # CRITICAL: bounded — exactly 3 attempts per id (1 initial + 2 retries).

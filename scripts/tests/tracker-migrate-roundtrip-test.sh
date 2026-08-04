@@ -48,6 +48,13 @@ assert_eq()       { if [[ "$2" == "$3" ]]; then t_pass "$1"; else t_fail "$1" "e
 assert_contains() { if [[ "$2" == *"$3"* ]]; then t_pass "$1"; else t_fail "$1" "needle='$3' missing"; fi; }
 assert_not_contains() { if [[ "$2" != *"$3"* ]]; then t_pass "$1"; else t_fail "$1" "needle='$3' unexpectedly present"; fi; }
 
+# BD-205 (OI-3 / D9): shared exact-whole-line matcher for count assertions.
+# Substring assert_contains is prefix-vulnerable ("closed:     1" matches
+# "closed:     12"); assert_contains_line requires a whole-line match so a
+# wrong count FAILS. Dispatches to this file's t_pass/t_fail reporters.
+# shellcheck source=scripts/tests/lib/assert-line-eq.sh
+source "$REPO_ROOT/scripts/tests/lib/assert-line-eq.sh"
+
 # BD-204 C-8 SHOULD-1: the bd-v11.0 fixture now carries a closed-status
 # entry (BD-004, Status: Cancelled), so every forward run executes the
 # step-8 close loop + the BD-132 close-stabilization poll. Zero the
@@ -555,7 +562,7 @@ assert_eq "1.1 mapping has 6 entries" "6" "$(jq 'length' "$mapping_file")"
 # the LIVE READ-BACK shape. Assert the stored shape carries the
 # GraphQL-enum casing — uppercase NOT_PLANNED is exactly what the
 # production normalize→decode chain must handle (pinned in 2.2e).
-assert_contains "1.2 forward closed 1 entry (BD-004 Cancelled)" "$output1" "closed:     1"
+assert_contains_line "1.2 forward closed 1 entry (BD-004 Cancelled)" "$output1" "closed:     1"
 assert_contains "1.2 close-stabilization ran and completed"     "$output1" "close-stabilization OK"
 bd004_stored=$(jq -c '[.issues[] | select((.title // "") | startswith("BD-004:"))] | .[0] // {}' "$STATE1")
 assert_eq "1.2 BD-004 stored state is read-back CLOSED" \
@@ -957,7 +964,7 @@ export PATH="$FAKE6:$PATH_SAVED"
 out6b=$(tracker_migrate_forward_run "$REPO6" 0 0 0 2>&1); rc6b=$?
 export PATH="$PATH_SAVED"
 assert_eq           "6.2 forward RE-RUN rc=0 (no step-7 partial-write — Defect B)" "0" "$rc6b"
-assert_contains     "6.2 re-run created NOTHING (idempotent)" "$out6b" "created:    0"
+assert_contains_line "6.2 re-run created NOTHING (idempotent)" "$out6b" "created:    0"
 assert_not_contains "6.2 re-run has NO step-7 link failure" "$out6b" "step-7 link blocked-by"
 assert_not_contains "6.2 re-run has NO partial-write error" "$out6b" "partial-write"
 edges_after_2=$(jq '.first_class_edges // [] | length' "$STATE6")
@@ -1031,8 +1038,8 @@ export PATH="$FAKE6:$PATH_SAVED"
 out6d=$(tracker_migrate_forward_run "$REPO6" 0 0 0 2>&1); rc6d=$?
 export PATH="$PATH_SAVED"
 assert_eq           "6.4 post-CRUD re-forward rc=0 (Defect B)" "0" "$rc6d"
-assert_contains     "6.4 re-forward created NOTHING (state already on the tracker)" "$out6d" "created:    0"
-assert_contains     "6.4 re-forward sees all 5 entries" "$out6d" "entries:    5"
+assert_contains_line "6.4 re-forward created NOTHING (state already on the tracker)" "$out6d" "created:    0"
+assert_contains_line "6.4 re-forward sees all 5 entries" "$out6d" "entries:    5"
 assert_not_contains "6.4 re-forward has NO step-7 link failure" "$out6d" "step-7 link blocked-by"
 
 rm -rf "$REPO6" "$FAKE6"

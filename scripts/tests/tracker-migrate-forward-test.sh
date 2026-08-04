@@ -42,6 +42,13 @@ assert_contains() {
     else t_fail "$1" "needle='$3' missing from: ${2:0:200}"; fi
 }
 
+# BD-205 (OI-3 / D9): shared exact-whole-line matcher for count assertions.
+# Substring assert_contains is prefix-vulnerable ("closed:     2" matches
+# "closed:     20"); assert_contains_line requires a whole-line match so a
+# wrong count FAILS. Dispatches to this file's t_pass/t_fail reporters.
+# shellcheck source=scripts/tests/lib/assert-line-eq.sh
+source "$REPO_ROOT/scripts/tests/lib/assert-line-eq.sh"
+
 # BD-134: keep test runtimes bounded — skip real backoff sleeps.
 # The retry sweep is exercised in this suite (4.3) and in the
 # dedicated tracker-bd134-close-retry-test.sh; both rely on env
@@ -2132,7 +2139,7 @@ if [[ "$output_cr" == *"ERROR: partial-write"* ]]; then
 else
     t_pass "7.1 no partial-write (closes accepted by the vocabulary-enforcing fake)"
 fi
-assert_contains "7.1 summary reports both entries closed" "$output_cr" "closed:     2"
+assert_contains_line "7.1 summary reports both entries closed" "$output_cr" "closed:     2"
 
 # 7.2 BOTH closes reach the gh CLI in the TRANSLATED form. The create
 # counter starts at 600 and the tree enumerates BD-601 then BD-602, so
