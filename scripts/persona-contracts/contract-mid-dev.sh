@@ -169,6 +169,8 @@ if [[ -n "$PRE_GITIGNORE" && -f "$SANDBOX/.gitignore" ]]; then
 fi
 
 # ── Assertion 3: pack landed correctly (presence checks) ──────────────────
+#
+# deliberate absence of S6/S8/S11 mirror coverage; greenfield owns install-verification; splitting prevents redundant assertion duplication
 
 # Trinity present.
 for f in CLAUDE.md AGENTS.md GEMINI.md; do
