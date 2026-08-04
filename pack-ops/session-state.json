@@ -1,21 +1,21 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "d375d43",
+  "boundary_commit": "ddc9cbe",
   "checkpoint": "2026-08-04T00:00:00Z",
   "active": ["BD-205"],
   "in_flight_agents": [
-    "(none) -- BD-205 W1/W2 audits COMPLETE (6 RO auditors: 4 launch-gate BDs + whole-repo + contamination/leak). User-approved triage RESOLVED. No agent in flight.",
-    "ON RESUME: start W4 fix commits. Authoritative = AUDIT-TRIAGE + RECONCILE-PLAN + PLAN + PLANNER-GATE in the local handoff dirs under $XDG_STATE_HOME/optiquity-pack-handoff/."
+    "(none) -- BD-205 W4 census/exact-match batch COMPLETE + committed + CI-green: C1 (Check-23 persona-contracts recursion) + C2 (mid-dev absence comment) + C3 (exact-match assert helpers, whole-line + inline-field, 8 sites) + C3b (bd204, 4 count sites). The count prefix-vulnerability class is fully closed across all 4 tracker tests. No agent in flight.",
+    "ON RESUME: start the leak-scrub families (C4..C13). Authoritative = AUDIT-TRIAGE + RECONCILE-PLAN + PLAN + PLANNER-GATE in the local handoff dirs under $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
   "queue": ["BD-093"],
-  "parallelization": "SERIAL. BD-205 ACTIVE (final readiness gate): design + plan pipelines DONE, both user gates PASSED, W0 baseline green, W1/W2 audits DONE + triaged. W4 fix commits NEXT. BD-093 (release pin) after.",
-  "wave": "BD-205 W4 = ~18 fix commits: C1-C3 census-OI fixes; C4-C13 leak-scrub families; C16 dashboard re-render (after C12); C14 Check-93 two-leg guard (Python re over file CONTENT, after all scrubs incl C16); C15 pack no-leak rule (after C14); C17 migrator monolith-delete + test 2.2d + advisory; C18 tracker example-config parked-notes. Each: fresh coder, isolated worktree, bounded review/fix, user commit. Then W3 user-gated testbed -> W5 reconciliation (13 commits user-adjudicated) -> PASS -> BD-093.",
+  "parallelization": "SERIAL waves; disjoint commits within a wave MAY run parallel worktrees. BD-205 ACTIVE (final readiness gate): design+plan pipelines DONE, both gates PASSED, W0 baseline green, W1/W2 audits DONE+triaged, W4 census/exact-match commits DONE. Leak-scrub + guard + rule + migrator NEXT. BD-093 after.",
+  "wave": "BD-205 W4 remaining (~14 commits): C4 synthetic trinity-marker fixture (pack-only, 2 wired consumers) + C5-C9 project-only scrubs + C10-C13 pack-only scrubs (leak-scrub families) -> C16 dashboard re-render (after C12) -> C14 Check-93 two-leg guard (Python re over file CONTENT, after all scrubs incl C16) -> C15 pack no-leak rule (after C14) -> C17 migrator monolith-delete + test 2.2d + advisory -> C18 tracker example-config parked-notes. Each: fresh coder, isolated worktree, bounded review/fix, user commit. Then W3 user-gated testbed -> W5 reconciliation (13 commits user-adjudicated) -> PASS -> BD-093.",
   "pending_decisions": [
-    "BD-205 W1/W2 triage RESOLVED (user, all recs): (1) 2 leak BLOCKERs FIX minimal -- dashboard.html carries 3 literal target-name occ (embedded changelog) -> C16 re-render after C12 + re-publish; guard MUST scan file CONTENT via Python re (git grep -I skips the 357KB one-line dashboard as binary = false green). (2) W1c migrator gap -> Option A: migrator DELETES the client v10 source monolith + update test 2.2d + advisory (C17). (3) W1a 4 orphan GH labels -> user-gated gh label delete + investigate source (non-commit). (4) all SHOULDs FIX, NITs leave.",
+    "BD-205 W1/W2 triage RESOLVED (user, all recs): 2 leak BLOCKERs FIX minimal -- dashboard.html carries 3 literal target-name occ (embedded changelog) -> C16 re-render after C12 + re-publish; guard MUST scan file CONTENT via Python re (git grep -I skips the 357KB one-line dashboard as binary = false green). W1c migrator gap -> Option A: migrator DELETES the client v10 source monolith + update test 2.2d + advisory (C17). W1a 4 orphan GH labels -> user-gated gh label delete + investigate source (non-commit). all SHOULDs FIX, NITs leave.",
     "BD-205 gate decisions locked: design 7 OIs (substrate BOTH; scrubbed-public-copy at launch; indirect rule; user-gated testbed; -FROM-OT body-scrub+keep-filename coord BD-192; internal-shorthand keep-list; x-brokerage keep-row-scrub-cell) + plan OI-R1 (word-boundary bare-OT in guard leg-2, Python re, fixture-names excluded).",
     "BD-205 cross-BD: coordinate BD-192 (same files), serialize BD-202 (INSTALL-PROCEDURES), fold BD-171 (=testbed), sequence BD-093 after, BD-223 pre-satisfied.",
     "OI-P6 (for BD-109 scheduling): BD-109 adds a 17th project agent -> Check-57/55/27 roster-lockstep + verify its .gemini/agents path.",
     "Standing: PUBLIC-BOUND PACK -- NEVER leak target files/docs/code; prefer no target name/metadata (real identity in local handoffs only). push USER-APPROVED then Pack-Chat-executed; NO new BDs without user ask; pack-chat-only trees Pack-Chat-direct; deletions Pack-Chat-retained; intervention commit-gate live (fresh token, separate step); session-state COMPACT (one SHA boundary, no other SHAs, no dates outside checkpoint, no hex agent IDs, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-205 W0 baseline green; W1/W2 audits (6 RO) DONE + user-triaged. W4 fix commits NEXT (start C1 Check-23 recursion or leak-scrub families). Then W3 -> W5 -> PASS -> BD-093."
+  "cycle_position": "BD-205 W4 census/exact-match commits (C1,C2,C3,C3b) DONE + committed + CI-green. NEXT: leak-scrub families (C4 fixture + C5-C13 scrubs) -> C16 dashboard -> C14 guard -> C15 rule -> C17 migrator -> C18 tracker examples -> W3 -> W5 -> PASS -> BD-093."
 }
