@@ -282,13 +282,22 @@ def check_help_fragment_freshness() -> None:
 
 
 def check_help_fragment_completeness() -> None:
-    """Check 23 — Help-fragment completeness vs scripts/ executables (BD-082).
+    """Check 23 — Help-fragment completeness vs scripts/ executables
+    (BD-082, BD-205).
 
     Every top-level executable script in scripts/ must appear in
     HELP-FRAGMENT-PACK.md unless the script declares `# pack-internal: true`
     near the top. Prevents the fragment going stale as new scripts ship.
+
+    BD-205 (OI-1 / D8a) extends the same rule one level down to the
+    `scripts/persona-contracts/` contracts: those 3 scripts each carry a
+    `# pack-internal: true` marker (BD-116 F5) that was INERT — declared but
+    never verified — because the top-level `iterdir()` never descended into
+    the subdirectory. The persona-contracts leg makes those markers BITE
+    (declare-verify-backing): a contract that is NEITHER listed in the
+    fragment NOR marked pack-internal FAILS exactly like a top-level script.
     """
-    print("\n── Check 23: Help-fragment completeness (BD-082) ──")
+    print("\n── Check 23: Help-fragment completeness (BD-082, BD-205) ──")
     fragment = REPO_ROOT / _HELP_FRAGMENT_PACK
     if not fragment.is_file():
         fail(f"pack-root help fragment missing: {fragment.name}")
@@ -317,6 +326,34 @@ def check_help_fragment_completeness() -> None:
             listed.append(entry.name)
         else:
             missing.append(entry.name)
+
+    # BD-205 (OI-1 / D8a) — persona-contracts leg. ALSO verify the contract
+    # scripts one level down under scripts/persona-contracts/ so their
+    # `# pack-internal: true` markers (BD-116 F5) actually BITE (they were
+    # inert before this leg). Candidate set = git-TRACKED files under the ONE
+    # subdir via a single bounded `git ls-files scripts/persona-contracts`
+    # (never a raw rglob/os.walk/glob/find) — O(files in one subdir), no
+    # whole-tree walk (ci-check-runtime-compounding / ci-guard-measure-then-
+    # bound). git absent or not a work tree ⇒ this leg SKIPs leniently while
+    # the top-level scan above still ran. No os.X_OK filter here (unlike the
+    # top-level scan): the persona-contracts dir holds ONLY contracts — no
+    # libs/data — so the marker must bite regardless of the executable bit.
+    pc_available, pc_tracked = _git_ls_files_multi(["scripts/persona-contracts"])
+    if pc_available:
+        for rel in pc_tracked:
+            entry = REPO_ROOT / rel
+            if entry.suffix not in (".sh", ".py"):
+                continue
+            if not entry.is_file():
+                continue
+            if _is_pack_internal(entry):
+                flagged_internal.append(rel)
+                continue
+            if entry.name in text:
+                listed.append(rel)
+            else:
+                missing.append(rel)
+
     if missing:
         fail(f"scripts/ executables missing from HELP-FRAGMENT-PACK.md (or mark with `# pack-internal: true`):")
         for n in missing:
