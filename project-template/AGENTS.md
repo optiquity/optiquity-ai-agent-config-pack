@@ -314,7 +314,7 @@ Always write `TD-TBD`. Never invent a TD number.
 
 **Valid scope values for TODO:** `phase-N`, `dependency`, `feature`, `perf`, `version`
 **Valid severity values for KNOWN GAP:** `critical`, `functional`, `polish`
-**Source for VERIFY:** name the external source (e.g. `apple-docs`, `schwab-api`)
+**Source for VERIFY:** name the external source (e.g. `apple-docs`, `weather-api`)
 
 Never use plain English deferral comments (`// Fix later`, `// Confirm this`).
 When citing a code location in a report, use the symbol name not the line number.

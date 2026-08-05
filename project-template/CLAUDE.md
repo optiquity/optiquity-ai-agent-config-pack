@@ -331,7 +331,7 @@ language you are writing (`//` for Swift/C/C++/Objective-C, `#` for Python):
 - `critical` — must eventually be addressed without exception
 - `functional` — should be addressed; feature is incomplete without it
 - `polish` — may be skipped; improves experience but does not affect correctness
-**Source for VERIFY:** name the external source (e.g. `apple-docs`, `schwab-api`)
+**Source for VERIFY:** name the external source (e.g. `apple-docs`, `weather-api`)
 
 **Rules — read carefully:**
 - Always write `TD-TBD` — never a real TD number. The PM chat assigns numbers after review.

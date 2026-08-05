@@ -1496,7 +1496,7 @@ Three typed deferral comment formats are recognized. All others are invalid.
 - `functional` — should be addressed; feature is incomplete or incorrect in a meaningful way
 - `polish` — may be skipped based on judgment; improves experience but does not affect correctness
 
-**Source values for VERIFY:** name the external source (e.g. `schwab-api`, `apple-docs`, `stripe-api`)
+**Source values for VERIFY:** name the external source (e.g. `weather-api`, `apple-docs`, `stripe-api`)
 
 **The TD-TBD sentinel:** The coder always writes `TD-TBD` in deferral comments — never a
 real number. The PM chat replaces `TD-TBD` with a real `TD-NNN` when the BACKLOG entry is
