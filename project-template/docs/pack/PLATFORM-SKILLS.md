@@ -517,7 +517,7 @@ skills — see "Step 3 — Generate the prompt" above.
 
 | Skill | Description | Dimension | Loaded by |
 |---|---|---|---|
-| `x-brokerage-api` | OT broker-adapter patterns, capability masks, idempotency | Communication Protocols | reviewer, auditor-code, x-deployer |
+| `x-brokerage-api` | external-service adapter patterns, capability masks, idempotency | Communication Protocols | reviewer, auditor-code, x-deployer |
 
 *This row is illustrative. The PM chat replaces it with real entries during
 Procedure 5 (see INSTALL-PROCEDURES.md). If a project has no custom skills, the section body is
