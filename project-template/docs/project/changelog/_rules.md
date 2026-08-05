@@ -61,9 +61,9 @@ word counts; the word cap measures whichever narrative field is present.
 ## Filename mapping
 
 The per-entry filename is `YYYY-MM-DD-<slug>.md` where `<slug>` mirrors
-the heading suffix (e.g. `### 2026-04-20 — Phase 35 — Live Broker Sandbox`
+the heading suffix (e.g. `### 2026-04-20 — Phase 35 — Live Preview Sandbox`
 → `2026-04-20-phase-35.md`;
-`### 2026-03-20 — Architecture Iteration — Strategy Event Model`
+`### 2026-03-20 — Architecture Iteration — Notification Event Model`
 → `2026-03-20-architecture-iteration.md`;
 `### 2026-07-04 — Release boundary — v2.3 shipped`
 → `2026-07-04-release-boundary.md`). Entries read in
