@@ -437,7 +437,7 @@ tool-specific.
      three trinity files.
    - **Restore the project intro paragraph.** The text immediately
      after the H1 (e.g., "This repository is a macOS-only
-     algorithmic trading prototype...") is project-specific.
+     note-taking app prototype...") is project-specific.
      Replace any v10 template intro with the sidecar's intro,
      consistently across all three files.
 
