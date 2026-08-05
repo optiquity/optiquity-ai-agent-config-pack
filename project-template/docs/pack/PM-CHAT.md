@@ -1281,7 +1281,7 @@ override of a pack section.
 
 ```
 <!-- BEGIN project-owned -->
-## Trading-desk runbook
+## Deployment runbook
 
 The whole section — heading and body — is yours and lives inside the markers.
 <!-- END project-owned -->
@@ -1435,7 +1435,7 @@ unprotected).
 
 ```
 <!-- BEGIN project-owned -->
-## Trading-desk runbook
+## Deployment runbook
 
 A real project section — top-level Shape B, not an addenda subsection.
 <!-- END project-owned -->
