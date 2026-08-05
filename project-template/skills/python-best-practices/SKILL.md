@@ -40,11 +40,11 @@ class-level attribute — an `enum.Flag` (bitwise capabilities), a
 `frozenset[Operation]` over an `enum.Enum`, or a frozen
 `@dataclass(frozen=True)` of boolean fields. Validate capability
 compatibility in the composing type's `__init__` — raise early on
-incompatible pairings, not at call time. Example: a `Broker`
-`Protocol` declares `capabilities: ClassVar[BrokerCapability]` where
-`BrokerCapability` is an `enum.Flag` (`PLACE_ORDER | CANCEL_ORDER |
-STREAM_QUOTES | …`). Callers check
-`BrokerCapability.STREAM_QUOTES in broker.capabilities` before
+incompatible pairings, not at call time. Example: a `Device`
+`Protocol` declares `capabilities: ClassVar[DeviceCapability]` where
+`DeviceCapability` is an `enum.Flag` (`READ | WRITE |
+STREAM | …`). Callers check
+`DeviceCapability.STREAM in device.capabilities` before
 invoking the streaming call.
 
 16. **Interface-based form in Python.** Split behavior into small
@@ -53,13 +53,13 @@ only the protocols whose behavior it genuinely implements. Use
 `@runtime_checkable` on protocols only when a runtime check is
 required at a boundary; prefer static `isinstance` with generic bounds
 when the check is compile-time. Callers do
-`if isinstance(broker, StreamingQuoteProvider): …`. A broker that does
-not stream simply omits `stream_quotes` — it is not a
-`StreamingQuoteProvider` by structural typing. Do not emulate
+`if isinstance(device, StreamingSensorProvider): …`. A device that does
+not stream simply omits `stream_samples` — it is not a
+`StreamingSensorProvider` by structural typing. Do not emulate
 capabilities by raising `NotImplementedError` from stub implementations.
 
 17. **Where capability validation belongs.** The composing class's
-`__init__` (account ⇠ broker, router ⇠ broker, service factory)
+`__init__` (hub ⇠ device, controller ⇠ device, service factory)
 raises a domain error on incompatible pairings. `try/except
 NotImplementedError` at call sites, and `hasattr(obj, "method")`
 probing, are anti-patterns — they are not substitutes for a capability

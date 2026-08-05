@@ -47,24 +47,24 @@ Apply each on its own merits.
 frozen struct of `Bool` flags, exposed on the abstraction as a
 read-only property. Validate capability compatibility at the
 *composing* type's initializer — reject incompatible pairings at
-construction time, not at call time. Example: a `Broker` protocol
-declares `var capabilities: BrokerCapabilities { get }` where
-`BrokerCapabilities` is an `OptionSet` (`.placeOrder`, `.cancelOrder`,
-`.streamQuotes`, …). Callers check
-`broker.capabilities.contains(.streamQuotes)` before invoking the
+construction time, not at call time. Example: a `Device` protocol
+declares `var capabilities: DeviceCapabilities { get }` where
+`DeviceCapabilities` is an `OptionSet` (`.read`, `.write`,
+`.stream`, …). Callers check
+`device.capabilities.contains(.stream)` before invoking the
 streaming call.
 
 13. **Interface-based form in Swift.** Split behavior into small,
 focused protocols. A type adopts only the protocols it genuinely
 supports. Callers query with a downcast to the capability protocol
-(`if let streaming = broker as? StreamingQuoteProvider { … }`), never
+(`if let streaming = device as? StreamingSensorProvider { … }`), never
 to the concrete type. Compose protocols via protocol inheritance or
-generic constraints (`where Broker: StreamingQuoteProvider`). Do not
+generic constraints (`where Device: StreamingSensorProvider`). Do not
 emulate capabilities by throwing from stub conformances — a type that
-does not stream must not conform to `StreamingQuoteProvider` at all.
+does not stream must not conform to `StreamingSensorProvider` at all.
 
 14. **Where capability validation belongs.** Initializers of the
-composing type (account ⇠ broker, order router ⇠ broker, quote
+composing type (hub ⇠ device, controller ⇠ device, sensor
 aggregator ⇠ provider) reject incompatible pairings at construction
 time. Call sites query capabilities only for behavior that legitimately
 varies across conforming types — never as a substitute for
