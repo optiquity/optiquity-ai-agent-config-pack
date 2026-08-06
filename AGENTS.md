@@ -781,6 +781,20 @@ PACK-AGENTS.md current".
   with parts (parts are evolution-only); tasks are phase components;
   groupings contain phases only; the component hierarchy is fixed. `[roles:
   universal] [rationale: pack-entry-type-semantics]`
+- **The pack is public-bound — never leak the target project's name or its
+  domain vocabulary onto a client/public surface.** The pack ships and is read
+  publicly; the target project's name and its domain-specific vocabulary (the
+  exact token set enumerated in `no_leak.py`'s config) MUST NOT appear on any
+  client/public surface — `project-template/`, `supporting-docs/`, `.github/`,
+  the repo-root `README.md`, and the pack-root trinity. Internal dev-history
+  surfaces (`backlog/`, `changelog/`, `maintenance-docs/`, `test-fixtures/`)
+  keep their internal shorthand per the two-tier keep-list. Enforcement is
+  validate-pack Check 93 (`scripts/lib/validate_checks/no_leak.py`): leg 1 bans
+  the literal name tree-wide; leg 2 bans the vocabulary on client/public
+  surfaces. The trinity `## Pack memory` sections are THEMSELVES leg-2 surfaces,
+  so this rule and its rationale are worded abstractly — the literal tokens live
+  ONLY in the check's config, never in shipped prose.
+  `[roles: universal] [rationale: public-bound-no-leak]`
 
 ### Project goals (v11)
 

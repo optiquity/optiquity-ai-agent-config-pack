@@ -1273,3 +1273,40 @@ deliverables, not a pack self-management concept.
 grouping holding tasks) when convenient — rejected: the hierarchy is what makes
 entries machine-interpretable and cross-referenceable, so a convenience
 exception breaks the tooling that assumes the fixed shape.
+
+---
+
+## public-bound-no-leak
+
+**Why.** The pack is going public, so its client/public surfaces —
+`project-template/`, `supporting-docs/`, `.github/`, the repo-root `README.md`,
+and the pack-root trinity — must never carry the target project's product name
+or its domain-specific vocabulary. A single re-introduced token would leak the
+sponsoring application into a shipped or published artifact. The one-time scrub
+removed every such token from those surfaces; this rule is the standing
+discipline that keeps them clean, and validate-pack Check 93
+(`scripts/lib/validate_checks/no_leak.py`) is its enforcement backstop — leg 1
+bans the literal product name in ANY git-tracked file (tree-wide), leg 2 bans
+the domain vocabulary on the client/public subset. Internal dev-history surfaces
+(`backlog/`, `changelog/`, `maintenance-docs/`, `test-fixtures/`) are out of
+leg-2 scope: they keep their internal shorthand and fixture-name keeps per the
+two-tier keep-list until the separate scrubbed public copy is produced.
+
+**How to apply.** Before adding text to any client/public surface, keep the
+target project's name and its domain-specific vocabulary out of it entirely;
+refer to them only abstractly ("the target project", "the domain vocabulary").
+The literal token set is authored ONCE — in the Check 93 module's config —
+and lives NOWHERE else in shipped prose. This rule and its corpus
+imperative are THEMSELVES worded abstractly, because the trinity `## Pack memory`
+sections are leg-2 surfaces (and every tracked file is a leg-1 surface): writing
+a literal token here to "illustrate" the rule would itself be the leak the rule
+forbids. If Check 93 flags a surface, remove the offending token — never widen
+the check's allowlist to admit it (the leg-1 allowlist is empty; the leg-2
+allowlist is sized to exactly one legitimate row-name keep).
+
+**Rejected alternative.** Enumerate the banned token set inline in the rule text
+so actors can see exactly what to avoid — rejected: the rule text ships on
+leg-2-scanned public surfaces, so listing the literals would re-introduce the
+very leak Check 93 exists to prevent, making the corpus its own counter-example.
+The single source of truth for the token set is the check's config; the prose
+points at it abstractly.
