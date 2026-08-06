@@ -17,14 +17,27 @@
 #             CHANGELOG}.md monolithic INPUT files
 #     2.1 --apply produces per-entry trees under
 #         docs/project/{backlog,implementation-plan,changelog}/
-#     2.2 --apply produces NO regenerated monolithic mirror at
+#     2.2 --apply leaves NO monolithic file at
 #         docs/project/{BACKLOG.md,IMPLEMENTATION-PLAN.md,CHANGELOG.md}
-#         (BD-206 no-mirror model — the v10 monolith was read as INPUT
-#         and is NOT re-emitted; only the per-entry tree + _toc.md remain)
+#         (BD-206 no-mirror model + Option-A deletion — the v10 monolith
+#         is read as INPUT, decomposed, then DELETED after the per-entry
+#         tree is verified written; only the per-entry tree + _toc.md
+#         remain)
 #     2.3 --apply emits the BD-206 no-mirror post-report advisory
 #         paragraph (same assertions as 1.2)
 #     2.4 --apply Gate 2 PASSES
 #     2.5 --apply HEAD unchanged before/after (migrator does NOT commit)
+#
+#   Group 3 — fail-safe: the source monolith is deleted ONLY after a
+#             successful decompose; a FAILED/partial decompose leaves it
+#             intact. Driven at the sub-op level by sourcing the migrator
+#             adapter's decompose.sh with STUBBED per-entry helpers so the
+#             decompose / TOC-regenerate outcome is deterministic:
+#     3.1 decompose failure → sub-op fail_stages; monolith INTACT
+#     3.2 decompose OK but TOC-regenerate failure → fail_stage; INTACT
+#     3.3 decompose+TOC "OK" but no _toc.md written (belt-and-suspenders
+#         guard) → fail_stage; monolith INTACT
+#     3.4 decompose+TOC OK and _toc.md present → monolith DELETED
 #
 # Build-your-own fixture: the in-tree v10-realistic-ot build artifact
 # (under test-fixtures/) does not have docs/project/*.md files (per
@@ -263,13 +276,12 @@ assert_eq "2.0b --apply rc=0 (no-mirror model; no flag)" "0" "$rc"
     && t_pass "2.1f per-entry changelog 2026-04-15-phase-1-milestone.md exists" \
     || t_fail "2.1f per-entry changelog 2026-04-15-phase-1-milestone.md missing"
 
-# 2.2 — NO regenerated monolithic mirror (BD-206 no-mirror model). The
-# per-entry tree + generated _toc.md is the sole source of truth +
-# readable form; the decompose sub-op regenerates only the _toc.md index
-# and never re-emits a mirror. The v10 monolith INPUT files persist on
-# disk untouched (the migrator reads them as decompose input and does not
-# remove them) — but they are NOT regenerated, so they still carry the
-# raw v10 input content rather than a tool-regenerated mirror.
+# 2.2 — NO monolithic file at docs/project/ post-migration (BD-206
+# no-mirror model + Option-A deletion). The per-entry tree + generated
+# _toc.md is the sole source of truth + readable form; the decompose
+# sub-op regenerates only the _toc.md index (never a mirror) and DELETES
+# the v10 monolith INPUT after the per-entry tree is verified written, so
+# no stale orphan monolith survives that the docs say no longer exists.
 [[ -f "$T/docs/project/backlog/_toc.md" ]] \
     && t_pass "2.2a backlog/_toc.md regenerated (no-mirror readable form)" \
     || t_fail "2.2a backlog/_toc.md missing"
@@ -279,15 +291,28 @@ assert_eq "2.0b --apply rc=0 (no-mirror model; no flag)" "0" "$rc"
 [[ -f "$T/docs/project/changelog/_toc.md" ]] \
     && t_pass "2.2c changelog/_toc.md regenerated (no-mirror readable form)" \
     || t_fail "2.2c changelog/_toc.md missing"
-# 2.2d — the v10 monolith INPUT was NOT regenerated as a mirror: it still
-# carries the raw fixture-authored v10 content (proving the decompose
-# sub-op did not re-emit a regenerated mirror over it).
-if [[ -f "$T/docs/project/BACKLOG.md" ]] \
-    && grep -q "Sample first project entry" "$T/docs/project/BACKLOG.md"; then
-    t_pass "2.2d v10 BACKLOG.md input UNTOUCHED (no regenerated mirror written over it)"
+# 2.2d — the v10 monolith INPUT files are DELETED after a successful
+# decompose (Option A). All three project-side streams' monoliths must be
+# gone; the per-entry tree + _toc.md is now the sole source of truth.
+del_ok=1
+for _mono in BACKLOG.md IMPLEMENTATION-PLAN.md CHANGELOG.md; do
+    [[ -e "$T/docs/project/$_mono" ]] && del_ok=0
+done
+if [[ "$del_ok" -eq 1 ]]; then
+    t_pass "2.2d v10 monoliths (BACKLOG/IMPLEMENTATION-PLAN/CHANGELOG.md) DELETED after successful decompose"
 else
-    t_fail "2.2d v10 BACKLOG.md input not in expected untouched state"
+    still=$(ls "$T/docs/project/"*.md 2>/dev/null | tr '\n' ' ')
+    t_fail "2.2d v10 monolith(s) NOT deleted after decompose" "still present: $still"
 fi
+# 2.2e — no stray monolith left inside a stream subdir either.
+stray_ok=1
+for _spec in "BACKLOG.md|backlog" "IMPLEMENTATION-PLAN.md|implementation-plan" "CHANGELOG.md|changelog"; do
+    _m="${_spec%%|*}"; _d="${_spec##*|}"
+    [[ -e "$T/docs/project/$_d/$_m" ]] && stray_ok=0
+done
+[[ "$stray_ok" -eq 1 ]] \
+    && t_pass "2.2e no stray monolith inside any stream subdir" \
+    || t_fail "2.2e stray monolith found inside a stream subdir"
 
 # 2.3 — post-report advisory paragraph has the BD-206 no-mirror wording.
 assert_contains "2.3a --apply advisory says 'sole source of truth'" \
@@ -308,6 +333,119 @@ assert_eq "2.5 HEAD unchanged after --apply (migrator never commits)" \
     "$HEAD_BEFORE" "$HEAD_AFTER"
 
 rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 3: fail-safe — delete ONLY after a successful decompose
+# ─────────────────────────────────────────────────────────────────────────
+#
+# The Option-A deletion MUST be fail-safe: the v10 source monolith is
+# removed only after its per-entry decomposition is verified written; a
+# failed / partial decompose leaves it intact (never destroy client data
+# with no per-entry backing).
+#
+# We drive the migrator adapter's 6th sub-op
+# (`_v10_to_v11_decompose_streams`, defined in
+# scripts/lib/migrate-v10-to-v11/decompose.sh) directly, with STUBBED
+# per-entry helpers so the decompose / TOC-regenerate outcome is
+# deterministic. Pre-defining `pe_die` / `per_entry_decompose` /
+# `per_entry_regenerate_toc` before sourcing the adapter satisfies the
+# adapter's `type`-guarded source lines, so the real BD-164 helpers are
+# NOT loaded and our stubs govern the outcome. `fail_stage` is stubbed to
+# exit non-zero (matching the real fail_stage's abort semantics), so a
+# failing sub-op is caught by running it in a subshell.
+
+printf "\n=== Group 3: fail-safe (delete only after successful decompose) ===\n"
+
+# ── Stubs (defined BEFORE sourcing the adapter) ──
+pe_die() { printf 'per-entry: ERROR: %s\n' "$*" >&2; exit 1; }
+# $1=key $2=mono_path $3=stream_dir. Returns the scenario-selected rc.
+per_entry_decompose() { return "${STUB_DECOMPOSE_RC:-0}"; }
+# $1=key $2=stream_dir. Optionally writes _toc.md, then returns the rc.
+per_entry_regenerate_toc() {
+    if [[ "${STUB_TOC_WRITE:-1}" == "1" ]]; then : > "$2/_toc.md"; fi
+    return "${STUB_TOC_RC:-0}"
+}
+# Minimal adapter-context stand-ins.
+say()  { printf '%s\n' "$*"; }
+info() { printf '%s\n' "$*"; }
+# Real fail_stage exits with a stage-derived non-zero code; the test only
+# needs a non-zero exit to prove the sub-op aborted before deleting.
+fail_stage() { printf 'error: stage %s failed: %s\n' "$1" "$2" >&2; exit 90; }
+
+# Source the adapter — its `type`-guarded source lines now find our stubs
+# and skip the real helpers; it defines `_v10_to_v11_decompose_streams`.
+# shellcheck disable=SC1091
+. "$REPO_ROOT/scripts/lib/migrate-v10-to-v11/decompose.sh"
+if ! type _v10_to_v11_decompose_streams >/dev/null 2>&1; then
+    t_fail "3.0 adapter sourced; _v10_to_v11_decompose_streams defined" \
+        "function not defined after sourcing decompose.sh"
+else
+    t_pass "3.0 adapter sourced; _v10_to_v11_decompose_streams defined"
+fi
+
+# Minimal scratch target: 3 monoliths + 3 stream dirs (no git needed —
+# the sub-op only reads _MIGRATOR_TARGET + the filesystem).
+make_streams_scratch() {
+    local d
+    d=$(mktemp -d "${TMPDIR:-/tmp}/migrate10-bd205-failsafe.XXXXXX")
+    mkdir -p "$d/docs/project/backlog" \
+             "$d/docs/project/implementation-plan" \
+             "$d/docs/project/changelog"
+    printf 'monolith backlog\n'   > "$d/docs/project/BACKLOG.md"
+    printf 'monolith plan\n'      > "$d/docs/project/IMPLEMENTATION-PLAN.md"
+    printf 'monolith changelog\n' > "$d/docs/project/CHANGELOG.md"
+    printf '%s\n' "$d"
+}
+
+# Assert all three monoliths still present (fail-safe: not deleted).
+assert_all_monoliths_present() {
+    local d="$1" label="$2" ok=1 m
+    for m in BACKLOG.md IMPLEMENTATION-PLAN.md CHANGELOG.md; do
+        [[ -e "$d/docs/project/$m" ]] || ok=0
+    done
+    [[ "$ok" -eq 1 ]] && t_pass "$label" || t_fail "$label" "a monolith was deleted"
+}
+
+# 3.1 — decompose FAILS → fail_stage → monolith INTACT.
+T3=$(make_streams_scratch)
+_MIGRATOR_TARGET="$T3"; STUB_DECOMPOSE_RC=1; STUB_TOC_RC=0; STUB_TOC_WRITE=1
+( _v10_to_v11_decompose_streams ) >/dev/null 2>&1; rc=$?
+assert_eq "3.1a decompose failure aborts sub-op (rc != 0)" "1" "$([[ "$rc" -ne 0 ]] && echo 1 || echo 0)"
+assert_all_monoliths_present "$T3" "3.1b decompose failure leaves all monoliths INTACT"
+rm -rf "$T3"
+
+# 3.2 — decompose OK but TOC-regenerate FAILS → fail_stage → INTACT.
+T3=$(make_streams_scratch)
+_MIGRATOR_TARGET="$T3"; STUB_DECOMPOSE_RC=0; STUB_TOC_RC=1; STUB_TOC_WRITE=1
+( _v10_to_v11_decompose_streams ) >/dev/null 2>&1; rc=$?
+assert_eq "3.2a TOC-regenerate failure aborts sub-op (rc != 0)" "1" "$([[ "$rc" -ne 0 ]] && echo 1 || echo 0)"
+assert_all_monoliths_present "$T3" "3.2b TOC-regenerate failure leaves all monoliths INTACT"
+rm -rf "$T3"
+
+# 3.3 — decompose+TOC "OK" but NO _toc.md written (belt-and-suspenders
+# guard) → fail_stage → INTACT. Proves the sub-op refuses to delete when
+# the readable-form index is absent, even if both helpers reported success.
+T3=$(make_streams_scratch)
+_MIGRATOR_TARGET="$T3"; STUB_DECOMPOSE_RC=0; STUB_TOC_RC=0; STUB_TOC_WRITE=0
+( _v10_to_v11_decompose_streams ) >/dev/null 2>&1; rc=$?
+assert_eq "3.3a absent _toc.md aborts sub-op (rc != 0)" "1" "$([[ "$rc" -ne 0 ]] && echo 1 || echo 0)"
+assert_all_monoliths_present "$T3" "3.3b absent _toc.md leaves all monoliths INTACT (guard fires)"
+rm -rf "$T3"
+
+# 3.4 — decompose+TOC OK and _toc.md present → monolith DELETED.
+T3=$(make_streams_scratch)
+_MIGRATOR_TARGET="$T3"; STUB_DECOMPOSE_RC=0; STUB_TOC_RC=0; STUB_TOC_WRITE=1
+( _v10_to_v11_decompose_streams ) >/dev/null 2>&1; rc=$?
+assert_eq "3.4a successful decompose sub-op rc=0" "0" "$rc"
+del_ok=1
+for _m in BACKLOG.md IMPLEMENTATION-PLAN.md CHANGELOG.md; do
+    [[ -e "$T3/docs/project/$_m" ]] && del_ok=0
+done
+[[ "$del_ok" -eq 1 ]] \
+    && t_pass "3.4b successful decompose DELETES all three monoliths" \
+    || t_fail "3.4b successful decompose did NOT delete all monoliths" \
+        "still: $(ls "$T3/docs/project/"*.md 2>/dev/null | tr '\n' ' ')"
+rm -rf "$T3"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Summary

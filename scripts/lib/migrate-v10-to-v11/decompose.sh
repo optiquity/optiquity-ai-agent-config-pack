@@ -2,9 +2,10 @@
 # of the v10→v11 migrator's `migrator_post_dispatch_hook`. Decomposes the
 # just-installed v11-shape monolithic BACKLOG.md / CHANGELOG.md /
 # IMPLEMENTATION-PLAN.md files into per-entry trees + regenerated TOCs
-# under `docs/project/<stream>/`. The per-entry tree + generated `_toc.md`
-# is the sole source of truth + readable form; NO monolithic mirror is
-# regenerated (BD-206 no-mirror model).
+# under `docs/project/<stream>/`, then DELETES each v10 source monolith
+# after its decomposition is verified written. The per-entry tree +
+# generated `_toc.md` is the sole source of truth + readable form; NO
+# monolithic mirror is regenerated (BD-206 no-mirror model).
 #
 # Sourced by `scripts/migrate-v10-to-v11.sh` only. Not part of the
 # BD-119 framework — adapter-scope, like `apply.sh` / `dry-run.sh` /
@@ -35,12 +36,13 @@
 #       Adapter-private 6th sub-op. Iterates the three project-side
 #       streams (backlog, implementation-plan, changelog), decomposes
 #       each just-installed v11-shape monolithic file into a per-entry
-#       tree under `docs/project/<stream>/`, then regenerates the
-#       `_toc.md` from the resulting tree. NO monolithic mirror is
-#       regenerated (BD-206 no-mirror model). Idempotent: re-running
-#       on an already-decomposed tree is a no-op (the decompose step
-#       writes byte-identical per-entry files; the TOC regen is
-#       deterministic).
+#       tree under `docs/project/<stream>/`, regenerates the `_toc.md`
+#       from the resulting tree, then DELETES the source monolith once
+#       the per-entry tree is verified written (fail-safe: only after a
+#       successful decompose + a present `_toc.md`). NO monolithic mirror
+#       is regenerated (BD-206 no-mirror model). Idempotent: on a re-run
+#       the source monolith is already gone, so the stream is skipped
+#       (a no-op).
 #
 # Implementation contract:
 #   - Sources `scripts/lib/per-entry/_lib.sh` + `decompose.sh` +
@@ -50,8 +52,9 @@
 #   - Skips streams whose monolithic input is absent (a v10 client
 #     may have only a `BACKLOG.md` and never a `CHANGELOG.md`; a
 #     greenfield v10 may have neither — both are valid pre-states).
-#   - Reads each v10 monolith as DECOMPOSE INPUT only; it is not
-#     regenerated as a mirror afterwards (BD-206 no-mirror model).
+#   - Reads each v10 monolith as DECOMPOSE INPUT, then DELETES it after
+#     the per-entry tree + `_toc.md` are verified written (fail-safe).
+#     It is never regenerated as a mirror (BD-206 no-mirror model).
 #   - Emits `say` / `info` lines matching the prevailing adapter style
 #     (see `_v10_to_v11_install_v11_artifacts` for the pattern).
 #   - On any helper failure, calls `fail_stage S5` (the post-dispatch
@@ -166,7 +169,37 @@ _v10_to_v11_decompose_streams() {
             fail_stage S5 "S5d-decompose: per_entry_regenerate_toc failed for $stream_key (dir=$stream_dir_rel)"
         fi
 
-        info "$stream_key: decomposed $mirror_rel → $stream_dir_rel/ + regenerated TOC"
+        # ── Delete the v10 source monolith (fail-safe) ──
+        # Under the BD-206 no-mirror model the per-entry tree + generated
+        # `_toc.md` is the sole source of truth + readable form; the v10
+        # monolith was consumed as decompose INPUT and is now retired.
+        # Delete it so no stale orphan monolith survives that the docs +
+        # runtime advisory say no longer exists (MIGRATION-v10-to-v11.md
+        # "Monolithic files are deleted"; the `fail-loud-delete-old-source`
+        # rule — delete the old source so dangling refs break loudly).
+        # Mirrors build.sh's `rm -f` after a successful decompose
+        # (test-fixtures/build.sh, BD-206 decompose block).
+        #
+        # FAIL-SAFE: delete ONLY after the per-entry decomposition is
+        # VERIFIED written. The real BD-164 helpers abort DIRECTLY via
+        # `pe_die` (`exit 1`) on any internal error, so a failing
+        # `per_entry_decompose` / `per_entry_regenerate_toc` never returns
+        # to this loop at all; the `if ! …; then fail_stage S5` wrappers
+        # above are a defensive backstop for a non-`pe_die` failure path
+        # (a helper that RETURNS non-zero instead of exiting — e.g. the
+        # stubbed/alternate helpers the fail-safe test drives). Either
+        # way, reaching here already proves each sub-op returned 0. As a
+        # belt-and-suspenders guard the regenerated `_toc.md` readable-
+        # form index MUST also be present. If it is absent the tree is
+        # unverified/partial — refuse to delete so client data is never
+        # destroyed with no per-entry backing (a failed/partial decompose
+        # leaves the source monolith intact).
+        if [[ ! -f "$stream_dir/_toc.md" ]]; then
+            fail_stage S5 "S5d-decompose: refusing to delete $mirror_rel — regenerated _toc.md absent at $stream_dir_rel/ (unverified decompose; source monolith preserved)"
+        fi
+        rm -f "$mirror_path"
+
+        info "$stream_key: decomposed $mirror_rel → $stream_dir_rel/ + regenerated TOC; deleted source monolith $mirror_rel"
         decomposed_count=$((decomposed_count + 1))
     done
 

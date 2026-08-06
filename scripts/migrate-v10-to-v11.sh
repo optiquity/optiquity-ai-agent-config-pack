@@ -160,8 +160,11 @@ migrator_post_dispatch_hook() {
     # BD-165 (per-entry split, mandatory v11.0): 6th sub-op decomposes
     # the just-installed v11-shape monolithic project-side files
     # (BACKLOG.md / IMPLEMENTATION-PLAN.md / CHANGELOG.md) into the
-    # per-entry trees under docs/project/<stream>/ + regenerated
-    # mirrors + regenerated TOCs.
+    # per-entry trees under docs/project/<stream>/ + regenerated TOCs,
+    # then DELETES each source monolith after its decomposition is
+    # verified written (BD-206 no-mirror model — the per-entry tree +
+    # `_toc.md` is the sole source of truth + readable form; no mirror
+    # is regenerated).
     #
     # Sequencing constraint per
     # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §3.1 / §9.6: this
@@ -965,8 +968,10 @@ migrator_post_report_hook() {
     say "generated _toc.md is the index. The v10 monolithic"
     say "  docs/project/BACKLOG.md, docs/project/IMPLEMENTATION-PLAN.md,"
     say "  docs/project/CHANGELOG.md"
-    say "files were read as decomposition INPUT and are NOT regenerated as"
-    say "mirrors — there is no monolithic mirror under the v11 model."
+    say "files were read as decomposition INPUT and then DELETED after each"
+    say "stream's per-entry tree was verified written."
+    say "There is no monolithic mirror under the v11 model — the per-entry"
+    say "tree + generated _toc.md is the sole readable form."
     say ""
     say "This decomposition is non-reversible by design. To revert to the v10"
     say "monolithic-as-source shape, restore from the backup directory at"
