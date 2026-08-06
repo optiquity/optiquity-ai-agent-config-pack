@@ -5,12 +5,22 @@
 # This file is OPTIONAL. Without it, the project runs in flat-file
 # mode (BACKLOG.md / STATUS.md / CHANGELOG.md as source-of-truth).
 #
-# To enable tracker mode for this project:
+# PARKED — tracker mode is currently DEFERRED and not yet available in
+# this pack version: tracker_mode() is clamped to "flat-file", so even
+# a live `tracker.toml` with `mode.state = "tracker"` and
+# `forward_complete = true` resolves to "flat-file". The recipe below
+# is retained for when tracker mode becomes available; it does NOT
+# enable tracker mode today.
+#
+# To enable tracker mode for this project — ONLY ONCE TRACKER MODE
+# BECOMES AVAILABLE (today every step below is inert):
 #   1. Copy this file to `docs/pack/tracker.toml`.
 #   2. Edit `mode.state = "tracker"`.
 #   3. Run the forward migration script.
-#   4. The migration will set `migration.forward_complete = true`,
-#      after which `tracker_mode()` resolves to "tracker".
+#   4. The migration would set `migration.forward_complete = true`,
+#      after which `tracker_mode()` would resolve to "tracker" — but
+#      while tracker mode is deferred this has NO effect; tracker_mode()
+#      stays "flat-file" regardless.
 #
 # Pack-side and client-side modes are independent.
 #
