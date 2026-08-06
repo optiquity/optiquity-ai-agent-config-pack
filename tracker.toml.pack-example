@@ -15,13 +15,24 @@
 # tree-rebuild` + the normal commit gates; single-writer caveat in
 # /backlog/_rules.md § "Source of truth".
 #
-# To enable tracker mode for the pack repo (locally):
+# PARKED — tracker mode is currently DEFERRED (the BD-214 deferral
+# clamp): tracker_mode() is clamped to "flat-file" indefinitely, so
+# even a live `tracker.toml` with `mode.state = "tracker"` and
+# `forward_complete = true` resolves to "flat-file" (the tracker flip
+# is blocked). The recipe below is retained for when the deferral is
+# lifted; it does NOT enable tracker mode today.
+#
+# To enable tracker mode for the pack repo (locally) — ONLY ONCE THE
+# BD-214 DEFERRAL IS LIFTED (today every step below is inert under the
+# clamp):
 #   1. Copy this file to `tracker.toml` in the pack root (your
 #      checkout only — the copy is gitignored, never committed).
 #   2. Edit `mode.state = "tracker"`.
 #   3. Run the forward migration script (see ARCHITECTURE.md §6).
-#   4. The migration will set `migration.forward_complete = true`,
-#      after which `tracker_mode()` resolves to "tracker".
+#   4. The migration would set `migration.forward_complete = true`,
+#      after which `tracker_mode()` would resolve to "tracker" — but
+#      under the current deferral clamp this has NO effect;
+#      tracker_mode() stays "flat-file" regardless.
 #
 # Read by scripts/lib/tracker-config.sh; spec: ARCHITECTURE.md §3.1.
 
