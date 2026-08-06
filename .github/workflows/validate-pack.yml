@@ -32,7 +32,7 @@
 #   - Gate item 5 (`test-fixtures/build.sh --verify`) -> `fixture
 #     manifest verify` step.
 # Gate items 1 (per-version migrator framework adoption) and 2 (BD-114
-# real-OT dry-run) are pre-tag manual checks - intentionally NOT in CI
+# real-target-app dry-run) are pre-tag manual checks - intentionally NOT in CI
 # (item 2 touches a network-hosted real repo). See
 # `maintenance-docs/v11-implementation/RELEASE-GATE.md`.
 #
