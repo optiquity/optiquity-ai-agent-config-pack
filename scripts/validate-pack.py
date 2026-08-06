@@ -541,6 +541,16 @@ from validate_checks.trinity_markers import *  # noqa: E402,F403  (BD-136 Check 
 # copy.
 from validate_checks.mktemp_portability import *  # noqa: E402,F403  (BD-276 Check 92; single SSOT)
 
+# BD-205: Check 93 (check_no_target_app_leak) lives in its own module
+# (validate_checks.no_leak) per the FIRM own-module-per-new-check convention — its
+# candidate surface (every git-tracked file for leg 1 / the client-surface subset
+# for leg 2) + its module-private `_git_ls_files()` / `_is_client_surface()` /
+# `_mask_leg2_allowlist()` helpers share no symbol with any cluster. Placed ABOVE
+# _build_check_registry() so the registry's bare `check_no_target_app_leak`
+# reference resolves at assembly. Single SSOT — the two-leg guard body lives only in
+# no_leak.py; the facade carries no forked copy.
+from validate_checks.no_leak import *  # noqa: E402,F403  (BD-205 Check 93; single SSOT)
+
 # PER_ENTRY_LIB moved to validate_checks.per_entry_sync (BD-256 W7 — Cluster F
 # intra-cluster; sole source-consumer is Check 33's TOC-regenerator invocation)
 # — re-imported via the facade's `from validate_checks.per_entry_sync import *`
@@ -1396,6 +1406,25 @@ def _build_check_registry():
         # convention. Number 92 is the next free integer (highest wired was 91).
         (92, "check_mktemp_t_portability",
               check_mktemp_t_portability, W),
+        # Check 93 — public-launch no-leak GUARD (BD-205): the enforcement backstop
+        # that makes the Wave-A/B public-launch scrub un-regressable. Two legs.
+        # LEG 1 (tree-wide): FAILs if the target app's literal product name appears
+        # in ANY git-tracked file's content — candidate set `git ls-files`, bytes
+        # read with Python (NOT `git grep -I`: dashboard.html carries a `.gitattributes`
+        # `-diff` marker (BD-224) making git treat it as binary + skip it — the F2 blind
+        # spot; NOR `git grep -E`,
+        # which drops `\bOT\b` on this platform); leg-1 allowlist EMPTY (grep-zero).
+        # LEG 2 (client/public surfaces only — project-template/ + supporting-docs/ +
+        # .github/ + repo-root README + pack-root trinity): FAILs on domain-vocab /
+        # hyphenated-OT / word-boundary bare-`OT`, EXCEPT the ONE allowlisted
+        # `x-brokerage-api` row-name keep (OI-S7). Internal surfaces (backlog/
+        # changelog/ maintenance-docs/ test-fixtures/) are NOT scanned by leg 2. Lives
+        # in its own module (validate_checks.no_leak) per the FIRM
+        # own-module-per-new-check convention. git-TRACKED enumeration, one read per
+        # file (non-client-no-literal files skip the line-split), SKIP-lenient off a
+        # work tree. Number 93 is the next free integer (highest wired was 92).
+        (93, "check_no_target_app_leak",
+              check_no_target_app_leak, W),
     ]
 
 

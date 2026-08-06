@@ -34,7 +34,7 @@
 # the REAL tree is NEVER mutated.
 #
 # Coverage:
-#   Group 0: Module import + Check 92 symbol registration + count invariant (89)
+#   Group 0: Module import + Check 92 symbol registration + DYNAMIC count invariant
 #   Group 1: Real-state-at-HEAD PASS (the real tree has zero real invocations)
 #   Group 2: Synthetic PASS/BITE/SPARE against /tmp git repos (monkeypatch REPO_ROOT):
 #            - T1 PASS  : only a PORTABLE mktemp .sh → 0 failures + clean message
@@ -87,18 +87,22 @@ mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 if not hasattr(mod, 'check_mktemp_t_portability'):
     print('FAIL_MISSING check_mktemp_t_portability'); sys.exit(1)
+# Check 92 must be registered AND the expected-count constant must equal the
+# computed registry length (Check 59's DYNAMIC invariant — proves the Check-92
+# add + the count bump landed together). NO hardcoded count literal here: the
+# endorsed per-check-test pattern (see test-validate-pack-check-89.sh), because a
+# hardcoded literal re-breaks on the NEXT check add (it did — the BD-205 Check-93
+# add tripped the former hardcoded `!= 89`).
 nums = [t[0] for t in mod._build_check_registry()]
 if 92 not in nums:
     print('FAIL_NOT_REGISTERED'); sys.exit(1)
 if len(mod._build_check_registry()) != mod.CHECK_REGISTRY_EXPECTED_COUNT:
     print('FAIL_COUNT_MISMATCH'); sys.exit(1)
-if mod.CHECK_REGISTRY_EXPECTED_COUNT != 89:
-    print('FAIL_COUNT_NOT_89'); sys.exit(1)
 print('OK')
 " > /tmp/vp-check92-import.out 2>&1
 
 if grep -q "^OK$" /tmp/vp-check92-import.out; then
-    t_pass "validate-pack.py imports + Check 92 registered + count invariant holds (89)"
+    t_pass "validate-pack.py imports + Check 92 registered + DYNAMIC count invariant holds"
 else
     t_fail "validate-pack.py import / Check 92 registration / count invariant failed" \
         "$(cat /tmp/vp-check92-import.out)"

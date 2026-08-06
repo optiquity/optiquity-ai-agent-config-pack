@@ -38,20 +38,23 @@ and the render fn that also uses them is test-coupled to Check 80 — keeping th
 marker pair single-module avoids a NEW cross-module seam.
 
 By-name constant resolution (the W8 design hazard, DESIGN HOLD-2):
-`check_doc_constant_twin_bijection` resolves its 4 ENROLLED constants
+`check_doc_constant_twin_bijection` resolves its 5 ENROLLED constants
 (`_PACK_CHAT_ONLY_PERMITTED_PATHS`, `_TRACKER_BACKENDS`,
-`_CHECK_54_REQUIRED_TOKENS`, `_CHECK_56_CANONICAL_VERBS`) BY STRING NAME via
-`module_ns = globals()` then `module_ns[symbol_name]`. Those 4 (+ the secondary
+`_CHECK_54_REQUIRED_TOKENS`, `_CHECK_56_CANONICAL_VERBS`,
+`CHECK_REGISTRY_EXPECTED_COUNT`) BY STRING NAME via
+`module_ns = globals()` then `module_ns[symbol_name]`. Those 5 (+ the secondary
 `_PACK_CHAT_ONLY_PERMITTED_PREFIXES` the A1 union builder reads) live in `core`
-(W1-promoted seams). For the by-name resolution to find them after the move,
-this module imports ALL 5 `from .core` so they appear in THIS module's
+(the 4 W1-promoted twin seams + the spine `CHECK_REGISTRY_EXPECTED_COUNT`, the
+OI-C README check-inventory twin). For the by-name resolution to find them after
+the move, this module imports ALL 6 `from .core` so they appear in THIS module's
 `globals()` — `module_ns[symbol_name]` then resolves, never KeyError. (The
 KeyError guard in Check 80 covers a genuinely-deleted secondary constant, the
 BITE-4 graceful-fail case.)
 
 Spine + seams: the spine symbols (`REPO_ROOT`, `fail`, `ok`, `warn`,
-`failures`) and the W1 core seams (`_session_state_load` for Check 81's
-active-BD trigger, plus the 4 enrolled twin constants +
+`failures`, `CHECK_REGISTRY_EXPECTED_COUNT` — the count the OI-C README twin
+binds) and the W1 core seams (`_session_state_load` for Check 81's active-BD
+trigger, plus the 4 W1-promoted enrolled twin constants +
 `_PACK_CHAT_ONLY_PERMITTED_PATHS`/`_PREFIXES`) are imported `from .core` — the
 single SSOT for the spine + W1 seams. (`failures` is imported for the V3
 failures-identity invariant — `core.failures is cross_bd.failures` — matching
@@ -69,6 +72,7 @@ from .core import (
     ok,
     warn,
     failures,
+    CHECK_REGISTRY_EXPECTED_COUNT,
     _session_state_load,
     _PACK_CHAT_ONLY_PERMITTED_PATHS,
     _PACK_CHAT_ONLY_PERMITTED_PREFIXES,
@@ -261,12 +265,31 @@ _DOC_CONSTANT_TWINS = (
         "_CHECK_56_CANONICAL_VERBS",
         "recorded",
     ),
+    # README CHECK-INVENTORY (BIJECTION) — the README check-count prose ↔
+    # CHECK_REGISTRY_EXPECTED_COUNT (OI-C, BD-205). The "<N> invoked checks" +
+    # "<N> registry entries total" assertions at README.md:83 (version table) and
+    # :205 (scripts/ layout) must all state the registry entry count (both phrases
+    # equal len(registry) == the constant). This twin was NOT enrolled before C14,
+    # which is exactly why the pre-C14 88-vs-89 count drift went undetected;
+    # enrolling it makes that drift un-regressable. The doc set is the extracted
+    # count number(s); the const set is the {str(constant)} singleton. (The sibling
+    # "<N> numbered" / range-end numbers are DIFFERENT quantities — distinct-
+    # numbered count / highest number — with no backing constant, so they are
+    # intentionally NOT extracted; binding them would break the bijection.)
+    (
+        "README check-inventory count",
+        ("README.md",),
+        'the "<N> invoked checks" / "<N> registry entries total" assertions '
+        "(README.md version table + scripts/ layout)",
+        "CHECK_REGISTRY_EXPECTED_COUNT",
+        "bijection",
+    ),
 )
 
 # The count-gate (the CHECK_REGISTRY_EXPECTED_COUNT idiom). Check 80's
 # completeness leg asserts len(_DOC_CONSTANT_TWINS) == this. Adding/removing a
 # twin row is a deliberate, count-gated, reviewable edit.
-_DOC_CONSTANT_TWINS_EXPECTED_COUNT = 4
+_DOC_CONSTANT_TWINS_EXPECTED_COUNT = 5
 
 
 def _doc_constant_twin_doc_set(label, doc_paths, region, symbol_name):
@@ -328,6 +351,31 @@ def _doc_constant_twin_doc_set(label, doc_paths, region, symbol_name):
                 f"{[sorted(s) for s in sets_per_file]}"
             )
         return set(sets_per_file[0])
+    if symbol_name == "CHECK_REGISTRY_EXPECTED_COUNT":
+        # README check-inventory prose (OI-C, BD-205): every "<N> invoked checks"
+        # and "<N> registry entries total" assertion states the registry entry
+        # count. Both phrases equal len(registry) == the constant, so the doc-set
+        # is the SET of those numbers (a consistent doc collapses to one element).
+        # A partial drift (one phrase updated, the other stale) yields a 2-element
+        # set != the {constant} singleton → a clean, named bijection FAIL.
+        count_re = re.compile(
+            r"(\d+)\s+invoked checks|(\d+)\s+registry entries total"
+        )
+        found = set()
+        for rel in doc_paths:
+            doc_path = REPO_ROOT / rel
+            text = doc_path.read_text()
+            for g_invoked, g_registry in count_re.findall(text):
+                if g_invoked:
+                    found.add(g_invoked)
+                if g_registry:
+                    found.add(g_registry)
+        if not found:
+            raise ValueError(
+                f"{list(doc_paths)} carry no '<N> invoked checks' / "
+                f"'<N> registry entries total' count assertion"
+            )
+        return found
     raise ValueError(
         f"no bijection doc-set extractor for twin '{label}' "
         f"(symbol {symbol_name})"
@@ -347,6 +395,12 @@ def _doc_constant_twin_const_set(module_ns, symbol_name):
         return set(module_ns["_PACK_CHAT_ONLY_PERMITTED_PATHS"]) | set(
             module_ns["_PACK_CHAT_ONLY_PERMITTED_PREFIXES"]
         )
+    if symbol_name == "CHECK_REGISTRY_EXPECTED_COUNT":
+        # SCALAR constant (an int) → the singleton set of its string form, to
+        # compare against the README doc-set of number STRINGS. `set(<int>)` would
+        # TypeError (int is not iterable), so this branch is required — the generic
+        # `set(module_ns[symbol_name])` fall-through below only handles iterables.
+        return {str(module_ns[symbol_name])}
     return set(module_ns[symbol_name])
 
 

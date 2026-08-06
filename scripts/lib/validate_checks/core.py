@@ -201,7 +201,10 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # at the sole (91, …) tuple in validate-pack.py.
 # BD-276 adds Check 92 (BSD-mktemp `-t` portability regression guard — one new
 # registry entry): 88 → 89. (Next free numeric ID = 93.)
-CHECK_REGISTRY_EXPECTED_COUNT = 89
+# BD-205 adds Check 93 (public-launch no-leak GUARD — the two-leg literal-name +
+# domain-vocab enforcement backstop; one new registry entry): 89 → 90. (Next free
+# numeric ID = 94.)
+CHECK_REGISTRY_EXPECTED_COUNT = 90
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
