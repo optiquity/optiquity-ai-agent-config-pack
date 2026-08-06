@@ -758,8 +758,9 @@ PACK-AGENTS.md current".
 ### Project goals (v11)
 
 - Flat-file per-entry is the sole supported mode.
-- OT-style v10→v11 migration is automated; OT itself is read-only for
-  testing (use `/tmp` clones or scratch fixtures, never write to real OT).
+- target-app-style v10→v11 migration is automated; the target app itself is
+  read-only for testing (use `/tmp` clones or scratch fixtures, never write
+  to the real target app).
 
 ---
 
