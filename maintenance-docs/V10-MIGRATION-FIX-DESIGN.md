@@ -23,7 +23,7 @@ This design has eight parts plus appendices:
 7. End-to-end verification procedure (reproducible).
 8. Open questions for the planner.
 
-Throughout, **OT** = `~/Developer/OptiquityTrader`, **the migration** =
+Throughout, **OT** = `~/Developer/<target-project>`, **the migration** =
 `scripts/migrate-v9-to-v10.sh` and the helpers it calls.
 
 ---
@@ -34,7 +34,7 @@ The migration is eight stages S0–S7. Touchpoints are derived from
 (a) explicit `cp`/`rm`/`mv` operations in `migrate-v9-to-v10.sh` and
 the helpers it invokes, and (b) cross-checking those against the diff
 between OT pre-migration backup
-(`~/Developer/OptiquityTrader/.pack-migration-backup/v9.3-to-v10.0/`)
+(`~/Developer/<target-project>/.pack-migration-backup/v9.3-to-v10.0/`)
 and OT post-migration working tree.
 
 **Universe of paths touched directly by the migration script:**
@@ -87,8 +87,8 @@ migration intact today; the design must not regress them:
 | C1 | `CLAUDE.md` | 588 lines changed (~451 cur vs 477 HEAD) | OT-customized prose replaced with pack template containing `[PROJECT_NAME]`, `[PLATFORM_TARGETS]`, `[TRANSPORT]`, `[PLATFORM_DEFAULTS]`, `[PLATFORM_ARCHITECTURE]`, and the `<!-- HOW TO USE THIS TEMPLATE -->` comment block. Active-skills line preserved. |
 | C2 | `AGENTS.md` | 322 lines changed | as C1 |
 | C3 | `GEMINI.md` | 286 lines changed | as C1 |
-| D1 | `docs/pack/PM-CHAT.md` | 199 diff lines | "OptiquityTrader — PM Chat Instructions" replaced with `[PROJECT_NAME] — PM Chat Instructions` plus pack-template HOW-TO-USE block; v9.3 OT body content overwritten |
-| K1 | `.claude/settings.json` | 17 lines | `XCODE_SCHEME` reset `OptiquityTrader` → `""`; `XCODE_DESTINATION` reset `platform=macOS` → `""`; permissions array changed (`git log/show/tee` removed; `git status/add` added); env block re-ordered |
+| D1 | `docs/pack/PM-CHAT.md` | 199 diff lines | the target project's PM-Chat title replaced with `[PROJECT_NAME] — PM Chat Instructions` plus pack-template HOW-TO-USE block; v9.3 OT body content overwritten |
+| K1 | `.claude/settings.json` | 17 lines | `XCODE_SCHEME` reset from the target app's scheme name → `""`; `XCODE_DESTINATION` reset `platform=macOS` → `""`; permissions array changed (`git log/show/tee` removed; `git status/add` added); env block re-ordered |
 | K2 | `.codex/config.toml` | 11 lines | OT-intentional removal of `[model_providers.ollama]` and `[model_providers.lmstudio]` sections **reverted** (pack template re-introduces them) |
 | K4 | `.mcp.json.example` | 2 lines | `_tools` string text changed (low semantic loss but illustrates wholesale-overwrite scope) |
 | ROOT-DELETE | `docs/pack/PROMPT-TEMPLATES.md` | -741 lines (file deleted) | Intended: S6 declared `customization: none` and deleted the file. **The detection produced a false negative for trinity/PM-CHAT/configs simultaneously.** |
@@ -640,7 +640,7 @@ form. The signal-to-action mapping is explicit.
 
 §4.6 used a real OT clone, but its sanitization rules forbade the
 verification record from containing "OT documentation body" or
-"OT-derived names beyond the single token OptiquityTrader." Combined
+"OT-derived names beyond the single token naming the target app." Combined
 with the verification's structural-only pass criteria (§ count, file
 count, prompts-dir presence), the only signal §4.6 looked at was
 shape, and shape was unbroken — every H2 heading from the v10 template
@@ -835,7 +835,7 @@ Steps:
 TMPDIR=$(mktemp -d)
 cd "$TMPDIR"
 mkdir ot-revert
-cp -R ~/Developer/OptiquityTrader/.pack-migration-backup/v9.3-to-v10.0/* ot-revert/
+cp -R ~/Developer/<target-project>/.pack-migration-backup/v9.3-to-v10.0/* ot-revert/
 # Note: the backup includes .claude/, .codex/, .gemini/, scripts/, and
 # the trinity/PM-CHAT/configs files at the top level. Reconstruct the
 # project tree shape: trinity files at root, .claude/ etc at root, etc.
@@ -878,7 +878,7 @@ The verification PASSES if and only if all of the following hold:
    `.v9-customized` (or `_v9-backup.md` for the PROMPT-TEMPLATES
    case) file on disk.
 5. **Structured-config merges produced correct content.** For K1,
-   `XCODE_SCHEME == "OptiquityTrader"` post-migration. For K2,
+   `XCODE_SCHEME` still equals the target app's scheme name post-migration. For K2,
    `[model_providers.ollama]` is absent post-migration.
 6. **All `x-*` files preserved byte-identical.** Empty set in OT
    today, but the assertion still runs and passes trivially.

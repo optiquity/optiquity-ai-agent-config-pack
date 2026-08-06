@@ -1,8 +1,8 @@
 <!--
 SOURCE MATERIAL — DO NOT USE DIRECTLY IN PROJECTS
 
-This is the raw Methodology Guide v1 as produced during the OptiquityTrader project (2026).
-It contains project-specific content (OptiquityTrader phases, broker APIs, macOS trading app
+This is the raw Methodology Guide v1 as produced during the target project (2026).
+It contains project-specific content (the target project's phases, broker APIs, macOS trading app
 details) mixed with universal methodology patterns.
 
 Purpose: Historical record and source material for v8 deliverables:
@@ -12,14 +12,14 @@ Purpose: Historical record and source material for v8 deliverables:
 Do not copy this file into project repos. Do not reference it from CLAUDE.md or AGENTS.md.
 The generalized versions above are the intended deliverables.
 
-Extracted from: OptiquityTrader PM chat session, 2026
+Extracted from: the target project's PM chat session, 2026
 Pack version: v8 (March 2026)
 -->
 
 # Claude-Assisted Project Methodology Guide
 
 Version: 1.0
-Based on: OptiquityTrader project (Phases 0–25, 2026)
+Based on: the target project (Phases 0–25, 2026)
 Applies to: Native iOS/macOS/Swift projects built with Claude Code CLI + Claude Chat
 
 ---
@@ -197,7 +197,7 @@ Phase numbering rules: Never renumber. Insert new phases at end. Fractional phas
 ## Part 6 — Prompt Templates
 
 See `supporting-docs/PROMPT-TEMPLATES.md` for the generalized, reusable versions
-of all prompt templates. The templates below are the original OptiquityTrader versions
+of all prompt templates. The templates below are the target project's original versions
 included here for historical context.
 
 ### Coder prompt structure
@@ -399,6 +399,6 @@ Action: [Fix]
 
 ---
 
-*This document was generated from the OptiquityTrader project (2026) and represents
+*This document was generated from the target project (2026) and represents
 the distilled methodology from 25 phases of development. Update it when new standing
 decisions are made.*

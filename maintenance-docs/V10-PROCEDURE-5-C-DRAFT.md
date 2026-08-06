@@ -608,7 +608,7 @@ execution. The format:
 - [x] AGENTS.md — same as CLAUDE.md (trinity)
 - [x] GEMINI.md — same as CLAUDE.md (trinity)
 - [x] docs/pack/PM-CHAT.md — substituted [PROJECT_NAME], merged Additional documents list
-- [x] .claude/settings.json — kept XCODE_SCHEME=OptiquityTrader, adopted v10 permissions schema
+- [x] .claude/settings.json — kept XCODE_SCHEME set to the target app's scheme, adopted v10 permissions schema
 ...
 ```
 

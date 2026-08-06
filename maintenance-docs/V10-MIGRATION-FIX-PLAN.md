@@ -931,7 +931,7 @@ production-target project) per OQ-8.
   state (the destroyed-state evidence from 2026-04-30) preserved as
   forensic baseline. **Do not modify OT until step 2.**
 - OT backup intact at
-  `~/Developer/OptiquityTrader/.pack-migration-backup/v9.3-to-v10.0/`
+  `~/Developer/<target-project>/.pack-migration-backup/v9.3-to-v10.0/`
   (verified read-only by this plan).
 
 ### 5.2 Steps
@@ -940,7 +940,7 @@ production-target project) per OQ-8.
 
 ```
 # Pack-Chat-driven; user approval required before any OT mutation.
-cd ~/Developer/OptiquityTrader
+cd ~/Developer/<target-project>
 git diff HEAD > /tmp/ot-pre-revert-diff.txt    # snapshot the destroyed state
 git status > /tmp/ot-pre-revert-status.txt
 ls .pack-migration-backup/v9.3-to-v10.0/ > /tmp/ot-backup-listing.txt
@@ -952,7 +952,7 @@ defective v10.0 migration produced.
 **Step 2 — Revert OT to v9.3 baseline (mutating, requires user approval).**
 
 ```
-cd ~/Developer/OptiquityTrader
+cd ~/Developer/<target-project>
 # Reset working tree to last v9.3 commit on the branch.
 # The destroyed state is uncommitted; `git checkout -- .` reverts it.
 git checkout -- .
@@ -976,7 +976,7 @@ working tree which is already at the v9.3 baseline.
 **Step 3 — Run the FIXED migration.**
 
 ```
-cd ~/Developer/OptiquityTrader
+cd ~/Developer/<target-project>
 # Working tree is dirty after Step 2 only if .pack-migration-backup/
 # from the failed run still exists; the migration's S0 prompts to
 # "Resume / Start fresh / Abort" — choose "f" (start fresh) to clear
@@ -1024,9 +1024,9 @@ diff CLAUDE.md.v9-customized .pack-migration-backup/v9.3-to-v10.0/CLAUDE.md
 **Step 6 — Verify structured-config merge correctness.**
 
 ```
-# K1 — XCODE_SCHEME survived:
+# K1 — XCODE_SCHEME survived (preserved to the target app's scheme name, not reset to ""):
 python3 -c "import json; d=json.load(open('.claude/settings.json')); \
-    assert d['env']['XCODE_SCHEME']=='OptiquityTrader', d['env']"
+    assert d['env']['XCODE_SCHEME'], d['env']"
 
 # K2 — model_providers.ollama is absent:
 python3 -c "import tomllib; d=tomllib.load(open('.codex/config.toml','rb')); \
@@ -1061,7 +1061,7 @@ The verification PASSES if and only if all of the following hold:
 | No customization lost | BD-059 SC line 80–82 + architect 7.2.1 | Every confirmed-loss content fragment from BD-059 description appears in either the post-migration OT tree or its `.v9-customized` sidecar |
 | Truthful report | BD-059 SC line 56–58 + architect 7.2.2/7.2.3 | `report.md` "Reconciliation required" section non-empty; no `customization: none` line |
 | Sidecars exist | architect 7.2.4 | Every reconciliation entry has a matching sidecar on disk |
-| Structured-config correctness | architect 7.2.5 | K1 `XCODE_SCHEME == "OptiquityTrader"`; K2 `model_providers.ollama` absent |
+| Structured-config correctness | architect 7.2.5 | K1 `XCODE_SCHEME` retains the target app's scheme name; K2 `model_providers.ollama` absent |
 | `x-` files preserved | architect 7.2.6 | `find . -name "x-*" -newer .pack-migration-backup/...` returns no churn |
 | Test runner clean | architect 7.2.7 | `scripts/test-migration.sh` exits zero |
 | OQ-3 procedure relocation works | OQ-3 absorption | `docs/pack/INSTALL-PROCEDURES.md` exists in OT post-migration; pm-startup SKILL Step 0 routes to INSTALL-PROCEDURES on next PM chat session |

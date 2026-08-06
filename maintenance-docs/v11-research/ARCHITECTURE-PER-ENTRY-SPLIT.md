@@ -315,7 +315,7 @@ directory sits beside the (now-generated-mirror) monolithic file.
 **Per-entry filename convention.** `TD-NNN.md`. Three-digit
 zero-padded per the existing TD-NNN identifier convention
 (V3.3-DELTA §6.4 line 364; observable in OT BACKLOG sample at
-`OptiquityTrader/docs/project/BACKLOG.md:13`).
+`<target-project>/docs/project/BACKLOG.md:13`).
 
 **Per-entry contents.** Single v10-grammar TD entry per file. The
 project-specific fields persist verbatim: `Type:` is open-vocabulary

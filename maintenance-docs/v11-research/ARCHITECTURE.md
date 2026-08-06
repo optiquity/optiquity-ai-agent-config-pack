@@ -2103,7 +2103,7 @@ The pack-reviewer should specifically test:
    addition must propagate to all three files; the H2 parity check still
    passes; validate-pack 16/17/18 still pass.
 2. **Round-trip safety on OT.** The roundtrip-test against OT's
-   `/Users/david/Developer/OptiquityTrader` BACKLOG.md must produce a
+   `/Users/david/Developer/<target-project>` BACKLOG.md must produce a
    diff = 0 (or whitespace-only) result. If it fails, find the entry-
    shape detail being lost and fix the migration grammar.
 3. **Token-budget cost on 5 canonical queries.** Per §12.3. If the
