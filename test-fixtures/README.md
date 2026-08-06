@@ -27,11 +27,11 @@ bash test-fixtures/build.sh --verify
 |---|---|---|---|---|
 | `v10-minimal` | v10-pinned | pack at `v10` tag | Bare v10 install via `init-project.sh`; no customizations | Control fixture for migrator tests; the "what does the migrator do to a vanilla v10?" baseline |
 | `v10-realistic-ot` | v10-pinned | pack at `v10` tag | Fake-OT shape: project-name fills (`FakeOT`); x-prefixed custom agent on Claude/Codex/Gemini; `.codex/config.toml` `model_providers.ollama` removed; 5-entry TD-* `BACKLOG.md`; trinity v10 self-label intact | Realistic OT-style migration test; exercises BD-088 customization-preservation against shapes a real client would have |
-| `v11-realistic-ot` | v11-pinned | pack at current `HEAD` (v11.0 baseline pre-release; will switch to `v11.0` tag at release) | Same four canonical OT customizations as `v10-realistic-ot` re-verified against the v11 surface (C2 strips `model_providers.ollama` from v11's `.codex/config.toml`; C3 writes `x-fakeot-domain` to v11's `.codex/agents/`, `.claude/agents/`, and the Antigravity client plugin bundle `.agents-plugin/optiquity-agents/agents/`; C4 stashes 5-entry TD-* content as a transient decompose INPUT under `docs/project/backlog/` — no monolithic mirror under the no-mirror model). Then BD-206 extension: decomposes the INPUT via the BD-164 helpers into the `docs/project/{backlog,implementation-plan,changelog}/` per-entry trees, regenerates each `_toc.md`, and asserts the tree + `_toc.md` are present and well-formed (no mirror to byte-compare). | v11-target migration / dog-food fixture pair to `v10-realistic-ot`; exercises the v11 per-entry-split surface end-to-end (init → customization → decompose → TOC-regen → tree integrity). |
+| `v11-realistic-ot` | v11-pinned | pack at current `HEAD` (v11.0 baseline pre-release; will switch to `v11.0` tag at release) | Same four canonical target-app customizations as `v10-realistic-ot` re-verified against the v11 surface (C2 strips `model_providers.ollama` from v11's `.codex/config.toml`; C3 writes `x-fakeot-domain` to v11's `.codex/agents/`, `.claude/agents/`, and the Antigravity client plugin bundle `.agents-plugin/optiquity-agents/agents/`; C4 stashes 5-entry TD-* content as a transient decompose INPUT under `docs/project/backlog/` — no monolithic mirror under the no-mirror model). Then BD-206 extension: decomposes the INPUT via the BD-164 helpers into the `docs/project/{backlog,implementation-plan,changelog}/` per-entry trees, regenerates each `_toc.md`, and asserts the tree + `_toc.md` are present and well-formed (no mirror to byte-compare). | v11-target migration / dog-food fixture pair to `v10-realistic-ot`; exercises the v11 per-entry-split surface end-to-end (init → customization → decompose → TOC-regen → tree integrity). |
 | `v11-flat-file` | v11-pinned | pack at current `HEAD` | v11 install via current `init-project.sh`; no `tracker.toml`; flat-file BACKLOG | "Vanilla v11 client" — what most users have on day 1 of v11. Use for tracker-init dog-food. |
 | `v11-tracker-on` | v11-pinned | pack at current `HEAD` | v11 install + `tracker.toml` with `mode.state = "tracker"` and `migration.forward_complete = true` set by hand (no live GH state) | Code-path testing for tracker-aware logic without round-tripping through real GH. |
 | `existing-project-mid-dev` | version-agnostic | none — synthesized | Realistic in-progress Swift+Python+gRPC project: `Package.swift`, `Sources/AcmeWidget/`, `Tests/AcmeWidgetTests/`, `proto/catalog.proto`, `service/` (Python tooling), top-level `README.md`, `.gitignore`, and 3 commits of pre-existing project history. Contains **zero** pack files (no `.claude/`, `.codex/`, `.agents/`, `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`, no pack scripts). | Input fixture for the BD-116 "init --update on top of an existing project" persona contract. Version-agnostic — same fixture serves v11, v12, … (BD-115). |
-| `v11-trinity-marker-prepped` | v11-pinned | OT real-world snapshot (commit `fd6a0d6`, 2026-05-10) | Three trinity files (CLAUDE/AGENTS/GEMINI) prepped per BD-136 Shape A + Shape B spec with `renamed-from` override annotations. 14/13/14 marker pairs per file across both shapes; 6 `renamed-from` annotations total (one multi-value collapse). NOT regenerable via `build.sh` — frozen snapshot of OT's verified-clean state. | BD-136 round-trip migration test (spec entry M-8): verify marker-aware merger produces byte-identical output across the trinity with zero manual reconciliation. See `v11-trinity-marker-prepped/README.md` for provenance + intended use. |
+| `v11-trinity-marker-prepped` | v11-pinned | synthetic hand-authored snapshot | Three trinity files (CLAUDE/AGENTS/GEMINI) prepped per BD-136 Shape A + Shape B spec with `renamed-from` override annotations. 14/13/14 marker pairs per file across both shapes; 6 `renamed-from` annotations total (one multi-value collapse). NOT regenerable via `build.sh` — hand-authored synthetic golden (domain-neutral content, verified-clean marker geometry). | BD-136 round-trip migration test (spec entry M-8): verify marker-aware merger produces byte-identical output across the trinity with zero manual reconciliation. See `v11-trinity-marker-prepped/README.md` for provenance + intended use. |
 
 ## Naming convention
 
@@ -47,16 +47,16 @@ Fixture directory names follow one of two patterns:
   version-pinned subclasses (below) take the form `<vN>-pinned` in the
   `Versioning` column (`v10-pinned`, `v11-pinned`, …) — a fixture is
   version-pinned whether its baseline is a tag, the pack `HEAD`, or a
-  real-world commit; the version-agnostic class uses the literal value
+  committed static snapshot; the version-agnostic class uses the literal value
   `version-agnostic`. The pinned baseline is one of three subclasses:
   - **tagged release** — built from a git tag (`v10-minimal` is built
     from the `v10` tag). Byte-stable as long as the tag does not move.
   - **current pack `HEAD`** — built from the pack's current `HEAD` for
     the named major (`v11-flat-file`, `v11-tracker-on`). The SHA drifts
     whenever the pack's v11 surface changes.
-  - **frozen real-world snapshot** — a real project's files captured at
-    a specific commit and committed verbatim (`v11-trinity-marker-prepped`
-    is an OT trinity snapshot). NOT built by `build.sh`: it is absent
+  - **committed static snapshot** — hand-authored files committed
+    verbatim (`v11-trinity-marker-prepped` is a synthetic trinity
+    snapshot). NOT built by `build.sh`: it is absent
     from `FIXTURE_NAMES` / `manifest.txt` and is committed through the
     per-directory exceptions in `test-fixtures/.gitignore`, never
     regenerated.
@@ -198,7 +198,7 @@ Status: v10 wired and exercised (`v10-realistic-ot` fixture); v11
 wired and exercised (`v11-realistic-ot` fixture) per BD-160 +
 BD-206, with the BD-206 extension running the per-entry decompose +
 TOC-regenerate + tree-integrity check (no-mirror) on the three
-project-side streams after the four canonical OT customizations land.
+project-side streams after the four canonical target-app customizations land.
 There is no monolithic mirror to regenerate or byte-compare — the
 per-entry tree + `_toc.md` is the sole SSOT and readable form.
 

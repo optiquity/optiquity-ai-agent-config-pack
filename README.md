@@ -96,7 +96,7 @@ form `vMAJOR.MINOR (X)`; the bare number is the launched steady state.
 | v8.3    | Apr 3, 2026  | Architect rejected-alternative documentation rule; Apple-platform pattern selection rules (type-erasure, AsyncStream, ViewModel navigation) |
 | v8.2    | Apr 2, 2026  | Workflow 4 mid-phase architect trigger; BACKLOG/TODO management system; Cancelled/Deprecated item statuses; Template 4 non-prescriptive fix requirement |
 | v8.1    | Apr 1, 2026  | Post-release patches: METHODOLOGY single-source, ios-architect rename fixes, PROMPT-TEMPLATES verification updates, PM chat rules, BD-020–023 |
-| v8.0    | Mar 29, 2026 | apple-architect rename; python-architect; METHODOLOGY.md; PROMPT-TEMPLATES.md; VS Code companion; LSP rules; OT content merge; availability guard fix |
+| v8.0    | Mar 29, 2026 | apple-architect rename; python-architect; METHODOLOGY.md; PROMPT-TEMPLATES.md; VS Code companion; LSP rules; target-app content merge; availability guard fix |
 | v7      | Mar 23, 2026 | iOS 26 / Xcode 26.3 API docs; sync-xcode-docs.sh; Apple-first dependency policy |
 | v6      | Mar 11, 2026 | Proto scaffold; QUICKSTART.md; error-handling skill; proto-gen.sh script |
 | v5      | Mar 9, 2026  | python-server-template; apple-app-plus-python-server monorepo; xcode-companion-templates in pack |
@@ -268,7 +268,7 @@ test-fixtures/                              Persistent baseline fixtures for tes
 ├── v11-realistic-ot/                       Fake-OT shape v11 (gitignored; BD-160 + BD-170; source-pinned to pack HEAD pre-v11.0)
 ├── v11-flat-file/                          v11 client, no tracker (gitignored)
 ├── v11-tracker-on/                         v11 client + synthesized tracker.toml (gitignored)
-├── v11-trinity-marker-prepped/             OT-derived trinity marker-prep golden fixture (committed; BD-136)
+├── v11-trinity-marker-prepped/             synthetic trinity marker-prep golden fixture (committed; BD-136)
 └── existing-project-mid-dev/               In-progress Swift+Python+gRPC project, no pack files (gitignored; BD-115)
 
 pack-ops/                                   Pack-internal operational files (v11; BD-175 directory reorg)

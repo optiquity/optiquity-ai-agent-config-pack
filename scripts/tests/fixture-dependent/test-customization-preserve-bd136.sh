@@ -12,10 +12,10 @@
 #
 # Legs (BD-136 spec M-8/M-9/M-10/M-11/M-12 + the ratified OI-A assertion):
 #
-#   M-8   OT-derived golden CLEAN round-trip. Feeds the committed real-world
+#   M-8   Synthetic golden CLEAN round-trip. Feeds the committed synthetic
 #         golden test-fixtures/v11-trinity-marker-prepped/ (all three trinity
 #         files) through the FINAL hardened marker-aware merger and proves the
-#         OT customizations round-trip CLEANLY: disposition
+#         project customizations round-trip CLEANLY: disposition
 #         merged-with-customization, NO `.pre-update` sidecar, every project
 #         marker region preserved byte-identical, the renamed-from overrides
 #         suppress their canonical counterparts (no duplicate H2), and no
@@ -154,14 +154,14 @@ mk_trinity_dir() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════
-echo "== M-8: OT golden fixture CLEAN round-trip (test-fixtures/v11-trinity-marker-prepped) =="
+echo "== M-8: synthetic golden fixture CLEAN round-trip (test-fixtures/v11-trinity-marker-prepped) =="
 # ═══════════════════════════════════════════════════════════════════════════
-# The committed real-world golden. It is NOT a build.sh fixture (a frozen
-# snapshot), so assert the files directly rather than via require_fixture.
+# The committed synthetic golden. It is NOT a build.sh fixture (a static
+# hand-authored snapshot), so assert the files directly rather than via require_fixture.
 #
 # THEIRS = a drift-free "new pack canonical" stand-in synthesized from OURS so
-# it tracks the frozen fixture (the LIVE pack trinity has drifted since the
-# 2026-05-10 capture and would spuriously conflict on out-of-marker pack body).
+# it tracks the static fixture (the LIVE pack trinity has drifted from the
+# fixture's committed baseline and would spuriously conflict on out-of-marker pack body).
 # Construction (m8_build_theirs): strip each Shape A project block IN PLACE
 # (keep the pack heading + out-of-marker body); REPLACE each whole-section
 # Shape B block with a `## ` pack stub section — using the renamed-from OLD
@@ -246,7 +246,7 @@ else
     done
     # The relocated preamble intro (now a Project-addenda H3) survives verbatim.
     assert_contains "M-8 relocated repository-overview intro preserved (CLAUDE)" \
-        "$(cat "$WORK/m8-dest-CLAUDE.md")" "algorithmic trading prototype"
+        "$(cat "$WORK/m8-dest-CLAUDE.md")" "content catalog prototype"
     assert_contains "M-8 relocated intro is a '### Repository overview' H3 (CLAUDE)" \
         "$(cat "$WORK/m8-dest-CLAUDE.md")" "### Repository overview"
     # The renamed-from override annotations (2 per file) are grafted verbatim.

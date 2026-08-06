@@ -28,7 +28,7 @@ Default preference only:
   Document and isolate any AppKit interop in a clearly named boundary type.
 - **Dependencies**: Swift Package Manager only. No CocoaPods. No manual vendoring.
 - **Concurrency**: Swift 6 strict concurrency for all new code. Be pragmatic at third-party
-  and broker API boundaries — isolate unsafe edges explicitly.
+  and external API boundaries — isolate unsafe edges explicitly.
 - **Build configurations**: Debug and Release only. A four-configuration system
   (Local / Dev / Staging / Production with compiler flags) is a documented future task.
 - **Source control**: GitHub. Keep commits small and reviewable.
@@ -70,7 +70,7 @@ These rules apply regardless of which architecture pattern this project uses.
 - Any `@MainActor`, `nonisolated`, `Sendable`, or `@unchecked Sendable` decision must be
   intentional and commented when non-obvious.
 - Keep SwiftUI views thin. Push domain logic into dedicated types.
-- Use dependency injection for all services, stores, and strategy instances.
+- Use dependency injection for all services, stores, and workflow instances.
 - Never use `print()` in production code. Use `os_log` or route through `LogSourceGroup`.
 <!-- END project-owned -->
 
@@ -78,7 +78,7 @@ These rules apply regardless of which architecture pattern this project uses.
 
 <!-- BEGIN project-owned -->
 - Never hardcode secrets, API keys, tokens, or certificates in source or committed config.
-- Validate all data received from broker or market data APIs before use in domain logic or UI.
+- Validate all data received from external or third-party APIs before use in domain logic or UI.
 - API keys, OAuth tokens, and certificates: Keychain only. Never in UserDefaults or source.
 - Request minimum required entitlements.
 <!-- END project-owned -->
@@ -138,7 +138,7 @@ Before adding any third-party package:
 2. Prefer actively maintained SPM packages with clear licensing.
 3. Evaluate security risk, binary size, lock-in, and long-term maintenance.
 4. Record the rationale, alternatives considered, and exit plan in `ARCHITECTURE.md` or a PR note.
-5. Third-party charting and indicator libraries (TA-Lib, Tulip, Charts, ABTSoftware, CCTALib)
+5. Third-party charting, plotting, and visualization libraries
    are **deferred** — do not add them until feature requirements are known.
 <!-- END project-owned -->
 
@@ -146,11 +146,11 @@ Before adding any third-party package:
 
 <!-- BEGIN project-owned -->
 - Unit tests for all domain logic, state machines, capabilities mask logic, invocation rules.
-- Use protocol-based test doubles for `DataStore`, `QuoteService`, `LogSource`, `Broker`.
-  Never use real broker APIs or real persistent stores in unit or integration tests.
+- Use protocol-based test doubles for `DataStore`, `FeedService`, `LogSource`, `Provider`.
+  Never use real provider APIs or real persistent stores in unit or integration tests.
 - Integration tests at module seams (domain → data layer boundaries).
 - XCUITest for UI flows when UI is added.
-- Hidden test broker/strategy stubs must compile out of Release builds.
+- Hidden test provider/workflow stubs must compile out of Release builds.
 <!-- END project-owned -->
 
 ## Refactoring policy
@@ -223,7 +223,7 @@ executable on first checkout: `chmod +x agent-run.sh scripts/*.sh`.
 <!-- BEGIN project-owned -->
 **Required first-time setup:** Open `scripts/validate-swift.sh` and `scripts/test-swift.sh` and fill in
 the scheme and destination variables for your project. Both are already configured for
-OptiquityTrader (`OptiquityTrader` / `platform=macOS`).
+SampleApp (`SampleApp` / `platform=macOS`).
 <!-- END project-owned -->
 
 **Wrapper detection:** Wrapper scripts (`format.sh`, `validate.sh`, `bootstrap.sh`, `test.sh`)
@@ -272,7 +272,7 @@ language you are writing (`//` for Swift/C/C++/Objective-C, `#` for Python):
 - `critical` — must eventually be addressed without exception
 - `functional` — should be addressed; feature is incomplete without it
 - `polish` — may be skipped; improves experience but does not affect correctness
-**Source for VERIFY:** name the external source (e.g. `apple-docs`, `schwab-api`)
+**Source for VERIFY:** name the external source (e.g. `apple-docs`, `vendor-api`)
 
 **Rules — read carefully:**
 - Always write `TD-TBD` — never a real TD number. The PM chat assigns numbers after review.
@@ -293,10 +293,10 @@ language you are writing (`//` for Swift/C/C++/Objective-C, `#` for Python):
 ## Anti-patterns — never introduce these
 
 - Domain types in data-layer or transport-layer signatures.
-- `Broker`, `Account`, `QuoteService`, `DataStore`, or `LogSource` concrete types
+- `Provider`, `Collection`, `FeedService`, `DataStore`, or `LogSource` concrete types
   referenced directly in presentation or domain code (always go through protocol).
 - Hard deletion of user-modifiable objects (use tombstoning).
-- `isOn = true` as a default for any `TradingStrategyInvocation`.
+- `isOn = true` as a default for any `WorkflowSchedule`.
 - API keys or tokens stored outside Keychain.
 - `print()` in production code.
 - Force unwraps as a laziness shortcut.
@@ -313,7 +313,7 @@ language you are writing (`//` for Swift/C/C++/Objective-C, `#` for Python):
   domain or presentation code is an LSP violation — it is runtime type
   interrogation disguised as abstraction. Use protocol elevation or exhaustive
   enums instead. In this project, the capability system is the established
-  implementation of protocol elevation for broker, account, and strategy
+  implementation of protocol elevation for provider, collection, and workflow
   type differences.
 - `AsyncStream<Void>` or any contentless change notification broadcast to multiple
   independent subscribers. New subscriptions must use typed payloads so subscribers
@@ -468,8 +468,8 @@ a v9.3 → v10 migration. See docs/pack/INSTALL-PROCEDURES.md Procedure
 
 ### Repository overview
 
-This repository is a macOS-only algorithmic trading prototype.
-Target: macOS 15+, Xcode 26.4, Swift Package Manager, GitHub (`DShaneNYC/OptiquityTrader`).
+This repository is a macOS-only content catalog prototype.
+Target: macOS 15+, Xcode 26.4, Swift Package Manager, GitHub (`example-org/SampleApp`).
 There is no backend server. All logic runs in-process. The architecture must anticipate a future
 first-party gRPC backend with minimal changes: every external integration is behind a protocol,
 every concrete implementation is injected, and no domain type ever appears in a transport signature.
@@ -478,7 +478,7 @@ every concrete implementation is injected, and no domain type ever appears in a 
 
 - Every persistent object in the domain model must carry a **globally unique identifier**
   (use `UUID`; wrap in a typed ID struct — never use raw `UUID` or `String` at domain boundaries).
-- Every `Broker`, `Account`, and `TradingStrategy` instance must also carry a `name` and
+- Every `Provider`, `Collection`, and `Workflow` instance must also carry a `name` and
   `description` property.
 
 ### Abstraction philosophy
@@ -492,7 +492,7 @@ Represents any persistent store (SwiftData, SQLite, in-memory, remote). All read
 go through the `DataStore` protocol. The current concrete implementation is SwiftData.
 **Known limitation**: SwiftData is an object graph store, not a relational database. It is
 adequate for a prototype but may require replacement (GRDB/SQLite) when complex queries over
-time-series quote data, large transaction logs, or multi-table joins are needed. Document this
+time-series feed data, large event logs, or multi-table joins are needed. Document this
 risk in `ARCHITECTURE.md` and ensure the abstraction never leaks SwiftData types into domain
 or presentation layers.
 
@@ -503,120 +503,120 @@ or presentation layers.
   analytics service). Implementations are injected; never referenced by concrete type in domain code.
 - `LogSourceGroup`: composes an array of `LogSource` instances. When it receives a `LogEvent`,
   it fans it out to every source in the group. Each source handles it independently.
-  This is the type that domain and strategy code actually holds — never a bare `LogSource`.
+  This is the type that domain and workflow code actually holds — never a bare `LogSource`.
 
-#### QuoteService
-Provides historical or live market data. Implementations include:
-- **Broker-backed**: data stream from a real broker API (Schwab, E*Trade, Public.com).
-- **Third-party provider**: any external market data API.
-- **Stub / simulation**: local algorithmic stub for strategy testing (paper trading, unit tests).
+#### FeedService
+Provides historical or live content data. Implementations include:
+- **Provider-backed**: data stream from a real provider API (Provider Alpha, Provider Beta, Provider Gamma).
+- **Third-party provider**: any external content data API.
+- **Stub / simulation**: local generated stub for workflow testing (sandbox simulation, unit tests).
 
-A `QuoteService` may be pull-based (on-demand fetch) or push-based (streaming). The protocol
-must accommodate both. The concrete type in use is selected at injection time — strategies
+A `FeedService` may be pull-based (on-demand fetch) or push-based (streaming). The protocol
+must accommodate both. The concrete type in use is selected at injection time — workflows
 and the UI never know which implementation they are talking to.
 
 ### Domain model — core types
 
 All types below are defined in the domain layer as protocols or base value/reference types.
-Concrete broker-specific or transport-specific implementations live in the data layer.
+Concrete provider-specific or transport-specific implementations live in the data layer.
 
-#### Quote
-- Value type (struct). Subclasses/variants per asset class: Equity, Option, Future, Crypto.
-- All broker-specific quote objects must be mapped to the canonical `Quote` type at the
-  data-layer boundary. Domain and presentation layers only ever see `Quote`.
-- Carries: asset identifier, timestamp, bid/ask/last/open/high/low/close/volume as appropriate.
+#### Item
+- Value type (struct). Subclasses/variants per item kind: Text, Image, Audio, Video.
+- All provider-specific item objects must be mapped to the canonical `Item` type at the
+  data-layer boundary. Domain and presentation layers only ever see `Item`.
+- Carries: content identifier, timestamp, title/summary/body/created/updated/size/status as appropriate.
 
-#### Broker
-- Reference type (immutable final class). Data-layer factories (conforming to BrokerFactory)
-  construct Broker instances — they do not subclass it. No protocol + base hierarchy exists.
-- Each broker owns: one or more `Account` instances, one or more `QuoteService` instances.
+#### Provider
+- Reference type (immutable final class). Data-layer factories (conforming to ProviderFactory)
+  construct Provider instances — they do not subclass it. No protocol + base hierarchy exists.
+- Each provider owns: one or more `Collection` instances, one or more `FeedService` instances.
 - Carries: identifier, name, description, connection status, API credential reference
   (stored in Keychain — never in the model or source).
 
-#### Account
-- Single immutable final class with accountType: AccountType discriminator field. Static
-  convenience factory methods (Account.individual, Account.traditionalIRA, Account.rothIRA)
+#### Collection
+- Single immutable final class with collectionType: CollectionType discriminator field. Static
+  convenience factory methods (Collection.personal, Collection.shared, Collection.archived)
   produce appropriately configured instances. No subclasses exist.
-- Carries a **capabilities mask** indicating which asset classes and transaction types are
-  allowed (equities, options, futures, crypto; margin, short selling).
-- Must reference exactly one owning `Broker`.
-- Contains: `Position` array, `Balance` array, `Activity` array.
+- Carries a **capabilities mask** indicating which item kinds and operation types are
+  allowed (text, image, audio, video; batch, streaming).
+- Must reference exactly one owning `Provider`.
+- Contains: `Entry` array, `Metric` array, `Event` array.
 
-#### Position
-- Subclasses per asset class (EquityPosition, OptionPosition, FuturePosition, CryptoPosition).
+#### Entry
+- Subclasses per item kind (TextEntry, ImageEntry, AudioEntry, VideoEntry).
 
-#### Activity
-- Subclasses per transaction type. Represents historical transaction records.
+#### Event
+- Subclasses per operation type. Represents historical operation records.
 
-#### Transaction
-- Subclasses per asset class.
-- Carries a **capabilities mask** for applicable trade types:
-  buy/sell, long/short, open/close, market/limit/stop-limit,
-  buy-on-open/close, sell-on-open/close.
-- Unavailable trade types for a given asset class or account type must be represented
+#### Operation
+- Subclasses per item kind.
+- Carries a **capabilities mask** for applicable operation types:
+  create/delete, read/write, publish/unpublish,
+  import/export, sync/refresh.
+- Unavailable operation types for a given item kind or collection type must be represented
   explicitly (not silently omitted) — use a default/unavailable indicator.
-- Must reference exactly one `Account`.
+- Must reference exactly one `Collection`.
 
-#### TradingStrategy
-- Composed (not inherited) with: `Account`, `LogSourceGroup`, `DataStore`.
-- Carries a **capabilities mask** listing required asset classes and transaction types.
-  The associated account must satisfy the strategy's required capabilities.
-- Accesses `QuoteService`, `Position`, and `Balance` through its `Account` and `Broker`.
+#### Workflow
+- Composed (not inherited) with: `Collection`, `LogSourceGroup`, `DataStore`.
+- Carries a **capabilities mask** listing required item kinds and operation types.
+  The associated collection must satisfy the workflow's required capabilities.
+- Accesses `FeedService`, `Entry`, and `Metric` through its `Collection` and `Provider`.
 
-#### TradingStrategyInvocation
-Controls when a strategy runs. Fields and defaults:
+#### WorkflowSchedule
+Controls when a workflow runs. Fields and defaults:
 
 | Field | Type | Default |
 |---|---|---|
 | `isOn` | Bool | `false` |
-| `startTime` | Time | market open |
-| `stopTime` | Time | market close |
+| `startTime` | Time | day start |
+| `stopTime` | Time | day end |
 | `startDate` | Date | today |
 | `stopDate` | Date | today |
 | `daysOfWeek` | [Weekday] | all (Mon–Fri) |
 
 Rules:
-- Default `isOn` is always `false`. A strategy does nothing until explicitly enabled.
-- **Swing trading invocations**: start and stop must be on the same calendar day.
-- **Algorithmic trading invocations**: start and stop may span different days.
-- All trades opened in an invocation window must be closed at or before the window's stop.
-- Must reference exactly one `Account`.
+- Default `isOn` is always `false`. A workflow does nothing until explicitly enabled.
+- **Single-day workflows**: start and stop must be on the same calendar day.
+- **Recurring workflows**: start and stop may span different days.
+- All operations opened in a run window must be closed at or before the window's stop.
+- Must reference exactly one `Collection`.
 
 #### Soft-delete (tombstoning)
-Any user-modifiable object (Broker, Account, TradingStrategy, TradingStrategyInvocation,
-Position, Transaction) must support tombstoning instead of hard deletion.
+Any user-modifiable object (Provider, Collection, Workflow, WorkflowSchedule,
+Entry, Operation) must support tombstoning instead of hard deletion.
 - A tombstoned object carries a deletion timestamp and is excluded from all active queries.
 - Tombstoned objects remain available for logging, reporting, and audit queries.
 - No tombstoned object may be selected or used in any active operation.
 
 ### Stub and test class tiers
 
-For `Broker`, `Account`, `QuoteService`, `LogSource`, `TradingStrategy`, and any other
+For `Provider`, `Collection`, `FeedService`, `LogSource`, `Workflow`, and any other
 major protocol, three implementation tiers must exist:
 
 1. **Stub** (always present): implements the protocol, does the bare minimum to not error.
    Used as a safe default during development before real implementations exist.
 2. **Hidden test class** (debug/test builds only, not visible to app users):
-   allows automated testing of strategies and components during development.
+   allows automated testing of workflows and components during development.
 3. **Visible test class** (available to users in the running app):
-   lets users test their trading strategies safely against simulated data with no real trades.
+   lets users test their workflows safely against simulated data with no real operations.
 
 Use conditional compilation (`#if DEBUG`) to gate hidden test classes.
 
-### Broker API integrations
+### Provider API integrations
 
 Stub implementations exist in the Data layer for the architecture phase and serve as the
-starting point. Full broker integration is scheduled in the implementation plan:
-- **Phase 10** — Public.com (bearer token auth, batch quotes, order placement)
-- **Phase 11** — E*Trade (OAuth 1.0a, HMAC-SHA1 signing, two-step order flow)
-- **Phase 12** — Schwab (OAuth 2.0 Authorization Code with client_secret Basic Auth, WebSocket streaming, multi-leg orders)
+starting point. Full provider integration is scheduled in the implementation plan:
+- **Phase 10** — Provider Alpha (bearer token auth, batch fetch, item publishing)
+- **Phase 11** — Provider Beta (OAuth 1.0a, HMAC-SHA1 signing, two-step sync flow)
+- **Phase 12** — Provider Gamma (OAuth 2.0 Authorization Code with client_secret Basic Auth, WebSocket streaming, batch sync)
 
-| Broker | API Reference |
+| Provider | API Reference |
 |---|---|
-| Public.com | https://public.com/api / https://public.com/api/docs |
-| E*Trade | https://developer.etrade.com/home / https://apisb.etrade.com/docs/api/account/api-account-v1.html |
-| Charles Schwab | https://developer.schwab.com / https://developer.schwab.com/user-guides/get-started/introduction |
+| Provider Alpha | https://example.com/alpha/api / https://example.com/alpha/api/docs |
+| Provider Beta | https://example.com/beta/home / https://example.com/beta/docs/api/collection/api-collection-v1.html |
+| Provider Gamma | https://example.com/gamma / https://example.com/gamma/user-guides/get-started/introduction |
 
-All broker API credentials must be stored in Keychain. Never in UserDefaults, model properties,
+All provider API credentials must be stored in Keychain. Never in UserDefaults, model properties,
 or source code.
 <!-- END project-owned -->

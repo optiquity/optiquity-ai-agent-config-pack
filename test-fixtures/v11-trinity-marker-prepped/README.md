@@ -1,9 +1,11 @@
 # test-fixtures/v11-trinity-marker-prepped/
 
-OT-derived golden fixture for BD-136 round-trip migration testing
-(spec entry M-8). Captures the verified-clean state of the
-OptiquityTrader trinity files after the three-pass marker-prep cycle
-documented in `maintenance-docs/v11-implementation/PACK-REVIEW-OT-TRINITY-PREP.md`.
+**SYNTHETIC** golden fixture for BD-136 round-trip migration testing
+(spec entry M-8). Hand-authored, domain-neutral trinity files that
+capture a verified-clean marker-prepped state after the BD-136 Shape A +
+Shape B marker cycle. The content is a generic macOS content-catalog
+sample app — it carries NO real-application name and NO domain-specific
+vocabulary, so the fixture is safe to ship in a public repository.
 
 ## What this is
 
@@ -18,39 +20,55 @@ override annotations. Each file has marker pairs in both shapes:
 | GEMINI.md    | 14    | 10      | 4       |
 
 Total 6 `renamed-from` annotations (2 per file): one single-value
-(Xcode), one multi-value-collapse (Swift coding rules → two canonical
+(Xcode) and one multi-value-collapse (Swift coding rules → two canonical
 sources). Trinity-symmetric except for the AGENTS.md `## Agent
 behavior` Shape B override (FP2-7 Option B).
 
-The original OT snapshot carried one additional project-owned marker in
-the file **preamble** (a repository-overview intro above the first `## `
-heading). A preamble marker has no enclosing H2/H3 host, so it is neither
-Shape A nor Shape B — the shipped merger rejects it (fail-loud). Under
-BD-136 C9b that intro was relocated to a valid in-section placement — a
-`### Repository overview` H3 at the head of the `## Project addenda`
-seed (the seed-slot exception permits project H3 dumps). The rendered
-project content is preserved verbatim; only its marker geometry became
-valid. That relocation is why each file carries one fewer pair than the
-raw `fd6a0d6` capture (CLAUDE/GEMINI 15→14, AGENTS 14→13).
+Each file also carries one project-owned marker inside the file
+**preamble** relocation history: a preamble marker has no enclosing
+H2/H3 host, so it is neither Shape A nor Shape B — the shipped merger
+rejects it (fail-loud). The intro was therefore placed at a valid
+in-section position — a `### Repository overview` H3 at the head of the
+`## Project addenda` seed (the seed-slot exception permits project H3
+dumps). The rendered project content is preserved verbatim; only its
+marker geometry is valid. Each file carries one Shape A seed pair that
+hosts the relocated `### Repository overview` intro.
 
-## Provenance
+## Origin — synthetic (recipe)
 
-| Field | Value |
-|---|---|
-| Source repo | `/Users/david/Developer/OptiquityTrader/` |
-| Source commit | `fd6a0d6` (`chore: v11 prep — wrap trinity customizations in BD-136 markers`) |
-| Snapshot date | 2026-05-10 |
-| Pack-side baseline | v10.1 canonical at `/Users/david/Developer/optiquity-ai-agent-config-pack/project-template/` |
-| Verification | `maintenance-docs/v11-implementation/PACK-REVIEW-OT-TRINITY-PREP.md` (initial review + FP1 + FP2 + FP3 verifications, all PASS) |
-| BD-136 spec at capture time | Twice-amended (Shape A + Shape B + `renamed-from` + Project-addenda seed-slot exception); commit `a2a2446` |
+This fixture is NOT captured from any real project and is NOT
+`build.sh`-generated. It is hand-authored to exercise the BD-136
+marker-preservation logic with domain-neutral content. To regenerate or
+extend it, follow this recipe:
+
+1. **Preserve the marker geometry EXACTLY** (the table above): same
+   per-file pair count, same Shape A / Shape B split, the 2
+   `renamed-from` annotations per file (one single-value naming
+   `## iOS 26 / Xcode 26.3 platform features`, one multi-value-collapse
+   naming `## Architecture rules — platform-specific` and
+   `## Language-specific coding rules`), and the `## Project addenda`
+   Shape A seed hosting a `### Repository overview` H3.
+2. **Keep the content domain-neutral.** The sample app is a generic
+   macOS content-catalog prototype (types: `Provider`, `Collection`,
+   `FeedService`, `Item`, `Entry`, `Event`, `Operation`, `Metric`,
+   `Workflow`, `WorkflowSchedule`). Use no real application name and no
+   domain-specific (finance/medical/etc.) vocabulary.
+3. **Only DOMAIN PROSE varies** between regenerations; the marker
+   geometry and section structure are load-bearing and must round-trip
+   byte-identical through the marker-aware merger.
+
+The consuming test asserts fixed strings against the synthetic content
+(e.g. the repository-overview phrase `content catalog prototype`); if
+you change those strings, update the assertions in lock-step in
+`scripts/tests/fixture-dependent/test-customization-preserve-bd136.sh`.
 
 ## Intended use
 
-Round-trip migration test (BD-136 spec entry M-8): given the v10.1
-canonical trinity as BASE, the v11 canonical trinity as THEIRS, and
-this fixture as OURS, the marker-aware merger MUST produce the same
-fixture content byte-identical (zero manual reconciliation needed).
-The test asserts:
+Round-trip migration test (BD-136 spec entry M-8): given a drift-free
+"new pack canonical" stand-in synthesized from OURS as THEIRS, and this
+fixture as OURS, the marker-aware merger MUST produce the same fixture
+content byte-identical (zero manual reconciliation needed). The test
+asserts:
 
 - All `renamed-from` annotations correctly suppress their canonical
   counterparts in merge output (no duplicate H2s).
@@ -60,26 +78,19 @@ The test asserts:
   permitted inside the seed Shape A wrap).
 - No `[CONDITIONAL]` prefix appears anywhere in the output.
 
-## Why this is a static snapshot, not a build.sh-generated fixture
+## Why this is a static hand-authored fixture, not a build.sh-generated one
 
 Existing fixtures (`v10-minimal`, `v10-realistic-ot`, `v11-flat-file`,
 `v11-tracker-on`, `existing-project-mid-dev`) are deterministically
 rebuilt from scratch by `build.sh`. This fixture is different — it
-captures real-world prep work done in an external repo (OT) and is
-not derivable from pack inputs alone. The fixture is intentionally
-frozen at the source commit listed above; future OT trinity changes
-do not affect this fixture.
-
-If BD-136 implementation later prefers a synthesized variant for
-deterministic regeneration, that should be added as a SIBLING fixture
-(e.g., `v11-trinity-marker-prepped-synthesized`), not by overwriting
-this real-world snapshot.
+encodes a specific, hand-verified marker geometry (Shape A + Shape B +
+`renamed-from` overrides + the Project-addenda seed-slot exception) that
+is not derivable from pack inputs alone. It is committed verbatim and is
+NOT tracked in `test-fixtures/manifest.txt`.
 
 ## Cross-references
 
-- `BACKLOG.md` BD-136 — Trinity marker-section preservation pattern
+- `/backlog/BD-136.md` — Trinity marker-section preservation pattern
   (Shape A + Shape B) + PM-chat authoring procedure
-- `maintenance-docs/v11-implementation/PACK-REVIEW-OT-TRINITY-PREP.md`
-  — full review history (initial + FP1 + FP2 + FP3 verifications)
 - `supporting-docs/INSTALL-PROCEDURES.md` — `[CONDITIONAL]` H2
   retirement + Shape B transition for kept conditional sections
