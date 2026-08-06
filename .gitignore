@@ -6,6 +6,11 @@
 # May contain API keys or local server paths — never commit
 .mcp.json
 
+# ── Playwright MCP session artifacts ─────────────────────────────────────────
+# Console logs and page snapshots written by the Playwright MCP server.
+# Side-effect output of MCP tool calls, not part of the pack product.
+.playwright-mcp/
+
 # ── Tracker-mode local state (BD-061) ───────────────────────────────────────
 # Mapping file, migration checkpoints, and reverse-migration sidecars.
 # Never committed: contains local paths and is regenerable from the tracker.
