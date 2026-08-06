@@ -5,7 +5,7 @@
 **Branch:** v11-dev.
 **Repo HEAD baseline at authoring:** 3e15ea33.
 **Read-only sources:**
-- OT planning artifacts at `/Users/david/Developer/OptiquityTrader/docs/reference/planning/feature-brainstorm-1/` (treated as REFERENCE; no writes)
+- OT planning artifacts at `/Users/david/Developer/<target-project>/docs/reference/planning/feature-brainstorm-1/` (treated as REFERENCE; no writes)
 - Pack-side groupings + PS context (paths cited inline)
 
 **Audience:**
@@ -19,9 +19,9 @@
 
 ## §1 — Purpose and scope
 
-This document is a synthesis pass over the OT (OptiquityTrader) `feature-brainstorm-1/` planning artifacts, distilling patterns that are (a) worth adopting in the pack's design of BD-191 (Product Specialist) and (b) worth considering as amendments to BD-186 (groupings requirements) / BD-189 (groupings implementation umbrella) BEFORE groupings architecture begins.
+This document is a synthesis pass over the OT (the target project) `feature-brainstorm-1/` planning artifacts, distilling patterns that are (a) worth adopting in the pack's design of BD-191 (Product Specialist) and (b) worth considering as amendments to BD-186 (groupings requirements) / BD-189 (groupings implementation umbrella) BEFORE groupings architecture begins.
 
-**What this doc is.** A pack-architect-level critique of OT's planning process as a case study. OT planned a product (OptiquityTrader) using an ad-hoc sequence of CLI sessions producing 8 deliverables across Phases A → E.2 plus a process subdirectory. The pack is preparing to ship a feature (PS) whose entire purpose is to help client developers do exactly that kind of planning. OT is therefore both a worked example and a stress test of what the pack's PS feature must enable, constrain, and integrate with.
+**What this doc is.** A pack-architect-level critique of OT's planning process as a case study. OT planned a product (the target app) using an ad-hoc sequence of CLI sessions producing 8 deliverables across Phases A → E.2 plus a process subdirectory. The pack is preparing to ship a feature (PS) whose entire purpose is to help client developers do exactly that kind of planning. OT is therefore both a worked example and a stress test of what the pack's PS feature must enable, constrain, and integrate with.
 
 **What this doc is NOT.**
 - Not a redesign of OT's planning (that work is locked and downstream of Implementation Phase 58 per OT's README).
@@ -87,7 +87,7 @@ Patterns from OT's planning process that the pack should consider distilling. Ea
 
 ### §3.2 — Anti-pillars + conditional-inclusion table with explicit triggers
 
-**Description.** OT's Phase A v3 §3 lists three anti-pillars (Not HFT, Not institutional, Not no-code) — explicit statements of what OT is NOT. Phase A v3 §5 includes a conditional-inclusion table (lines 131-133) listing items that are OUT today, paired with the specific trigger that would move them IN. Each row names the gate: "Crypto derivatives — integration of a broker whose API supports them. Futures and direct exchange routing — integration of a broker whose API supports them. RBAC and team workspaces — a large strategic investor or paying enterprise customer requiring it. Strategy and template marketplaces — user base of several thousand active users *and* survey evidence of demand. ..." The table is what replaced an earlier "Never" list in v2.
+**Description.** OT's Phase A v3 §3 lists three anti-pillars — explicit statements of what OT is NOT (each names an adjacent market segment or product shape the product deliberately does not serve). Phase A v3 §5 includes a conditional-inclusion table (lines 131-133) listing items that are OUT today, paired with the specific trigger that would move them IN. Each row names the gate — an out-of-scope capability plus the concrete condition that would admit it — e.g.: "<advanced-capability-A> — integration of an upstream provider whose API supports it. <advanced-capability-B> — the same upstream-integration gate. <team / multi-user capability> — a large strategic investor or paying enterprise customer requiring it. <marketplace capability> — a user base of several thousand active users *and* survey evidence of demand. ..." The table is what replaced an earlier "Never" list in v2.
 
 **OT source:** `PHASE-A-vision-and-anti-goals.md` §3 (lines 47-59); §5 conditional-inclusion table (lines 131-133); Changelog v2 entry (lines 195-203) on the Never → conditional shift.
 
@@ -136,7 +136,7 @@ Patterns from OT's planning process that the pack should consider distilling. Ea
 2. **Identifier reference table (PS PRD template).** Every PS-produced PRD includes an Identifier Reference table at the top (mirroring OT README.md:42-58) listing every namespace it uses and the doc that defines/owns it. This is a tiny addition that pays off massively for future readers — including the downstream agents that consume the PS output.
 3. **Pack-side cross-reference: BD-191 architect surfaces project-side identifier-namespace discipline as a deliverable.** Capability #15 (Workflow + doc integration) gains an SC for "PS deliverables follow the pack's stable-identifier-namespace pattern; new namespaces (if any) declare their home doc in the deliverable header."
 
-**Why this is better than letting projects roll their own.** OT's PA-008 incident — a Phase C feature row referenced "F-130-series options journey features" because that was the v0 plan; the actual numbering placed Phase 2 features at F-162+, and the v0 reference wasn't updated when the numbering shifted — is a worked failure of cross-namespace drift. Without a canonical home doc per namespace, drift is invisible until grep-verification surfaces it.
+**Why this is better than letting projects roll their own.** OT's PA-008 incident — a Phase C feature row referenced "F-130-series <feature-family> journey features" because that was the v0 plan; the actual numbering placed Phase 2 features at F-162+, and the v0 reference wasn't updated when the numbering shifted — is a worked failure of cross-namespace drift. Without a canonical home doc per namespace, drift is invisible until grep-verification surfaces it.
 
 ### §3.5 — Bridge doc / "mapping" doc between requirements and execution
 
@@ -174,7 +174,7 @@ Patterns from OT's planning process that the pack should consider distilling. Ea
 
 ### §3.7 — Architectural seams as forward-compatibility commitments
 
-**Description.** OT's Phase B.2 v2 introduces "architectural seams" (Seam #1 through Seam #9) — explicit MVP architectural commitments designed so post-MVP features land additively rather than requiring rework. Examples (from `PHASE-D-capability-matrix-and-deps.md:41-44`): Seam #3 (position model schema extensibility — admits options + crypto additively); Seam #4 (per-content-type caching policy); Seam #7 (AI provider auth-model polymorphism — admits API-key + endpoint-URL + system-permission). Each seam is a load-bearing decision recorded BEFORE the post-MVP feature that depends on it is built. Phase C features carry `seam_refs` listing which seams they implement; Phase D coverage findings (§4) verify every seam has at least one Phase C feature carrying it forward.
+**Description.** OT's Phase B.2 v2 introduces "architectural seams" (Seam #1 through Seam #9) — explicit MVP architectural commitments designed so post-MVP features land additively rather than requiring rework. Examples (from `PHASE-D-capability-matrix-and-deps.md:41-44`): Seam #3 (a core domain-model schema designed for additive extension — admits new entity variants without migration); Seam #4 (per-content-type caching policy); Seam #7 (AI provider auth-model polymorphism — admits API-key + endpoint-URL + system-permission). Each seam is a load-bearing decision recorded BEFORE the post-MVP feature that depends on it is built. Phase C features carry `seam_refs` listing which seams they implement; Phase D coverage findings (§4) verify every seam has at least one Phase C feature carrying it forward.
 
 **OT source:** `PHASE-A-vision-and-anti-goals.md` references seams in §6 NFRs; `PHASE-B2-post-mvp-user-journeys.md` defines Seam #1-#9; Phase C `seam_refs` field per `PHASE-C-master-feature-inventory.md:64-65`; Phase D §1 capability matrix cross-references seams (e.g., line 44 Seam #3).
 
@@ -600,7 +600,7 @@ For cross-feature cross-repo synthesis passes producing design recommendations: 
 
 ### OT planning artifacts consulted (READ-ONLY)
 
-All paths under `/Users/david/Developer/OptiquityTrader/docs/reference/planning/feature-brainstorm-1/`.
+All paths under `/Users/david/Developer/<target-project>/docs/reference/planning/feature-brainstorm-1/`.
 
 - `README.md` — full read; orientation + identifier reference table.
 - `PHASE-A-vision-and-anti-goals.md` — full read; pillars + anti-pillars + audience + clusters + conditional-inclusion + NFRs + deferred questions.
