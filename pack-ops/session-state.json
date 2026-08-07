@@ -1,15 +1,15 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "c7c6bcc",
+  "boundary_commit": "a93d3e7",
   "checkpoint": "2026-08-07T00:00:00Z",
   "active": ["BD-205"],
   "in_flight_agents": [
-    "(none) -- PAUSED. BD-205 nearly complete: W4 coder pipeline (~24 commits) + W1/W2 audits + W5 reconciliation (11 DROP + v10.1 changelog+README backfill + playwright-mcp gitignore KEEP) + user-gated GH-label cleanup all DONE + committed + LOCALLY GREEN (validate standard+DEEP PASS on HEAD). No agent in flight.",
-    "ON RESUME: (1) confirm CI green -- the HEAD push is CI-RED due to a GitHub hosted-runner OUTAGE ('job not acquired by Runner of type hosted'; jobs stuck queued / 15m timeout), NOT a code failure; re-run the workflow (gh run rerun) once GitHub runners recover. (2) W3 user-run testbed. (3) BD-205 Resolved -> BD-093. Authoritative handoffs under $XDG_STATE_HOME/optiquity-pack-handoff/ (W5-ASSESSMENT, AUDIT-TRIAGE, PLAN, PLANNER-GATE)."
+    "(none) -- PAUSED. BD-205 nearly complete: W4 coder pipeline (~24 commits) + W1/W2 audits + W5 reconciliation (11 DROP + v10.1 changelog+README backfill + playwright-mcp gitignore KEEP) + user-gated GH-label cleanup all DONE + committed + CI GREEN (the earlier GitHub hosted-runner outage recovered; HEAD run passed). No agent in flight.",
+    "ON RESUME: (1) W3 USER-RUN testbed. (2) BD-205 Resolved -> BD-093. CI is green at HEAD (no re-run needed unless a new push lands during an outage). Authoritative handoffs under $XDG_STATE_HOME/optiquity-pack-handoff/ (W5-ASSESSMENT, AUDIT-TRIAGE, PLAN, PLANNER-GATE)."
   ],
   "queue": ["BD-093"],
   "parallelization": "SERIAL. BD-205 ACTIVE (final readiness gate); all but W3 + close DONE + committed + locally green. Blocked only on CI CONFIRMATION (GitHub hosted-runner outage, external). W3 + BD-205 Resolved + BD-093 remain.",
-  "wave": "BD-205 remaining: (a) confirm CI green on HEAD (re-run workflow when GitHub runners recover -- current red is 'not acquired by runner', infra not code); (b) W3 USER-RUN real-content testbed -- Pack Chat authors the harness + isolation-integrity check (real app read-only -> bare mirror reset-commit -> /tmp working clone -> migrate/verify -> reset), USER triggers each run + confirms the T0-untouched proof, NO autonomous clone/touch of the real repo (OI-S4); (c) BD-205 Resolved -> BD-093 release pin. At launch (post-BD-093): scrubbed public copy (filter-repo'd clean release repo, OI-S2).",
+  "wave": "BD-205 remaining: (a) CI GREEN confirmed on HEAD (an earlier GitHub runner outage recovered on a fresh push); (b) W3 USER-RUN real-content testbed -- Pack Chat authors the harness + isolation-integrity check (real app read-only -> bare mirror reset-commit -> /tmp working clone -> migrate/verify -> reset), USER triggers each run + confirms the T0-untouched proof, NO autonomous clone/touch of the real repo (OI-S4); (c) BD-205 Resolved -> BD-093 release pin. At launch (post-BD-093): scrubbed public copy (filter-repo'd clean release repo, OI-S2).",
   "pending_decisions": [
     "BD-205 leak model ENFORCED: leg-1 (literal target name) zero TREE-WIDE (guard Check 93 Python re over CONTENT, catches the binary dashboard); leg-2 (domain vocab + hyphenated-OT + word-boundary bare-OT) zero on CLIENT/PUBLIC surfaces, one allowlisted keep x-brokerage-api (OI-S7); INTERNAL surfaces keep bare-OT shorthand (OI-S6); rule public-bound-no-leak (C15) codifies it (indirect wording OI-S3).",
     "BD-205 doc-hygiene DECIDED-LEAVE: backlog/BD-136.md + BD-142.md are historical Resolved records whose OT shorthand is a sanctioned internal keep; their staleness reflects later C4/C6 changes recorded in BD-205; editing would rewrite history. No action.",
@@ -17,5 +17,5 @@
     "PROCESS LESSON: after any push changing a fixture input, run manifest-sync BEFORE push; ALWAYS confirm CI (poll gh run) before proceeding -- but distinguish a GitHub RUNNER OUTAGE (jobs stuck queued / 'not acquired by runner') from a real code failure: an outage is external, re-run when runners recover.",
     "Standing: PUBLIC-BOUND PACK; push USER-APPROVED then Pack-Chat-executed; intervention commit-gate live (fresh token, separate step); session-state COMPACT (one SHA boundary, no other SHAs, no dates outside checkpoint, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-205 W4 pipeline + W1/W2/W5 audits + GH-labels DONE + committed + LOCALLY GREEN (HEAD is the boundary). PAUSED. CI red = GitHub runner outage (external, not code). NEXT: confirm CI green (re-run) -> W3 user-run testbed -> BD-205 Resolved -> BD-093."
+  "cycle_position": "BD-205 W4 pipeline + W1/W2/W5 audits + GH-labels DONE + committed + CI GREEN (boundary is CI-green HEAD). PAUSED. NEXT: W3 user-run testbed -> BD-205 Resolved -> BD-093."
 }
