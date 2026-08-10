@@ -234,6 +234,21 @@ _stage_dispatch() {
     _manifest_parse
     _manifest_validate_trinity
 
+    # BD-281: in --dry-run, the dispatch legs run the REAL
+    # customization_preserve classifier against a throwaway scratch dest
+    # (instead of a blind pack-update-applied record) so the dry-run report
+    # predicts the --apply pause set truthfully, with zero project-tree
+    # write. Create the scratch dir here (dry-run only) BEFORE iterate/sweep;
+    # the manifest dispatch legs read `$_MIGRATOR_DRYRUN_SCRATCH`. It is
+    # always defined before the legs run (set here on every _stage_dispatch
+    # call). mktemp -d lands under the OS temp root ($TMPDIR) — outside
+    # $_MIGRATOR_TARGET — so the no-mutation invariant holds.
+    _MIGRATOR_DRYRUN_SCRATCH=""
+    if _migrator_is_dryrun; then
+        _MIGRATOR_DRYRUN_SCRATCH=$(mktemp -d) \
+            || die "dispatch: failed to create dry-run scratch dir" "$EXIT_INTERNAL"
+    fi
+
     # Iterate parsed manifest. Always dispatches every entry through
     # customization_preserve for `transform`, additive write for `add`,
     # no-op (with disposition record) for `remove`, git-mv-with-fallback
@@ -247,6 +262,34 @@ _stage_dispatch() {
     # customization_preserve, *unless* the file already appeared in the
     # manifest above (manifest-row precedence per architecture §4.2).
     _manifest_sweep_directories
+
+    # BD-281: normalize the scratch prefix out of the recorded sidecar column
+    # (5) so the dry-run preview shows the real would-be sidecar path
+    # ($_MIGRATOR_TARGET/…) rather than the throwaway scratch path. Column 3
+    # (the file) and Gate-1's needs-reconciliation count are already correct;
+    # this is cosmetic. Column 6 (diff) already points at the real state-dir
+    # diffs/, so it needs no rewrite. One deterministic pass keyed on the
+    # known scratch prefix (tab-delimited; OFS=tab preserves the row shape).
+    # Then tear down the scratch dir.
+    if _migrator_is_dryrun && [[ -n "$_MIGRATOR_DRYRUN_SCRATCH" ]]; then
+        local dispositions="$_MIGRATOR_STATE_DIR/dispositions.tsv"
+        if [[ -f "$dispositions" ]]; then
+            local norm_tmp
+            norm_tmp=$(mktemp)
+            awk -F '\t' -v OFS='\t' \
+                -v scratch="$_MIGRATOR_DRYRUN_SCRATCH/" \
+                -v target="$_MIGRATOR_TARGET/" '
+                {
+                    if (index($5, scratch) == 1) {
+                        $5 = target substr($5, length(scratch) + 1)
+                    }
+                    print
+                }
+            ' "$dispositions" > "$norm_tmp" && mv "$norm_tmp" "$dispositions"
+        fi
+        rm -rf "$_MIGRATOR_DRYRUN_SCRATCH"
+        _MIGRATOR_DRYRUN_SCRATCH=""
+    fi
 }
 
 # ── S4 — Relocations (BD-042 legacy-doc relocation in v10→v11) ────────────

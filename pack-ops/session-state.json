@@ -1,21 +1,19 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "a93d3e7",
-  "checkpoint": "2026-08-07T00:00:00Z",
+  "boundary_commit": "3b534fb",
+  "checkpoint": "2026-08-10T00:00:00Z",
   "active": ["BD-205"],
   "in_flight_agents": [
-    "(none) -- PAUSED. BD-205 nearly complete: W4 coder pipeline (~24 commits) + W1/W2 audits + W5 reconciliation (11 DROP + v10.1 changelog+README backfill + playwright-mcp gitignore KEEP) + user-gated GH-label cleanup all DONE + committed + CI GREEN (the earlier GitHub hosted-runner outage recovered; HEAD run passed). No agent in flight.",
-    "ON RESUME: (1) W3 USER-RUN testbed. (2) BD-205 Resolved -> BD-093. CI is green at HEAD (no re-run needed unless a new push lands during an outage). Authoritative handoffs under $XDG_STATE_HOME/optiquity-pack-handoff/ (W5-ASSESSMENT, AUDIT-TRIAGE, PLAN, PLANNER-GATE)."
+    "(none) -- BD-281 RESOLVED (migrator --dry-run pause-prediction fix landed: Approach B, both dispatch legs, prediction-bites PRED==ACTUAL, full migration + tracker battery + validate-pack both jobs green, adversarial + fresh-final review CLEAN). The BD-281 coder worktree stays until this commit is CONFIRMED landed + CI green, then teardown.",
+    "ON RESUME: (1) confirm the BD-281 fix commit CI green + teardown its worktree; (2) flip BD-205 Resolved (W3 proven, BD-281 closed); (3) BD-093 release pin. Handoffs under $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
   "queue": ["BD-093"],
-  "parallelization": "SERIAL. BD-205 ACTIVE (final readiness gate); all but W3 + close DONE + committed + locally green. Blocked only on CI CONFIRMATION (GitHub hosted-runner outage, external). W3 + BD-205 Resolved + BD-093 remain.",
-  "wave": "BD-205 remaining: (a) CI GREEN confirmed on HEAD (an earlier GitHub runner outage recovered on a fresh push); (b) W3 USER-RUN real-content testbed -- Pack Chat authors the harness + isolation-integrity check (real app read-only -> bare mirror reset-commit -> /tmp working clone -> migrate/verify -> reset), USER triggers each run + confirms the T0-untouched proof, NO autonomous clone/touch of the real repo (OI-S4); (c) BD-205 Resolved -> BD-093 release pin. At launch (post-BD-093): scrubbed public copy (filter-repo'd clean release repo, OI-S2).",
+  "parallelization": "SERIAL. BD-205 W3 PROVEN complete (real-content migration finished end-to-end into a valid v11 tree; Gate 2 PASS). BD-281 RESOLVED (dry-run report-accuracy fix landed). Next: BD-205 Resolved -> BD-093.",
+  "wave": "BD-205 W3 DONE: the real-content testbed proved the full v10->v11 path (dry-run PASS, --apply detected 5 customizations + paused safely, --resume finished into a valid v11 tree, Gate 2 PASS, resume exit 0). BD-281 (surfaced by W3) RESOLVED: the dry-run now runs the real classifier against a scratch dest so the pause prediction is truthful on both dispatch legs. Remaining v11.0: BD-205 Resolved -> BD-093 release pin. At launch (post-BD-093): scrubbed public copy (filter-repo'd clean release repo).",
   "pending_decisions": [
-    "BD-205 leak model ENFORCED: leg-1 (literal target name) zero TREE-WIDE (guard Check 93 Python re over CONTENT, catches the binary dashboard); leg-2 (domain vocab + hyphenated-OT + word-boundary bare-OT) zero on CLIENT/PUBLIC surfaces, one allowlisted keep x-brokerage-api (OI-S7); INTERNAL surfaces keep bare-OT shorthand (OI-S6); rule public-bound-no-leak (C15) codifies it (indirect wording OI-S3).",
-    "BD-205 doc-hygiene DECIDED-LEAVE: backlog/BD-136.md + BD-142.md are historical Resolved records whose OT shorthand is a sanctioned internal keep; their staleness reflects later C4/C6 changes recorded in BD-205; editing would rewrite history. No action.",
-    "BD-205 cross-BD: BD-192 coordinated, BD-202 serialized, BD-171 folded (=W3 testbed), BD-093 sequenced after, BD-223 pre-satisfied. OI-P6 (for BD-109): adds a 17th project agent -> Check-57/55/27 roster-lockstep + verify its .gemini/agents path.",
-    "PROCESS LESSON: after any push changing a fixture input, run manifest-sync BEFORE push; ALWAYS confirm CI (poll gh run) before proceeding -- but distinguish a GitHub RUNNER OUTAGE (jobs stuck queued / 'not acquired by runner') from a real code failure: an outage is external, re-run when runners recover.",
+    "BD-205 leak model ENFORCED: leg-1 (literal target name) zero TREE-WIDE (Check 93 Python re over CONTENT); leg-2 (domain vocab + hyphenated + word-boundary bare codename) zero on CLIENT/PUBLIC surfaces, one allowlisted keep x-brokerage-api; INTERNAL surfaces keep bare-codename shorthand; rule public-bound-no-leak codifies it.",
+    "BD-205 cross-BD: BD-192 coordinated, BD-202 serialized, BD-171 folded (=W3 testbed, DONE), BD-093 sequenced after, BD-223 pre-satisfied. BD-281 cross-BD: sequenced before BD-171; BD-202 (v11.1) to re-verify the dry-run prediction when it reworks customization-preserve.sh.",
     "Standing: PUBLIC-BOUND PACK; push USER-APPROVED then Pack-Chat-executed; intervention commit-gate live (fresh token, separate step); session-state COMPACT (one SHA boundary, no other SHAs, no dates outside checkpoint, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-205 W4 pipeline + W1/W2/W5 audits + GH-labels DONE + committed + CI GREEN (boundary is CI-green HEAD). PAUSED. NEXT: W3 user-run testbed -> BD-205 Resolved -> BD-093."
+  "cycle_position": "BD-281 fix implemented + reviewed CLEAN (adversarial + fresh final) + full battery green; patch applied to the main checkout; BD-281 flipped Resolved. NEXT: commit (pack-only) -> push -> CI green -> teardown worktree; then BD-205 Resolved -> BD-093."
 }

@@ -287,9 +287,17 @@ _manifest_dispatch_transform() {
 
     if _migrator_is_dryrun; then
         _migrator_dryrun_log "transform" "$proj_rel (class=$cls)"
-        # Still record a finding so the dry-run report is truthful.
-        _cp_record "pack-update-applied" "$cls" "$proj_rel" "copied" "-" "-" \
-            "[dry-run] would dispatch via customization_preserve"
+        # BD-281: run the REAL customization_preserve classifier against a
+        # throwaway scratch dest (created + torn down by _stage_dispatch,
+        # dry-run only) instead of a blind pack-update-applied record. Same
+        # code as the --apply leg below => the recorded disposition (and thus
+        # the dry-run pause prediction) is truthful by construction, with no
+        # project-tree write (every strategy write targets dest/sidecar,
+        # which are now under the scratch dir).
+        local scratch_dest="$_MIGRATOR_DRYRUN_SCRATCH/$proj_rel"
+        mkdir -p "$(dirname "$scratch_dest")"
+        customization_preserve \
+            "$base" "$ours" "$theirs" "$proj_rel" "$scratch_dest" "$cls" >/dev/null
     else
         # Always dispatch — even when both sides absent (architecture M4).
         customization_preserve \
@@ -510,8 +518,16 @@ _manifest_sweep_one_dir() {
 
         if _migrator_is_dryrun; then
             _migrator_dryrun_log "sweep-dispatch" "$proj_rel (class=$cls)"
-            _cp_record "pack-update-applied" "$cls" "$proj_rel" "copied" "-" "-" \
-                "[dry-run] would dispatch via sweep"
+            # BD-281: same as _manifest_dispatch_transform — run the REAL
+            # classifier against the throwaway scratch dest so swept per-CLI
+            # agent customizations are predicted truthfully, with no project
+            # write. S1 + S2 MUST ship together (identical defect in both
+            # dispatch paths).
+            local scratch_dest="$_MIGRATOR_DRYRUN_SCRATCH/$proj_rel"
+            mkdir -p "$(dirname "$scratch_dest")"
+            customization_preserve \
+                "$base" "$ours" "$theirs" "$proj_rel" "$scratch_dest" "$cls" \
+                >/dev/null
         else
             customization_preserve \
                 "$base" "$ours" "$theirs" "$proj_rel" "$dest" "$cls" \

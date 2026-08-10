@@ -189,18 +189,59 @@ rm -rf "$T"
 
 printf "\n=== Group 4: --resume conflict resolution signals ===\n"
 
-# Helper: run dry-run + apply where apply pauses with sidecars present.
-# We force a pause by injecting a customization that triggers the
-# real-merge-required path → needs-reconciliation → sidecar.
-prepare_paused() {
+# Helper: build a v10 target and inject the customization that forces the
+# real-merge-required path → needs-reconciliation → sidecar during --apply
+# (the project edits the trinity CLAUDE.md that the pack also changed
+# v10→v11). Returns the target dir; does NOT run the migrator, so callers can
+# drive --dry-run / --apply separately (BD-281 prediction-bites group needs to
+# observe the dry-run BEFORE --apply overwrites dispositions.tsv).
+build_paused_fixture() {
     local d
     d=$(make_v10_target)
     printf '\n## Project customization line\n' >> "$d/CLAUDE.md"
     git -C "$d" add -A >/dev/null
     git -C "$d" commit -q -m "project customization" 2>/dev/null
+    printf '%s\n' "$d"
+}
+
+# Helper: run dry-run + apply where apply pauses with sidecars present.
+# Builds the pause-forcing fixture via build_paused_fixture, then drives both
+# phases so the target is left in the paused state Groups 4/5 resume from.
+prepare_paused() {
+    local d
+    d=$(build_paused_fixture)
     PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$d" >/dev/null 2>&1
     # Apply pauses at S3 with conflicts. Exit code 0 (clean pause).
     PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply "$d" >/dev/null 2>&1
+    printf '%s\n' "$d"
+}
+
+# Helper: build a v10 target whose customization forces a needs-reconciliation
+# on the S3 DIRECTORY-SWEEP leg (_manifest_sweep_one_dir), NOT the manifest
+# transform leg build_paused_fixture exercises. It seeds the full v10
+# .claude/agents/ tree (a realistic v10 project) and customizes ONE
+# pack-shipped agent (coder.md) that the pack also updated v10→v11. coder.md is
+# dispatched ONLY via the `.claude/agents` directory sweep — it is not a
+# migrator_manifest row — so BASE≠OURS≠THEIRS on it forces real-merge-required
+# → needs-reconciliation through the S2 leg specifically. Returns the target
+# dir; does NOT run the migrator (BD-281 sweep-leg prediction-bites group needs
+# to observe the dry-run BEFORE --apply overwrites dispositions.tsv).
+build_paused_fixture_swept() {
+    local d f rel
+    d=$(make_v10_target)
+    # Seed the whole v10 .claude/agents/ tree so uncustomized agents classify
+    # as pack-update-applied (project untouched) and only the customized one
+    # becomes a needs-reconciliation — a clean single-file sweep-leg pause.
+    for f in $(git -C "$REPO_ROOT" ls-tree -r --name-only v10 \
+                   -- project-template/.claude/agents/); do
+        rel="${f#project-template/}"
+        mkdir -p "$d/$(dirname "$rel")"
+        git -C "$REPO_ROOT" show "v10:$f" > "$d/$rel" 2>/dev/null
+    done
+    printf '\n<!-- project customization of the swept coder agent -->\n' \
+        >> "$d/.claude/agents/coder.md"
+    git -C "$d" add -A >/dev/null
+    git -C "$d" commit -q -m "customize swept pack-agent coder.md" 2>/dev/null
     printf '%s\n' "$d"
 }
 
@@ -523,6 +564,150 @@ else
     [[ -f "$T/.pack-migrate-v10-to-v11/sentinels/stage-S6.done" ]] \
         && t_pass "9.3 stage-S6.done after --resume (install completed post-reconciliation)" \
         || t_fail "9.3 stage-S6.done missing after --resume"
+fi
+rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 10 (BD-281): --dry-run PREDICTS the --apply reconciliation pause.
+#
+# Before BD-281 the dispatch dry-run legs (migrator-manifest.sh
+# _manifest_dispatch_transform / _manifest_sweep_one_dir) recorded a BLIND
+# pack-update-applied disposition for every file, so dispositions.tsv could
+# never contain a needs-reconciliation row → Gate 1 always printed
+# "conflicts: 0 … without pausing", even when --apply would pause on real
+# customizations (the BD-205 W3 observation: 5 real customizations, dry-run
+# said 0). BD-281 runs the REAL customization_preserve classifier against a
+# throwaway scratch dest in dry-run, so the prediction is truthful by
+# construction. This group is the prediction-BITES guard: PRED (dry-run
+# predicted needs-reconciliation count) == ACTUAL (--apply real paused-sidecar
+# count). It also re-asserts the no-mutation invariant on the truthful path,
+# that no sidecar leaks into $TARGET, that the recorded sidecar column is
+# normalized to the real would-be path (not the throwaway scratch path), and
+# that a no-customization fixture still yields the truthful all-clear.
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 10: BD-281 --dry-run predicts the --apply pause ===\n"
+
+RECON="customization-detected-needs-reconciliation"
+
+# 10.1–10.5: truthful prediction on a customized (pause-forcing) fixture.
+T=$(build_paused_fixture)
+SNAP_BEFORE=$(snapshot_tree "$T")
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" 2>&1) ; rc=$?
+assert_eq "10.1 --dry-run rc=0 (customized fixture)" "0" "$rc"
+
+disp="$T/.pack-migrate-v10-to-v11/dispositions.tsv"
+# PRED = count of needs-reconciliation rows the dry-run predicted (column 1).
+PRED=$(awk -F '\t' -v r="$RECON" 'NR>1 && $1==r' "$disp" 2>/dev/null | wc -l | tr -d ' ')
+[[ "$PRED" -gt 0 ]] \
+    && t_pass "10.2 dry-run predicted $PRED needs-reconciliation row(s) (was always 0 pre-fix)" \
+    || t_fail "10.2 dry-run predicted zero needs-reconciliation rows (blind-record regression)"
+# Gate 1 must announce the pause, NOT the false all-clear.
+assert_contains "10.2 Gate 1 announces reconciliation" "$out" \
+    "file(s) will need reconciliation"
+if [[ "$out" == *"will run end-to-end without pausing"* ]]; then
+    t_fail "10.2 Gate 1 still printed the false all-clear on a customized fixture"
+else
+    t_pass "10.2 Gate 1 did NOT print the false all-clear"
+fi
+
+# No project mutation on the truthful path — the scratch classifier writes
+# only under the OS temp root, never $TARGET.
+SNAP_AFTER=$(snapshot_tree "$T")
+assert_eq "10.3 --dry-run did not mutate project files" "$SNAP_BEFORE" "$SNAP_AFTER"
+# No .v10-customized sidecar leaked into $TARGET outside the state dir.
+leaked=$( cd "$T" && find . -name '*.v10-customized' \
+    -not -path './.pack-migrate-*/*' -not -path './.git/*' 2>/dev/null )
+[[ -z "$leaked" ]] \
+    && t_pass "10.3 no .v10-customized sidecar leaked into TARGET" \
+    || t_fail "10.3 dry-run leaked a sidecar into TARGET: $leaked"
+
+# Sidecar column (5) normalized to the real would-be path, not the scratch
+# path (S3 col-5 normalization pass). The recorded sidecar must be rooted
+# under $TARGET.
+col5=$(awk -F '\t' -v r="$RECON" 'NR>1 && $1==r {print $5; exit}' "$disp" 2>/dev/null)
+# Resolve the target the same way the migrator does (cd + pwd normalizes the
+# BSD-mktemp double-slash a trailing-slash $TMPDIR leaves in the raw path) so
+# the comparison is apples-to-apples with the normalized sidecar path.
+T_real=$(cd "$T" && pwd)
+if [[ "$col5" == "$T_real"/* ]]; then
+    t_pass "10.4 sidecar column normalized to TARGET path ($col5)"
+else
+    t_fail "10.4 sidecar column not normalized (scratch path leaked): $col5"
+fi
+
+# --apply the SAME fixture; ACTUAL = real paused-sidecar count.
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply "$T" >/dev/null 2>&1
+paused="$T/.pack-migrate-v10-to-v11/sentinels/stage-S3.paused"
+# Count paused-sidecar lines by branching on file presence, avoiding the
+# BD-219 double-zero failure-masking idiom (a counting pipeline whose
+# non-match exit is swallowed by a fallback that prints a literal zero). A
+# missing or empty paused file yields ACTUAL=0, which fails the equality
+# loudly (the correct signal that --apply did not pause as predicted).
+if [[ -s "$paused" ]]; then
+    ACTUAL=$(grep -c . "$paused")
+else
+    ACTUAL=0
+fi
+# The prediction BITES: predicted count == apply's real pause set (not a proxy).
+assert_eq "10.5 prediction bites: PRED == ACTUAL ($PRED)" "$PRED" "$ACTUAL"
+rm -rf "$T"
+
+# 10.6 truthful all-clear preserved: a no-customization fixture predicts 0
+# and Gate 1 keeps the "without pausing" line (no false-pause regression).
+T=$(make_v10_target)
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" 2>&1) ; rc=$?
+assert_eq "10.6 --dry-run rc=0 (clean fixture)" "0" "$rc"
+disp="$T/.pack-migrate-v10-to-v11/dispositions.tsv"
+PRED0=$(awk -F '\t' -v r="$RECON" 'NR>1 && $1==r' "$disp" 2>/dev/null | wc -l | tr -d ' ')
+assert_eq "10.6 clean fixture predicts 0 reconciliations" "0" "$PRED0"
+assert_contains "10.6 Gate 1 says without pausing" "$out" \
+    "will run end-to-end without pausing"
+rm -rf "$T"
+
+# 10.7–10.12: S2 DIRECTORY-SWEEP leg prediction bites. 10.1–10.6 exercise the
+# S1 manifest-transform leg (customized CLAUDE.md); this sub-group closes the
+# asymmetry so a sweep-leg-only regression (a wrong _manifest_sweep_one_dir
+# dry-run prediction) cannot slip past the suite. The fixture customizes a
+# pack-shipped agent (`.claude/agents/coder.md`) dispatched ONLY via the
+# `.claude/agents` directory sweep — NOT a migrator_manifest row — so its
+# needs-reconciliation is predicted (and must bite) entirely through the S2 leg.
+T=$(build_paused_fixture_swept)
+SNAP_BEFORE=$(snapshot_tree "$T")
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" 2>&1) ; rc=$?
+assert_eq "10.7 --dry-run rc=0 (swept-agent fixture)" "0" "$rc"
+
+disp="$T/.pack-migrate-v10-to-v11/dispositions.tsv"
+# The swept file's needs-reconciliation row must be predicted via the S2 leg.
+swept_row=$(awk -F '\t' -v r="$RECON" \
+    'NR>1 && $1==r && $3==".claude/agents/coder.md"' "$disp" 2>/dev/null)
+[[ -n "$swept_row" ]] \
+    && t_pass "10.8 dry-run predicts the swept pack-agent needs-reconciliation (S2 leg)" \
+    || t_fail "10.8 dry-run did NOT predict the swept-file reconciliation (S2-leg regression)"
+PRED=$(awk -F '\t' -v r="$RECON" 'NR>1 && $1==r' "$disp" 2>/dev/null | wc -l | tr -d ' ')
+assert_contains "10.9 Gate 1 announces reconciliation (swept)" "$out" \
+    "file(s) will need reconciliation"
+
+# No project mutation on the swept path either (scratch classifier only).
+SNAP_AFTER=$(snapshot_tree "$T")
+assert_eq "10.10 --dry-run did not mutate project files (swept)" "$SNAP_BEFORE" "$SNAP_AFTER"
+
+# --apply the SAME fixture; ACTUAL = real paused-sidecar count. The sweep-leg
+# prediction must BITE (equal apply's real pause set), not a proxy.
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply "$T" >/dev/null 2>&1
+paused="$T/.pack-migrate-v10-to-v11/sentinels/stage-S3.paused"
+# Branch on file presence — not the BD-219 double-zero masking idiom.
+if [[ -s "$paused" ]]; then
+    ACTUAL=$(grep -c . "$paused")
+else
+    ACTUAL=0
+fi
+assert_eq "10.11 sweep-leg prediction bites: PRED == ACTUAL ($PRED)" "$PRED" "$ACTUAL"
+# The swept sidecar specifically appears in --apply's real pause set.
+if grep -q '\.claude/agents/coder\.md\.v10-customized' "$paused" 2>/dev/null; then
+    t_pass "10.12 --apply paused on the swept pack-agent sidecar (S2 leg bites)"
+else
+    t_fail "10.12 --apply did not pause on the swept pack-agent sidecar"
 fi
 rm -rf "$T"
 
