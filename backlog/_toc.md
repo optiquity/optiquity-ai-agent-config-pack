@@ -21,6 +21,9 @@
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
 - [BD-279](./BD-279.md) — Code-optimization methodology: skill(s) + existing-agent pipeline for intentional net-positive refactors of EXISTING code (pack + project, mirror-but-customize)
 - [BD-280](./BD-280.md) — Dashboard doc-index staleness: the spec-embedded `maintenance-docs/` list references deleted docs (BD-210 fallout) — drop stale entries or make it live-derived
+- [BD-283](./BD-283.md) — Turnkey interactive migration reconciliation: prompt per customization conflict, apply the choice in-process, auto-continue (no copy-paste, no separate `--resume`)
+- [BD-284](./BD-284.md) — Install automation + confirm parity: add `--yes` to `init-project.sh`, make the confirm TTY-aware, and extract the shared `scripts/lib/prompt.sh` foundation
+- [BD-285](./BD-285.md) — Fresh-install into existing code: close the untested collision-sidecar branch (C1) and replace the existing-`CLAUDE.md` dead-end STOP with a guided keep/replace/merge branch (C2)
 
 ## Deferred
 
