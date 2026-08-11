@@ -13,12 +13,16 @@
 # Plan:         maintenance-docs/v11-implementation/PLAN-BD-119.md §3
 #
 # State at C-3 (this file):
-#   - Public-API surface FROZEN per PLAN §3 (six function names + nine
+#   - Public-API surface FROZEN per PLAN §3 (seven function names + nine
 #     exit-code constants + EXIT_NOT_V10 synonym). The ninth constant —
 #     EXIT_GATE_FAILED=31 — was added by BD-101 (verification gates) as
 #     an additive extension to the frozen surface; existing constants
-#     10..16, 99 retain their semantics. Adapters should still reference
-#     constants by name, never by literal value.
+#     10..16, 99 retain their semantics. The seventh function —
+#     migrator_pause() — was likewise added by BD-282 as an additive
+#     extension: adapters call it instead of `exit 0` to signal a
+#     deliberate, --resume-able pause so the EXIT trap renders a PAUSED
+#     (not FAILED) report. Adapters should still reference constants by
+#     name, never by literal value.
 #   - Stage sequencer + arg parser + EXIT trap + adapter-contract reader
 #     are LIVE (this is T-7 from PLAN §4).
 #   - Public-API helpers `migrator_detect_target_version`,
@@ -119,6 +123,11 @@ fail_stage() {
 #                                     failure guarantee so a failed run still
 #                                     attempts to render the report exactly
 #                                     once.
+#   _MIGRATOR_PAUSED                  "1" once `migrator_pause` has run; tells
+#                                     the EXIT trap to render a PAUSED (not
+#                                     FAILED) report for a deliberate,
+#                                     --resume-able pause. Only `migrator_pause`
+#                                     sets it; genuine errors leave it "0".
 
 _migrator_reset_state() {
     _MIGRATOR_TARGET=""
@@ -127,6 +136,7 @@ _migrator_reset_state() {
     _MIGRATOR_STATE_DIR=""
     _MIGRATOR_BACKUP_DIR=""
     _MIGRATOR_REPORT_DONE="0"
+    _MIGRATOR_PAUSED="0"
 }
 _migrator_reset_state
 
@@ -201,12 +211,28 @@ _migrator_exit_trap() {
         # `_stage_preflight` or `_stage_backup`) have no report to render.
         if declare -F customization_report >/dev/null 2>&1 \
            && [[ -f "$_MIGRATOR_STATE_DIR/dispositions.tsv" ]]; then
-            customization_report \
-                "$_MIGRATOR_STATE_DIR/dispositions.tsv" \
-                "$_MIGRATOR_STATE_DIR/report.md" \
-                "${MIGRATOR_FROM_VERSION:-vN} → ${MIGRATOR_TO_VERSION:-vM} migration customization report (partial — run failed at exit code $rc)" \
-                2>/dev/null || true
-            warn "migration failed (exit $rc); partial report rendered to $_MIGRATOR_STATE_DIR/report.md"
+            if [[ "${_MIGRATOR_PAUSED:-0}" == "1" ]]; then
+                # Deliberate pause: an adapter called `migrator_pause`
+                # (exit 0) to let the user reconcile customizations.
+                # Render a PAUSED (not FAILED) report and emit a calm
+                # pointer — NOT `warn` (which prepends "warning:").
+                customization_report \
+                    "$_MIGRATOR_STATE_DIR/dispositions.tsv" \
+                    "$_MIGRATOR_STATE_DIR/report.md" \
+                    "${MIGRATOR_FROM_VERSION:-vN} → ${MIGRATOR_TO_VERSION:-vM} migration — PAUSED for customization reconciliation" \
+                    2>/dev/null || true
+                printf 'note: migration paused — requires attention; partial report written to %s\n' \
+                    "$_MIGRATOR_STATE_DIR/report.md" >&2
+            else
+                # Genuine failure before the report stage: render a partial
+                # report and warn loudly (unchanged pre-BD-282 behavior).
+                customization_report \
+                    "$_MIGRATOR_STATE_DIR/dispositions.tsv" \
+                    "$_MIGRATOR_STATE_DIR/report.md" \
+                    "${MIGRATOR_FROM_VERSION:-vN} → ${MIGRATOR_TO_VERSION:-vM} migration customization report (partial — run failed at exit code $rc)" \
+                    2>/dev/null || true
+                warn "migration failed (exit $rc); partial report rendered to $_MIGRATOR_STATE_DIR/report.md"
+            fi
         fi
     fi
     return "$rc"
@@ -328,9 +354,11 @@ _migrator_parse_args() {
 
 # ── Public API (PLAN §3.1; FROZEN) ─────────────────────────────────────────
 #
-# Six functions form the public surface. Each is callable from adapters and
-# from external harnesses. Names + arities are frozen for the duration of
-# v11.x; renames require a new BD that explicitly amends BD-119.
+# Seven functions form the public surface. Six are callable from adapters and
+# from external harnesses; the seventh, migrator_pause, is an adapter-only
+# pause signal (it exits, so external harnesses do not call it). Names +
+# arities are frozen for the duration of v11.x; renames require a new BD that
+# explicitly amends BD-119.
 
 # migrator_run "$@"
 #   Full end-to-end migration with the calling adapter's declared contract.
@@ -357,6 +385,14 @@ migrator_dispatch() {
     fi
     migrator_run "$1"
 }
+
+# migrator_pause
+#   Adapters call this INSTEAD of `exit 0` when they deliberately pause
+#   (e.g. to let the user reconcile customizations) and expect `--resume`
+#   to complete the run. Sets the flag the EXIT trap reads to render a
+#   PAUSED (not FAILED) report. Genuine errors MUST NOT call this — use
+#   die / fail_stage (non-zero) so the trap's FAILURE branch fires.
+migrator_pause() { _MIGRATOR_PAUSED=1; exit 0; }
 
 # migrator_detect_target_version <target-dir>
 #   Echo the major pack version installed in the target (e.g. `v10`,

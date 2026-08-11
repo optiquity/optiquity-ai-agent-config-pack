@@ -47,7 +47,7 @@ customization_report() {
             "These had project customizations; the migrator merged pack updates while preserving your edits."
         _cp_report_section "$tsv" "$_CP_DISP_NEEDS_RECONCILIATION" \
             "Files needing manual reconciliation" \
-            "Both you and the pack edited these. The migrator wrote the new pack template to the live file and saved your pre-update copy as a sidecar (see paths below). Please review and reconcile."
+            "Both you and the pack edited these. The migrator wrote the new pack template to the live file and saved your pre-update copy as a sidecar (paths below). If any file below is still unresolved, choose one: accept the pack version (the live file already holds it — remove the saved sidecar), keep your version (restore it from the sidecar), or merge by hand; then mark it resolved (remove the sidecar or add its .resolved companion)."
         _cp_report_section "$tsv" "removed-by-design" \
             "Files retired by pack" \
             "The new pack version no longer ships these files. Where you had customized them, the original is in a sidecar."

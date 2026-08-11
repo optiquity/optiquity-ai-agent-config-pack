@@ -1116,6 +1116,9 @@ def check_migrator_framework_inventory() -> None:
         ok(f"{lib.relative_to(REPO_ROOT)} syntax valid")
 
     # Public-API names must appear as function definitions in core.
+    # BD-282 added migrator_pause as an additive extension to the frozen
+    # public surface (adapters call it instead of `exit 0` to signal a
+    # deliberate, --resume-able pause). Count auto-derives from the list.
     required_names = [
         "migrator_run",
         "migrator_dispatch",
@@ -1123,6 +1126,7 @@ def check_migrator_framework_inventory() -> None:
         "migrator_select_adapter",
         "migrator_baseline_to_tmp",
         "migrator_target_surface_for_version",
+        "migrator_pause",
     ]
     core_text = core.read_text()
     for name in required_names:

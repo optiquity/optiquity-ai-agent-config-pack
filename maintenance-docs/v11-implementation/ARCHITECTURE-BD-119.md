@@ -227,6 +227,13 @@ setting variables and defining hook functions. The core reads them.
   to pick the correct adapter (see §5).
 - `migrator_select_adapter <from-version>` — echo the path to
   `migrate-v<from>-to-v<from+1>.sh`. Errors if missing.
+- `migrator_pause` — adapter pause signal (no args). Sets the flag the
+  EXIT trap reads to render a PAUSED (not FAILED) report, then exits 0;
+  adapters call it instead of `exit 0` for a deliberate, `--resume`-able
+  pause. Added by BD-282 as an additive extension to the frozen surface
+  (mirrors the `EXIT_GATE_FAILED` additive-constant note); the realized
+  consumer is `scripts/lib/migrate-v10-to-v11/apply.sh`
+  `migrate_v10_to_v11_apply_after_dispatch`.
 
 ### 3.3 Env-var conventions
 

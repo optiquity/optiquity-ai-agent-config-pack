@@ -459,6 +459,32 @@ assert_contains "2c.5 disposition note carries the L-9 [CONDITIONAL] keep-vs-del
     && t_pass "2c.7 install paused before S4/S5 (HELP-FRAGMENT not yet installed)" \
     || t_fail "2c.7 install ran past the BD-095 pause (pause not load-bearing)"
 
+# BD-282 C5: the pause reads as a calm "Migration paused — requires attention"
+# with the three consequence-labelled options + copy-paste per-sidecar commands,
+# and NEVER the old "migration failed" wording. These assertions read `$out`
+# from the `2>&1` capture at the TOP of Group 2c (the combined stdout+stderr) —
+# do NOT drop that redirect or the framework trap's stderr pause-note (and the
+# say-emitted block) stop being visible to the test.
+assert_contains "2c.8 pause header reads 'Migration paused'" \
+    "$out" "Migration paused"
+assert_contains "2c.9 pause header reads 'requires attention'" \
+    "$out" "requires attention"
+assert_contains "2c.10 option 1 labelled 'Accept the pack'" \
+    "$out" "Accept the pack"
+assert_contains "2c.11 option 2 labelled 'Keep your customization'" \
+    "$out" "Keep your customization"
+assert_contains "2c.12 option 3 labelled 'Merge by hand'" \
+    "$out" "Merge by hand"
+assert_contains "2c.13 emits a per-sidecar keep-yours command (mv '...')" \
+    "$out" "mv '"
+assert_contains "2c.14 emits a per-sidecar merge command (touch '...'.resolved)" \
+    "$out" ".resolved"
+assert_contains "2c.15 emits the --resume command to finish" \
+    "$out" "--resume"
+[[ "$out" != *"migration failed"* ]] \
+    && t_pass "2c.16 pause is NOT worded as a failure (no 'migration failed')" \
+    || t_fail "2c.16 pause leaked the old 'migration failed' wording"
+
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────

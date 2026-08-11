@@ -1,19 +1,19 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "f259b4c",
-  "checkpoint": "2026-08-10T00:00:00Z",
+  "boundary_commit": "aa786d5",
+  "checkpoint": "2026-08-11T00:00:00Z",
   "active": [],
   "in_flight_agents": [
-    "(none) -- BD-205 v11.0 readiness gate RESOLVED (all acceptance criteria met; W1/W2 audits + W4 leak scrub + W3 real-content testbed + W5 main reconciliation all complete; BD-281 dry-run defect resolved in-cycle). No agent in flight.",
-    "ON RESUME: BD-093 (release pin) is the next launch-gate item -- awaiting user go. After BD-093: launch = the v11-dev->main clean-overwrite merge (keepers already in v11-dev, so lossless) + the post-launch scrubbed public copy. Handoffs under $XDG_STATE_HOME/optiquity-pack-handoff/."
+    "(none) -- BD-282 RESOLVED (migrator pause-message UX fix landed: migrator_pause primitive + trap PAUSED/FAILURE branch; genuine-failure preservation proven by a bite-verified test; full LARGE pipeline architect->adversarial->reconciliation->coder->review all CLEAN; 1090/0 battery + validate-pack both jobs green). The BD-282 coder worktree stays until this commit is CONFIRMED landed + CI green, then teardown.",
+    "ON RESUME: (1) confirm the BD-282 fix commit CI green + teardown its worktree; (2) BD-093 release pin -- awaiting user go. Handoffs under $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
   "queue": ["BD-093"],
-  "parallelization": "SERIAL. BD-205 RESOLVED (v11.0 final readiness gate closed). BD-093 release pin is next (awaiting user go), then launch.",
-  "wave": "v11.0 readiness gate (BD-205) CLOSED: full test battery + validate-pack green; whole-repo audit clean; real-content migration testbed proved the v10->v11 path end-to-end (Gate 2 PASS, real target never touched); leak-prevention complete (Check 93 guard + public-bound-no-leak rule); main->v11-dev reconciliation done (13 commits adjudicated, 2 keepers re-expressed into v11-dev). BD-281 (dry-run pause-prediction) resolved in-cycle. Next: BD-093 release pin -> launch (v11-dev->main clean overwrite; keepers already in v11-dev) -> post-launch scrubbed public copy.",
+  "parallelization": "SERIAL. BD-205 (v11.0 readiness gate) RESOLVED. BD-281 (dry-run pause-prediction) + BD-282 (pause-message UX) RESOLVED -- both surfaced by the W3 real-content testbed, both fixed + landed. Next: BD-093 release pin (awaiting user go), then launch.",
+  "wave": "v11.0 readiness closed (BD-205) + the two W3-surfaced migrator UX fixes landed: BD-281 (dry-run now truthfully predicts the pause) + BD-282 (a customization pause reads 'paused -- requires attention' with reconciliation options + commands, no longer 'migration failed'). Both on the real-content testbed path. Remaining v11.0: BD-093 release pin -> launch (v11-dev->main clean overwrite; keepers already in v11-dev) -> post-launch scrubbed public copy.",
   "pending_decisions": [
     "LAUNCH SEQUENCE: BD-093 release pin (version-tag decision -- USER decides every tag / state transition) -> the v11-dev->main clean-overwrite merge (lossless: all main keepers already re-expressed into v11-dev) -> post-launch the scrubbed public copy (filter-repo'd clean release repo).",
     "BD-205 leak model ENFORCED: leg-1 (literal target name) zero TREE-WIDE (Check 93 Python re over CONTENT); leg-2 (domain vocab + hyphenated + word-boundary bare codename) zero on CLIENT/PUBLIC surfaces, one allowlisted keep x-brokerage-api; INTERNAL surfaces keep bare-codename shorthand; rule public-bound-no-leak codifies it.",
     "Standing: PUBLIC-BOUND PACK; push USER-APPROVED then Pack-Chat-executed; intervention commit-gate live (fresh token, separate step); session-state COMPACT (one SHA boundary, no other SHAs, no dates outside checkpoint, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-205 RESOLVED (v11.0 readiness gate closed; BD-281 resolved in-cycle). NEXT: BD-093 release pin (awaiting user go) -> launch (v11-dev->main clean overwrite) -> post-launch scrubbed public copy."
+  "cycle_position": "BD-282 fix applied to the main checkout + BD-282 flipped Resolved; review CLEAN, full battery green. NEXT: commit (pack-only) -> push -> CI green -> teardown worktree; then BD-093 release pin (awaiting user go)."
 }

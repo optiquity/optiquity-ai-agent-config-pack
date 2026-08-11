@@ -279,6 +279,7 @@
 - [BD-277](./BD-277.md) — Client-side (project-template) BSD-mktemp portability: sweep + guard assessment (client deliverable analog of BD-276)
 - [BD-278](./BD-278.md) — Client `validate.sh` enforcement: opt-in pre-push hook installer + `/pm-startup` detect-and-suggest (client deliverable)
 - [BD-281](./BD-281.md) — Migrator `--dry-run` pause-prediction is false: the dry-run dispatch legs record a blind `pack-update-applied` instead of classifying, so Gate-1's "will run end-to-end without pausing" is unreliable — run the real classifier read-only in dry-run
+- [BD-282](./BD-282.md) — Migrator pause is mislabeled "migration failed": the framework exit-trap alarms on a deliberate customization pause — reword to "paused — requires attention" and present clear reconciliation options + exact commands
 
 ## Deprecated
 

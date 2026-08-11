@@ -230,31 +230,51 @@ migrate_v10_to_v11_apply_after_dispatch() {
 
     if _v10_v11_apply_collect_conflicts "$_MIGRATOR_STATE_DIR"; then
         say ""
-        say "── PAUSED — customization-detected-needs-reconciliation ──"
+        say "── Migration paused — requires attention ──"
         say ""
-        say "Dispatch produced one or more sidecar files that need manual"
-        say "reconciliation before the migration can complete. The remaining"
-        say "stages (S4 relocations, S5 artifact installs, S6 report) will"
-        say "run when you invoke --resume after resolving each sidecar."
+        say "Dispatch found files that BOTH you and the pack changed. Your"
+        say "prior copy of each was saved next to the live file as a"
+        say ".${MIGRATOR_OWN_SIDECAR_SUFFIX} sidecar; the live file now holds"
+        say "the new pack template. The migration is paused (not failed): the"
+        say "remaining stages (S4 relocations, S5 artifact installs, S6 report)"
+        say "run when you invoke --resume after you resolve each file below."
         say ""
-        say "Sidecars to reconcile:"
-        local s
+        say "For each file, choose ONE option and run its command:"
+        say ""
+        local s live
+        local rm_all=""
         while IFS= read -r s; do
             [[ -z "$s" ]] && continue
-            say "  $s"
+            # Sidecar paths are absolute (apply-mode); the live file is the
+            # sidecar with the .${MIGRATOR_OWN_SIDECAR_SUFFIX} suffix stripped.
+            live="${s%.${MIGRATOR_OWN_SIDECAR_SUFFIX}}"
+            say "  $live"
+            say "    1. Accept the pack's new version — discards YOUR"
+            say "       customization to this file; keeps the pack v11 template."
+            say "       The live file already IS the pack version, so just"
+            say "       remove the saved copy:"
+            say "         rm '$s'"
+            say "    2. Keep your customization — discards the pack v11 update"
+            say "       to this file; restores your prior copy over the template:"
+            say "         mv '$s' '$live'"
+            say "    3. Merge by hand — keeps both; reconcile line-by-line,"
+            say "       nothing auto-discarded. Edit '$live' (your prior copy"
+            say "       is in '$s'), then mark it resolved:"
+            say "         touch '$s.resolved'        # keep the sidecar as a record"
+            say "         # ...or, once merged:  rm '$s'"
+            say ""
+            rm_all="$rm_all '$s'"
         done < "$_MIGRATOR_STATE_DIR/sentinels/stage-S3.paused"
+        # OI-1 (BD-282): honest accept-pack-for-ALL one-shot. Removes exactly
+        # the listed sidecars in one copy-paste line. Explicitly labelled that
+        # it discards every customization to the files above — reversible from
+        # the pre-migration backup dir.
+        say "Shortcut — accept the pack's new version for ALL files above in"
+        say "one step. This DISCARDS ALL your customizations to those files"
+        say "(each remains recoverable from the ${_MIGRATOR_STATE_DIR##*/}-backup dir):"
+        say "  rm$rm_all"
         say ""
-        say "For each sidecar, choose ONE of:"
-        say "  (a) merge content into the destination file by hand, then"
-        say "      mark resolved by either:"
-        say "        - removing the .${MIGRATOR_OWN_SIDECAR_SUFFIX}"
-        say "          extension (rename foo.${MIGRATOR_OWN_SIDECAR_SUFFIX}"
-        say "          to foo), OR"
-        say "        - touching a companion .resolved flag-file"
-        say "          (touch foo.${MIGRATOR_OWN_SIDECAR_SUFFIX}.resolved)"
-        say "  (b) accept the pack's destination as-is and remove the sidecar."
-        say ""
-        say "Then run:"
+        say "When every file above is resolved, finish the migration:"
         # F12 (BD-095 retro fix): drop `:-/path/to/pack` fallback. This
         # block fires only AFTER S3 dispatch completed (post-mutation),
         # so PACK is definitely set.
@@ -262,12 +282,11 @@ migrate_v10_to_v11_apply_after_dispatch() {
         say "    scripts/migrate-${MIGRATOR_FROM_VERSION}-to-${MIGRATOR_TO_VERSION}.sh \\"
         say "    --resume $_MIGRATOR_TARGET"
         say ""
-        # Use a clean exit so the framework's EXIT trap renders the
-        # partial report. The trap in migrator-core.sh checks
-        # `_MIGRATOR_REPORT_DONE`; we leave it 0 so the trap fires the
-        # report. Exit code 0 because pausing for user input is not a
-        # failure — `--resume` will complete the run.
-        exit 0
+        # Signal a deliberate, resumable pause. `migrator_pause` sets
+        # `_MIGRATOR_PAUSED` and exits 0; the framework's EXIT trap then
+        # renders the PAUSED (not FAILED) report. Pausing for user input is
+        # not a failure — `--resume` completes the run.
+        migrator_pause
     fi
 }
 

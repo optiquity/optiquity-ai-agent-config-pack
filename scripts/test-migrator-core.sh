@@ -132,7 +132,7 @@ echo "== public API names defined (PLAN §3.1) =="
 out=$(_core_subshell '
     for fn in migrator_run migrator_dispatch migrator_detect_target_version \
               migrator_select_adapter migrator_baseline_to_tmp \
-              migrator_target_surface_for_version; do
+              migrator_target_surface_for_version migrator_pause; do
         if ! declare -F "$fn" >/dev/null 2>&1; then
             printf "missing-fn:%s\n" "$fn"
         fi
@@ -141,9 +141,9 @@ out=$(_core_subshell '
 ' 2>&1)
 rc=$?
 if [[ $rc -eq 0 && "$out" != *"missing-fn:"* && "$out" == *"all-fn-checked"* ]]; then
-    pass "six public-API function names declared after sourcing core"
+    pass "seven public-API function names declared after sourcing core (incl. migrator_pause, BD-282)"
 else
-    fail "public-API names" "all 6 declared" "rc=$rc out=$out"
+    fail "public-API names" "all 7 declared" "rc=$rc out=$out"
 fi
 
 # ── 3. migrator_detect_target_version: v10 shape ───────────────────────
@@ -492,6 +492,85 @@ if [[ $rc -eq 99 && "$out" == *"expected exactly one argument"* ]]; then
 else
     fail "migrator_dispatch no-args" "rc=99 + 'expected exactly one argument'" \
         "rc=$rc out=$out"
+fi
+
+# ── 20. migrator_pause: trap PAUSED branch reads paused, not failed ─────
+# BD-282 C4a. A deliberate `migrator_pause` (exit 0) in the post-dispatch
+# window (report_done still 0, dispositions.tsv present) must drive the
+# EXIT trap's PAUSED branch: a PAUSED report title + a calm paused pointer,
+# and NEVER the old "migration failed" warn. The synthetic post-dispatch
+# hook reproduces the exact pause window and records the state-dir path so
+# the test reads the real report.md regardless of the state-dir name.
+echo "== migrator_pause → trap PAUSED branch (no 'migration failed') =="
+
+# Build a clean repo exactly as test #17 (mkdir .claude, placeholder
+# CLAUDE.md, git init/clean-commit).
+fxp="$FIXTURE_BASE/trap-pause"
+mkdir -p "$fxp/.claude"
+printf '# CLAUDE.md\n' > "$fxp/CLAUDE.md"
+git -C "$fxp" init -q -b main
+git -C "$fxp" config user.email t@t
+git -C "$fxp" config user.name t
+git -C "$fxp" add -A
+git -C "$fxp" commit -q -m "init"
+
+sdfile="$FIXTURE_BASE/trap-pause.statedir"
+out=$(_core_subshell '
+    migrator_post_dispatch_hook() {
+        : > "$_MIGRATOR_STATE_DIR/dispositions.tsv"        # seed -> trap guard TRUE
+        printf "%s\n" "$_MIGRATOR_STATE_DIR" > "'"$sdfile"'"
+        migrator_pause                                     # sets _MIGRATOR_PAUSED=1; exit 0
+    }
+    migrator_run --dry-run "'"$fxp"'"
+' 2>&1)
+rc=$?
+report=$(cat "$(cat "$sdfile")/report.md" 2>/dev/null)
+# stderr/out carries the neutral PAUSED note; report.md TITLE is PAUSED;
+# neither says failed/partial.
+if [[ "$out" == *"paused"* || "$out" == *"requires attention"* ]] \
+   && [[ "$out" != *"migration failed"* ]] \
+   && [[ "$report" == *"PAUSED"* ]] \
+   && [[ "$report" != *"failed"* && "$report" != *"partial"* ]]; then
+    pass "trap PAUSED branch: pause reads paused/requires-attention; report title has no failed/partial"
+else
+    fail "trap paused wording" "paused note + PAUSED title, no failed/partial" "rc=$rc out=$out report=$report"
+fi
+
+# ── 21. genuine post-dispatch/pre-report failure STILL reads "migration failed"
+# BD-282 C4b — the load-bearing safety proof. A REAL failure in the same
+# window (post-dispatch, pre-report: report_done still 0, dispositions.tsv
+# present) with `_MIGRATOR_PAUSED` left 0 must STILL drive the trap's
+# FAILURE branch and read "migration failed (exit 42)". This proves the
+# PAUSED reword did not swallow the failure class it splits from.
+echo "== post-dispatch/pre-report exit 42 → trap FAILURE branch (load-bearing) =="
+
+# Build a clean repo exactly as test #17.
+fxf="$FIXTURE_BASE/trap-fail"
+mkdir -p "$fxf/.claude"
+printf '# CLAUDE.md\n' > "$fxf/CLAUDE.md"
+git -C "$fxf" init -q -b main
+git -C "$fxf" config user.email t@t
+git -C "$fxf" config user.name t
+git -C "$fxf" add -A
+git -C "$fxf" commit -q -m "init"
+
+sdff="$FIXTURE_BASE/trap-fail.statedir"
+out=$(_core_subshell '
+    migrator_post_dispatch_hook() {
+        : > "$_MIGRATOR_STATE_DIR/dispositions.tsv"        # report_done still 0, dispositions present
+        printf "%s\n" "$_MIGRATOR_STATE_DIR" > "'"$sdff"'"
+        exit 42                                            # genuine failure; _MIGRATOR_PAUSED stays 0
+    }
+    migrator_run --dry-run "'"$fxf"'"
+' 2>&1)
+rc=$?
+report=$(cat "$(cat "$sdff")/report.md" 2>/dev/null)
+# FAILURE branch fires: "migration failed (exit 42)" on stderr + failed/partial title.
+if [[ "$out" == *"migration failed (exit 42)"* ]] \
+   && [[ "$report" == *"partial"* || "$report" == *"failed"* ]]; then
+    pass "trap FAILURE branch: post-dispatch/pre-report failure still reads migration failed (exit 42)"
+else
+    fail "trap failure wording preserved" "migration failed (exit 42) + partial/failed title" "rc=$rc out=$out report=$report"
 fi
 
 # ── Summary ────────────────────────────────────────────────────────────
