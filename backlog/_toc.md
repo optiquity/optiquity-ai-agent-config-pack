@@ -23,6 +23,7 @@
 - [BD-280](./BD-280.md) — Dashboard doc-index staleness: the spec-embedded `maintenance-docs/` list references deleted docs (BD-210 fallout) — drop stale entries or make it live-derived
 - [BD-283](./BD-283.md) — Turnkey interactive migration reconciliation: prompt per customization conflict, apply the choice in-process, auto-continue (no copy-paste, no separate `--resume`)
 - [BD-285](./BD-285.md) — Fresh-install into existing code: close the untested collision-sidecar branch (C1) and replace the existing-`CLAUDE.md` dead-end STOP with a guided keep/replace/merge branch (C2)
+- [BD-286](./BD-286.md) — Guided pre-reconciliation: a shipped doc the client's AI agent follows to prepare conflict-prone files BEFORE migration so the trinity (dominant) pause class runs pause-free
 
 ## Deferred
 
