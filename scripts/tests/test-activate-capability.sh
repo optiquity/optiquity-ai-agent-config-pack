@@ -84,7 +84,7 @@ EOF
 
     # Install the pack (consume the y/N confirmation). S9 removes the
     # live-tree Python set; S5b populates the full pool regardless.
-    PACK="$REPO_ROOT" bash "$INIT_SH" "$src" <<<"y" >/dev/null 2>&1 || {
+    PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$src" >/dev/null 2>&1 || {
         echo "INIT_FAILED" ; return 1
     }
     git -C "$src" add -A >/dev/null 2>&1
@@ -120,7 +120,7 @@ EOF
 
     # Install the pack (consume the y/N confirmation). S9 removes the live-tree
     # Swift set; S5b populates the full pool regardless.
-    PACK="$REPO_ROOT" bash "$INIT_SH" "$src" <<<"y" >/dev/null 2>&1 || {
+    PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$src" >/dev/null 2>&1 || {
         echo "INIT_FAILED" ; return 1
     }
     git -C "$src" add -A >/dev/null 2>&1

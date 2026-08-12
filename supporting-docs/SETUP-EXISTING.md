@@ -58,6 +58,11 @@ All subsequent commands in this guide assume you're on `pack-init`.
 "$PACK/scripts/init-project.sh" .
 ```
 
+For CI / scripted installs, pass `--yes` to bypass the `Proceed?` confirm
+and install without prompting. A non-TTY run without `--yes` declines
+(exit 0) with a message naming `--yes`; `--no-interactive` forces that
+non-prompting path explicitly. Both apply to fresh install only.
+
 The script runs detection in **read-only** mode first. Nothing is
 written until you confirm. Study each section of the preview
 carefully before typing `y`:

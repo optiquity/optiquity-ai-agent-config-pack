@@ -51,6 +51,9 @@
 #                        protocol:grpc, role:python-server, deployment:apple,
 #                        deployment:linux-container.
 #     --pack <path>      Override $PACK environment variable.
+#     --yes              Bypass the confirm prompt (automation / CI).
+#     --no-interactive   Never prompt; decline unless --yes is set. A non-TTY
+#                        run without --yes declines with a message naming --yes.
 #
 # Exit codes:
 #     0   Success, developer declined, degenerate no-op, or already-active.
@@ -88,17 +91,31 @@ fi
 # shellcheck source=lib/detect.sh
 source "$SCRIPT_DIR/lib/detect.sh"
 
+if [[ ! -f "$SCRIPT_DIR/lib/prompt.sh" ]]; then
+    die "missing interactive-prompt library: $SCRIPT_DIR/lib/prompt.sh" "$EXIT_INTERNAL"
+fi
+# shellcheck source=lib/prompt.sh
+source "$SCRIPT_DIR/lib/prompt.sh"
+
 # ── Arg parsing ────────────────────────────────────────────────────────────
 
 TARGET=""
 PACK_OVERRIDE=""
 ADD_ARGS=()
+# Confirm-flow flags (BD-284). --yes bypasses the A4 confirm for automation;
+# --no-interactive / INTERACTIVE steer prompt_should_interact. Read by the
+# separate stage_a4_confirm function.
+YES=0
+NO_INTERACTIVE=0
+INTERACTIVE=0
 
 while (( $# > 0 )); do
     case "$1" in
         --project) TARGET="$2"; shift 2 ;;
         --add)     ADD_ARGS+=("$2"); shift 2 ;;
         --pack)    PACK_OVERRIDE="$2"; shift 2 ;;
+        --yes)     YES=1; shift ;;
+        --no-interactive) NO_INTERACTIVE=1; shift ;;
         --help|-h)
             sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'
             exit 0 ;;
@@ -373,13 +390,19 @@ stage_a3_preview() {
 
 stage_a4_confirm() {
     say ""
-    local ans lower
-    read -r -p "Proceed? [y/N] " ans || ans=""
-    lower=$(printf '%s' "$ans" | tr '[:upper:]' '[:lower:]')
-    case "$lower" in
-        y|yes) say "Proceeding..." ;;
-        *)     say "Declined. No changes made."; exit 0 ;;
-    esac
+    # --yes bypasses the confirm entirely (automation / CI).
+    if [[ "${YES:-0}" == "1" ]]; then say "Proceeding..."; return 0; fi
+    # Interactive (a TTY, or forced) -> preview+confirm, default No (a human's
+    # path is UNCHANGED). Non-TTY without --yes -> decline, naming --yes so the
+    # scripted caller learns the automation flag (the same non-TTY foot-gun fix
+    # BD-284 applied to init-project.sh).
+    if prompt_should_interact "${NO_INTERACTIVE:-0}" "${INTERACTIVE:-0}"; then
+        if prompt_confirm "Proceed?" "n"; then say "Proceeding..."; return 0; fi
+        say "Declined. No changes made."; exit 0
+    fi
+    say "Declined: non-interactive context and --yes not set."
+    say "Re-run with --yes to add the capability without prompting."
+    exit 0
 }
 
 # ── Stage A5 — copy conditional files ──────────────────────────────────────

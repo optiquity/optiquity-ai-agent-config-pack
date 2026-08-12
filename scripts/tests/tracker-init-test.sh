@@ -58,6 +58,8 @@ source "$LIB_DIR/tracker-labels.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/tracker-migrate-forward.sh"
 # shellcheck disable=SC1091
+source "$LIB_DIR/prompt.sh"
+# shellcheck disable=SC1091
 source "$LIB_DIR/tracker-init.sh"
 
 # ─────────────────────────────────────────────────────────────────
@@ -404,7 +406,7 @@ touch "$TR_INT1/.github/ISSUE_TEMPLATE/config.yml"
 
 export PATH="$FAKE_BIN_INT:$PATH_SAVED"
 # Pipe order: id-prefix (default BD), backend (default github), repo
-export _TRACKER_INIT_FORCE_INTERACTIVE=1
+export PACK_PROMPT_FORCE_INTERACTIVE=1
 output=$(printf 'BD\ngithub\nDShaneNYC/x\n' | \
     tracker_init_run --repo-root "$TR_INT1" --no-forward 2>&1)
 rc=$?

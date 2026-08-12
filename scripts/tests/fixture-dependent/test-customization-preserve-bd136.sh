@@ -499,7 +499,7 @@ rm -rf "$m12/.git"
 git init -q "$m12"; git -C "$m12" config user.email t@e; git -C "$m12" config user.name t
 git -C "$m12" add -A >/dev/null; git -C "$m12" commit -q -m base 2>/dev/null
 # Adoption: fresh pack install into the existing project (creates the trinity).
-PACK="$PACK_ROOT" bash "$INIT_SH" "$m12" <<<"y" > "$WORK/m12-install.log" 2>&1
+PACK="$PACK_ROOT" bash "$INIT_SH" --yes "$m12" > "$WORK/m12-install.log" 2>&1
 m12irc=$?
 assert_eq "M-12 fresh pack install (adoption) exits 0" "0" "$m12irc"
 assert_eq "M-12 trinity installed" "yes" "$(file_present "$m12/CLAUDE.md")"

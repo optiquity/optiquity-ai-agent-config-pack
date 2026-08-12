@@ -66,6 +66,7 @@ out=$(bash "$INIT_SH" --help 2>&1) ; rc=$?
 assert_eq    "1.1 --help rc=0" "0" "$rc"
 assert_contains "1.1 --help shows usage" "$out" "Usage:"
 assert_contains "1.1 --help mentions --update" "$out" "--update"
+assert_contains "1.1 --help mentions --yes (BD-284)" "$out" "--yes"
 
 # 1.2 unknown option exits non-zero with a typed error.
 out=$(bash "$INIT_SH" --bogus 2>&1) ; rc=$?
@@ -140,8 +141,8 @@ rm -rf "$T"
 printf "\n=== Group 3: stage S11 v11 artifacts (fresh install) ===\n"
 
 T=$(make_target)
-# yes-pipe to consume confirmation prompt; init-project asks "Proceed? (y/N)".
-out=$(PACK="$REPO_ROOT" bash "$INIT_SH" "$T" <<<"y" 2>&1) ; rc=$?
+# --yes bypasses the confirm (BD-284); no stdin feed needed for automation.
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$T" 2>&1) ; rc=$?
 assert_eq    "3.1 fresh install rc=0" "0" "$rc"
 assert_contains "3.1 S11 stage ran" "$out" \
     "S11 — v11 client artifacts"
@@ -262,7 +263,7 @@ rm -rf "$T"
 printf "\n=== Group 4: BD-166 per-entry tree skeleton (sub-steps 6+7) ===\n"
 
 T=$(make_target)
-PACK="$REPO_ROOT" bash "$INIT_SH" "$T" <<<"y" >/dev/null 2>&1 ; rc=$?
+PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1 ; rc=$?
 assert_eq "4.1 fresh install rc=0" "0" "$rc"
 
 # 4.2 — six canonical templates present (each stream gets _rules.md +
@@ -500,7 +501,7 @@ rm -rf "$T"
 printf "\n=== Group 6: BD-263 groupings provisioning via --update (D6.3) ===\n"
 
 T6=$(make_target)
-PACK="$REPO_ROOT" bash "$INIT_SH" "$T6" <<<"y" >/dev/null 2>&1 ; rc=$?
+PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$T6" >/dev/null 2>&1 ; rc=$?
 assert_eq "6.0 fresh install rc=0 (Group 6 base tree)" "0" "$rc"
 
 # Simulate the groupings-less v11.0 state (a pre-groupings dev install):
@@ -652,7 +653,7 @@ git -C "$STAGED" add -A >/dev/null
 git -C "$STAGED" commit -q -m "staged pack copy (groupings template removed)" 2>/dev/null
 
 T7=$(make_target)
-out=$(PACK="$STAGED" bash "$STAGED/scripts/init-project.sh" "$T7" <<<"y" 2>&1) ; rc=$?
+out=$(PACK="$STAGED" bash "$STAGED/scripts/init-project.sh" --yes "$T7" 2>&1) ; rc=$?
 [[ "$rc" -ne 0 ]] \
     && t_pass "7.1 fresh install FAILS when groupings/_rules.md is missing from the pack (rc=$rc)" \
     || t_fail "7.1 install unexpectedly succeeded with groupings/_rules.md removed from the staged pack"
@@ -728,7 +729,7 @@ ve_run_real_fence() {  # $1 = SKILL.md ; $2 = absent|erroring|garbage|unreadable
 
 # --- S7 SHIP: fresh install ships both scripts (present ⇒ S9 did not remove) ---
 T8=$(make_target)
-PACK="$REPO_ROOT" bash "$INIT_SH" "$T8" <<<"y" >/dev/null 2>&1 ; rc=$?
+PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$T8" >/dev/null 2>&1 ; rc=$?
 assert_eq "8.1 fresh install rc=0 (Group 8 base tree)" "0" "$rc"
 [[ -f "$T8/scripts/install-validate-hook.sh" ]] \
     && t_pass "8.1 install-validate-hook.sh present after fresh install (not removed by S9)" \
@@ -779,7 +780,7 @@ done
 # cp preserves the committed 755 for the newly-arriving files, so the exec
 # assertion is meaningful here (unlike fresh install, which chmod +x's all).
 T8u=$(make_target)
-PACK="$REPO_ROOT" bash "$INIT_SH" "$T8u" <<<"y" >/dev/null 2>&1 ; rc=$?
+PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$T8u" >/dev/null 2>&1 ; rc=$?
 assert_eq "8.7 fresh install rc=0 (update-path base)" "0" "$rc"
 git -C "$T8u" add -A >/dev/null 2>&1
 git -C "$T8u" commit -q -m "fresh install" 2>/dev/null
@@ -842,6 +843,56 @@ if grep -qE -- '--git-path hooks' "$REPO_ROOT/$VE_DETECTOR" \
 else
     t_fail "8.10 delegation: the helper is missing a channel-probe token"
 fi
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 9: BD-284 — --yes automation flag + TTY-aware confirm
+#
+#   9.1 --yes installs with NO stdin feed (automation bypass).
+#   9.2 non-TTY WITHOUT --yes declines (exit 0), and the decline message
+#       NAMES --yes (so a scripted caller learns the flag). Assert on the
+#       MESSAGE, not rc — a decline exits 0 by design.
+#   9.3 the interactive path still honors a piped `y` under
+#       PACK_PROMPT_FORCE_INTERACTIVE=1 (the human path survives while
+#       automation moves to --yes). Fed via `printf 'y\n' |` (a pipe, not a
+#       here-string) so the BD-284 here-string migration self-gate stays clean.
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 9: BD-284 --yes / TTY-aware confirm ===\n"
+
+# 9.1 --yes: fresh install with NO stdin feed → rc=0 + trinity laid down.
+T9=$(make_target)
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$T9" 2>&1) ; rc=$?
+assert_eq "9.1 --yes fresh install rc=0 (no stdin feed)" "0" "$rc"
+if [[ -f "$T9/CLAUDE.md" && -f "$T9/AGENTS.md" && -f "$T9/GEMINI.md" ]]; then
+    t_pass "9.1 --yes installed the trinity"
+else
+    t_fail "9.1 --yes did not lay down the trinity"
+fi
+rm -rf "$T9"
+
+# 9.2 non-TTY WITHOUT --yes: decline exits 0, message NAMES --yes, no install.
+T9b=$(make_target)
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" "$T9b" </dev/null 2>&1) ; rc=$?
+assert_eq "9.2 non-TTY decline exits 0 (no --yes)" "0" "$rc"
+assert_contains "9.2 decline message names --yes" "$out" "--yes"
+if [[ ! -f "$T9b/CLAUDE.md" ]]; then
+    t_pass "9.2 non-TTY decline made no changes (no trinity)"
+else
+    t_fail "9.2 non-TTY decline unexpectedly installed the trinity"
+fi
+rm -rf "$T9b"
+
+# 9.3 interactive path survives: PACK_PROMPT_FORCE_INTERACTIVE=1 + piped `y`.
+T9c=$(make_target)
+out=$(printf 'y\n' | PACK="$REPO_ROOT" PACK_PROMPT_FORCE_INTERACTIVE=1 \
+    bash "$INIT_SH" "$T9c" 2>&1) ; rc=$?
+assert_eq "9.3 interactive (forced) + piped y installs rc=0" "0" "$rc"
+if [[ -f "$T9c/CLAUDE.md" ]]; then
+    t_pass "9.3 interactive path installed the trinity (human path survives)"
+else
+    t_fail "9.3 interactive path did not install"
+fi
+rm -rf "$T9c"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Summary

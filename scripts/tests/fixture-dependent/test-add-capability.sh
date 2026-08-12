@@ -114,7 +114,8 @@ if [[ ! -d "$FIXTURE" ]]; then
     echo "  SKIP — fixture $FIXTURE not present (run test-fixtures/build.sh --name v11-flat-file)"
 else
     TGT=$(make_clean_fixture_clone)
-    OUT=$(echo y | PACK="$REPO_ROOT" "$ADD_CAP_SH" --project "$TGT" --add protocol:grpc 2>&1)
+    # --yes bypasses the confirm (BD-284); no stdin feed needed for automation.
+    OUT=$(PACK="$REPO_ROOT" "$ADD_CAP_SH" --yes --project "$TGT" --add protocol:grpc 2>&1)
     PROMPT_FILE="$TGT/.pack-add-capability-prompt.md"
 
     assert_contains "stage A7 banner present"             "$OUT" "── A7 — capability install-check discovery"
@@ -143,6 +144,40 @@ else
     fi
 
     rm -rf "$TGT"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 3: BD-284 — --yes automation flag + non-TTY-aware confirm (A4)
+#
+#   3.1 --yes proceeds with NO stdin feed (automation bypass).
+#   3.2 non-TTY WITHOUT --yes declines (exit 0) with a message NAMING --yes
+#       (the fix for the silent non-TTY foot-gun). Assert on the MESSAGE, not
+#       rc — a decline exits 0 by design.
+# ─────────────────────────────────────────────────────────────────────────
+echo ""
+echo "Group 3: BD-284 --yes / non-TTY-aware confirm"
+
+if [[ ! -d "$FIXTURE" ]]; then
+    echo "  SKIP — fixture $FIXTURE not present (run test-fixtures/build.sh --name v11-flat-file)"
+else
+    # 3.1 --yes: proceeds with no stdin feed → rc=0 + "Proceeding..." shown.
+    TGT3=$(make_clean_fixture_clone)
+    OUT3=$(PACK="$REPO_ROOT" "$ADD_CAP_SH" --yes --project "$TGT3" --add protocol:grpc 2>&1) ; rc3=$?
+    [[ "$rc3" == "0" ]] \
+        && t_pass "3.1 --yes run rc=0 (no stdin feed)" \
+        || t_fail "3.1 --yes run rc=0 (no stdin feed)" "got rc=$rc3"
+    assert_contains "3.1 --yes proceeds (no decline)" "$OUT3" "Proceeding..."
+    rm -rf "$TGT3"
+
+    # 3.2 non-TTY WITHOUT --yes: declines (exit 0), message NAMES --yes, no run.
+    TGT3b=$(make_clean_fixture_clone)
+    OUT3b=$(PACK="$REPO_ROOT" "$ADD_CAP_SH" --project "$TGT3b" --add protocol:grpc </dev/null 2>&1) ; rc3b=$?
+    [[ "$rc3b" == "0" ]] \
+        && t_pass "3.2 non-TTY decline exits 0 (no --yes)" \
+        || t_fail "3.2 non-TTY decline exits 0 (no --yes)" "got rc=$rc3b"
+    assert_contains     "3.2 decline message names --yes"      "$OUT3b" "--yes"
+    assert_not_contains "3.2 non-TTY decline did NOT proceed"  "$OUT3b" "Proceeding..."
+    rm -rf "$TGT3b"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────

@@ -34,6 +34,7 @@ scripts/test-migrator-core.sh	4.0
 scripts/test-migrator-manifest.sh	4.0
 scripts/tests/fixture-dependent/test-migrator-skills.sh	3.0
 scripts/tests/pack-help-test.sh	2.0
+scripts/tests/prompt-test.sh	1.5
 scripts/tests/recommendation-state-schema-test.sh	2.0
 scripts/tests/recommendation-test.sh	2.0
 scripts/tests/template-translations-test.sh	2.0

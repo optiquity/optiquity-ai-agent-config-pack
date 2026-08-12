@@ -123,8 +123,7 @@ _run_v10_init() {
 # Run the current pack's init-project.sh against $target.
 _run_v11_init() {
     local target="$1"
-    PACK="$PACK_ROOT" bash "$PACK_ROOT/scripts/init-project.sh" "$target" \
-        <<<"y" >/dev/null 2>&1
+    PACK="$PACK_ROOT" bash "$PACK_ROOT/scripts/init-project.sh" --yes "$target" >/dev/null 2>&1
 }
 
 # Set up a temp clone of the pack at the v10 tag for fixture builds

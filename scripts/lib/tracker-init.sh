@@ -81,19 +81,12 @@ tracker_init_run() {
         fi
     fi
 
-    # Decide whether to prompt for missing inputs. Default: interactive
-    # iff stdin is a TTY. Override forward via --no-interactive
-    # (CI / scripting) or via _TRACKER_INIT_FORCE_INTERACTIVE=1 env
-    # var (test seam: tests that pipe stdin set this so the prompt
-    # path is exercised even though stdin is a pipe).
-    local interactive=1
-    if [[ "$no_interactive" == "1" ]]; then
-        interactive=0
-    elif [[ "${_TRACKER_INIT_FORCE_INTERACTIVE:-0}" == "1" ]]; then
-        interactive=1
-    elif [[ ! -t 0 ]]; then
-        interactive=0
-    fi
+    # Decide whether to prompt for missing inputs (shared prompt.sh helper):
+    # interactive iff stdin is a TTY, overridable via --no-interactive
+    # (CI / scripting) or the PACK_PROMPT_FORCE_INTERACTIVE=1 env seam (tests
+    # that pipe stdin set it so the prompt path is exercised even on a pipe).
+    local interactive
+    if prompt_should_interact "$no_interactive" 0; then interactive=1; else interactive=0; fi
 
     # Auto-detect surface if not provided. Pack root has PACK-CHAT.md;
     # client root has docs/pack/.
@@ -104,7 +97,7 @@ tracker_init_run() {
         elif [[ -d "$repo_root/docs/pack" ]]; then
             surface="client"
         elif [[ "$interactive" == "1" ]]; then
-            surface=$(_tracker_init_prompt "Surface (pack | client)" "")
+            surface=$(prompt_read "Surface (pack | client)" "")
             if [[ "$surface" != "pack" && "$surface" != "client" ]]; then
                 tracker_error_emit "validation" \
                     "init: surface must be 'pack' or 'client'; got '$surface'"
@@ -127,7 +120,7 @@ tracker_init_run() {
     esac
     if [[ -z "$id_prefix" ]]; then
         if [[ "$interactive" == "1" ]]; then
-            id_prefix=$(_tracker_init_prompt "ID prefix" "$default_prefix")
+            id_prefix=$(prompt_read "ID prefix" "$default_prefix")
         else
             id_prefix="$default_prefix"
         fi
@@ -137,7 +130,7 @@ tracker_init_run() {
     # so the prompt offers it as the default.
     if [[ -z "$backend" ]]; then
         if [[ "$interactive" == "1" ]]; then
-            backend=$(_tracker_init_prompt "Backend (github)" "github")
+            backend=$(prompt_read "Backend (github)" "github")
         else
             tracker_error_emit "validation" \
                 "init: --backend is required (only 'github' supported at v11.0). Re-run with --help for the full flag list, or run interactively."
@@ -148,7 +141,7 @@ tracker_init_run() {
     # Repo slug — no sensible default; required.
     if [[ -z "$repo" ]]; then
         if [[ "$interactive" == "1" ]]; then
-            repo=$(_tracker_init_prompt "Repo slug (org/name)" "")
+            repo=$(prompt_read "Repo slug (org/name)" "")
             if [[ -z "$repo" ]]; then
                 tracker_error_emit "validation" \
                     "init: repo slug is required (org/name, e.g. DShaneNYC/optiquity-ai-agent-config-pack)"
@@ -288,30 +281,10 @@ Reference: ARCHITECTURE.md §6.1.
 EOF
 }
 
-# Prompt the user for one input. Emits the prompt to stderr (so the
-# prompt label does not pollute the function's stdout, which carries
-# the answer); reads one line from stdin; returns the answer or the
-# default if the user pressed Enter.
-#
-# Read from stdin (not /dev/tty) so tests can pipe answers; in real
-# interactive use stdin IS the TTY, so the same code path works.
-_tracker_init_prompt() {
-    local label="$1" default_val="${2:-}"
-    local prompt_str
-    if [[ -n "$default_val" ]]; then
-        prompt_str="$label [$default_val]: "
-    else
-        prompt_str="$label: "
-    fi
-    printf '%s' "$prompt_str" >&2
-    local answer
-    if ! IFS= read -r answer; then
-        printf '%s' "$default_val"
-        return 0
-    fi
-    [[ -z "$answer" ]] && answer="$default_val"
-    printf '%s' "$answer"
-}
+# (BD-284) The former `_tracker_init_prompt` helper was byte-identical to
+# `prompt_read` in `scripts/lib/prompt.sh`; it has been deleted and its callers
+# now delegate to the shared helper (sourced by the entry point before this
+# lib). No shim is kept — there are no external callers.
 
 # Write a tracker.toml from a parsed flag set (V1 §3.1).
 # Idempotent: re-running init re-writes the file; opted_in_at is

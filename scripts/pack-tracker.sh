@@ -65,6 +65,8 @@ source "$LIB_DIR/tracker-sidecar.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/tracker-migrate-reverse.sh"
 # shellcheck disable=SC1091
+source "$LIB_DIR/prompt.sh"
+# shellcheck disable=SC1091
 source "$LIB_DIR/tracker-init.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/template-version.sh"

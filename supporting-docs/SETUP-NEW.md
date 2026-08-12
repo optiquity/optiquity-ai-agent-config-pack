@@ -107,6 +107,11 @@ Review the preview carefully before confirming. The script does not
 commit — you review `git status` / `git diff` after it runs, then
 commit yourself (Step 9).
 
+For CI / scripted installs, pass `--yes` to bypass the `Proceed?` confirm
+and install without prompting. A non-TTY run without `--yes` declines
+(exit 0) with a message naming `--yes`; `--no-interactive` forces that
+non-prompting path explicitly. Both apply to fresh install only.
+
 If the script flags a skill-coverage gap (e.g., your project uses
 Kotlin, for which the pack has no skill), the gap is logged in the
 end-of-run kickoff prompt; the PM chat appends an entry to

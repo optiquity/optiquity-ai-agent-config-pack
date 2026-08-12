@@ -1,19 +1,19 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "e156095",
+  "boundary_commit": "4e5773f",
   "checkpoint": "2026-08-11T00:00:00Z",
-  "active": ["BD-284", "BD-283", "BD-285"],
+  "active": ["BD-283", "BD-285"],
   "in_flight_agents": [
-    "(pending spawn) pack-architect for BD-284 -- the onboarding foundation (shared scripts/lib/prompt.sh + init-project --yes/TTY-aware confirm). User authorized 'turnkey it all in v11.0' onboarding-UX program: BD-284 (foundation) -> BD-283 (interactive migration, LARGE) -> BD-285 (collision coverage C1 + existing-CLAUDE.md guided merge C2, LARGE).",
-    "ON RESUME: run the onboarding program in order BD-284 -> BD-283 -> BD-285 (BD-283 co-edits apply.sh/resume.sh with open BD-172 -- serialize); then BD-093 release pin. Strategy doc: ~/.local/state/optiquity-pack-handoff/onboarding-ux-architect/ONBOARDING-UX-STRATEGY.md."
+    "(none) -- BD-284 RESOLVED (shared scripts/lib/prompt.sh foundation + init-project --yes/TTY-confirm + 12-site --yes migration + tracker-init refactor + add-capability.sh fold-in + SETUP-docs note; full LARGE pipeline architect->adversarial[BLOCKER]->reconciliation[12th site]->coder->review->fold-in->final-review all resolved CLEAN; battery + validate-pack both jobs green). The BD-284 coder worktree stays until this commit is CONFIRMED landed + CI green, then teardown.",
+    "ON RESUME: (1) confirm the BD-284 fix commit CI green + teardown its worktree; (2) BD-283 (interactive migration, LARGE) on the now-frozen prompt.sh; (3) BD-285 (collision coverage C1 + existing-CLAUDE.md guided merge C2, LARGE); (4) BD-093 release pin. BD-283 co-edits apply.sh/resume.sh with open BD-172 -- serialize. Reconciled designs + strategy under $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
   "queue": ["BD-093"],
-  "parallelization": "SERIAL onboarding program (user: turnkey it all in v11.0). Order: BD-284 (prompt.sh foundation) -> BD-283 (interactive migration, LARGE pipeline) -> BD-285 (C1 coverage + C2 guided-merge, LARGE) -> BD-093 release pin. BD-283 co-edits apply.sh/resume.sh with open BD-172 (serialize).",
-  "wave": "v11.0 readiness closed (BD-205); BD-281+BD-282 migrator UX fixes landed + CI green. NEW onboarding-UX program (user chose turnkey-it-all-in-v11.0, accepting the launch delay): BD-284 install --yes + shared prompt.sh; BD-283 interactive migration reconciliation (no copy-paste / no separate --resume); BD-285 fresh-install collision coverage + guided existing-CLAUDE.md merge (replaces the already-configured STOP dead-end). Each a launch-gate item ahead of BD-093. After the program: BD-093 release pin -> launch.",
+  "parallelization": "SERIAL onboarding program. BD-284 (prompt.sh foundation) RESOLVED. Next: BD-283 (interactive migration, LARGE pipeline, on the frozen prompt.sh) -> BD-285 (C1 coverage + C2 guided-merge, LARGE) -> BD-093 release pin. BD-283 co-edits apply.sh/resume.sh with open BD-172 (serialize).",
+  "wave": "v11.0 readiness closed (BD-205); BD-281/282 migrator UX + BD-284 onboarding foundation landed. Onboarding-UX program (user: turnkey-it-all-in-v11.0): BD-284 DONE (shared prompt.sh + init --yes + add-capability.sh + SETUP docs). Remaining: BD-283 interactive migration reconciliation (builds on prompt.sh) -> BD-285 fresh-install collision coverage + guided existing-CLAUDE.md merge -> BD-093 release pin -> launch.",
   "pending_decisions": [
-    "ONBOARDING PROGRAM sequencing: BD-284 foundation (prompt.sh) first (2 downstream BDs depend on it); BD-283 + BD-285-C2 both LARGE (deterministic pipeline); BD-283 serialize with open BD-172 (same apply.sh/resume.sh); BD-285-C2 mutates the init-project classify->STOP contract (pack-boundary HIGH -- careful non-TTY-safe default that never clobbers a user CLAUDE.md).",
-    "LAUNCH: BD-093 release pin runs LAST, after the onboarding program lands + BD-205 (Resolved). Every onboarding BD is a new gate ahead of BD-093 (delays the cut; user accepted). USER decides every tag / state transition.",
+    "ONBOARDING PROGRAM: prompt.sh contract now FROZEN (BD-284) -> BD-283/BD-285 build on it. BD-283 + BD-285-C2 both LARGE (deterministic pipeline). BD-283 serialize with open BD-172 (same apply.sh/resume.sh). BD-285-C2 mutates the init-project classify->STOP contract (pack-boundary HIGH -- non-TTY-safe default that never clobbers a user CLAUDE.md).",
+    "LAUNCH: BD-093 release pin runs LAST, after the onboarding program lands. Every onboarding BD is a new gate ahead of BD-093 (delays the cut; user accepted). USER decides every tag / state transition.",
     "Standing: PUBLIC-BOUND PACK; push USER-APPROVED then Pack-Chat-executed; intervention commit-gate live (fresh token, separate step); session-state COMPACT (one SHA boundary, no other SHAs, no dates outside checkpoint, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "Onboarding-UX program OPENED (BD-283/284/285 authored, uncommitted). NEXT: commit the 3 BD-opens (pack-chat-only) -> start BD-284 architect (foundation) -> BD-283 -> BD-285 -> BD-093."
+  "cycle_position": "BD-284 fix + fold-in applied to main checkout + BD-284 flipped Resolved; review CLEAN, battery green. NEXT: manifest-sync (F10 shipped-doc drift) -> commit (mixed-surface, no scope keyword) -> push -> CI green -> teardown worktree; then BD-283 -> BD-285 -> BD-093."
 }

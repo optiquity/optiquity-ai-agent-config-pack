@@ -71,7 +71,7 @@ printf '  pack:     %s\n' "$PACK_ROOT"
 
 # ── Drive init-project.sh ──────────────────────────────────────────────────
 
-if ! PACK="$PACK_ROOT" bash "$INIT_SH" "$SANDBOX" >/dev/null 2>&1 <<<"y"; then
+if ! PACK="$PACK_ROOT" bash "$INIT_SH" --yes "$SANDBOX" >/dev/null 2>&1; then
     printf 'error: init-project.sh exited non-zero on greenfield sandbox\n' >&2
     exit 3
 fi

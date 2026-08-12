@@ -96,6 +96,10 @@ export PACK=/path/to/pack
 See `supporting-docs/SETUP-NEW.md` §3 for the detailed walk-through,
 including the preview sections to review before typing `y`.
 
+For CI / scripted installs, pass `--yes` to bypass the `Proceed?` confirm
+(a non-TTY run without `--yes` declines, naming `--yes`; `--no-interactive`
+forces that path). Fresh install only.
+
 ---
 
 ## 5. Fill in Xcode scheme variables

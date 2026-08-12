@@ -24,6 +24,15 @@ This file is shipped to every project alongside `METHODOLOGY.md` by
 retired in v11). The project-side canonical location is
 `docs/pack/INSTALL-PROCEDURES.md`.
 
+**Non-interactive / automated install.** A fresh `scripts/init-project.sh`
+run prints a preview and asks `Proceed? [y/N]` (default No). For CI / scripted
+installs pass `--yes` to bypass the confirm and install without prompting. On a
+non-TTY invocation WITHOUT `--yes` the script declines (exit 0) with a message
+that names `--yes`, so a scripted caller learns the flag rather than silently
+doing nothing. `--no-interactive` forces the non-prompting path explicitly
+(decline unless `--yes` is set). Both flags apply to fresh install only —
+`--update` never confirms.
+
 ---
 
 ## Project file conventions in pack-controlled directories

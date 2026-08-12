@@ -55,6 +55,14 @@ readonly EXIT_UPDATE_NOT_CONFIGURED=50
 readonly EXIT_UPDATE_LIB_MISSING=51
 readonly EXIT_INTERNAL=99
 
+# Confirm-flow flags (BD-284). Module-level (NOT main() locals) so the separate
+# confirm_proceed function sees them: --yes bypasses the confirm for automation;
+# --no-interactive / INTERACTIVE steer prompt_should_interact. Set by the argv
+# parser in main().
+YES=0
+NO_INTERACTIVE=0
+INTERACTIVE=0
+
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 say()  { printf '%s\n' "$*"; }
@@ -86,6 +94,12 @@ if [[ ! -f "$SCRIPT_DIR/lib/three-way.sh" ]]; then
 fi
 # shellcheck source=lib/three-way.sh
 source "$SCRIPT_DIR/lib/three-way.sh"
+
+if [[ ! -f "$SCRIPT_DIR/lib/prompt.sh" ]]; then
+    die "missing interactive-prompt library: $SCRIPT_DIR/lib/prompt.sh" "$EXIT_INTERNAL"
+fi
+# shellcheck source=lib/prompt.sh
+source "$SCRIPT_DIR/lib/prompt.sh"
 
 # ── Existing-project classifier wrapper (BD-059 OQ-5) ──────────────────────
 #
@@ -419,14 +433,19 @@ EOF
 }
 
 confirm_proceed() {
-    local ans
-    read -r -p "Proceed? [y/N] " ans || ans=""
-    local lower
-    lower=$(printf '%s' "$ans" | tr '[:upper:]' '[:lower:]')
-    case "$lower" in
-        y|yes) return 0 ;;
-        *)     say "Declined. No changes made."; return 1 ;;
-    esac
+    # --yes bypasses the confirm entirely (automation / CI).
+    if [[ "${YES:-0}" == "1" ]]; then return 0; fi
+    # Interactive (a TTY, or forced) -> preview+confirm, default No (a human's
+    # path is UNCHANGED). Non-TTY without --yes -> decline, naming --yes so the
+    # scripted caller learns the automation flag (the fix for the silent CI
+    # foot-gun).
+    if prompt_should_interact "${NO_INTERACTIVE:-0}" "${INTERACTIVE:-0}"; then
+        if prompt_confirm "Proceed?" "n"; then return 0; fi
+        say "Declined. No changes made."; return 1
+    fi
+    say "Declined: non-interactive context and --yes not set."
+    say "Re-run with --yes to install without prompting."
+    return 1
 }
 
 # ── Stages S1..S10 ─────────────────────────────────────────────────────────
@@ -1519,8 +1538,13 @@ main() {
     while (( $# > 0 )); do
         case "$1" in
             --update) update_mode=1 ;;
+            --yes) YES=1 ;;
+            --no-interactive) NO_INTERACTIVE=1 ;;
             --help|-h)
-                say "Usage: PACK=/path/to/pack init-project.sh [--update] [target-dir]"
+                say "Usage: PACK=/path/to/pack init-project.sh [--update] [--yes] [--no-interactive] [target-dir]"
+                say "  --yes             fresh install only: bypass the confirm prompt (automation / CI)"
+                say "  --no-interactive  fresh install only: never prompt; decline unless --yes is set"
+                say "  (--yes / --no-interactive have no effect under --update, which never confirms)"
                 exit 0
                 ;;
             --*) die "unknown option: $1 (try --help)" "$EXIT_INTERNAL" ;;
