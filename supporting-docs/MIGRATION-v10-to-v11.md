@@ -421,6 +421,15 @@ per-entry-tree treatment in the customization-preserve pipeline.
    showing the file-tree diff and any sidecars the real migration
    would write. See `DRY-RUN-MIGRATION.md` for the full input
    contract, output interpretation, and CI release-gate pattern.
+7. **(Optional but recommended) Step 0 — pre-reconcile the trinity.**
+   If you customized your trinity (`CLAUDE.md` / `AGENTS.md` /
+   `GEMINI.md`) and want it to migrate with NO pause, follow
+   `PRE-RECONCILE-v10-to-v11.md` first. It gives your migrating AI
+   agent the exact recipe to fold your customizations into the
+   trinity's marker sections so the dominant conflict class merges
+   hands-free (`merged-with-customization`), keeping your changes. The
+   other classes are unaffected — see that guide's honesty note for what
+   pre-reconciling can and cannot make pause-free.
 
 ---
 

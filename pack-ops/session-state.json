@@ -1,19 +1,19 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "612ab36",
+  "boundary_commit": "33e986a",
   "checkpoint": "2026-08-12T00:00:00Z",
-  "active": ["BD-286", "BD-285"],
+  "active": [],
   "in_flight_agents": [
-    "(none) -- BD-283 RESOLVED (turnkey interactive migration reconciliation: prompt_choice loop in apply.sh, in-process accept/keep, all-resolved auto-continues S4-S6 with no --resume, non-interactive byte-for-byte, no auto-merge; full LARGE pipeline architect->adversarial->reconciliation->coder->review all CLEAN; battery + validate-pack both jobs green). The BD-283 coder worktree stays until this commit is CONFIRMED landed + CI green, then teardown.",
-    "ON RESUME: (1) confirm the BD-283 fix commit CI green + teardown its worktree; (2) BD-286 guided pre-reconciliation doc (core v11.0, doc-first) architect; (3) BD-285 fresh-install collision + guided merge (LARGE); (4) BD-093 release pin. Strategy docs under $XDG_STATE_HOME/optiquity-pack-handoff/."
+    "(none) — BD-286 review/fix cycle complete; commit pending user approval. The BD-286 coder + fix-coder worktrees stay until this commit is CONFIRMED landed + CI green, then teardown (git worktree remove --force both + git branch -D + prune).",
+    "ON RESUME: (1) if BD-286 commit not yet landed, present its commit gate; (2) after landed + CI green, update this boundary_commit to the BD-286 SHA and tear down both BD-286 worktrees; (3) start BD-285 (fresh-install collision + guided existing-CLAUDE.md merge, LARGE) via architect; (4) BD-093 release pin. Handoff docs under ~/.local/state/optiquity-pack-handoff/."
   ],
-  "queue": ["BD-093"],
-  "parallelization": "SERIAL onboarding program. BD-284 (prompt.sh) + BD-283 (interactive migration) RESOLVED. Next: BD-286 (guided pre-reconciliation doc, v11.0 core) -> BD-285 (fresh-install collision + guided merge, LARGE) -> BD-093 release pin. (BD-172 rebases on BD-283's apply.sh whenever it is worked.)",
-  "wave": "v11.0 readiness closed (BD-205); BD-281/282 migrator UX + BD-284 prompt.sh + BD-283 interactive migration landed. Onboarding-UX program (user: turnkey-it-all-in-v11.0): remaining BD-286 guided pre-reconciliation doc (makes the trinity/dominant pause class prep-away-able, zero migrator code; batch-plan mode = user-authorized v11.1 follow-on) + BD-285 fresh-install collision + guided existing-CLAUDE.md merge. Then BD-093 release pin -> launch.",
+  "queue": ["BD-285", "BD-093"],
+  "parallelization": "SERIAL onboarding program. BD-284 (prompt.sh) + BD-283 (interactive migration) + BD-286 (guided pre-reconciliation doc) all done. Next: BD-285 (fresh-install collision + guided merge, LARGE) → BD-093 release pin → launch. BD-172 rebases on BD-283's apply.sh whenever worked, and now also carries the BD-286 Gate-2/validate-pack-against-PACK adjacent finding.",
+  "wave": "v11.0 readiness closed (BD-205); migrator UX (BD-281/282) + prompt.sh (BD-284) + interactive migration (BD-283) + guided pre-reconciliation doc (BD-286) all done. Onboarding-UX program (user: turnkey-it-all-in-v11.0): remaining BD-285 (fresh-install collision + guided existing-CLAUDE.md merge). Then BD-093 release pin → launch. The BD-286 batch-reconciliation-PLAN mode is the user-authorized v11.1 follow-on.",
   "pending_decisions": [
-    "ONBOARDING PROGRAM: BD-286 next (doc-first, v11.0 core -- shipped guide + prepare->dry-run-verify->apply, trinity prep-away-able; generic docs still use BD-283 interactive; batch-plan mode = v11.1). BD-285-C2 mutates init classify->STOP (pack-boundary HIGH). BD-172 rebases on BD-283's apply.sh.",
+    "BD-285-C2 mutates init classify→STOP (pack-boundary HIGH) — spawn architect FIRST (user-approved architect-spawn required). BD-172 rebases on BD-283's apply.sh + carries the BD-286 Gate-2 adjacent finding (dirty-worktree validate-pack-against-PACK spurious EXIT_GATE_FAILED; zero client/CI impact).",
     "LAUNCH: BD-093 release pin runs LAST, after the onboarding program. Every onboarding BD is a new gate ahead of BD-093 (user accepted). USER decides every tag / state transition.",
     "Standing: PUBLIC-BOUND PACK; push USER-APPROVED then Pack-Chat-executed; intervention commit-gate live (fresh token, separate step); session-state COMPACT (one SHA boundary, no other SHAs, no dates outside checkpoint, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-283 fix applied to the main checkout + BD-283 flipped Resolved; review CLEAN, battery green. NEXT: commit (mixed-surface, no scope keyword, no manifest change) -> push -> CI green -> teardown worktree; then BD-286 -> BD-285 -> BD-093."
+  "cycle_position": "BD-286 doc-first cycle complete: guide + demo test + cross-link applied to canonical; BD-286 flipped Resolved; BD-172 Gate-2 note added; _toc regenerated; session-state refreshed. NEXT: stage → full battery (validate-pack green once guide tracked; demo 13/13; Check 93) → commit (mixed-surface, NO scope keyword) → push → CI green → teardown both BD-286 worktrees → BD-285 architect."
 }
