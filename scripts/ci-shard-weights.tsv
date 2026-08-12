@@ -87,3 +87,6 @@ scripts/tests/fixture-dependent/test-dry-run-migration.sh	3.0
 scripts/test-restore-from-backup.sh	1.5
 scripts/tests/test-activate-capability.sh	4.0
 scripts/tests/fixture-dependent/test-add-capability.sh	2.0
+#
+# ── BD-283 turnkey interactive migration test (offline-confirmed local wall) ──
+scripts/tests/test-migrate-v10-to-v11-interactive.sh	68.0

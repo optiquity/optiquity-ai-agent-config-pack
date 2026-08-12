@@ -201,6 +201,164 @@ _v10_v11_apply_collect_conflicts() {
     return 0
 }
 
+# Prints today's per-file copy-paste reconciliation menu over the sidecars
+# currently listed in `<state-dir>/sentinels/stage-S3.paused`. Extracted
+# VERBATIM from the pre-BD-283 conflict block so the non-interactive path
+# stays byte-for-byte. Called by BOTH the non-interactive branch (full list)
+# and the interactive deferred sub-path (trimmed list). No prompt is read
+# here, so the fd-0 redirect on its internal `done < ...paused` loop is
+# harmless. References the same globals the caller does
+# (_MIGRATOR_STATE_DIR / MIGRATOR_OWN_SIDECAR_SUFFIX / PACK /
+# MIGRATOR_FROM_VERSION / MIGRATOR_TO_VERSION / _MIGRATOR_TARGET).
+_v10_v11_apply_print_copypaste_menu() {
+    say ""
+    say "── Migration paused — requires attention ──"
+    say ""
+    say "Dispatch found files that BOTH you and the pack changed. Your"
+    say "prior copy of each was saved next to the live file as a"
+    say ".${MIGRATOR_OWN_SIDECAR_SUFFIX} sidecar; the live file now holds"
+    say "the new pack template. The migration is paused (not failed): the"
+    say "remaining stages (S4 relocations, S5 artifact installs, S6 report)"
+    say "run when you invoke --resume after you resolve each file below."
+    say ""
+    say "For each file, choose ONE option and run its command:"
+    say ""
+    local s live
+    local rm_all=""
+    while IFS= read -r s; do
+        [[ -z "$s" ]] && continue
+        # Sidecar paths are absolute (apply-mode); the live file is the
+        # sidecar with the .${MIGRATOR_OWN_SIDECAR_SUFFIX} suffix stripped.
+        live="${s%.${MIGRATOR_OWN_SIDECAR_SUFFIX}}"
+        say "  $live"
+        say "    1. Accept the pack's new version — discards YOUR"
+        say "       customization to this file; keeps the pack v11 template."
+        say "       The live file already IS the pack version, so just"
+        say "       remove the saved copy:"
+        say "         rm '$s'"
+        say "    2. Keep your customization — discards the pack v11 update"
+        say "       to this file; restores your prior copy over the template:"
+        say "         mv '$s' '$live'"
+        say "    3. Merge by hand — keeps both; reconcile line-by-line,"
+        say "       nothing auto-discarded. Edit '$live' (your prior copy"
+        say "       is in '$s'), then mark it resolved:"
+        say "         touch '$s.resolved'        # keep the sidecar as a record"
+        say "         # ...or, once merged:  rm '$s'"
+        say ""
+        rm_all="$rm_all '$s'"
+    done < "$_MIGRATOR_STATE_DIR/sentinels/stage-S3.paused"
+    # OI-1 (BD-282): honest accept-pack-for-ALL one-shot. Removes exactly
+    # the listed sidecars in one copy-paste line. Explicitly labelled that
+    # it discards every customization to the files above — reversible from
+    # the pre-migration backup dir.
+    say "Shortcut — accept the pack's new version for ALL files above in"
+    say "one step. This DISCARDS ALL your customizations to those files"
+    say "(each remains recoverable from the ${_MIGRATOR_STATE_DIR##*/}-backup dir):"
+    say "  rm$rm_all"
+    say ""
+    say "When every file above is resolved, finish the migration:"
+    # F12 (BD-095 retro fix): drop `:-/path/to/pack` fallback. This
+    # block fires only AFTER S3 dispatch completed (post-mutation),
+    # so PACK is definitely set.
+    say "  PACK=$PACK \\"
+    say "    scripts/migrate-${MIGRATOR_FROM_VERSION}-to-${MIGRATOR_TO_VERSION}.sh \\"
+    say "    --resume $_MIGRATOR_TARGET"
+    say ""
+}
+
+# BD-283 — interactive reconciliation loop. Sets the GLOBAL
+# `_V10V11_DEFERRED_COUNT` to the number of sidecars left unresolved. MUST be
+# called as a PLAIN statement, NEVER $( ... ): the per-file summary uses
+# say/info which write to STDOUT (migrator-core.sh), so a command
+# substitution would swallow the menu UX AND corrupt the count on the
+# auto-continue-vs-pause branch (MUST-1). bash-3.2-safe: no namerefs, no
+# mapfile; the deferred count is a plain global, not a nameref return.
+_v10_v11_apply_interactive_reconcile() {
+    local state_dir="$1"
+    local paused="$state_dir/sentinels/stage-S3.paused"
+    local tsv="$state_dir/dispositions.tsv"
+
+    # Slurp the paused list into an array FIRST so fd 0 is the real process
+    # stdin when prompt_choice reads (do NOT nest prompt_choice inside a
+    # `while … done < file` loop — fd 0 would be the file, not stdin).
+    local -a _conflicts=()
+    local line
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && _conflicts+=("$line")
+    done < "$paused"
+
+    local -a _resolved=() _deferred=()
+    local s live choice i
+    for (( i=0; i<${#_conflicts[@]}; i++ )); do
+        s="${_conflicts[i]}"
+        # NIT-1: derive the live path via the suffix var, never a literal.
+        live="${s%.${MIGRATOR_OWN_SIDECAR_SUFFIX}}"
+        say ""
+        say "  $live"
+        info "your prior copy is saved at: $s"
+        # SHOULD-3: SPLIT form — `choice` is declared local ABOVE, so this
+        # assignment preserves prompt_choice's rc (a combined `local
+        # choice=$(…)` would mask it). prompt_choice: prompt→stderr,
+        # token→stdout, rc!=0 on EOF.
+        if choice=$(prompt_choice \
+              "[1] accept pack  [2] keep yours  [3] merge later  [s] skip  [q] quit" \
+              "1,2,3,s,q"); then
+            case "$choice" in
+                1) if rm -f "$s"; then _resolved+=("$s")
+                   else warn "could not remove $s; deferring"; _deferred+=("$s"); fi ;;
+                2) if mv "$s" "$live"; then _resolved+=("$s")
+                   else warn "could not restore $s; deferring"; _deferred+=("$s"); fi ;;
+                3|s) _deferred+=("$s") ;;
+                q) _deferred+=("${_conflicts[@]:i}"); break ;;   # SHOULD-4: current + remainder
+            esac
+        else
+            _deferred+=("${_conflicts[@]:i}")                    # EOF: current + remainder
+            break
+        fi
+    done
+
+    # SHOULD-1: prune RESOLVED (accept/keep) rows from dispositions.tsv so the
+    # S6 report (and any intermediate pause report) does not list resolved
+    # files under "Files needing manual reconciliation". Deferred rows stay.
+    if (( ${#_resolved[@]} > 0 )) && [[ -f "$tsv" ]]; then
+        _v10_v11_apply_prune_resolved_rows "$tsv" "${_resolved[@]}"
+    fi
+
+    # Rewrite the sentinel to the deferred subset (remove it if empty).
+    if (( ${#_deferred[@]} > 0 )); then
+        printf '%s\n' "${_deferred[@]}" > "$paused"
+    else
+        rm -f "$paused"
+    fi
+
+    _V10V11_DEFERRED_COUNT=${#_deferred[@]}
+    return 0
+}
+
+# BD-283 — delete the RESOLVED (accept/keep) needs-reconciliation rows from
+# dispositions.tsv, header-preservingly + atomically. The `needs` token MUST
+# match `_v10_v11_apply_collect_conflicts`' awk (they are a matched pair). The
+# `keep` set is the resolved sidecar paths (same strings the collector wrote
+# to stage-S3.paused from column $5), so the `$5 in keep` test matches
+# byte-for-byte. Gate-2-safe: introduces no unknown-classification row, never
+# zero-bytes the tsv (the header stays), and does not touch the filesystem the
+# orphan-sidecar check reads.
+_v10_v11_apply_prune_resolved_rows() {
+    local tsv="$1"; shift
+    local tmp match
+    tmp=$(mktemp); match=$(mktemp)
+    printf '%s\n' "$@" > "$match"
+    awk -F'\t' \
+        -v needs="customization-detected-needs-reconciliation" \
+        'NR==FNR { keep[$0]=1; next }
+         FNR==1  { print; next }
+         ($1==needs && ($5 in keep)) { next }
+         { print }' \
+        "$match" "$tsv" > "$tmp"
+    mv "$tmp" "$tsv"
+    rm -f "$match"
+}
+
 # Hook injected into the adapter via `migrator_pre_dispatch_hook` so
 # stage sentinels are written for stages 0..2 even before dispatch runs.
 # The adapter's existing `migrator_post_dispatch_hook` calls our
@@ -229,64 +387,45 @@ migrate_v10_to_v11_apply_after_dispatch() {
     fi
 
     if _v10_v11_apply_collect_conflicts "$_MIGRATOR_STATE_DIR"; then
-        say ""
-        say "── Migration paused — requires attention ──"
-        say ""
-        say "Dispatch found files that BOTH you and the pack changed. Your"
-        say "prior copy of each was saved next to the live file as a"
-        say ".${MIGRATOR_OWN_SIDECAR_SUFFIX} sidecar; the live file now holds"
-        say "the new pack template. The migration is paused (not failed): the"
-        say "remaining stages (S4 relocations, S5 artifact installs, S6 report)"
-        say "run when you invoke --resume after you resolve each file below."
-        say ""
-        say "For each file, choose ONE option and run its command:"
-        say ""
-        local s live
-        local rm_all=""
-        while IFS= read -r s; do
-            [[ -z "$s" ]] && continue
-            # Sidecar paths are absolute (apply-mode); the live file is the
-            # sidecar with the .${MIGRATOR_OWN_SIDECAR_SUFFIX} suffix stripped.
-            live="${s%.${MIGRATOR_OWN_SIDECAR_SUFFIX}}"
-            say "  $live"
-            say "    1. Accept the pack's new version — discards YOUR"
-            say "       customization to this file; keeps the pack v11 template."
-            say "       The live file already IS the pack version, so just"
-            say "       remove the saved copy:"
-            say "         rm '$s'"
-            say "    2. Keep your customization — discards the pack v11 update"
-            say "       to this file; restores your prior copy over the template:"
-            say "         mv '$s' '$live'"
-            say "    3. Merge by hand — keeps both; reconcile line-by-line,"
-            say "       nothing auto-discarded. Edit '$live' (your prior copy"
-            say "       is in '$s'), then mark it resolved:"
-            say "         touch '$s.resolved'        # keep the sidecar as a record"
-            say "         # ...or, once merged:  rm '$s'"
+        if prompt_should_interact "${_V10V11_FORCE_NO_INTERACT:-0}" "${_V10V11_FORCE_INTERACT:-0}"; then
+            # BD-283 interactive reconciliation: walk each conflict and apply
+            # the user's choice in-process. If every conflict is resolved,
+            # RETURN so the framework auto-continues S4–S6 (the tested
+            # no-conflict control-flow path — no separate --resume). Any
+            # deferred (merge-later / skip / quit / EOF) conflict falls back to
+            # today's copy-paste + --resume flow for exactly those files.
             say ""
-            rm_all="$rm_all '$s'"
-        done < "$_MIGRATOR_STATE_DIR/sentinels/stage-S3.paused"
-        # OI-1 (BD-282): honest accept-pack-for-ALL one-shot. Removes exactly
-        # the listed sidecars in one copy-paste line. Explicitly labelled that
-        # it discards every customization to the files above — reversible from
-        # the pre-migration backup dir.
-        say "Shortcut — accept the pack's new version for ALL files above in"
-        say "one step. This DISCARDS ALL your customizations to those files"
-        say "(each remains recoverable from the ${_MIGRATOR_STATE_DIR##*/}-backup dir):"
-        say "  rm$rm_all"
-        say ""
-        say "When every file above is resolved, finish the migration:"
-        # F12 (BD-095 retro fix): drop `:-/path/to/pack` fallback. This
-        # block fires only AFTER S3 dispatch completed (post-mutation),
-        # so PACK is definitely set.
-        say "  PACK=$PACK \\"
-        say "    scripts/migrate-${MIGRATOR_FROM_VERSION}-to-${MIGRATOR_TO_VERSION}.sh \\"
-        say "    --resume $_MIGRATOR_TARGET"
-        say ""
-        # Signal a deliberate, resumable pause. `migrator_pause` sets
-        # `_MIGRATOR_PAUSED` and exits 0; the framework's EXIT trap then
-        # renders the PAUSED (not FAILED) report. Pausing for user input is
-        # not a failure — `--resume` completes the run.
-        migrator_pause
+            say "── Interactive reconciliation ──"
+            say "For each file, choose: accept pack / keep yours / merge later / skip / quit."
+            _V10V11_DEFERRED_COUNT=0
+            # PLAIN call, never $( ): the per-file summary uses say/info which
+            # write to STDOUT; a command substitution would swallow the menu UX
+            # AND corrupt the deferred count (MUST-1). The helper sets the
+            # global _V10V11_DEFERRED_COUNT.
+            _v10_v11_apply_interactive_reconcile "$_MIGRATOR_STATE_DIR"
+            if (( _V10V11_DEFERRED_COUNT == 0 )); then
+                # All resolved in-process — the helper already removed
+                # stage-S3.paused. Return to the framework, which continues
+                # S4/S5/S6 exactly as on the no-conflict path.
+                return 0
+            fi
+            # Some conflicts deferred — the helper trimmed stage-S3.paused to
+            # the deferred subset. Print today's copy-paste menu over that
+            # subset and pause for --resume.
+            _v10_v11_apply_print_copypaste_menu
+            migrator_pause
+        else
+            # Non-interactive (--no-interactive, CI, piped stdin, non-TTY):
+            # today's copy-paste menu over the FULL conflict list, then pause.
+            # Byte-for-byte the pre-BD-283 behavior (same helper body, same
+            # full stage-S3.paused input).
+            _v10_v11_apply_print_copypaste_menu
+            # Signal a deliberate, resumable pause. `migrator_pause` sets
+            # `_MIGRATOR_PAUSED` and exits 0; the framework's EXIT trap then
+            # renders the PAUSED (not FAILED) report. Pausing for user input is
+            # not a failure — `--resume` completes the run.
+            migrator_pause
+        fi
     fi
 }
 

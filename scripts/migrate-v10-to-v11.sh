@@ -64,6 +64,16 @@
 #                 of pre-BD-095 invocations do not need to learn the new
 #                 flags for the no-conflict path.
 #
+# Interactive reconciliation (BD-283), applies to --apply / bare:
+#     --interactive     Force the in-process prompt loop at a customization
+#                       conflict: per file choose accept-pack / keep-yours /
+#                       merge-later / skip / quit. Resolve every conflict and
+#                       the run finishes S4–S6 with no separate --resume.
+#     --no-interactive  Force today's copy-paste menu + pause (CI/automation).
+#     (default)         Interactive when stdin is a TTY; the copy-paste + pause
+#                       flow otherwise (CI / piped / non-TTY). The two flags
+#                       are mutually exclusive.
+#
 # Exit codes are inherited from the framework
 # (`scripts/lib/migrator-core.sh`). The pre-refactor `EXIT_NOT_V10=13` is
 # preserved as a synonym of `EXIT_NOT_BASELINE=13` per
@@ -1000,6 +1010,17 @@ migrator_post_report_hook() {
 # shellcheck source=lib/migrator-core.sh disable=SC1091
 . "$SCRIPT_DIR/lib/migrator-core.sh"
 
+# BD-283 — shared interactive-prompt library (tri-state TTY-aware prompt/UX
+# skin, BD-284). Sourced AFTER migrator-core.sh (which defines `die` +
+# `EXIT_INTERNAL`) and BEFORE the executed dispatch block below. The apply
+# mode's interactive reconciliation loop consumes `prompt_should_interact` +
+# `prompt_choice` at runtime. Existence-guarded like the init-project.sh peer.
+if [[ ! -f "$SCRIPT_DIR/lib/prompt.sh" ]]; then
+    die "missing interactive-prompt library: $SCRIPT_DIR/lib/prompt.sh" "$EXIT_INTERNAL"
+fi
+# shellcheck source=lib/prompt.sh disable=SC1091
+. "$SCRIPT_DIR/lib/prompt.sh"
+
 # ── BD-095 two-phase mode dispatch ─────────────────────────────────────────
 #
 # The three mode libs sit under scripts/lib/migrate-v10-to-v11/. dry-run.sh
@@ -1071,6 +1092,29 @@ for _a in "$@"; do
                     "$_mode" "$_a"
             } >&2
             exit "${EXIT_INTERNAL:-99}"
+            ;;
+        --interactive)
+            # BD-283 — force the in-process interactive reconciliation loop.
+            # STRIPPED here (never pushed to _passthru): the framework arg
+            # parser die()s on unknown options, so the flag must not reach
+            # migrator_run. Translated to a plain shell var that survives
+            # _migrator_reset_state (which clears only _MIGRATOR_* vars).
+            if [[ "${_V10V11_FORCE_NO_INTERACT:-0}" == "1" ]]; then
+                printf 'error: --interactive and --no-interactive are mutually exclusive\n' >&2
+                exit "${EXIT_INTERNAL:-99}"
+            fi
+            _V10V11_FORCE_INTERACT=1
+            continue
+            ;;
+        --no-interactive)
+            # BD-283 — force today's copy-paste menu + pause (CI/automation).
+            # STRIPPED like --interactive.
+            if [[ "${_V10V11_FORCE_INTERACT:-0}" == "1" ]]; then
+                printf 'error: --interactive and --no-interactive are mutually exclusive\n' >&2
+                exit "${EXIT_INTERNAL:-99}"
+            fi
+            _V10V11_FORCE_NO_INTERACT=1
+            continue
             ;;
         *)
             _passthru+=("$_a")

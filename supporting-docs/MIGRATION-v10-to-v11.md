@@ -433,6 +433,35 @@ PACK=/path/to/pack-repo bash scripts/migrate-v10-to-v11.sh
 Default target is the current directory; pass an explicit path as the
 last argument if needed.
 
+### Interactive reconciliation (`--interactive` / TTY-auto)
+
+When a file has BOTH pack and project edits, the migrator can resolve it
+one of two ways:
+
+- **Interactive** — the default when stdin is a terminal, or when you pass
+  `--interactive`. The migrator walks each conflicting file and applies
+  your choice in place:
+  - `[1] accept pack` — discard your edit to this file; keep the new template.
+  - `[2] keep yours` — discard the pack update to this file; restore your copy.
+  - `[3] merge later` — leave it for a hand-merge (defers to `--resume`).
+  - `[s] skip` — leave it unresolved for now (defers to `--resume`).
+  - `[q] quit` — stop the loop; defer this file and the rest.
+
+  If you resolve every conflict in the loop, the migration continues
+  through the remaining stages (S4–S6) automatically — no separate
+  `--resume` is needed. If you defer any file (merge later / skip / quit)
+  or stdin reaches end-of-file, the migrator falls back to the copy-paste
+  + `--resume` flow for exactly the deferred files (Step 2 below).
+
+- **Non-interactive** — forced with `--no-interactive`, or whenever stdin
+  is not a terminal (CI, piped input, or the automated dry-run child). The
+  migrator prints the copy-paste menu and pauses for `--resume`, exactly as
+  it always has. Nothing about the automated / audit path changes.
+
+The two flags are mutually exclusive. Interactive mode never auto-merges:
+a genuine line-by-line merge still defers to a hand-edit + `--resume`
+(option 3) — the layer removes the transcription burden, not the decision.
+
 The script runs 7 framework stages (S0..S6). Stage S4 is split into two
 sub-banners (`S4a` and `S4b`) and stage S5 into three (`S5`, `S5a`,
 `S5b`) for operator clarity — each split pair runs inside the
@@ -518,6 +547,13 @@ Sections you may see:
   shipped file you'd previously deleted.
 - **Unchanged files** — byte-equal across baseline / your tree / new
   pack. No action.
+
+> **Interactive mode:** if you ran the migrator with a terminal on stdin
+> (or `--interactive`) and resolved every conflict in the prompt loop, the
+> migration already finished on its own and this section is empty. It lists
+> only the files you deferred (merge later / skip / quit) — or, in
+> `--no-interactive` / CI runs, every conflicting file. The steps below are
+> the by-hand path for those files; finish with `--resume` when done.
 
 For every `Files needing manual reconciliation` row:
 
