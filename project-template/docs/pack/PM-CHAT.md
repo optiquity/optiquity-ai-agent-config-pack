@@ -1517,6 +1517,8 @@ The `<!-- BEGIN project-owned -->` / `<!-- END project-owned -->`
 markers above delimit the region of this file the migration's
 classifier (Pattern X) treats as project-owned. Content between the
 markers is preserved verbatim across pack upgrades; content outside is
-pack-controlled. See `docs/pack/INSTALL-PROCEDURES.md` Procedure 5-C.3
-for the reconciliation workflow if a migration produces a
-`docs/pack/PM-CHAT.md.v10-customized` sidecar.
+pack-controlled. A migration auto-merges what it can and, where it
+cannot, leaves a `docs/pack/PM-CHAT.md.v10-customized` sidecar; run the
+`resolve-merge-conflicts` skill to resolve the remaining conflict
+automatically, or reconcile by hand per
+`docs/pack/INSTALL-PROCEDURES.md` Procedure 5-C.3.

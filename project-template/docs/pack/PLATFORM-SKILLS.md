@@ -31,10 +31,11 @@ The three orthogonal load mechanisms are:
 - **Dimensional / intersection** — skills loaded by D1–D5 selectors,
   including sparse cells loaded only at intersections (e.g.
   `python-server-architecture` loads only at D2=python ∩ D3=server).
-- **Trigger-loaded** — skills loaded because of *who* is invoking them
-  (the agent role), not because of project shape (e.g.
-  `audit-methodology` loads for every auditor invocation regardless of
-  D1–D5).
+- **Trigger-loaded** — skills loaded by an invocation trigger other than
+  project shape: an agent role (e.g. `audit-methodology` loads for every
+  auditor invocation regardless of D1–D5), or a situational event (e.g.
+  `resolve-merge-conflicts`, loaded when a v10→v11 migration pauses with
+  reconciliation rows to resolve).
 
 The PM chat combines all relevant skills when generating a prompt:
 *"Load the following skills for this task: {skill-1}, {skill-2}, ..."*.
@@ -453,11 +454,12 @@ the remaining 14 load directly from a single D1/D2/D4/D5 selector
 (D1-implied rows include `swift-best-practices` and
 `swift-concurrency-patterns`).
 
-### Trigger-loaded skills (1)
+### Trigger-loaded skills (2)
 
 | Skill | Description | Trigger |
 |---|---|---|
 | audit-methodology | Audit report format, severity scale, subagent coordination, file scopes, ownership precedence | `auditor` parent + all 7 subagents |
+| resolve-merge-conflicts | Resolve the migrator's reconciliation rows: same-line prose conflict markers and section-aware trinity folds, each behind a mechanical zero-loss gate | v10→v11 migration pause with in-scope reconciliation rows |
 
 ### PM chat operational skill (10)
 
@@ -482,7 +484,7 @@ operational, not agent role guidance.
 | pm-target-sweep | Read-only release-boundary target sweep: enumerate phase Target claims and the overdue / re-encode / release-kind sweep sets | PM chat only (not an agent) |
 | pm-dashboard | Render + publish the project frontier HTML dashboard (fresh single-page snapshot of live project work), then commit; coexists with STATUS.md | PM chat only (not an agent) |
 
-**Total skills: 45** (14 Tier 0 base + 20 dimensional / intersection + 1 trigger-loaded + 10 PM chat operational).
+**Total skills: 46** (14 Tier 0 base + 20 dimensional / intersection + 2 trigger-loaded + 10 PM chat operational).
 
 ---
 
