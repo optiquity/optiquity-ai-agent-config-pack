@@ -1,19 +1,20 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "33e986a",
-  "checkpoint": "2026-08-12T00:00:00Z",
-  "active": [],
+  "boundary_commit": "1f46caa",
+  "checkpoint": "2026-08-19T00:00:00Z",
+  "active": ["BD-287"],
   "in_flight_agents": [
-    "(none) — BD-286 review/fix cycle complete; commit pending user approval. The BD-286 coder + fix-coder worktrees stay until this commit is CONFIRMED landed + CI green, then teardown (git worktree remove --force both + git branch -D + prune).",
-    "ON RESUME: (1) if BD-286 commit not yet landed, present its commit gate; (2) after landed + CI green, update this boundary_commit to the BD-286 SHA and tear down both BD-286 worktrees; (3) start BD-285 (fresh-install collision + guided existing-CLAUDE.md merge, LARGE) via architect; (4) BD-093 release pin. Handoff docs under ~/.local/state/optiquity-pack-handoff/."
+    "coder-bd287-wavea (pack-coder, RW, isolated worktree, background) -- Wave A: NEW scripts/lib/three-way-merge.sh (tw_merge_file) + test-three-way-merge.sh + fixtures. FIRST coder of the Wave-A commit -> owns the cycle worktree; reuse for its review/fix cycle; teardown only after the Wave-A commit is CONFIRMED landed + CI green.",
+    "ON RESUME: BD-287 plan APPROVED (user 6-wave, E/F/G parallel). Waves A->B->D serial, then E||F||G parallel. Wave A coder running. Per wave: coder -> bounded review/fix -> patch -> apply -> commit (per-commit user approval, intervention=full) -> CI. The BD-287 open (backlog/BD-287.md + _toc + session-state, uncommitted) bundles into the Wave-A commit (pack-only-compatible). Plan: ~/.local/state/optiquity-pack-handoff/bd287-planner/PLAN-BD287.md. Then BD-285 (paused at design gate) -> BD-093."
   ],
   "queue": ["BD-285", "BD-093"],
-  "parallelization": "SERIAL onboarding program. BD-284 (prompt.sh) + BD-283 (interactive migration) + BD-286 (guided pre-reconciliation doc) all done. Next: BD-285 (fresh-install collision + guided merge, LARGE) → BD-093 release pin → launch. BD-172 rebases on BD-283's apply.sh whenever worked, and now also carries the BD-286 Gate-2/validate-pack-against-PACK adjacent finding.",
-  "wave": "v11.0 readiness closed (BD-205); migrator UX (BD-281/282) + prompt.sh (BD-284) + interactive migration (BD-283) + guided pre-reconciliation doc (BD-286) all done. Onboarding-UX program (user: turnkey-it-all-in-v11.0): remaining BD-285 (fresh-install collision + guided existing-CLAUDE.md merge). Then BD-093 release pin → launch. The BD-286 batch-reconciliation-PLAN mode is the user-authorized v11.1 follow-on.",
+  "parallelization": "SERIAL. In-flight: BD-287 (auto-merge, LARGE) finalize architect -> planner -> coder waves. BD-287 lands BEFORE BD-172 (apply.sh; BD-172 rebases). BD-285 paused at design gate (disjoint: init vs migrator). BD-093 release pin last.",
+  "wave": "Onboarding-UX program (user: turnkey-it-all-in-v11.0). Done: BD-281/282/283/284/286. BD-287 real auto-merge design settled at user gate: bash 3-way merge for prose (generic/pm-chat); AI resolve-merge-conflicts skill (Model B) merges same-line prose markers AND the trinity (section-aware, automates BD-286 pre-fold); pack-script/pack-agent stay sidecar; structured key-merge unchanged. Then BD-285 fresh-install, then BD-093 -> launch.",
   "pending_decisions": [
-    "BD-285-C2 mutates init classify→STOP (pack-boundary HIGH) — spawn architect FIRST (user-approved architect-spawn required). BD-172 rebases on BD-283's apply.sh + carries the BD-286 Gate-2 adjacent finding (dirty-worktree validate-pack-against-PACK spurious EXIT_GATE_FAILED; zero client/CI impact).",
-    "LAUNCH: BD-093 release pin runs LAST, after the onboarding program. Every onboarding BD is a new gate ahead of BD-093 (user accepted). USER decides every tag / state transition.",
+    "BD-287 gate decisions LOCKED: trinity merged by the AI skill (not sidecar); scripts/agents stay sidecar; Model B (pure-bash migrator, skill never auto-invoked); one path-referenced SKILL.md across CLIs; BD-287 before BD-172. Finalize architect specs the trinity-via-skill zero-loss verification (pack-boundary HIGH).",
+    "BD-285 design-gate decision list (FD-1 fixture home, --yes/--trinity, STOP-vs-migrator, v9 config-shape guard) awaits the user on that track. OI-11: BD-285 C2 MAY reuse BD-287 tw_merge_file if BD-287 lands first.",
+    "LAUNCH: BD-093 release pin LAST. USER decides every tag / state transition. OT migration testbed on Basquiat ONLY, never Agam.",
     "Standing: PUBLIC-BOUND PACK; push USER-APPROVED then Pack-Chat-executed; intervention commit-gate live (fresh token, separate step); session-state COMPACT (one SHA boundary, no other SHAs, no dates outside checkpoint, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-286 doc-first cycle complete: guide + demo test + cross-link applied to canonical; BD-286 flipped Resolved; BD-172 Gate-2 note added; _toc regenerated; session-state refreshed. NEXT: stage → full battery (validate-pack green once guide tracked; demo 13/13; Check 93) → commit (mixed-surface, NO scope keyword) → push → CI green → teardown both BD-286 worktrees → BD-285 architect."
+  "cycle_position": "BD-287 planner-to-coder gate PASSED (user approved 6-wave plan, E/F/G parallel). Wave A coder running (tw_merge_file primitive + tests). NEXT: Wave A review/fix -> commit (bundles BD-287 open) -> Wave B (prose merge arm + trinity BASE-stash) -> Wave D (interactive/report) -> E||F||G parallel. BD-285 held at its design gate."
 }
