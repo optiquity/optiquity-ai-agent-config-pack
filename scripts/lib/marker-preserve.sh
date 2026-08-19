@@ -299,6 +299,14 @@ _mp_sidecar_conflict() {
     diff_path=$(_cp_write_diff "$base" "$ours" "$theirs" "$rel")
     cp "$ours" "$sidecar"
     cp "$theirs" "$dest"
+    # BD-287: stash the v10 BASE as `<DEST>.v10-base` so the resolve-merge-
+    # conflicts skill's Case-2 fold has BASE as a LOCAL file at skill-run time
+    # (§2.2). This is the ONLY BD-287 change to this sink — the graft, every
+    # fail-loud gate, and the disposition are OTHERWISE UNCHANGED (F6: no
+    # `_mp_merge_conflict`, no whole-file line-merge of the trinity). No-op when
+    # BASE is absent (Regime B / --update). Resolved at call time like
+    # _cp_record / _cp_write_diff (defined in customization-preserve.sh).
+    _cp_stash_trinity_base "$base" "$dest"
     _cp_record "$_CP_DISP_NEEDS_RECONCILIATION" "trinity" "$rel" "sidecar" \
         "$sidecar" "$diff_path" "$notes"
 }

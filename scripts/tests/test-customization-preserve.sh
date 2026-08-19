@@ -146,7 +146,11 @@ assert_eq "2.3 disposition" "merged-with-customization" "$(tsv_col 1 "$last")"
 assert_eq "2.3 action"      "preserved"                 "$(tsv_col 4 "$last")"
 assert_eq "2.3 dest preserved" "v1-mine" "$(cat "$T2/dest.md")"
 
-# 2.4 real-merge-required: both edited; sidecar.
+# 2.4 (BD-287 PROSE class, SAME-LINE overlap → rc1 markers). generic + a real
+# BASE where the SAME single line differs on both sides → tw_merge_file emits a
+# --diff3 conflict hunk (rc1). The prose arm KEEPS the sidecar and records
+# action `merged` under the UNCHANGED needs-reconciliation disposition (OI-7 —
+# no new token); DEST holds the marked merge.
 setup_state "$state"
 echo "v1" > "$T2/base.md"
 echo "v1-mine" > "$T2/ours.md"
@@ -157,14 +161,102 @@ customization_preserve "$T2/base.md" "$T2/ours.md" "$T2/theirs.md" \
 last=$(tail -1 "$state/dispositions.tsv")
 assert_eq "2.4 disposition" "customization-detected-needs-reconciliation" \
     "$(tsv_col 1 "$last")"
-assert_eq "2.4 action"      "sidecar"   "$(tsv_col 4 "$last")"
-assert_eq "2.4 dest = theirs"  "v2"      "$(cat "$T2/dest.md")"
-assert_eq "2.4 sidecar = ours" "v1-mine" "$(cat "$T2/dest.md.pre-update")"
+assert_eq "2.4 action (prose same-line → merged)" "merged" "$(tsv_col 4 "$last")"
+dest24=$(cat "$T2/dest.md")
+assert_contains "2.4 dest carries diff3 markers (ours label)" "$dest24" "<<<<<<< your customization"
+assert_contains "2.4 dest carries diff3 base label"           "$dest24" "||||||| v10 baseline"
+assert_contains "2.4 dest carries diff3 theirs label"         "$dest24" ">>>>>>> pack v11 update"
+assert_contains "2.4 dest keeps ours side of the hunk"        "$dest24" "v1-mine"
+assert_contains "2.4 dest keeps theirs side of the hunk"      "$dest24" "v2"
+assert_eq "2.4 sidecar = ours (KEPT on rc1)" "v1-mine" "$(cat "$T2/dest.md.pre-update")"
 # BD-112: diff name uses the collision-safe flat helper.
 expected_diff_24="$state/diffs/$(_cp_flat_name "doc.md").three-way.diff"
 [[ -f "$expected_diff_24" ]] \
     && t_pass "2.4 three-way diff written ($expected_diff_24)" \
     || t_fail "2.4 three-way diff written" "expected $expected_diff_24"
+
+# 2.4b (BD-287 PROSE class, DIFFERENT-LINE → rc0 clean, F2 DROP sidecar).
+# generic + a real BASE where the pack and project edit DIFFERENT lines →
+# tw_merge_file produces a clean union (rc0, ZERO markers). The clean merge
+# records `merged-with-customization`/action `merged`, writes BOTH edits into
+# DEST, and leaves NO `.v10-customized` sidecar (F2 — the pre-migration backup
+# covers OURS; Gate 2 stays clean).
+setup_state "$state"
+rm -f "$T2/dest.md.pre-update"   # clear the sidecar a prior rc1 case left
+printf '%s\n' L1 L2 L3 L4 L5 L6 > "$T2/base.md"
+printf '%s\n' L1 L2-PROJECT-EDIT L3 L4 L5 L6 > "$T2/ours.md"
+printf '%s\n' L1 L2 L3 L4 L5-PACK-EDIT L6 > "$T2/theirs.md"
+cp "$T2/ours.md" "$T2/dest.md"
+customization_preserve "$T2/base.md" "$T2/ours.md" "$T2/theirs.md" \
+    "doc.md" "$T2/dest.md" generic >/dev/null
+last=$(tail -1 "$state/dispositions.tsv")
+assert_eq "2.4b disposition (clean prose merge)" "merged-with-customization" \
+    "$(tsv_col 1 "$last")"
+assert_eq "2.4b action = merged" "merged" "$(tsv_col 4 "$last")"
+assert_eq "2.4b sidecar column dash (F2 clean-drops-sidecar)" "-" "$(tsv_col 5 "$last")"
+dest24b=$(cat "$T2/dest.md")
+assert_contains "2.4b dest carries the PROJECT edit" "$dest24b" "L2-PROJECT-EDIT"
+assert_contains "2.4b dest carries the PACK edit"    "$dest24b" "L5-PACK-EDIT"
+[[ ! -f "$T2/dest.md.pre-update" ]] \
+    && t_pass "2.4b NO sidecar on clean prose merge (F2)" \
+    || t_fail "2.4b unexpected sidecar written on clean prose merge"
+# A clean merge leaves ZERO diff3 markers in DEST.
+if grep -qE '^(<<<<<<<|\|\|\|\|\|\|\||=======|>>>>>>>)' "$T2/dest.md"; then
+    t_fail "2.4b clean merge unexpectedly left diff3 markers"
+else
+    t_pass "2.4b clean merge left ZERO diff3 markers"
+fi
+
+# 2.4c (BD-287 PROSE class, NO REAL BASE → rc2 fallback to bare sidecar). A
+# generic real-merge with an ABSENT base is `project-shadows-new-pack`;
+# tw_merge_file's REAL-BASE-only guard (I3) returns rc2, so the arm falls back
+# to TODAY's bare sidecar body (THEIRS→DEST, OURS→sidecar, action `sidecar`).
+setup_state "$state"
+printf '%s\n' "ours only line" > "$T2/ours.md"
+printf '%s\n' "pack v11 line"  > "$T2/theirs.md"
+rm -f "$T2/dest.md"
+cp "$T2/ours.md" "$T2/dest.md"
+customization_preserve "" "$T2/ours.md" "$T2/theirs.md" \
+    "doc.md" "$T2/dest.md" generic >/dev/null
+last=$(tail -1 "$state/dispositions.tsv")
+assert_eq "2.4c disposition (no-base fallback)" \
+    "customization-detected-needs-reconciliation" "$(tsv_col 1 "$last")"
+assert_eq "2.4c action = sidecar (rc2 bare-sidecar fallback)" "sidecar" "$(tsv_col 4 "$last")"
+assert_eq "2.4c dest = theirs"  "pack v11 line"  "$(cat "$T2/dest.md")"
+assert_eq "2.4c sidecar = ours" "ours only line" "$(cat "$T2/dest.md.pre-update")"
+
+# 2.4d (BD-287 F8 DEST four-token RE-SCAN). A clean rc0 union that nonetheless
+# leaves a residual --diff3 token in the content is DEMOTED to the markers-
+# present branch (keep sidecar, action `merged`, needs-reconciliation). Here
+# OURS embeds a literal `=======` line the merge carries through cleanly (rc0);
+# the re-scan catches it and demotes.
+setup_state "$state"
+printf '%s\n' "top pack" "one" "two" "three" "bottom pack" > "$T2/base.md"
+printf '%s\n' "top pack" "one" "two" "=======" "three" "bottom pack" > "$T2/ours.md"
+printf '%s\n' "top PACK-NEW" "one" "two" "three" "bottom pack" > "$T2/theirs.md"
+cp "$T2/ours.md" "$T2/dest.md"
+# Prove the raw 3-way primitive is a CLEAN rc0 (well-separated edits) that
+# nonetheless carries a residual token — so the demotion below is genuinely the
+# F8 re-scan, not a plain rc1 conflict.
+tw_merge_file "$T2/base.md" "$T2/ours.md" "$T2/theirs.md" "$T2/raw24d.out" \
+    "your customization" "v10 baseline" "pack v11 update" && raw_rc=0 || raw_rc=$?
+assert_eq "2.4d raw tw_merge_file is CLEAN rc0 (F8 precondition)" "0" "$raw_rc"
+if grep -qE '^(<<<<<<<|\|\|\|\|\|\|\||=======|>>>>>>>)' "$T2/raw24d.out"; then
+    t_pass "2.4d raw rc0 output carries a residual diff3 token (F8 trigger)"
+else
+    t_fail "2.4d raw rc0 output has no token — fixture does not exercise F8"
+fi
+customization_preserve "$T2/base.md" "$T2/ours.md" "$T2/theirs.md" \
+    "doc.md" "$T2/dest.md" generic >/dev/null
+last=$(tail -1 "$state/dispositions.tsv")
+assert_eq "2.4d F8 demote: disposition stays needs-reconciliation" \
+    "customization-detected-needs-reconciliation" "$(tsv_col 1 "$last")"
+assert_eq "2.4d F8 demote: action = merged" "merged" "$(tsv_col 4 "$last")"
+assert_eq "2.4d F8 demote: sidecar KEPT (not dropped)" \
+    "$T2/dest.md.pre-update" "$(tsv_col 5 "$last")"
+[[ -f "$T2/dest.md.pre-update" ]] \
+    && t_pass "2.4d F8 demote: sidecar file present on disk" \
+    || t_fail "2.4d F8 demote: sidecar missing"
 
 # 2.5 new-file-in-pack: base + ours absent, theirs present → copy.
 setup_state "$state"
@@ -224,6 +316,85 @@ last=$(tail -1 "$state/dispositions.tsv")
 assert_eq "2.9 trinity auto-classified" "trinity"      "$(tsv_col 2 "$last")"
 assert_eq "2.9 trinity → needs-reconciliation" \
     "customization-detected-needs-reconciliation" "$(tsv_col 1 "$last")"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 2b: BD-287 class gate boundary (F1) + trinity BASE-stash
+# ─────────────────────────────────────────────────────────────────────────
+#
+# The prose auto-merge is SCOPED to generic/pm-chat. pack-script, pack-agent,
+# and the markerless-trinity fallback MUST keep TODAY's bare sidecar (no
+# line-merge — executables/agents are behaviourally unsafe to union; the trinity
+# is section-sensitive, F6). The same-line real-merge inputs (base=v1,
+# ours=v1-mine, theirs=v2) that produce rc1 MARKERS for a prose class must
+# instead produce a bare `sidecar` action for these classes.
+
+printf "\n=== Group 2b: BD-287 class gate boundary + trinity BASE-stash ===\n"
+
+# 2b.1 pack-script → bare sidecar (NOT line-merged).
+setup_state "$state"
+rm -f "$T2/dest.md.v10-base"   # clear any stash a prior trinity case left
+echo "v1" > "$T2/base.md"; echo "v1-mine" > "$T2/ours.md"; echo "v2" > "$T2/theirs.md"
+cp "$T2/ours.md" "$T2/dest.md"
+customization_preserve "$T2/base.md" "$T2/ours.md" "$T2/theirs.md" \
+    "scripts/foo.sh" "$T2/dest.md" pack-script >/dev/null
+last=$(tail -1 "$state/dispositions.tsv")
+assert_eq "2b.1 pack-script disposition" \
+    "customization-detected-needs-reconciliation" "$(tsv_col 1 "$last")"
+assert_eq "2b.1 pack-script action = sidecar (NOT merged)" "sidecar" "$(tsv_col 4 "$last")"
+assert_eq "2b.1 pack-script dest = theirs (no markers)" "v2" "$(cat "$T2/dest.md")"
+[[ ! -f "$T2/dest.md.v10-base" ]] \
+    && t_pass "2b.1 pack-script writes NO .v10-base stash" \
+    || t_fail "2b.1 unexpected .v10-base stash for pack-script"
+
+# 2b.2 pack-agent → bare sidecar (NOT line-merged).
+setup_state "$state"
+echo "v1" > "$T2/base.md"; echo "v1-mine" > "$T2/ours.md"; echo "v2" > "$T2/theirs.md"
+cp "$T2/ours.md" "$T2/dest.md"
+customization_preserve "$T2/base.md" "$T2/ours.md" "$T2/theirs.md" \
+    ".claude/agents/pack-reviewer.md" "$T2/dest.md" pack-agent >/dev/null
+last=$(tail -1 "$state/dispositions.tsv")
+assert_eq "2b.2 pack-agent action = sidecar (NOT merged)" "sidecar" "$(tsv_col 4 "$last")"
+assert_eq "2b.2 pack-agent dest = theirs (no markers)" "v2" "$(cat "$T2/dest.md")"
+
+# 2b.3 markerless-trinity fallback → bare sidecar (F6) AND writes .v10-base
+# stash (real base present). Drive via the trinity class with markerless OURS so
+# marker_preserve_trinity delegates to the _cp_strategy_text "trinity" arm.
+setup_state "$state"
+rm -f "$T2/dest.md.v10-base"
+echo "v1" > "$T2/base.md"; echo "v1-mine" > "$T2/ours.md"; echo "v2" > "$T2/theirs.md"
+cp "$T2/ours.md" "$T2/dest.md"
+customization_preserve "$T2/base.md" "$T2/ours.md" "$T2/theirs.md" \
+    "CLAUDE.md" "$T2/dest.md" trinity >/dev/null
+last=$(tail -1 "$state/dispositions.tsv")
+assert_eq "2b.3 trinity fallback action = sidecar (F6, no line-merge)" "sidecar" "$(tsv_col 4 "$last")"
+assert_eq "2b.3 trinity fallback dest = theirs" "v2" "$(cat "$T2/dest.md")"
+assert_eq "2b.3 trinity fallback stash = base" "v1" "$(cat "$T2/dest.md.v10-base")"
+# The .v10-base name must NOT collide with the *.v10-customized orphan glob.
+case "$T2/dest.md.v10-base" in
+    *.v10-customized) t_fail "2b.3 .v10-base matches the *.v10-customized glob (collision)" ;;
+    *)                t_pass "2b.3 .v10-base does NOT match *.v10-customized (Gate-2 invisible)" ;;
+esac
+
+# 2b.4 _cp_stash_trinity_base helper — writes for a REAL base, no-ops otherwise.
+setup_state "$state"
+echo "the v10 base" > "$T2/hb.base"
+rm -f "$T2/hbdest.md.v10-base"
+_cp_stash_trinity_base "$T2/hb.base" "$T2/hbdest.md"
+assert_eq "2b.4 helper writes .v10-base for a real base" \
+    "the v10 base" "$(cat "$T2/hbdest.md.v10-base" 2>/dev/null)"
+# BASE absent (empty string) → no stash.
+rm -f "$T2/hbabs.md.v10-base"
+_cp_stash_trinity_base "" "$T2/hbabs.md"
+[[ ! -f "$T2/hbabs.md.v10-base" ]] \
+    && t_pass "2b.4 helper no-ops on absent BASE (empty string)" \
+    || t_fail "2b.4 helper wrote a stash for an absent BASE"
+# BASE zero-byte (not a real base per I3) → no stash.
+: > "$T2/hbempty.base"
+rm -f "$T2/hbempty-dest.md.v10-base"
+_cp_stash_trinity_base "$T2/hbempty.base" "$T2/hbempty-dest.md"
+[[ ! -f "$T2/hbempty-dest.md.v10-base" ]] \
+    && t_pass "2b.4 helper no-ops on a zero-byte BASE (not a real base, I3)" \
+    || t_fail "2b.4 helper wrote a stash for a zero-byte BASE"
 
 rm -rf "$T2"
 

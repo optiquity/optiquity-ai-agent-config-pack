@@ -246,6 +246,10 @@ assert_eq "M-4 disposition needs-reconciliation" "$NEEDS" "$(last_disp)"
 assert_contains "M-4 message names out-of-marker divergence" "$(last_notes)" "outside your markers"
 assert_contains "M-4 project Shape A content byte-identical in sidecar" \
     "$(cat "$FIXTURE_BASE/m4/dest.md.pre-update")" "MINE-M4"
+# BD-287: Regime B (BASE="") → NO `.v10-base` stash (I3 real-base-only); the
+# skill falls back to reduced verification in that case.
+assert_eq "M-4 BD-287 NO .v10-base stash on absent BASE (Regime B / I3)" \
+    "no" "$([[ -f "$FIXTURE_BASE/m4/dest.md.v10-base" ]] && echo yes || echo no)"
 
 # ─────────────────────────────────────────────────────────────────────────
 echo "== M-5: same H2 in Shape A + Shape B -> fail loud (L-4/V-6) =="
@@ -465,6 +469,20 @@ cp "$FIXTURE_BASE/m16i/ours.md" "$FIXTURE_BASE/m16i/dest.md"
 customization_preserve "$FIXTURE_BASE/m16i/base.md" "$FIXTURE_BASE/m16i/ours.md" \
     "$FIXTURE_BASE/m16i/theirs.md" "CLAUDE.md" "$FIXTURE_BASE/m16i/dest.md" trinity >/dev/null
 assert_eq "M-16(i) project-edited body -> needs-reconciliation (safety)" "$NEEDS" "$(last_disp)"
+# BD-287: the marked-trinity divergence sink now stashes the v10 BASE next to
+# the sidecar as `<DEST>.v10-base` (the skill's Case-2 third input, §2.2). The
+# graft + gates + disposition are UNCHANGED (F6) — this is the ONLY additive
+# change to _mp_sidecar_conflict. A REAL base (Regime A) → stash written,
+# byte-identical to base.
+assert_eq "M-16(i) BD-287 .v10-base stash written (Regime A, real base)" \
+    "$(cat "$FIXTURE_BASE/m16i/base.md")" \
+    "$(cat "$FIXTURE_BASE/m16i/dest.md.v10-base" 2>/dev/null)"
+# The stash name must NOT match the *.v10-customized orphan glob (Gate 2 stays
+# blind to it).
+case "$FIXTURE_BASE/m16i/dest.md.v10-base" in
+    *.v10-customized) fail "M-16(i) .v10-base collides with *.v10-customized glob" ;;
+    *)                pass "M-16(i) .v10-base invisible to the *.v10-customized glob (Gate-2 safe)" ;;
+esac
 
 # (ii) pack edited pack body outside marker, project did NOT -> clean merge (value).
 newstate; mk m16ii

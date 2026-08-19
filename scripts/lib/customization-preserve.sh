@@ -94,6 +94,26 @@ if ! declare -F marker_preserve_trinity >/dev/null 2>&1; then
     unset _cp_this_dir
 fi
 
+# BD-287: the prose real-merge arm (generic/pm-chat) delegates to the
+# deterministic 3-way merge primitive `tw_merge_file` (git merge-file -p
+# --diff3). Source the sibling here so every caller of customization-preserve.sh
+# gets it; guarded so a caller that already sourced it is not re-sourced. It
+# only DEFINES `tw_merge_file`, so source order relative to the _cp_* definitions
+# below does not matter. Mirrors the marker-preserve.sh source guard above.
+if ! declare -F tw_merge_file >/dev/null 2>&1; then
+    _cp_this_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -f "$_cp_this_dir/three-way-merge.sh" ]]; then
+        # shellcheck disable=SC1091
+        . "$_cp_this_dir/three-way-merge.sh"
+    else
+        printf 'error: customization-preserve.sh requires the sibling BD-287 3-way merge primitive, but it was not found at %s\n' \
+            "$_cp_this_dir/three-way-merge.sh" >&2
+        unset _cp_this_dir
+        return 1
+    fi
+    unset _cp_this_dir
+fi
+
 _cp_require_three_way() {
     if ! declare -F three_way_classify >/dev/null 2>&1; then
         printf 'error: customization-preserve.sh requires three-way.sh to be sourced first\n' >&2
@@ -245,6 +265,26 @@ _cp_record() {
     _CP_FINDINGS_COUNT=$((_CP_FINDINGS_COUNT + 1))
 }
 
+# BD-287: stash the v10 BASE blob as a fixed companion `<DEST>.v10-base` next to
+# the trinity `.v10-customized` sidecar, at the moment the sidecar sink runs
+# (BASE is live in hand there). This is the THIRD merge input the
+# `resolve-merge-conflicts` skill's Case-2 fold needs at skill-run time — a
+# LOCAL file with no git/tag/pack-clone dependency
+# (ARCHITECTURE-BD287-FINAL.md §2.2, decision B). Written ONLY for a REAL base
+# (present, regular, non-empty — the same real-base test tw_merge_file's I3
+# guard applies), a no-op otherwise (the BASE-absent --update path per I3). The
+# `.v10-base` name does NOT match the `*.v10-customized` orphan-sidecar glob
+# (checkpoint.sh `checkpoint_check_no_orphan_sidecars`), so it is invisible to
+# Gate 2. Callable from marker-preserve.sh at call time (resolved like
+# _cp_record). Returns 0 unconditionally (a missing stash is not an error).
+_cp_stash_trinity_base() {
+    local base="$1" dest="$2"
+    if [[ -n "$base" && -f "$base" && -s "$base" ]]; then
+        cp "$base" "${dest}.v10-base"
+    fi
+    return 0
+}
+
 # Map the 12 classifier tokens to the 8 canonical disposition tokens.
 _cp_disposition_for() {
     case "$1" in
@@ -326,14 +366,111 @@ _cp_strategy_text() {
         real-merge-required|project-shadows-new-pack)
             mkdir -p "$(dirname "$dest")"
             local sidecar="${dest}${_CP_SIDECAR_SUFFIX}"
-            local diff_path
-            # CRITICAL ORDERING: write diff + sidecar BEFORE overwriting
-            # dest. When dest == ours (in-place), `cp theirs dest` would
-            # overwrite ours; reversing preserves ours for diff/sidecar.
-            diff_path=$(_cp_write_diff "$base" "$ours" "$theirs" "$rel")
-            cp "$ours" "$sidecar"
-            cp "$theirs" "$dest"
-            _cp_record "$disp" "$class" "$rel" "sidecar" "$sidecar" "$diff_path" "-"
+            local diff_path merge_tmp merge_rc
+            # BD-287 CLASS GATE (F1 — prose-scoped auto-merge). Only PROSE
+            # classes (generic/pm-chat) get a real 3-way line-merge; scripts,
+            # agents, and the markerless-trinity fallback keep TODAY's bare
+            # sidecar (a git merge-file line-union of bash/YAML is textually
+            # lossless yet BEHAVIOURALLY wrong, and the trinity is section-
+            # sensitive — F6). The `merged-with-customization`/`merged` note on
+            # a clean prose merge, plus the F8 DEST re-scan, mirror the
+            # structured clean arm (ARCHITECTURE-BD287-FINAL.md §1/§2).
+            case "$class" in
+                generic|pm-chat)
+                    # Merge into a TEMP so OURS stays intact for the sidecar /
+                    # diff regardless of dest==ours (in-place). tw_merge_file
+                    # writes OUT only on rc0/rc1, leaves it untouched on rc2.
+                    merge_tmp=$(mktemp "${TMPDIR:-/tmp}/cp-prose-merge.XXXXXX") || merge_tmp=""
+                    if [[ -z "$merge_tmp" ]]; then
+                        # mktemp failure: fall back to today's bare sidecar (never
+                        # skip a disposition — the truthful-report contract).
+                        diff_path=$(_cp_write_diff "$base" "$ours" "$theirs" "$rel")
+                        cp "$ours" "$sidecar"
+                        cp "$theirs" "$dest"
+                        _cp_record "$disp" "$class" "$rel" "sidecar" "$sidecar" "$diff_path" \
+                            "prose merge temp unavailable; fell back to sidecar"
+                        return 0
+                    fi
+                    # OI-R1: capture rc WITHOUT tripping a `set -e` caller —
+                    # tw_merge_file returns non-zero on its normal rc1/rc2 paths.
+                    if tw_merge_file "$base" "$ours" "$theirs" "$merge_tmp" \
+                        "your customization" "v10 baseline" "pack v11 update"; then
+                        merge_rc=0
+                    else
+                        merge_rc=$?
+                    fi
+                    # OURS is still intact here (merge went to $merge_tmp).
+                    diff_path=$(_cp_write_diff "$base" "$ours" "$theirs" "$rel")
+                    case "$merge_rc" in
+                        0)
+                            # F8 re-scan: a clean rc0 may still carry a residual
+                            # --diff3 token (e.g. a marker left inside content);
+                            # if ANY of the four tokens survive, DEMOTE to the
+                            # rc-1 (markers-present) branch — keep the sidecar.
+                            if grep -qE '^(<<<<<<<|\|\|\|\|\|\|\||=======|>>>>>>>)' "$merge_tmp"; then
+                                cp "$ours" "$sidecar"
+                                cp "$merge_tmp" "$dest"
+                                _cp_record "$disp" "$class" "$rel" "merged" \
+                                    "$sidecar" "$diff_path" \
+                                    "prose 3-way merge left conflict markers (same-line overlap); resolve via the resolve-merge-conflicts skill"
+                            else
+                                # F2: a clean merge leaves NO orphan sidecar —
+                                # sidecar column dash, mirrors the structured
+                                # clean arm; the pre-migration backup covers OURS.
+                                cp "$merge_tmp" "$dest"
+                                _cp_record "merged-with-customization" "$class" "$rel" "merged" \
+                                    "-" "$diff_path" \
+                                    "prose 3-way merge clean (both edits applied, zero markers)"
+                            fi
+                            ;;
+                        1)
+                            # rc1 markers: DEST holds the marked merge; KEEP the
+                            # sidecar; record needs-reconciliation + action
+                            # `merged` (OI-7 — NO new disposition token).
+                            cp "$ours" "$sidecar"
+                            cp "$merge_tmp" "$dest"
+                            _cp_record "$disp" "$class" "$rel" "merged" \
+                                "$sidecar" "$diff_path" \
+                                "prose 3-way merge left conflict markers (same-line overlap); resolve via the resolve-merge-conflicts skill"
+                            ;;
+                        *)
+                            # rc2 unusable (no real BASE per I3, or a merge-file
+                            # error): fall back to TODAY's bare sidecar body
+                            # (unchanged behaviour). DEST is untouched by
+                            # tw_merge_file on rc2, so set it explicitly.
+                            cp "$ours" "$sidecar"
+                            cp "$theirs" "$dest"
+                            _cp_record "$disp" "$class" "$rel" "sidecar" "$sidecar" "$diff_path" "-"
+                            ;;
+                    esac
+                    rm -f "$merge_tmp"
+                    ;;
+                trinity)
+                    # BD-287: the MARKERLESS-trinity fallback path
+                    # (marker_preserve_trinity delegates a zero-token trinity
+                    # here). Keep TODAY's bare sidecar body AND stash the v10
+                    # BASE for the skill's Case-2 fold (§2.2). NO line-merge (F6).
+                    # CRITICAL ORDERING: write diff + sidecar BEFORE overwriting
+                    # dest (dest may == ours in-place).
+                    diff_path=$(_cp_write_diff "$base" "$ours" "$theirs" "$rel")
+                    cp "$ours" "$sidecar"
+                    cp "$theirs" "$dest"
+                    _cp_stash_trinity_base "$base" "$dest"
+                    _cp_record "$disp" "$class" "$rel" "sidecar" "$sidecar" "$diff_path" "-"
+                    ;;
+                *)
+                    # pack-script / pack-agent (and any other non-prose class):
+                    # TODAY's bare sidecar body, UNCHANGED — executables/agents are
+                    # never line-merged (F1); the client hand-reapplies.
+                    # CRITICAL ORDERING: write diff + sidecar BEFORE overwriting
+                    # dest. When dest == ours (in-place), `cp theirs dest` would
+                    # overwrite ours; reversing preserves ours for diff/sidecar.
+                    diff_path=$(_cp_write_diff "$base" "$ours" "$theirs" "$rel")
+                    cp "$ours" "$sidecar"
+                    cp "$theirs" "$dest"
+                    _cp_record "$disp" "$class" "$rel" "sidecar" "$sidecar" "$diff_path" "-"
+                    ;;
+            esac
             ;;
         removed-by-pack-clean)
             [[ -f "$dest" ]] && rm "$dest"

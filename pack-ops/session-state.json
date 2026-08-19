@@ -1,11 +1,11 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "1f46caa",
+  "boundary_commit": "c259262",
   "checkpoint": "2026-08-19T00:00:00Z",
   "active": ["BD-287"],
   "in_flight_agents": [
-    "coder-bd287-wavea (pack-coder, RW, isolated worktree, background) -- Wave A: NEW scripts/lib/three-way-merge.sh (tw_merge_file) + test-three-way-merge.sh + fixtures. FIRST coder of the Wave-A commit -> owns the cycle worktree; reuse for its review/fix cycle; teardown only after the Wave-A commit is CONFIRMED landed + CI green.",
-    "ON RESUME: BD-287 plan APPROVED (user 6-wave, E/F/G parallel). Waves A->B->D serial, then E||F||G parallel. Wave A coder running. Per wave: coder -> bounded review/fix -> patch -> apply -> commit (per-commit user approval, intervention=full) -> CI. The BD-287 open (backlog/BD-287.md + _toc + session-state, uncommitted) bundles into the Wave-A commit (pack-only-compatible). Plan: ~/.local/state/optiquity-pack-handoff/bd287-planner/PLAN-BD287.md. Then BD-285 (paused at design gate) -> BD-093."
+    "coder-bd287-waveb (pack-coder, RW, isolated worktree, background) -- Wave B: customization-preserve.sh _cp_strategy_text prose class-gate (generic/pm-chat -> tw_merge_file) + NEW _cp_stash_trinity_base + marker-preserve.sh _mp_sidecar_conflict stash call + tests + integration-expectation ripple. FIRST coder of the Wave-B commit -> owns the cycle worktree.",
+    "ON RESUME: BD-287 plan APPROVED (6-wave, E/F/G parallel). Wave A LANDED (tw_merge_file primitive; CI green; worktrees torn down; = boundary). Wave B coder running. Remaining: B (prose merge arm) -> D (interactive/report; SERIALIZE-then-BD-172) -> E||F||G parallel (E skill+trinity+PLATFORM-SKILLS surface-26, F docs, G test-reframe). Per wave: coder -> bounded review/fix -> commit (per-commit user approval) -> CI -> teardown. Plan: ~/.local/state/optiquity-pack-handoff/bd287-planner/PLAN-BD287.md. Then BD-285 (paused at design gate) -> BD-093."
   ],
   "queue": ["BD-285", "BD-093"],
   "parallelization": "SERIAL. In-flight: BD-287 (auto-merge, LARGE) finalize architect -> planner -> coder waves. BD-287 lands BEFORE BD-172 (apply.sh; BD-172 rebases). BD-285 paused at design gate (disjoint: init vs migrator). BD-093 release pin last.",
@@ -16,5 +16,5 @@
     "LAUNCH: BD-093 release pin LAST. USER decides every tag / state transition. OT migration testbed on Basquiat ONLY, never Agam.",
     "Standing: PUBLIC-BOUND PACK; push USER-APPROVED then Pack-Chat-executed; intervention commit-gate live (fresh token, separate step); session-state COMPACT (one SHA boundary, no other SHAs, no dates outside checkpoint, <4096 B); modes review=itemized, intervention=full, isolation=full; scratch root $XDG_STATE_HOME/optiquity-pack-handoff/."
   ],
-  "cycle_position": "BD-287 planner-to-coder gate PASSED (user approved 6-wave plan, E/F/G parallel). Wave A coder running (tw_merge_file primitive + tests). NEXT: Wave A review/fix -> commit (bundles BD-287 open) -> Wave B (prose merge arm + trinity BASE-stash) -> Wave D (interactive/report) -> E||F||G parallel. BD-285 held at its design gate."
+  "cycle_position": "BD-287 Wave A LANDED (= boundary, CI green, worktrees torn down). Wave B review CLEAN; commit staged. Wave B coder done (prose merge class-gate + trinity BASE-stash). NEXT: Wave B review/fix -> commit -> Wave D (interactive/report, then BD-172 rebases) -> E||F||G parallel. BD-285 held at its design gate."
 }
