@@ -173,9 +173,25 @@ migrate_v10_to_v11_resume_run() {
         {
             printf 'error: --resume refused; %s sidecar(s) still unresolved\n' "$unresolved"
             printf '\n'
-            printf 'Resolve each by ONE of:\n'
-            printf '  (a) merge content into the destination, then `touch <sidecar>.resolved`\n'
-            printf '  (b) merge or accept-pack-default, then remove (rename) the sidecar\n'
+            # BD-287 (§2.1): mirror the apply-menu / report prose split — HOW to
+            # resolve depends on the file type. Accept-pack for an auto-merged
+            # prose file (live copy still marked) means re-installing the pack
+            # template; a trinity/script/agent sidecar already holds the pack
+            # version. The resolve-merge-conflicts skill folds a trinity sidecar
+            # section-aware; scripts/agents are re-applied by hand.
+            printf 'Resolve each by ONE of (how depends on the file type; see the\n'
+            printf 'report section "Files needing manual reconciliation"):\n'
+            printf '  (a) accept the pack version — for an auto-merged prose file whose\n'
+            printf '      live copy still has conflict markers, re-install the pack\n'
+            printf '      template over the live file; for a trinity/script/agent\n'
+            printf '      sidecar the live file already holds the pack version. Then\n'
+            printf '      remove (rename) the sidecar.\n'
+            printf '  (b) keep your version — restore the sidecar over the live file,\n'
+            printf '      then remove (rename) the sidecar.\n'
+            printf '  (c) merge both — resolve conflict markers by hand, or run the\n'
+            printf '      resolve-merge-conflicts skill (it folds a trinity sidecar\n'
+            printf '      section-aware; scripts/agents are re-applied by hand), then\n'
+            printf '      `touch <sidecar>.resolved`.\n'
             printf '\n'
             printf 'Unresolved sidecars:\n'
             printf '%s\n' "$unresolved_list"

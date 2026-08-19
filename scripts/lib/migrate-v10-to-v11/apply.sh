@@ -189,6 +189,13 @@ _v10_v11_apply_collect_conflicts() {
     #   <disposition>\t<class>\t<path>\t<action>\t<sidecar>\t...\t<note>
     # Pull rows whose disposition column is `customization-detected-needs-
     # reconciliation` AND whose sidecar column is non-`-`.
+    #
+    # BD-287 (VERIFY, no change): the prose auto-merge arm records a
+    # markers-present result as `needs-reconciliation` with action `merged`
+    # and a KEPT sidecar (`$5` non-dash), so this collector still pauses those
+    # rows exactly like the trinity/pack-script/pack-agent `sidecar` rows. A
+    # CLEAN prose merge drops the sidecar (`$5` == `-`) and is correctly NOT
+    # collected (it is fully resolved at dispatch — F2).
     awk -F'\t' \
         -v want="customization-detected-needs-reconciliation" \
         '$1 == want && $5 != "-" && $5 != "" { print $5 }' \
@@ -198,6 +205,66 @@ _v10_v11_apply_collect_conflicts() {
         rm -f "$paused"
         return 1
     fi
+    return 0
+}
+
+# BD-287 — look up the (class, action, rel) triple for a needs-reconciliation
+# row by its sidecar path (column $5, the value the collector wrote to
+# stage-S3.paused). Echoes "<class>\t<action>\t<rel>" for the FIRST matching
+# row (empty if none). This is what makes the interactive accept-pack choice
+# (and the copy-paste menu prose) ROW-TYPE-AWARE per §2.1: a merged-with-markers
+# prose row (action `merged`) holds the marked 3-way merge in the live file, so
+# accept-pack must RE-INSTALL the pack template; a plain `sidecar` row's live
+# file already IS the pack version. Pure read-only.
+_v10_v11_apply_lookup_row() {
+    local tsv="$1" sidecar="$2"
+    [[ -f "$tsv" ]] || return 0
+    awk -F'\t' \
+        -v want="customization-detected-needs-reconciliation" \
+        -v sc="$sidecar" \
+        '$1 == want && $5 == sc { printf "%s\t%s\t%s\n", $2, $4, $3; exit }' \
+        "$tsv"
+}
+
+# BD-287 — remove the `<live>.v10-base` stash a trinity conflict left at
+# dispatch (§2.2). Called when a trinity row is resolved wholesale (accept /
+# keep) so no `.v10-base` clutter survives. No-op for non-trinity rows (they
+# have no stash) and harmless if the stash is already absent.
+_v10_v11_apply_clear_base() {
+    local class="$1" live="$2"
+    [[ "$class" == "trinity" ]] && rm -f "${live}.v10-base"
+    return 0
+}
+
+# BD-287 — row-type-aware `[1] accept pack` (F3 / OI-F3). For a
+# merged-with-markers prose row (action `merged`) the LIVE file currently holds
+# the marked 3-way merge, so accept-pack RE-INSTALLS THEIRS: it copies the pack
+# v11 template `$PACK/project-template/<rel>` (the path derived exactly as the
+# dispatch manifest maps it) over the live file BEFORE dropping the sidecar. For
+# a plain `sidecar` row the live file already IS the pack v11 version, so it only
+# drops the sidecar (today's behaviour). Either way, a trinity row also clears
+# its `.v10-base` stash. Returns 0 when the row is resolved, non-zero to DEFER
+# (the caller then leaves the sidecar for --resume). The migrator NEVER invokes
+# the skill/agent from bash (Model B) — this is a pure-bash wholesale one-side
+# selection, not a merge.
+_v10_v11_apply_accept_pack() {
+    local s="$1" live="$2" class="$3" action="$4" rel="$5"
+    if [[ "$action" == "merged" ]]; then
+        local tmpl="$PACK/project-template/$rel"
+        if [[ ! -f "$tmpl" ]]; then
+            warn "could not accept pack for $live: template $tmpl not found; deferring"
+            return 1
+        fi
+        if ! cp "$tmpl" "$live"; then
+            warn "could not re-install pack template over $live; deferring"
+            return 1
+        fi
+    fi
+    if ! rm -f "$s"; then
+        warn "could not remove $s; deferring"
+        return 1
+    fi
+    _v10_v11_apply_clear_base "$class" "$live"
     return 0
 }
 
@@ -216,45 +283,123 @@ _v10_v11_apply_print_copypaste_menu() {
     say ""
     say "Dispatch found files that BOTH you and the pack changed. Your"
     say "prior copy of each was saved next to the live file as a"
-    say ".${MIGRATOR_OWN_SIDECAR_SUFFIX} sidecar; the live file now holds"
-    say "the new pack template. The migration is paused (not failed): the"
-    say "remaining stages (S4 relocations, S5 artifact installs, S6 report)"
-    say "run when you invoke --resume after you resolve each file below."
+    say ".${MIGRATOR_OWN_SIDECAR_SUFFIX} sidecar. Depending on the file, the"
+    say "live file now holds either the new pack template or a 3-way merge"
+    say "WITH conflict markers (stated per file below). The migration is"
+    say "paused (not failed): the remaining stages (S4 relocations, S5"
+    say "artifact installs, S6 report) run when you invoke --resume after"
+    say "you resolve each file below."
     say ""
     say "For each file, choose ONE option and run its command:"
     say ""
-    local s live
-    local rm_all=""
+    # BD-287 (§2.1): split the per-file prose by row type (class + action),
+    # looked up from dispositions.tsv. A merged-with-markers prose row (action
+    # `merged`, class generic/pm-chat) holds the MARKED merge (NOT the clean
+    # pack version), so accept-pack must re-install the pack template and the
+    # prose points at the conflict markers / skill; a STRUCTURED `merged` row
+    # (JSON/TOML config, action `merged`, other class) holds a key-merge with
+    # reconciliation warnings (no markers) — accept-pack still re-installs the
+    # template but the prose points at the warnings, NOT the skill (which does
+    # not apply to structured configs); a trinity sidecar points at the
+    # resolve-merge-conflicts skill (section-aware fold) or the pre-reconcile
+    # guide; a script/agent sidecar is re-applied by hand (the skill does not
+    # merge executables/agents — F1). The migrator NEVER runs the skill itself
+    # (Model B) — these are copy-paste commands the user runs.
+    local s live tsv class action rel
+    tsv="$_MIGRATOR_STATE_DIR/dispositions.tsv"
+    local rm_all="" cp_all=""
     while IFS= read -r s; do
         [[ -z "$s" ]] && continue
         # Sidecar paths are absolute (apply-mode); the live file is the
         # sidecar with the .${MIGRATOR_OWN_SIDECAR_SUFFIX} suffix stripped.
         live="${s%.${MIGRATOR_OWN_SIDECAR_SUFFIX}}"
+        class=""; action=""; rel=""
+        IFS=$'\t' read -r class action rel \
+            <<< "$(_v10_v11_apply_lookup_row "$tsv" "$s")" || true
         say "  $live"
-        say "    1. Accept the pack's new version — discards YOUR"
-        say "       customization to this file; keeps the pack v11 template."
-        say "       The live file already IS the pack version, so just"
-        say "       remove the saved copy:"
-        say "         rm '$s'"
-        say "    2. Keep your customization — discards the pack v11 update"
-        say "       to this file; restores your prior copy over the template:"
-        say "         mv '$s' '$live'"
-        say "    3. Merge by hand — keeps both; reconcile line-by-line,"
-        say "       nothing auto-discarded. Edit '$live' (your prior copy"
-        say "       is in '$s'), then mark it resolved:"
-        say "         touch '$s.resolved'        # keep the sidecar as a record"
-        say "         # ...or, once merged:  rm '$s'"
+        if [[ "$action" == "merged" ]]; then
+            if [[ "$class" == "generic" || "$class" == "pm-chat" ]]; then
+                say "    1. Accept the pack's new version — discards YOUR"
+                say "       customization. The live file holds the merge WITH"
+                say "       conflict markers, so re-install the clean pack v11"
+                say "       template over it, then remove the saved copy:"
+                say "         cp '$PACK/project-template/$rel' '$live'"
+                say "         rm '$s'"
+                say "    2. Keep your customization — discards the pack v11 update;"
+                say "       restores your prior copy over the merged file:"
+                say "         mv '$s' '$live'"
+                say "    3. Resolve the conflict markers — keeps both. Resolve the"
+                say "       markers in '$live' by hand, or run the"
+                say "       resolve-merge-conflicts skill; then mark it resolved:"
+                say "         touch '$s.resolved'        # keep the sidecar as a record"
+                say "         # ...or, once resolved:  rm '$s'"
+            else
+                say "    1. Accept the pack's new version — discards YOUR"
+                say "       customization. The live file holds a key-merged"
+                say "       config (with reconciliation warnings, no conflict"
+                say "       markers), so re-install the clean pack v11 template"
+                say "       over it, then remove the saved copy:"
+                say "         cp '$PACK/project-template/$rel' '$live'"
+                say "         rm '$s'"
+                say "    2. Keep your customization — discards the pack v11 update;"
+                say "       restores your prior copy over the merged file:"
+                say "         mv '$s' '$live'"
+                say "    3. Review the merged config — keeps both. The migrator"
+                say "       key-merged your config with the pack; the"
+                say "       resolve-merge-conflicts skill does NOT apply to"
+                say "       structured configs — review the reconciliation"
+                say "       warnings and adjust '$live' by hand, then mark it"
+                say "       resolved:"
+                say "         touch '$s.resolved'        # keep the sidecar as a record"
+                say "         # ...or, once resolved:  rm '$s'"
+            fi
+            cp_all="${cp_all}cp '$PACK/project-template/$rel' '$live' && "
+            rm_all="$rm_all '$s'"
+        elif [[ "$class" == "trinity" ]]; then
+            say "    1. Accept the pack's new version — discards YOUR"
+            say "       customization. The live file already IS the pack v11"
+            say "       template, so just remove the saved copies:"
+            say "         rm '$s' '$live.v10-base'"
+            say "    2. Keep your customization — discards the pack v11 update;"
+            say "       restores your prior copy over the template:"
+            say "         mv '$s' '$live' && rm -f '$live.v10-base'"
+            say "    3. Merge both, section-aware — run the"
+            say "       resolve-merge-conflicts skill (it folds your prior copy"
+            say "       into the new pack trinity), or fold by hand per the"
+            say "       pre-reconcile guide. Edit '$live' (your prior copy is"
+            say "       in '$s'), then mark it resolved:"
+            say "         touch '$s.resolved'        # keep the sidecar as a record"
+            say "         # ...or, once merged:  rm '$s'"
+            rm_all="$rm_all '$s' '$live.v10-base'"
+        else
+            say "    1. Accept the pack's new version — discards YOUR"
+            say "       customization. The live file already IS the pack v11"
+            say "       version, so just remove the saved copy:"
+            say "         rm '$s'"
+            say "    2. Keep your customization — discards the pack v11 update;"
+            say "       restores your prior copy over the pack file:"
+            say "         mv '$s' '$live'"
+            say "    3. Re-apply your edit by hand — the"
+            say "       resolve-merge-conflicts skill does NOT merge scripts or"
+            say "       agents. The live file is the valid pack v11 version;"
+            say "       re-apply your change over it (your prior copy is in"
+            say "       '$s'), then mark it resolved:"
+            say "         touch '$s.resolved'        # keep the sidecar as a record"
+            say "         # ...or, once merged:  rm '$s'"
+            rm_all="$rm_all '$s'"
+        fi
         say ""
-        rm_all="$rm_all '$s'"
     done < "$_MIGRATOR_STATE_DIR/sentinels/stage-S3.paused"
-    # OI-1 (BD-282): honest accept-pack-for-ALL one-shot. Removes exactly
-    # the listed sidecars in one copy-paste line. Explicitly labelled that
-    # it discards every customization to the files above — reversible from
-    # the pre-migration backup dir.
+    # OI-1 (BD-282): honest accept-pack-for-ALL one-shot. BD-287: a merged row
+    # needs its clean pack template re-installed first (its live file holds
+    # markers), so the shortcut chains a `cp` per merged row before the single
+    # `rm`; a trinity row's `.v10-base` stash is cleared alongside its sidecar.
+    # Explicitly labelled that it discards every customization to the files
+    # above — reversible from the pre-migration backup dir.
     say "Shortcut — accept the pack's new version for ALL files above in"
     say "one step. This DISCARDS ALL your customizations to those files"
     say "(each remains recoverable from the ${_MIGRATOR_STATE_DIR##*/}-backup dir):"
-    say "  rm$rm_all"
+    say "  ${cp_all}rm$rm_all"
     say ""
     say "When every file above is resolved, finish the migration:"
     # F12 (BD-095 retro fix): drop `:-/path/to/pack` fallback. This
@@ -288,25 +433,53 @@ _v10_v11_apply_interactive_reconcile() {
     done < "$paused"
 
     local -a _resolved=() _deferred=()
-    local s live choice i
+    local s live choice i class action rel
     for (( i=0; i<${#_conflicts[@]}; i++ )); do
         s="${_conflicts[i]}"
         # NIT-1: derive the live path via the suffix var, never a literal.
         live="${s%.${MIGRATOR_OWN_SIDECAR_SUFFIX}}"
+        # BD-287 (§2.1): row-type context — a merged prose row (class
+        # generic/pm-chat) holds a marked 3-way merge and a STRUCTURED merged
+        # row (JSON/TOML) holds a key-merge with warnings; either way accept-pack
+        # RE-INSTALLS the pack template (F3). A plain sidecar row's live file
+        # already IS the pack version. Also drives the per-file pointer prose
+        # (markers/skill for prose vs warnings for structured vs hand for
+        # scripts/agents).
+        class=""; action=""; rel=""
+        IFS=$'\t' read -r class action rel \
+            <<< "$(_v10_v11_apply_lookup_row "$tsv" "$s")" || true
         say ""
         say "  $live"
         info "your prior copy is saved at: $s"
+        if [[ "$action" == "merged" ]]; then
+            if [[ "$class" == "generic" || "$class" == "pm-chat" ]]; then
+                info "the live file holds a 3-way merge WITH conflict markers — accept re-installs the pack template, keep restores your copy, or resolve the markers (run the resolve-merge-conflicts skill) then --resume"
+            else
+                info "the live file holds a key-merged config with reconciliation warnings (no conflict markers) — accept re-installs the pack template, keep restores your copy, or review/adjust the merged file by hand then --resume (the resolve-merge-conflicts skill does not apply to structured configs)"
+            fi
+        elif [[ "$class" == "trinity" ]]; then
+            info "trinity file — resolve by hand or run the resolve-merge-conflicts skill (folds it section-aware), then --resume; or accept/keep to pick one side wholesale"
+        elif [[ "$class" == "pack-script" || "$class" == "pack-agent" ]]; then
+            info "script/agent — the skill does NOT merge these; re-apply your edit by hand over the pack v11 file, then --resume; or accept/keep to pick one side wholesale"
+        fi
         # SHOULD-3: SPLIT form — `choice` is declared local ABOVE, so this
         # assignment preserves prompt_choice's rc (a combined `local
         # choice=$(…)` would mask it). prompt_choice: prompt→stderr,
-        # token→stdout, rc!=0 on EOF.
+        # token→stdout, rc!=0 on EOF. BD-287 (OI-F3 / N1): the migrator stays
+        # pure bash — [3] and [s] both just DEFER (resolve during the pause per
+        # the per-file guidance above — the skill for prose/trinity, by hand for
+        # structured/scripts/agents — then --resume); there is NO in-bash merge.
+        # The label is class-neutral so it does not imply the skill resolves
+        # script/agent/structured rows (it does not).
         if choice=$(prompt_choice \
-              "[1] accept pack  [2] keep yours  [3] merge later  [s] skip  [q] quit" \
+              "[1] accept pack  [2] keep yours  [3] defer / resolve later  [s] skip  [q] quit" \
               "1,2,3,s,q"); then
             case "$choice" in
-                1) if rm -f "$s"; then _resolved+=("$s")
-                   else warn "could not remove $s; deferring"; _deferred+=("$s"); fi ;;
-                2) if mv "$s" "$live"; then _resolved+=("$s")
+                1) if _v10_v11_apply_accept_pack "$s" "$live" "$class" "$action" "$rel"; then
+                       _resolved+=("$s")
+                   else _deferred+=("$s"); fi ;;
+                2) if mv "$s" "$live"; then
+                       _v10_v11_apply_clear_base "$class" "$live"; _resolved+=("$s")
                    else warn "could not restore $s; deferring"; _deferred+=("$s"); fi ;;
                 3|s) _deferred+=("$s") ;;
                 q) _deferred+=("${_conflicts[@]:i}"); break ;;   # SHOULD-4: current + remainder
@@ -396,7 +569,7 @@ migrate_v10_to_v11_apply_after_dispatch() {
             # today's copy-paste + --resume flow for exactly those files.
             say ""
             say "── Interactive reconciliation ──"
-            say "For each file, choose: accept pack / keep yours / merge later / skip / quit."
+            say "For each file, choose: accept pack / keep yours / resolve via skill later / skip / quit."
             _V10V11_DEFERRED_COUNT=0
             # PLAIN call, never $( ): the per-file summary uses say/info which
             # write to STDOUT; a command substitution would swallow the menu UX

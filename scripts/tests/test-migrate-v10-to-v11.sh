@@ -473,8 +473,13 @@ assert_contains "2c.10 option 1 labelled 'Accept the pack'" \
     "$out" "Accept the pack"
 assert_contains "2c.11 option 2 labelled 'Keep your customization'" \
     "$out" "Keep your customization"
-assert_contains "2c.12 option 3 labelled 'Merge by hand'" \
-    "$out" "Merge by hand"
+# BD-287 (§2.1): the trinity option-3 prose now points at the section-aware
+# resolve-merge-conflicts skill (or a hand-fold per the pre-reconcile guide),
+# replacing the old class-blind "Merge by hand" label.
+assert_contains "2c.12 option 3 folds via the resolve-merge-conflicts skill (section-aware)" \
+    "$out" "resolve-merge-conflicts skill"
+assert_contains "2c.12b option 3 also offers a hand-fold per the pre-reconcile guide" \
+    "$out" "pre-reconcile guide"
 assert_contains "2c.13 emits a per-sidecar keep-yours command (mv '...')" \
     "$out" "mv '"
 assert_contains "2c.14 emits a per-sidecar merge command (touch '...'.resolved)" \

@@ -101,6 +101,29 @@ inject_conditional_custom() {
 
 commit_all() { git -C "$1" add -A >/dev/null 2>&1; git -C "$1" commit -q -m "$2" 2>/dev/null; }
 
+# BD-287 — seed a generic PROSE doc (docs/pack/PLATFORM-SKILLS.md, class
+# `generic`, same path v10↔v11 so no relocation) into the target with a
+# SAME-LINE customization that collides with the pack's own v10→v11 change,
+# forcing a prose merged-with-markers row (class generic, action `merged`, a
+# KEPT sidecar). The colliding line is discovered at RUNTIME (the first line
+# that differs between the v10 baseline and the current pack template), so the
+# fixture is robust to pack content drift. Writes docs/pack/PLATFORM-SKILLS.md.
+seed_prose_conflict() {
+    local target="$1" marker="$2"
+    local rel="docs/pack/PLATFORM-SKILLS.md"
+    local base theirs ln
+    base="$target/.seed-base.$$"
+    theirs="$REPO_ROOT/project-template/$rel"
+    git -C "$REPO_ROOT" show "${V10_TAG:-v10}:project-template/$rel" > "$base" 2>/dev/null
+    # First 1-based line number where BASE (v10) and THEIRS (pack v11) differ.
+    ln=$(awk 'NR==FNR{a[FNR]=$0; n=FNR; next}
+              {if ($0 != a[FNR]) {print FNR; f=1; exit}}
+              END{if (!f) print n+1}' "$base" "$theirs")
+    mkdir -p "$target/docs/pack"
+    awk -v L="$ln" -v M="$marker" 'NR==L{print M; next}{print}' "$base" > "$target/$rel"
+    rm -f "$base"
+}
+
 # --dry-run stamps the fingerprint --apply requires. Two-phase drive: dry-run
 # (non-interactive) THEN --apply --interactive with piped answers.
 dry_run() { PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$1" >/dev/null 2>&1; }
@@ -138,6 +161,11 @@ assert_eq "I1.1 accept rc=0 (clean auto-continue)" "0" "$rc"
 [[ ! -f "$T/CLAUDE.md.v10-customized" ]] \
     && t_pass "I1.3 CLAUDE.md.v10-customized removed (accept-pack applied in-process)" \
     || t_fail "I1.3 sidecar still present after accept"
+# BD-287 (F3/§2.2): a trinity conflict stashes CLAUDE.md.v10-base at dispatch;
+# accept-pack on a trinity row clears it so no `.v10-base` clutter survives.
+[[ ! -f "$T/CLAUDE.md.v10-base" ]] \
+    && t_pass "I1.3b CLAUDE.md.v10-base cleared on accept (trinity stash cleanup)" \
+    || t_fail "I1.3b CLAUDE.md.v10-base still present after accept"
 [[ -f "$T/$HELP_FRAGMENT_REL" ]] \
     && t_pass "I1.4 HELP-FRAGMENT installed (S4/S5 ran → auto-continue proven)" \
     || t_fail "I1.4 HELP-FRAGMENT missing (S4/S5 did not run)"
@@ -169,6 +197,10 @@ out=$(printf '2\n' | PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply --interactive 
 grep -q "$I2_MARKER" "$T/CLAUDE.md" 2>/dev/null \
     && t_pass "I2.2 live CLAUDE.md contains YOUR customization line (OURS restored over template)" \
     || t_fail "I2.2 live CLAUDE.md missing the restored customization"
+# BD-287 (§2.2): keep-yours on a trinity row also clears the `.v10-base` stash.
+[[ ! -f "$T/CLAUDE.md.v10-base" ]] \
+    && t_pass "I2.3 CLAUDE.md.v10-base cleared on keep-yours (trinity stash cleanup)" \
+    || t_fail "I2.3 CLAUDE.md.v10-base still present after keep-yours"
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -187,6 +219,16 @@ assert_eq "I3.1 merge-later rc=0 (clean pause)" "0" "$rc"
 grep -q "CLAUDE.md.v10-customized" "$T/$PAUSED_SENTINEL_REL" 2>/dev/null \
     && t_pass "I3.3 deferred sidecar listed in stage-S3.paused" \
     || t_fail "I3.3 deferred sidecar not listed"
+# BD-287 (§2.2): the trinity BASE stash is written at dispatch and a DEFER keeps
+# it (only accept/keep/skill-fold clear it). Proves the stash exists to clear.
+[[ -f "$T/CLAUDE.md.v10-base" ]] \
+    && t_pass "I3.3b CLAUDE.md.v10-base present on defer (dispatch stash retained)" \
+    || t_fail "I3.3b CLAUDE.md.v10-base missing on defer (stash not written)"
+# BD-287: the .v10-base name does NOT match the *.v10-customized orphan glob, so
+# it is invisible to Gate 2's checkpoint_check_no_orphan_sidecars.
+[[ ! "CLAUDE.md.v10-base" == *".v10-customized" ]] \
+    && t_pass "I3.3c .v10-base invisible to the *.v10-customized orphan-sidecar glob" \
+    || t_fail "I3.3c .v10-base wrongly matches the orphan-sidecar glob"
 [[ ! -f "$T/$HELP_FRAGMENT_REL" ]] \
     && t_pass "I3.4 HELP-FRAGMENT NOT installed (paused before S4/S5)" \
     || t_fail "I3.4 HELP-FRAGMENT installed (pause not load-bearing)"
@@ -410,6 +452,133 @@ assert_eq "I10.11 --resume after resolving the deferred file rc=0" "0" "$rc2"
 [[ -f "$T/$HELP_FRAGMENT_REL" ]] \
     && t_pass "I10.12 HELP-FRAGMENT installed after --resume (S4–S6 completed)" \
     || t_fail "I10.12 HELP-FRAGMENT missing after --resume"
+rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
+# I11 — BD-287: prose merged-with-markers row. [1] accept RE-INSTALLS THEIRS
+#       (F3, no markers remain); [3] defer leaves the markers (no in-bash merge)
+# ─────────────────────────────────────────────────────────────────────────
+printf "\n=== I11: prose merged row → accept re-installs THEIRS / defer keeps markers ===\n"
+PS_REL="docs/pack/PLATFORM-SKILLS.md"
+MARKER_RE='^(<<<<<<<|\|\|\|\|\|\|\||=======|>>>>>>>)'
+# (a) accept → re-install the clean pack template over the marked live file.
+T=$(make_v10_target)
+seed_prose_conflict "$T" "I11-PROSE-$$-accept"
+commit_all "$T" "I11a prose conflict"
+dry_run "$T"
+out=$(printf '1\n' | PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply --interactive "$T" 2>&1) ; rc=$?
+assert_eq "I11a.1 accept merged-row rc=0 (auto-continue)" "0" "$rc"
+[[ ! -f "$T/$PS_REL.v10-customized" ]] \
+    && t_pass "I11a.2 sidecar removed (accept applied)" \
+    || t_fail "I11a.2 sidecar still present after accept"
+grep -qE "$MARKER_RE" "$T/$PS_REL" 2>/dev/null \
+    && t_fail "I11a.3 live file STILL has conflict markers (THEIRS not re-installed)" \
+    || t_pass "I11a.3 live file has NO conflict markers (accept re-installed clean pack template)"
+if cmp -s "$T/$PS_REL" "$REPO_ROOT/project-template/$PS_REL"; then
+    t_pass "I11a.4 live file byte-identical to pack v11 template (THEIRS re-installed)"
+else
+    t_fail "I11a.4 live file != pack v11 template (re-install wrong)"
+fi
+[[ ! -f "$T/$PAUSED_SENTINEL_REL" ]] \
+    && t_pass "I11a.5 NO stage-S3.paused (single conflict resolved → auto-continue)" \
+    || t_fail "I11a.5 stage-S3.paused present (did not auto-continue / extra conflict)"
+[[ -f "$T/$HELP_FRAGMENT_REL" ]] \
+    && t_pass "I11a.6 HELP-FRAGMENT installed (S4/S5 ran)" \
+    || t_fail "I11a.6 HELP-FRAGMENT missing"
+rm -rf "$T"
+# (b) defer (resolve-via-skill-later) → pause, markers UNTOUCHED (no in-bash
+#     merge ran); the pause menu points at the skill + shows the cp-template
+#     accept command (not a bare sidecar rm).
+T=$(make_v10_target)
+seed_prose_conflict "$T" "I11-PROSE-$$-defer"
+commit_all "$T" "I11b prose conflict"
+dry_run "$T"
+out=$(printf '3\n' | PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply --interactive "$T" 2>&1) ; rc=$?
+assert_eq "I11b.1 defer merged-row rc=0 (clean pause)" "0" "$rc"
+[[ -f "$T/$PAUSED_SENTINEL_REL" ]] \
+    && t_pass "I11b.2 stage-S3.paused present (deferred → pause)" \
+    || t_fail "I11b.2 stage-S3.paused missing"
+grep -qE "$MARKER_RE" "$T/$PS_REL" 2>/dev/null \
+    && t_pass "I11b.3 deferred live file STILL has conflict markers (no in-bash merge ran)" \
+    || t_fail "I11b.3 markers gone on defer (an in-bash merge wrongly ran)"
+[[ -f "$T/$PS_REL.v10-customized" ]] \
+    && t_pass "I11b.4 sidecar retained on defer" \
+    || t_fail "I11b.4 sidecar removed on defer"
+assert_contains "I11b.5 pause menu points at the resolve-merge-conflicts skill" \
+    "$out" "resolve-merge-conflicts skill"
+assert_contains "I11b.6 pause menu accept re-installs the pack template (cp project-template/...)" \
+    "$out" "project-template/$PS_REL"
+rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
+# I12 — BD-287: report needs-reconciliation 3-way split (class+action-keyed H3
+#       sub-groups under one H2, each with the correct pointer prose)
+# ─────────────────────────────────────────────────────────────────────────
+printf "\n=== I12: report needs-reconciliation 3-way split ===\n"
+T=$(mktemp -d "${TMPDIR:-/tmp}/migrate10-rep.XXXXXX")
+TSV="$T/dispositions.tsv"
+{
+  printf '# disposition\tclass\trel_path\taction\tsidecar\tdiff\tnotes\n'
+  printf 'customization-detected-needs-reconciliation\tgeneric\tdocs/pack/FOO.md\tmerged\t%s/FOO.md.v10-customized\t-\tprose markers\n' "$T"
+  printf 'customization-detected-needs-reconciliation\ttrinity\tCLAUDE.md\tsidecar\t%s/CLAUDE.md.v10-customized\t-\t-\n' "$T"
+  printf 'customization-detected-needs-reconciliation\tpack-script\tscripts/foo.sh\tsidecar\t%s/scripts/foo.sh.v10-customized\t-\t-\n' "$T"
+  printf 'customization-detected-needs-reconciliation\tpack-agent\t.claude/agents/bar.md\tsidecar\t%s/.claude/agents/bar.md.v10-customized\t-\t-\n' "$T"
+  # BD-287 S1 regression: a STRUCTURED config key-merge with rc==2 records
+  # action `merged` with a structured class (claude-settings), NOT a prose
+  # class. It must render in the structured sub-group, NOT the prose
+  # "conflict markers / run the skill" bucket.
+  printf 'customization-detected-needs-reconciliation\tclaude-settings\t.claude/settings.json\tmerged\t%s/.claude/settings.json.v10-customized\t-\tstructured merge with reconciliation warnings\n' "$T"
+} > "$TSV"
+( . "$REPO_ROOT/scripts/lib/customization-report.sh"; \
+  customization_report "$TSV" "$T/report.md" "v10 to v11 report" )
+rep=$(cat "$T/report.md" 2>/dev/null)
+assert_contains "I12.1 single H2 kept with total count 5" "$rep" "## Files needing manual reconciliation (5)"
+assert_contains "I12.2 merged H3 sub-group"        "$rep" "### Auto-merged"
+assert_contains "I12.3 trinity H3 sub-group"       "$rep" "### Trinity files"
+assert_contains "I12.4 scripts/agents H3 sub-group" "$rep" "### Scripts and agents"
+assert_contains "I12.5 prose/trinity point at the skill" "$rep" "resolve-merge-conflicts skill"
+assert_contains "I12.6 trinity points at the pre-reconcile guide" "$rep" "pre-reconcile guide"
+assert_contains "I12.7 scripts/agents: skill does not merge them" \
+    "$rep" "does not merge executables/agents"
+for rel in "docs/pack/FOO.md" "CLAUDE.md" "scripts/foo.sh" ".claude/agents/bar.md" ".claude/settings.json"; do
+    assert_contains "I12.8 truthful: $rel present" "$rep" "$rel"
+done
+merged_ln=$(grep -n "### Auto-merged" "$T/report.md" | head -1 | cut -d: -f1)
+trinity_ln=$(grep -n "### Trinity files" "$T/report.md" | head -1 | cut -d: -f1)
+scripts_ln=$(grep -n "### Scripts and agents" "$T/report.md" | head -1 | cut -d: -f1)
+if [[ -n "$merged_ln" && -n "$trinity_ln" && -n "$scripts_ln" \
+      && "$merged_ln" -lt "$trinity_ln" && "$trinity_ln" -lt "$scripts_ln" ]]; then
+    t_pass "I12.9 sub-groups render in stable order (merged < trinity < scripts)"
+else
+    t_fail "I12.9 sub-group order wrong" "merged=$merged_ln trinity=$trinity_ln scripts=$scripts_ln"
+fi
+
+# I12.10-I12.14 — BD-287 S1 regression: a STRUCTURED config `merged` row
+# (`.claude/settings.json`, class claude-settings) must render in its OWN
+# structured sub-group with key-merge/warnings prose — NOT in the prose
+# "conflict markers / run the skill" bucket (that guidance is false for a
+# JSON/TOML key-merge). Extract each H3 block and assert membership.
+section_block() {
+    awk -v h="$1" '
+        index($0, "### " h) == 1 { grab=1; print; next }
+        grab && (/^### / || /^## /) { grab=0 }
+        grab { print }
+    ' "$T/report.md"
+}
+automerged_block=$(section_block "Auto-merged")
+structured_block=$(section_block "Structured configs")
+assert_contains "I12.10 structured H3 sub-group present" "$rep" "### Structured configs"
+assert_contains "I12.11 structured row lands in the structured sub-group" \
+    "$structured_block" ".claude/settings.json"
+assert_not_contains "I12.12 structured row NOT mislabeled into the prose/markers bucket" \
+    "$automerged_block" ".claude/settings.json"
+assert_not_contains "I12.13 structured group does NOT tell the user to run the skill" \
+    "$structured_block" "run the resolve-merge-conflicts skill"
+assert_not_contains "I12.14 structured group does NOT claim conflict markers exist" \
+    "$structured_block" "carries conflict markers"
+# The Auto-merged bucket still carries ONLY the prose row (no structured spill).
+assert_contains "I12.15 prose Auto-merged bucket still holds the prose row" \
+    "$automerged_block" "docs/pack/FOO.md"
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────
