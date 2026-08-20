@@ -63,6 +63,16 @@ YES=0
 NO_INTERACTIVE=0
 INTERACTIVE=0
 
+# Trinity-handling flags (BD-285 C2). Module-level so main()'s dispatch,
+# handle_handwritten_trinity, and stage_s7_trinity all see them. TRINITY_FLAG
+# is the explicit `--trinity=keep|replace|merge` automation selector (the SOLE
+# trinity-automation selector — evaluated INDEPENDENT of prompt_should_interact;
+# --yes alone does NOT name it). TRINITY_CHOICE is the RESOLVED handling
+# (keep|replace|merge) for a handwritten trinity; empty for every non-guided
+# install, so stage_s7_trinity's normal path is unaffected.
+TRINITY_FLAG=""
+TRINITY_CHOICE=""
+
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 say()  { printf '%s\n' "$*"; }
@@ -134,6 +144,107 @@ existing_classifier_copy() {
             ;;
         *)
             info "EXISTS $dst — classifier=$classification; left untouched (manual review)"
+            ;;
+    esac
+    return 0
+}
+
+# ── BD-285 P5/F6/SHOULD-1/SHOULD-2 — structured-config 2-way key-union ──────
+#
+# On an existing-source install, a STRUCTURED-class config that collides with a
+# project's pre-existing file is merged via the shipped empty-BASE key-union
+# (OURS wins a scalar conflict, pack-only keys added, project-only keys kept)
+# instead of being sidecar-preserved. customization-preserve.sh is CONSUMED
+# (sourced + called), NEVER edited.
+
+# _ensure_customization_lib — lazily source customization-preserve.sh (guarded)
+# and set _CP_PACK_ROOT. Returns non-zero if the library is unavailable so the
+# caller can fall back to existing_classifier_copy.
+_ensure_customization_lib() {
+    if ! declare -F customization_preserve >/dev/null 2>&1; then
+        [[ -f "$SCRIPT_DIR/lib/customization-preserve.sh" ]] || return 1
+        export _CP_PACK_ROOT="$PACK"
+        # shellcheck disable=SC1091
+        source "$SCRIPT_DIR/lib/customization-preserve.sh"
+    fi
+    export _CP_PACK_ROOT="$PACK"
+    return 0
+}
+
+# _s3_structured_keyunion SRC DST REL CLASS — THROWAWAY-probe structured merge.
+#
+# SHOULD-2 lifecycle: runs customization_preserve against a SCRATCH dest inside
+# a THROWAWAY (mktemp) state dir, inspects the recorded action, and promotes
+# ONLY merged bytes to the live tree; the throwaway dir (incl. any probe-side
+# sidecar) is discarded. It NEVER creates the persistent .pack-install-reconcile/
+# dir (that is created ONLY by the trinity merge writer, s7_reconcile_append_row).
+# The probe uses an install-flavored sidecar_suffix (NOT the .pre-update default).
+#
+# ROI-1: the merger's rc0 (clean) AND rc2 (warn) arms both record action
+# `merged` with valid merged bytes → promote, write NO live sidecar (the key-
+# union already folded OURS in). Only the rc-error arm records action `sidecar`
+# (THEIRS in the scratch dest) → this function returns NON-ZERO so the caller
+# falls back to existing_classifier_copy (F6 — never a silent THEIRS adoption).
+#
+# Returns 0 iff merged bytes were promoted; non-zero to signal the F6 fallback.
+_s3_structured_keyunion() {
+    local src="$1" dst="$2" rel="$3" class="$4"
+    local probe_dir scratch_dest disp_file action rc=1
+    probe_dir=$(mktemp -d "${TMPDIR:-/tmp}/pack-s3-probe.XXXXXX") || return 1
+    scratch_dest="$probe_dir/scratch-dest"
+    if customization_preserve_init "$probe_dir/state" ".pack-preserve-orig"; then
+        # OURS = live dst, THEIRS = pack src, empty BASE, DEST = scratch.
+        # Guard the call: it returns 0 normally, but never let a stray non-zero
+        # trip the `set -euo pipefail` trap mid-install — the action inspection
+        # below is the real decision point.
+        customization_preserve "" "$dst" "$src" "$rel" "$scratch_dest" "$class" \
+            >/dev/null 2>&1 || true
+        disp_file=$(customization_findings_tsv_path)
+        action=$(awk -F'\t' 'END{print $4}' "$disp_file" 2>/dev/null)
+        if [[ "$action" == "merged" && -f "$scratch_dest" ]]; then
+            cp "$scratch_dest" "$dst"
+            info "MERGED $dst — structured key-union (project keys preserved; pack keys added)"
+            rc=0
+        fi
+    fi
+    rm -rf "$probe_dir"
+    return "$rc"
+}
+
+# s3_config_copy SRC DST REL — existing-source S3 config copy (BD-285 P5).
+# Routes a STRUCTURED-class config (the classes customization_preserve dispatches
+# to _cp_strategy_structured — mirror scripts/lib/customization-preserve.sh's
+# claude-settings|claude-mcp-example|mcp-config-json|codex-config|codex-config-example
+# dispatch) through the 2-way key-union; any other class, an unavailable library,
+# or a merger parse-error (F6) falls back to existing_classifier_copy (user file
+# stays LIVE + pack → .pack-template). Driving off customization_classify covers
+# ALL structured S3 files (incl. .agents/mcp_config.json + .codex/requirements.toml)
+# and auto-joins a future structured config with no init edit.
+s3_config_copy() {
+    local src="$1" dst="$2" rel="$3"
+    # Absent live file → plain install (nothing to merge).
+    if [[ ! -f "$dst" ]]; then
+        cp "$src" "$dst"
+        return 0
+    fi
+    # Identical → nothing to surface (matches existing_classifier_copy).
+    if cmp -s "$src" "$dst"; then
+        return 0
+    fi
+    if ! _ensure_customization_lib; then
+        existing_classifier_copy "$src" "$dst"
+        return 0
+    fi
+    local class
+    class=$(customization_classify "$rel")
+    case "$class" in
+        claude-settings|claude-mcp-example|mcp-config-json|codex-config|codex-config-example)
+            if ! _s3_structured_keyunion "$src" "$dst" "$rel" "$class"; then
+                existing_classifier_copy "$src" "$dst"
+            fi
+            ;;
+        *)
+            existing_classifier_copy "$src" "$dst"
             ;;
     esac
     return 0
@@ -230,15 +341,16 @@ detect_source_files() {
     echo "source-files: *.swift=$s, *.py=$p"
 }
 
-# classify: new-empty | new-bare | existing-bare | existing-source | already-configured
-classify_project_state() {
+# classify_project_state_no_ai: new-empty | new-bare | existing-bare | existing-source
+#
+# BD-285 C2: the underlying class for the NON-trinity files, computed WITHOUT
+# the AI-config gate. Used (a) by classify_project_state below (delegated —
+# behavior unchanged for the non-configured path) and (b) by
+# handle_handwritten_trinity to re-classify a handwritten-trinity target after
+# the guided branch routes the trinity separately (so the S1..S11 stages route
+# by the real project shape, not `already-configured`).
+classify_project_state_no_ai() {
     local target="${1:-.}"
-    local ai
-    ai=$(detect_ai_config "$target" | awk -F': ' '{print $2}')
-    if [[ "$ai" != "(none)" ]]; then
-        echo "classify: already-configured"
-        return
-    fi
     # Language markers?
     local lm
     lm=$(detect_language_markers "$target" | awk -F': ' '{print $2}')
@@ -262,6 +374,22 @@ classify_project_state() {
     fi
     # Empty or only .gitignore/LICENSE?
     echo "classify: new-empty"
+}
+
+# classify: new-empty | new-bare | existing-bare | existing-source | already-configured
+#
+# The AI-config gate is factored out here; the underlying non-trinity class is
+# computed by classify_project_state_no_ai (delegated). Behavior for the
+# non-configured path is byte-unchanged from before the BD-285 refactor.
+classify_project_state() {
+    local target="${1:-.}"
+    local ai
+    ai=$(detect_ai_config "$target" | awk -F': ' '{print $2}')
+    if [[ "$ai" != "(none)" ]]; then
+        echo "classify: already-configured"
+        return
+    fi
+    classify_project_state_no_ai "$target"
 }
 
 # Pack skill coverage table (per §7.8). Used for skill-gap detection.
@@ -448,6 +576,68 @@ confirm_proceed() {
     return 1
 }
 
+# ── BD-285 C2 — handwritten-trinity guided branch ─────────────────────────
+#
+# Called from main() when detect_trinity_provenance == handwritten. Resolves
+# the trinity handling, sets the module-level TRINITY_CHOICE (read by
+# stage_s7_trinity), and reassigns the module-level CLASS via
+# classify_project_state_no_ai so the S1..S11 stages route by the real project
+# shape (not `already-configured`). Returns 0 to continue into main()'s
+# preview/confirm/stages; a null/absent choice STOPs here (exit 20).
+#
+# P2/F5/N3 PINS:
+#   * --trinity=keep|replace|merge (TRINITY_FLAG) is the SOLE trinity-automation
+#     selector, honored INDEPENDENT of prompt_should_interact (N3).
+#   * --yes alone does NOT name a trinity choice (F5): without --trinity, a
+#     non-interactive run reaches the null-choice STOP below.
+#   * The k/r/m prompt NEVER reuses confirm_proceed's YES→proceed idiom.
+#   * A null/absent TRINITY_CHOICE STOPs and NEVER reaches stage_s7_trinity's
+#     bare-cp path (the trinity is left byte-untouched).
+handle_handwritten_trinity() {
+    local choice=""
+    if [[ -n "${TRINITY_FLAG:-}" ]]; then
+        # Explicit --trinity= is honored independent of TTY / prompt state (N3).
+        choice="$TRINITY_FLAG"
+    elif prompt_should_interact "${NO_INTERACTIVE:-0}" "${INTERACTIVE:-0}"; then
+        say ""
+        say "A handwritten trinity (CLAUDE.md / AGENTS.md / GEMINI.md) was detected"
+        say "in $TARGET. Choose how init should handle it:"
+        say "  (k) keep    — keep your files live; save the pack versions as"
+        say "                <file>.pack-template for manual reconcile"
+        say "  (r) replace — install the pack trinity live; save yours as"
+        say "                <file>.user-orig (recovery copy)"
+        say "  (m) merge   — install the pack trinity live; save yours as"
+        say "                <file>.user-orig; record a 2-way fold for the"
+        say "                resolve-merge-conflicts skill"
+        local reply
+        if reply=$(prompt_choice "Trinity handling? [k/r/m]" "k,r,m"); then
+            case "$reply" in
+                k) choice="keep" ;;
+                r) choice="replace" ;;
+                m) choice="merge" ;;
+            esac
+        fi
+        # EOF/closed-stdin (prompt_choice returns non-zero) leaves choice empty
+        # → the null-choice STOP below (never a default-yes).
+    fi
+
+    if [[ -z "$choice" ]]; then
+        say ""
+        say "STOP — a handwritten trinity is present in $TARGET and no handling was"
+        say "chosen. Re-run naming the trinity handling explicitly, e.g.:"
+        say "  scripts/init-project.sh --trinity=merge   [target]"
+        say "  scripts/init-project.sh --trinity=replace [target]"
+        say "  scripts/init-project.sh --trinity=keep    [target]"
+        say "(Your trinity files are left byte-untouched.)"
+        exit "$EXIT_AI_CONFIG"
+    fi
+
+    TRINITY_CHOICE="$choice"
+    # Reassign CLASS from the underlying non-trinity project shape.
+    CLASS=$(classify_project_state_no_ai "$TARGET" | awk -F': ' '{print $2}')
+    return 0
+}
+
 # ── Stages S1..S10 ─────────────────────────────────────────────────────────
 
 stage_s1_skeleton() {
@@ -534,8 +724,19 @@ stage_s3_configs() {
         local pack_file="$PACK/project-template/$src_relpath"
         if [[ -f "$pack_file" ]]; then
             mkdir -p "$TARGET/$(dirname "$f")"
-            if [[ "$CLASS" == existing-* ]]; then
-                existing_classifier_copy "$pack_file" "$TARGET/$f"
+            # BD-285 P5: route structured configs through the PROTECTED path
+            # (s3_config_copy → structured 2-way key-union driven off
+            # customization_classify; .pack-template sidecar for a non-structured
+            # collision; F6 parse-error fallback to existing_classifier_copy)
+            # whenever a live file could need protection — an existing-* install
+            # OR a GUIDED trinity install (TRINITY_CHOICE set). A handwritten-
+            # trinity target with a lone user config and no language markers
+            # reclassifies to new-empty/new-bare (classify_project_state_no_ai),
+            # so gating on CLASS alone would silently plain-cp-overwrite that
+            # config. Genuine greenfield (no TRINITY_CHOICE, new-* class) keeps
+            # the plain cp — no live file to protect.
+            if [[ -n "${TRINITY_CHOICE:-}" || "$CLASS" == existing-* ]]; then
+                s3_config_copy "$pack_file" "$TARGET/$f" "$f"
             else
                 cp "$pack_file" "$TARGET/$f"
             fi
@@ -754,6 +955,14 @@ stage_s6_docs_pack() {
 
 stage_s7_trinity() {
     say "── S7 — copy trinity from pack template ──"
+    # BD-285 C2: a handwritten-trinity target routes through the guided
+    # keep/replace/merge branch (TRINITY_CHOICE set by handle_handwritten_trinity).
+    # A null/absent TRINITY_CHOICE means a NON-guided install (normal fresh /
+    # existing-source) — the standard routing below (never the guided branch).
+    if [[ -n "${TRINITY_CHOICE:-}" ]]; then
+        stage_s7_trinity_guided
+        return
+    fi
     local f
     for f in CLAUDE.md AGENTS.md GEMINI.md; do
         local pack_file="$PACK/project-template/$f"
@@ -764,6 +973,110 @@ stage_s7_trinity() {
             cp "$pack_file" "$TARGET/$f"
         fi
     done
+}
+
+# ── BD-285 C2 — guided keep/replace/merge trinity install ──────────────────
+
+# _s7_guarded_trinity_install THEIRS DST REL — the per-file GUARDED never-lose
+# install for the merge (m) / replace (r) paths (BLOCKER-1). The caller MUST
+# have already confirmed DST EXISTS (a live user trinity file). The order is
+# NON-REORDERABLE and must be impossible to implement backwards:
+#   1. CAPTURE OURS FIRST — cp the live DST (still OURS) to <DST>.user-orig.
+#      N1 guard: a pre-existing <DST>.user-orig ⇒ fail_stage LOUD (never a
+#      silent overwrite of a purpose-built recovery copy).
+#   2. VERIFY THE SIDECAR — cmp -s the live DST against <DST>.user-orig while
+#      DST still holds OURS; ANY mismatch ⇒ fail_stage LOUD, do NOT overwrite.
+#   3. ONLY THEN OVERWRITE — cp the pack template (THEIRS) onto the live DST.
+#      The pack template touches the live file LAST.
+# Invariant: "stash-then-verify-then-overwrite; the pack template touches the
+# live file ONLY after <DST>.user-orig is confirmed byte-equal to the pre-
+# overwrite DST." Safe under `set -euo pipefail` (all three cp/cmp are valid).
+_s7_guarded_trinity_install() {
+    local theirs="$1" dst="$2" rel="$3"
+    local sidecar="${dst}.user-orig"
+    # N1 guard.
+    if [[ -e "$sidecar" ]]; then
+        fail_stage S7 "refusing to overwrite pre-existing sidecar $sidecar for $rel (reconcile it first)"
+    fi
+    # 1. CAPTURE OURS FIRST.
+    cp "$dst" "$sidecar"
+    # 2. VERIFY THE SIDECAR (DST still holds OURS here).
+    if ! cmp -s "$dst" "$sidecar"; then
+        fail_stage S7 "sidecar verification failed for $rel ($sidecar != live $rel before overwrite)"
+    fi
+    # 3. ONLY THEN OVERWRITE — pack template touches the live file LAST.
+    cp "$theirs" "$dst"
+}
+
+# s7_reconcile_append_row REL — F8/SHOULD-2: record one merge-2way row into the
+# PERSISTENT <TARGET>/.pack-install-reconcile/dispositions.tsv so the
+# resolve-merge-conflicts skill (Case 3) can locate the install 2-way folds.
+# The persistent dir is created HERE ONLY (lazily, on the first merge row) —
+# NEVER by a no-trinity install (SHOULD-2). customization-preserve.sh is
+# CONSUMED (its _cp_record writer + customization_preserve_init), NOT edited.
+# Column 2 (class) = trinity; column 4 (action) = merge-2way (the wire token
+# the F9 static check + the skill's Case-3 selector match).
+s7_reconcile_append_row() {
+    local rel="$1"
+    if [[ -z "${_S7_RECONCILE_READY:-}" ]]; then
+        _ensure_customization_lib \
+            || fail_stage S7 "customization-preserve library missing (cannot record merge-2way)"
+        customization_preserve_init "$TARGET/.pack-install-reconcile" ".user-orig" \
+            || fail_stage S7 "failed to init .pack-install-reconcile state dir"
+        _S7_RECONCILE_READY=1
+    fi
+    _cp_record "merged-with-customization" "trinity" "$rel" "merge-2way" \
+        "${rel}.user-orig" "-" "install 2-way trinity fold (resolve-merge-conflicts Case 3)"
+}
+
+# stage_s7_trinity_guided — the k/r/m branch for a handwritten trinity.
+#   keep (k):    user trinity stays LIVE; pack → <f>.pack-template. Reuses
+#                existing_classifier_copy (absent-tolerant — a missing sibling
+#                is plain-installed from the pack).
+#   replace (r): F1-ordered install of the pack trinity + <f>.user-orig (pure
+#                recovery copy); NO merge-2way row.
+#   merge (m):   F1-ordered install + <f>.user-orig + a merge-2way row per
+#                PRESENT file + the resolve-merge-conflicts hint ONCE.
+# BLOCKER-1 absent-sibling arm: for r/m, a MISSING live sibling (e.g. a lone-
+# CLAUDE.md starter's absent AGENTS.md/GEMINI.md) is a plain pack install with
+# NO .user-orig and NO merge-2way row — so the skill's Case-3 locate never
+# points at a .user-orig (OURS) that never existed.
+stage_s7_trinity_guided() {
+    local choice="${TRINITY_CHOICE}"
+    local wrote_row=0
+    local f
+    for f in CLAUDE.md AGENTS.md GEMINI.md; do
+        local pack_file="$PACK/project-template/$f"
+        [[ -f "$pack_file" ]] || fail_stage S7 "pack template missing: $pack_file"
+        local dst="$TARGET/$f"
+        case "$choice" in
+            keep)
+                existing_classifier_copy "$pack_file" "$dst"
+                ;;
+            replace|merge)
+                if [[ -f "$dst" ]]; then
+                    _s7_guarded_trinity_install "$pack_file" "$dst" "$f"
+                    if [[ "$choice" == "merge" ]]; then
+                        s7_reconcile_append_row "$f"
+                        wrote_row=1
+                    fi
+                else
+                    # Absent sibling: plain pack install, NO sidecar, NO row.
+                    cp "$pack_file" "$dst"
+                fi
+                ;;
+            *)
+                fail_stage S7 "internal: unexpected TRINITY_CHOICE '$choice'"
+                ;;
+        esac
+    done
+    if [[ "$choice" == "merge" && "$wrote_row" == "1" ]]; then
+        say ""
+        say "One or more trinity files were merge-installed: your original is saved"
+        say "as <file>.user-orig and the pack version is now live. To fold your"
+        say "customizations back into the pack structure, run the"
+        say "resolve-merge-conflicts skill (Case 3 — install 2-way trinity fold)."
+    fi
 }
 
 stage_s8_gitignore() {
@@ -1540,11 +1853,22 @@ main() {
             --update) update_mode=1 ;;
             --yes) YES=1 ;;
             --no-interactive) NO_INTERACTIVE=1 ;;
+            --trinity=*)
+                TRINITY_FLAG="${1#*=}"
+                case "$TRINITY_FLAG" in
+                    keep|replace|merge) ;;
+                    *) die "invalid --trinity value: '$TRINITY_FLAG' (expected keep|replace|merge)" "$EXIT_INTERNAL" ;;
+                esac
+                ;;
+            --trinity)
+                die "--trinity requires a value: --trinity=keep|replace|merge" "$EXIT_INTERNAL" ;;
             --help|-h)
-                say "Usage: PACK=/path/to/pack init-project.sh [--update] [--yes] [--no-interactive] [target-dir]"
+                say "Usage: PACK=/path/to/pack init-project.sh [--update] [--yes] [--no-interactive] [--trinity=keep|replace|merge] [target-dir]"
                 say "  --yes             fresh install only: bypass the confirm prompt (automation / CI)"
                 say "  --no-interactive  fresh install only: never prompt; decline unless --yes is set"
-                say "  (--yes / --no-interactive have no effect under --update, which never confirms)"
+                say "  --trinity=k|r|m   handwritten-trinity target: keep | replace | merge (the SOLE"
+                say "                    trinity-automation selector; honored non-interactively)"
+                say "  (--yes / --no-interactive / --trinity have no effect under --update)"
                 exit 0
                 ;;
             --*) die "unknown option: $1 (try --help)" "$EXIT_INTERNAL" ;;
@@ -1581,23 +1905,58 @@ main() {
     local wt
     wt=$(detect_clean_working_tree "$TARGET" | awk -F': ' '{print $2}')
     if [[ "$wt" != "clean" ]]; then
-        die "target working tree is dirty; commit or stash first" "$EXIT_DIRTY"
+        # BD-285 P0: the commit-first gate is UNCHANGED; the message now names
+        # the trinity/starter case + the one-step workaround so a user who
+        # just hand-created a starter trinity knows to commit it first.
+        die "target working tree is dirty; commit or stash first. If you just created a starter trinity (CLAUDE.md / AGENTS.md / GEMINI.md) to seed this project, commit it so init can safely install over it: run \`git add -A && git commit -m 'starter trinity'\`, then re-run init-project.sh." "$EXIT_DIRTY"
     fi
 
     # Classification
     CLASS=$(classify_project_state "$TARGET" | awk -F': ' '{print $2}')
     if [[ "$CLASS" == "already-configured" ]]; then
-        say "STOP — existing AI config detected in $TARGET:"
-        detect_ai_config "$TARGET" | sed 's/^/  /'
-        say ""
-        say "Your options:"
-        say "  (a) already using this pack — run the migrator for your"
-        say "      current → target version (e.g. scripts/migrate-v10-to-v11.sh"
-        say "      and supporting-docs/MIGRATION-v10-to-v11.md). v9.x is"
-        say "      no longer supported (sunset in v11)."
-        say "  (b) using other AI tooling — remove or archive those files before"
-        say "      running init-project.sh"
-        exit "$EXIT_AI_CONFIG"
+        # BD-285 C2: a provenance-gated three-way dispatch replaces the blanket
+        # already-configured STOP. detect_trinity_provenance keys on load-bearing
+        # signals (excluding detect_target_pack_version's lenient fallback).
+        local provenance
+        provenance=$(detect_trinity_provenance "$TARGET")
+        case "$provenance" in
+            handwritten)
+                # A handwritten trinity — offer the guided keep/replace/merge
+                # branch. handle_handwritten_trinity sets TRINITY_CHOICE +
+                # reassigns CLASS, then returns 0 to continue into the
+                # preview/confirm/stages below. A null choice STOPs inside it.
+                handle_handwritten_trinity
+                ;;
+            pack)
+                say "STOP — existing AI config detected in $TARGET:"
+                detect_ai_config "$TARGET" | sed 's/^/  /'
+                say ""
+                say "Your options:"
+                say "  (a) already using this pack — run the migrator for your"
+                say "      current → target version (e.g. scripts/migrate-v10-to-v11.sh"
+                say "      and supporting-docs/MIGRATION-v10-to-v11.md). v9.x is"
+                say "      no longer supported (sunset in v11)."
+                say "  (b) using other AI tooling — remove or archive those files before"
+                say "      running init-project.sh"
+                exit "$EXIT_AI_CONFIG"
+                ;;
+            *)
+                # ambiguous — a populated foreign agent/skill tree, or no
+                # trinity file: cannot safely offer the guided branch.
+                say "STOP — existing AI config detected in $TARGET:"
+                detect_ai_config "$TARGET" | sed 's/^/  /'
+                say ""
+                say "Your options:"
+                say "  (a) already using this pack — run the migrator for your"
+                say "      current → target version (e.g. scripts/migrate-v10-to-v11.sh)."
+                say "  (b) using other AI tooling — remove or archive those files before"
+                say "      running init-project.sh"
+                say "  (c) a POPULATED foreign agent/skill tree was detected"
+                say "      (.claude/agents|skills, .codex/agents|skills, or"
+                say "      .agents/agents|skills); reconcile or remove it first."
+                exit "$EXIT_AI_CONFIG"
+                ;;
+        esac
     fi
 
     # Preview + confirmation

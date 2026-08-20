@@ -895,6 +895,427 @@ fi
 rm -rf "$T9c"
 
 # ─────────────────────────────────────────────────────────────────────────
+# BD-285 C2 — helpers for the guided keep/replace/merge trinity branch tests.
+# ─────────────────────────────────────────────────────────────────────────
+
+# Commit whatever is staged in a target so its working tree is clean (init
+# refuses a dirty target by design — the P0 commit-first gate).
+commit_target() { git -C "$1" add -A >/dev/null 2>&1; git -C "$1" commit -q -m "fixture" 2>/dev/null; }
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 10: BD-285 detect_trinity_provenance (pack | handwritten | ambiguous)
+# — unit tests against crafted fixture dirs (the helper is a pure read-only
+# fs probe; no git / PACK needed). Covers the P1 config-shape guard + the
+# F-6 work-item.yml drop.
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 10: BD-285 detect_trinity_provenance ===\n"
+
+# shellcheck disable=SC1091
+. "$REPO_ROOT/scripts/lib/detect.sh"
+
+tp_base=$(mktemp -d "${TMPDIR:-/tmp}/bd285-tp.XXXXXX")
+
+mk_tp() { local n="$1"; local d="$tp_base/$n"; mkdir -p "$d"; printf '%s' "$d"; }
+
+# lone handwritten CLAUDE.md → handwritten
+d=$(mk_tp lone); printf 'hand\n' > "$d/CLAUDE.md"
+assert_eq "10.1 lone handwritten CLAUDE.md ⇒ handwritten" "handwritten" "$(detect_trinity_provenance "$d")"
+
+# no trinity file at all → ambiguous
+d=$(mk_tp none); : > "$d/README.md"
+assert_eq "10.2 no trinity file ⇒ ambiguous" "ambiguous" "$(detect_trinity_provenance "$d")"
+
+# /pm-help fingerprint → pack
+d=$(mk_tp pmhelp); printf 'stuff\nrun `/pm-help` for the full verb list\n' > "$d/CLAUDE.md"
+assert_eq "10.3 /pm-help verb line ⇒ pack" "pack" "$(detect_trinity_provenance "$d")"
+
+# project-owned marker pair → pack
+d=$(mk_tp markers)
+printf '# CLAUDE\n<!-- BEGIN project-owned: x -->\ncustom\n<!-- END project-owned: x -->\n' > "$d/CLAUDE.md"
+assert_eq "10.4 BEGIN/END project-owned markers ⇒ pack" "pack" "$(detect_trinity_provenance "$d")"
+
+# v11 surface file (pm-help SKILL.md) → pack
+d=$(mk_tp v11surface); printf 'hand\n' > "$d/CLAUDE.md"
+mkdir -p "$d/.claude/skills/pm-help"; : > "$d/.claude/skills/pm-help/SKILL.md"
+assert_eq "10.5 v11 pm-help SKILL.md surface ⇒ pack" "pack" "$(detect_trinity_provenance "$d")"
+
+# v10 marker-bearing shape (CLAUDE + .claude + docs/pack/METHODOLOGY.md) → pack
+d=$(mk_tp v10shape); printf 'hand\n' > "$d/CLAUDE.md"; mkdir -p "$d/.claude" "$d/docs/pack"; : > "$d/docs/pack/METHODOLOGY.md"
+assert_eq "10.6 v10 marker-bearing shape ⇒ pack" "pack" "$(detect_trinity_provenance "$d")"
+
+# P1 guard: populated foreign agent tree → ambiguous
+d=$(mk_tp foreign); printf 'hand\n' > "$d/CLAUDE.md"; mkdir -p "$d/.claude/agents"; printf 'x\n' > "$d/.claude/agents/some.md"
+assert_eq "10.7 populated .claude/agents ⇒ ambiguous (P1 guard)" "ambiguous" "$(detect_trinity_provenance "$d")"
+
+# bare dot-dir + lone structured config still reaches handwritten
+d=$(mk_tp bare); printf 'hand\n' > "$d/CLAUDE.md"; mkdir -p "$d/.claude"; printf '{}\n' > "$d/.claude/settings.json"
+assert_eq "10.8 bare .claude/ + lone settings.json ⇒ handwritten" "handwritten" "$(detect_trinity_provenance "$d")"
+
+# lone .agents/mcp_config.json (structured config, NOT an agent/skill tree) → handwritten
+d=$(mk_tp mcp); printf 'hand\n' > "$d/CLAUDE.md"; mkdir -p "$d/.agents"; printf '{}\n' > "$d/.agents/mcp_config.json"
+assert_eq "10.9 lone .agents/mcp_config.json ⇒ handwritten (structured, not foreign tree)" "handwritten" "$(detect_trinity_provenance "$d")"
+
+# F-6: a lone work-item.yml is NOT a pack signal → handwritten
+d=$(mk_tp f6); printf 'hand\n' > "$d/CLAUDE.md"; mkdir -p "$d/.github/ISSUE_TEMPLATE"; : > "$d/.github/ISSUE_TEMPLATE/work-item.yml"
+assert_eq "10.10 F-6: lone work-item.yml is NOT a pack signal ⇒ handwritten" "handwritten" "$(detect_trinity_provenance "$d")"
+
+# P1 guard (Finding-3): a populated v10-legacy .gemini/agents roster → ambiguous.
+# v11 never writes .gemini/, but a populated .gemini/agents is a foreign agent
+# roster (v10 Antigravity home; detect_ai_config carve-out ii) — it must STOP
+# (route to the migrator), not classify as a bare handwritten starter.
+d=$(mk_tp geminiagents); printf 'hand\n' > "$d/CLAUDE.md"; mkdir -p "$d/.gemini/agents"; printf 'x\n' > "$d/.gemini/agents/x-custom.md"
+assert_eq "10.11 populated .gemini/agents ⇒ ambiguous (P1 guard, legacy roster)" "ambiguous" "$(detect_trinity_provenance "$d")"
+
+# A BARE .gemini/ dir (no agents/skills subtree) still reaches handwritten.
+d=$(mk_tp geminibare); printf 'hand\n' > "$d/CLAUDE.md"; mkdir -p "$d/.gemini"
+assert_eq "10.12 bare .gemini/ (no roster) ⇒ handwritten" "handwritten" "$(detect_trinity_provenance "$d")"
+
+rm -rf "$tp_base"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 11: BD-285 F1 never-lose order (SHOULD-4 — BOTH halves) for merge AND
+# replace against a FULL-trinity starter with KNOWN distinctive bytes.
+#   For m AND r: <f>.user-orig EXISTS and cmp-equals the pre-install snapshot
+#   (NOT the pack template) AND the live <f> cmp-equals the pack template (the
+#   overwrite happened). A backwards `cp pack "$f"; cp "$f" "$f.user-orig"`
+#   makes <f>.user-orig == pack != snapshot → this group goes RED.
+#   Plus N1: a pre-existing <f>.user-orig ⇒ fail_stage LOUD (no silent
+#   overwrite).
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 11: BD-285 F1 never-lose order (merge + replace) ===\n"
+
+for choice in merge replace; do
+    T=$(make_target)
+    printf 'CLAUDE handwritten distinctive %s 11111\n' "$choice" > "$T/CLAUDE.md"
+    printf 'AGENTS handwritten distinctive %s 22222\n' "$choice" > "$T/AGENTS.md"
+    printf 'GEMINI handwritten distinctive %s 33333\n' "$choice" > "$T/GEMINI.md"
+    commit_target "$T"
+    snap=$(mktemp -d "${TMPDIR:-/tmp}/bd285-snap.XXXXXX")
+    cp "$T/CLAUDE.md" "$snap/CLAUDE.md"; cp "$T/AGENTS.md" "$snap/AGENTS.md"; cp "$T/GEMINI.md" "$snap/GEMINI.md"
+    out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes --trinity="$choice" "$T" 2>&1) ; rc=$?
+    assert_eq "11.$choice fresh guided install rc=0" "0" "$rc"
+    for f in CLAUDE.md AGENTS.md GEMINI.md; do
+        if [[ -f "$T/$f.user-orig" ]] && cmp -s "$T/$f.user-orig" "$snap/$f"; then
+            t_pass "11.$choice $f.user-orig == pre-install snapshot (OURS captured, NOT the pack template)"
+        else
+            t_fail "11.$choice $f.user-orig missing or != snapshot (F1 order broken / backwards)"
+        fi
+        if cmp -s "$T/$f" "$REPO_ROOT/project-template/$f"; then
+            t_pass "11.$choice live $f == pack template (overwrite happened — SHOULD-4)"
+        else
+            t_fail "11.$choice live $f != pack template (overwrite half missing)"
+        fi
+    done
+    rm -rf "$snap" "$T"
+done
+
+# merge writes a merge-2way row per present trinity file + the skill hint;
+# replace writes NO row and creates NO .pack-install-reconcile/ dir.
+T=$(make_target)
+printf 'C 1\n' > "$T/CLAUDE.md"; printf 'A 2\n' > "$T/AGENTS.md"; printf 'G 3\n' > "$T/GEMINI.md"
+commit_target "$T"
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes --trinity=merge "$T" 2>&1) ; rc=$?
+assert_eq "11.row merge install rc=0" "0" "$rc"
+rows=$(awk -F'\t' '$2=="trinity" && $4=="merge-2way"' "$T/.pack-install-reconcile/dispositions.tsv" 2>/dev/null | wc -l | tr -d ' ')
+assert_eq "11.row merge writes 3 merge-2way trinity rows (all present)" "3" "$rows"
+assert_contains "11.row merge prints the resolve-merge-conflicts hint" "$out" "resolve-merge-conflicts skill (Case 3"
+rm -rf "$T"
+
+T=$(make_target)
+printf 'C 1\n' > "$T/CLAUDE.md"; printf 'A 2\n' > "$T/AGENTS.md"; printf 'G 3\n' > "$T/GEMINI.md"
+commit_target "$T"
+PACK="$REPO_ROOT" bash "$INIT_SH" --yes --trinity=replace "$T" >/dev/null 2>&1
+[[ ! -d "$T/.pack-install-reconcile" ]] \
+    && t_pass "11.replace writes NO .pack-install-reconcile/ dir (no merge row)" \
+    || t_fail "11.replace unexpectedly created .pack-install-reconcile/"
+[[ ! -e "$T/CLAUDE.md.pack-template" ]] \
+    && t_pass "11.replace writes NO .pack-template (r is a live overwrite, not keep)" \
+    || t_fail "11.replace unexpectedly wrote a .pack-template"
+rm -rf "$T"
+
+# N1 guard: a pre-existing <f>.user-orig ⇒ fail_stage LOUD.
+T=$(make_target)
+printf 'C hand\n' > "$T/CLAUDE.md"
+printf 'stale pre-existing sidecar\n' > "$T/CLAUDE.md.user-orig"
+commit_target "$T"
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes --trinity=merge "$T" 2>&1) ; rc=$?
+[[ "$rc" -ne 0 ]] \
+    && t_pass "11.N1 pre-existing .user-orig ⇒ non-zero (fail_stage LOUD, rc=$rc)" \
+    || t_fail "11.N1 pre-existing .user-orig did NOT fail (silent overwrite risk)"
+assert_contains "11.N1 fail message names the pre-existing sidecar" "$out" "pre-existing sidecar"
+if grep -q 'stale pre-existing sidecar' "$T/CLAUDE.md.user-orig"; then
+    t_pass "11.N1 pre-existing .user-orig left byte-untouched (no silent overwrite)"
+else
+    t_fail "11.N1 pre-existing .user-orig was overwritten"
+fi
+rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 12: BD-285 BLOCKER-1 lone-CLAUDE.md absent-sibling (merge + replace).
+# A committed fixture with ONLY CLAUDE.md (distinctive bytes), NO AGENTS.md /
+# GEMINI.md, NO populated dot-dirs. Guided merge/replace must NOT crash under
+# `set -euo pipefail`: exit 0; CLAUDE.md.user-orig == snapshot; live CLAUDE.md
+# == pack; the absent siblings install fresh == pack with NO .user-orig; the
+# dispositions.tsv (merge) carries a merge-2way row for CLAUDE.md ONLY.
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 12: BD-285 BLOCKER-1 lone-CLAUDE.md absent siblings ===\n"
+
+for choice in merge replace; do
+    T=$(make_target)
+    printf 'LONE CLAUDE distinctive %s 42424\n' "$choice" > "$T/CLAUDE.md"
+    commit_target "$T"
+    snap=$(mktemp "${TMPDIR:-/tmp}/bd285-lone.XXXXXX")
+    cp "$T/CLAUDE.md" "$snap"
+    out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes --trinity="$choice" "$T" 2>&1) ; rc=$?
+    assert_eq "12.$choice lone-CLAUDE guided install exit 0 (no crash under set -euo pipefail)" "0" "$rc"
+    if [[ -f "$T/CLAUDE.md.user-orig" ]] && cmp -s "$T/CLAUDE.md.user-orig" "$snap"; then
+        t_pass "12.$choice CLAUDE.md.user-orig == snapshot"
+    else
+        t_fail "12.$choice CLAUDE.md.user-orig missing or != snapshot"
+    fi
+    cmp -s "$T/CLAUDE.md" "$REPO_ROOT/project-template/CLAUDE.md" \
+        && t_pass "12.$choice live CLAUDE.md == pack template" \
+        || t_fail "12.$choice live CLAUDE.md != pack template"
+    for sib in AGENTS.md GEMINI.md; do
+        if cmp -s "$T/$sib" "$REPO_ROOT/project-template/$sib" && [[ ! -e "$T/$sib.user-orig" ]]; then
+            t_pass "12.$choice absent sibling $sib installed fresh == pack, NO .user-orig"
+        else
+            t_fail "12.$choice absent sibling $sib wrong (missing, != pack, or spurious .user-orig)"
+        fi
+    done
+    if [[ "$choice" == "merge" ]]; then
+        rows=$(awk -F'\t' '$2=="trinity" && $4=="merge-2way"' "$T/.pack-install-reconcile/dispositions.tsv" 2>/dev/null)
+        n=$(printf '%s\n' "$rows" | grep -c . | tr -d ' ')
+        assert_eq "12.merge exactly 1 merge-2way row (CLAUDE.md only)" "1" "$n"
+        printf '%s\n' "$rows" | grep -q 'CLAUDE.md' \
+            && t_pass "12.merge the sole merge-2way row is for CLAUDE.md" \
+            || t_fail "12.merge merge-2way row not for CLAUDE.md"
+        printf '%s\n' "$rows" | grep -qE 'AGENTS.md|GEMINI.md' \
+            && t_fail "12.merge unexpected merge-2way row for a fresh-installed sibling" \
+            || t_pass "12.merge no merge-2way row for a fresh-installed sibling"
+    else
+        [[ ! -d "$T/.pack-install-reconcile" ]] \
+            && t_pass "12.replace no .pack-install-reconcile/ dir (r writes no row)" \
+            || t_fail "12.replace unexpectedly created .pack-install-reconcile/"
+    fi
+    rm -f "$snap"; rm -rf "$T"
+done
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 13: BD-285 P0 dirty die-message + P1 shape-guard + P2 --trinity /
+# null-choice STOP.
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 13: BD-285 P0 / P1 / P2 ===\n"
+
+# P0: a dirty target (uncommitted starter trinity) hits EXIT_DIRTY (=12) and
+# the die names the trinity/starter case + the one-step workaround.
+T=$(make_target)
+printf 'uncommitted starter\n' > "$T/CLAUDE.md"   # dirty (not committed)
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes --trinity=merge "$T" 2>&1) ; rc=$?
+assert_eq "13.P0 dirty target exit 12 (EXIT_DIRTY, gate unchanged)" "12" "$rc"
+assert_contains "13.P0 die names the starter trinity case" "$out" "starter trinity"
+assert_contains "13.P0 die names the one-step commit workaround" "$out" "git add -A && git commit"
+rm -rf "$T"
+
+# P1: trinity file + a bare dot-dir ⇒ guided (installs). A POPULATED foreign
+# tree (.claude/agents non-empty) ⇒ STOP (exit 20), no v11 layered.
+T=$(make_target)
+printf 'hand\n' > "$T/CLAUDE.md"; mkdir -p "$T/.claude"   # bare dot-dir
+commit_target "$T"
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes --trinity=keep "$T" 2>&1) ; rc=$?
+assert_eq "13.P1 trinity + bare .claude/ ⇒ guided install rc=0" "0" "$rc"
+[[ -d "$T/docs/pack" ]] \
+    && t_pass "13.P1 guided install layered v11 (docs/pack present)" \
+    || t_fail "13.P1 guided install did not layer v11"
+rm -rf "$T"
+
+T=$(make_target)
+printf 'hand\n' > "$T/CLAUDE.md"; mkdir -p "$T/.claude/agents"; printf 'foreign\n' > "$T/.claude/agents/a.md"
+commit_target "$T"
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes --trinity=merge "$T" 2>&1) ; rc=$?
+assert_eq "13.P1 populated foreign .claude/agents ⇒ STOP exit 20" "20" "$rc"
+[[ ! -d "$T/docs/pack" ]] \
+    && t_pass "13.P1 populated foreign tree ⇒ NO v11 layered" \
+    || t_fail "13.P1 v11 was layered over a populated foreign tree"
+assert_contains "13.P1 STOP names the foreign agent/skill tree" "$out" "POPULATED foreign agent/skill tree"
+rm -rf "$T"
+
+# P2: non-TTY --trinity=merge is HONORED (independent of prompt_should_interact).
+T=$(make_target)
+printf 'P2 distinctive\n' > "$T/CLAUDE.md"
+commit_target "$T"
+snap=$(mktemp "${TMPDIR:-/tmp}/bd285-p2.XXXXXX"); cp "$T/CLAUDE.md" "$snap"
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes --trinity=merge "$T" </dev/null 2>&1) ; rc=$?
+assert_eq "13.P2 non-TTY --trinity=merge HONORED (rc=0, installs)" "0" "$rc"
+cmp -s "$T/CLAUDE.md.user-orig" "$snap" \
+    && t_pass "13.P2 non-TTY --trinity=merge captured OURS to .user-orig" \
+    || t_fail "13.P2 non-TTY --trinity=merge did not honor the merge choice"
+rm -f "$snap"; rm -rf "$T"
+
+# P2/F5: --yes + non-TTY + NO --trinity ⇒ STOP with the trinity byte-untouched
+# (never the bare cp path).
+T=$(make_target)
+printf 'DO NOT TOUCH ME 55555\n' > "$T/CLAUDE.md"
+commit_target "$T"
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$T" </dev/null 2>&1) ; rc=$?
+assert_eq "13.P2 --yes + non-TTY + no --trinity ⇒ STOP exit 20 (F5)" "20" "$rc"
+if grep -q 'DO NOT TOUCH ME 55555' "$T/CLAUDE.md" && [[ ! -e "$T/CLAUDE.md.user-orig" && ! -e "$T/AGENTS.md" ]]; then
+    t_pass "13.P2 STOP left the trinity byte-untouched (no bare cp, no sidecar, no sibling)"
+else
+    t_fail "13.P2 STOP mutated the trinity (bare cp / sidecar / sibling appeared)"
+fi
+rm -rf "$T"
+
+# --trinity value validation.
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --trinity=bogus "$(make_target)" 2>&1) ; rc=$?
+[[ "$rc" -ne 0 ]] \
+    && t_pass "13.val --trinity=bogus rejected (rc=$rc)" \
+    || t_fail "13.val --trinity=bogus accepted"
+assert_contains "13.val --trinity=bogus typed error" "$out" "invalid --trinity value"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 14: BD-285 P5 structured key-union + F6 parse-error fallback +
+# interactive menu path. A handwritten-trinity existing-source target
+# (pyproject.toml language marker) with pre-existing structured configs.
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 14: BD-285 P5 structured key-union + F6 ===\n"
+
+# Valid collisions across the driven-off-classifier set: settings.json (json),
+# .agents/mcp_config.json (json), .codex/requirements.toml (toml),
+# .codex/config.toml.example (.example sibling).
+T=$(make_target)
+mkdir -p "$T/.claude" "$T/.agents" "$T/.codex"
+printf '[project]\nname = "x"\n' > "$T/pyproject.toml"
+printf 'handwritten trinity\n' > "$T/CLAUDE.md"
+printf '{"$schema":"MINE","env":{"XCODE_SCHEME":"MyScheme"},"myProjectKey":"keepme"}\n' > "$T/.claude/settings.json"
+printf '{"mcpServers":{"myserver":{"command":"foo"}},"projOnly":"keepme2"}\n' > "$T/.agents/mcp_config.json"
+printf '[session]\nrequire_plan_for_non_trivial_work = false\n[myproj]\nkey = 1\n' > "$T/.codex/requirements.toml"
+printf '# example\n[myexample]\nk = 2\n' > "$T/.codex/config.toml.example"
+commit_target "$T"
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes --trinity=keep "$T" 2>&1) ; rc=$?
+assert_eq "14.1 existing-source guided install rc=0" "0" "$rc"
+# settings.json (json): OURS wins conflict, pack-only key added, project key kept.
+grep -q '"myProjectKey"' "$T/.claude/settings.json" \
+    && t_pass "14.1 settings.json: project-only key kept" || t_fail "14.1 settings.json project key dropped"
+grep -q '"MINE"' "$T/.claude/settings.json" \
+    && t_pass "14.1 settings.json: OURS wins the \$schema scalar conflict" || t_fail "14.1 settings.json OURS did not win"
+grep -q '"permissions"' "$T/.claude/settings.json" \
+    && t_pass "14.1 settings.json: pack-only key added" || t_fail "14.1 settings.json pack key not added"
+[[ ! -e "$T/.claude/settings.json.pack-template" ]] \
+    && t_pass "14.1 settings.json: merged in place (no .pack-template sidecar)" \
+    || t_fail "14.1 settings.json wrote a .pack-template (should be a clean/warn merge)"
+# .agents/mcp_config.json (json) — the driven-off-classifier coverage.
+grep -q 'myserver' "$T/.agents/mcp_config.json" \
+    && t_pass "14.2 mcp_config.json: project server kept" || t_fail "14.2 mcp_config.json project server dropped"
+grep -q 'local-rag' "$T/.agents/mcp_config.json" \
+    && t_pass "14.2 mcp_config.json: pack server added" || t_fail "14.2 mcp_config.json pack server not added"
+# .codex/requirements.toml (toml) — the driven-off-classifier coverage.
+grep -q 'require_plan_for_non_trivial_work = false' "$T/.codex/requirements.toml" \
+    && t_pass "14.3 requirements.toml: OURS wins the scalar conflict" || t_fail "14.3 requirements.toml OURS did not win"
+grep -q '\[myproj\]' "$T/.codex/requirements.toml" \
+    && t_pass "14.3 requirements.toml: project section kept" || t_fail "14.3 requirements.toml project section dropped"
+grep -q '\[policy\]' "$T/.codex/requirements.toml" \
+    && t_pass "14.3 requirements.toml: pack section added" || t_fail "14.3 requirements.toml pack section not added"
+# .example sibling routed through the key-union too.
+grep -q '\[myexample\]' "$T/.codex/config.toml.example" \
+    && t_pass "14.4 .example sibling: project section kept (routed through key-union)" \
+    || t_fail "14.4 .example sibling project section dropped"
+# no throwaway probe dir leaked into TMPDIR.
+if ls -d "${TMPDIR:-/tmp}"/pack-s3-probe.* >/dev/null 2>&1; then
+    t_fail "14.5 throwaway probe dir leaked into TMPDIR"
+else
+    t_pass "14.5 no throwaway probe dir leaked (SHOULD-2 lifecycle)"
+fi
+# keep-choice writes no persistent reconcile dir.
+[[ ! -d "$T/.pack-install-reconcile" ]] \
+    && t_pass "14.6 no .pack-install-reconcile/ dir (keep + structured merges, no trinity merge)" \
+    || t_fail "14.6 unexpected .pack-install-reconcile/ dir on a no-trinity-merge install"
+rm -rf "$T"
+
+# F6: a MALFORMED existing settings.json falls back to user-live + .pack-template
+# (NOT silent THEIRS-adoption).
+T=$(make_target)
+mkdir -p "$T/.claude"
+printf '[project]\nname = "x"\n' > "$T/pyproject.toml"
+printf 'handwritten\n' > "$T/CLAUDE.md"
+printf '{ this is : not valid json \n' > "$T/.claude/settings.json"
+commit_target "$T"
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes --trinity=keep "$T" 2>&1) ; rc=$?
+assert_eq "14.7 F6 install rc=0 (parse-error path does not abort)" "0" "$rc"
+grep -q 'not valid json' "$T/.claude/settings.json" \
+    && t_pass "14.7 F6: user file stays LIVE (malformed, untouched)" \
+    || t_fail "14.7 F6: user file was overwritten"
+[[ -f "$T/.claude/settings.json.pack-template" ]] \
+    && t_pass "14.7 F6: pack template preserved at .pack-template" \
+    || t_fail "14.7 F6: no .pack-template written"
+grep -q 'schemastore' "$T/.claude/settings.json" \
+    && t_fail "14.7 F6: THEIRS silently adopted into the live file (must NOT happen)" \
+    || t_pass "14.7 F6: NO silent THEIRS-adoption (live file is not the pack template)"
+rm -rf "$T"
+
+# Interactive menu path: PACK_PROMPT_FORCE_INTERACTIVE + piped `m` (choice) then
+# `y` (confirm) installs via the guided merge branch (human path survives).
+T=$(make_target)
+printf 'INTERACTIVE distinctive 77777\n' > "$T/CLAUDE.md"
+commit_target "$T"
+snap=$(mktemp "${TMPDIR:-/tmp}/bd285-int.XXXXXX"); cp "$T/CLAUDE.md" "$snap"
+out=$(printf 'm\ny\n' | PACK="$REPO_ROOT" PACK_PROMPT_FORCE_INTERACTIVE=1 \
+    bash "$INIT_SH" "$T" 2>&1) ; rc=$?
+assert_eq "14.8 interactive menu (m + confirm y) rc=0" "0" "$rc"
+cmp -s "$T/CLAUDE.md.user-orig" "$snap" \
+    && t_pass "14.8 interactive merge captured OURS to .user-orig" \
+    || t_fail "14.8 interactive merge did not capture OURS"
+cmp -s "$T/CLAUDE.md" "$REPO_ROOT/project-template/CLAUDE.md" \
+    && t_pass "14.8 interactive merge overwrote live CLAUDE.md with the pack template" \
+    || t_fail "14.8 interactive merge did not overwrite the live file"
+rm -f "$snap"; rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 14 (Finding-1 regression): a GUIDED install on a handwritten-trinity
+# target that reclassifies to new-empty (a lone user structured config, NO
+# language marker) must PROTECT the user's config via the S3 structured
+# key-union — NOT silently plain-cp-overwrite it. This is the missing
+# coverage that let the new-*-reclassification silent-overwrite defect
+# through: every other Group-14 test seeds pyproject.toml (existing-source),
+# so the CLASS-gated S3 branch always took the protected path. Here there is
+# NO language marker and NO README ⇒ classify_project_state_no_ai returns
+# new-empty ⇒ pre-fix S3 fell to the plain-cp else-arm and destroyed the
+# user's settings.json with no .user-orig / no .pack-template / no warning.
+# ─────────────────────────────────────────────────────────────────────────
+T=$(make_target)
+mkdir -p "$T/.claude"
+printf 'handwritten starter trinity\n' > "$T/CLAUDE.md"
+# Distinctive user key + a user-owned $schema scalar to prove OURS-wins.
+printf '{"$schema":"MINE","myProjectKey":"KEEP_ME_NEWSTAR_98765"}\n' > "$T/.claude/settings.json"
+# NO pyproject.toml / Package.swift / package.json / README ⇒ new-empty class.
+commit_target "$T"
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes --trinity=merge "$T" 2>&1) ; rc=$?
+assert_eq "14.9 new-* guided merge install rc=0" "0" "$rc"
+# Fixture actually exercises the reclassification path (guards the test from
+# silently drifting off the vulnerable branch if the classifier changes).
+assert_contains "14.9 fixture reclassifies to new-empty (exercises the vulnerable S3 path)" \
+    "$out" "Classification:  new-empty"
+# THE load-bearing assertion — RED against the pre-fix CLASS-gated S3, GREEN
+# after routing the guided branch through the protected s3_config_copy.
+grep -q 'KEEP_ME_NEWSTAR_98765' "$T/.claude/settings.json" \
+    && t_pass "14.9 new-* guided: user settings.json key PRESERVED (no silent overwrite)" \
+    || t_fail "14.9 new-* guided: user settings.json key LOST (silent plain-cp overwrite)"
+# $schema OURS-wins scalar conflict — proves a key-union merge, not a plain cp.
+grep -q '"MINE"' "$T/.claude/settings.json" \
+    && t_pass "14.9 new-* guided: OURS wins the \$schema scalar conflict (key-union merge)" \
+    || t_fail "14.9 new-* guided: OURS did not win (pack \$schema clobbered the user's)"
+# Merged in place — no sidecar (structured key-union fired, not the F6 fallback).
+[[ ! -e "$T/.claude/settings.json.pack-template" ]] \
+    && t_pass "14.9 new-* guided: merged in place (no .pack-template sidecar)" \
+    || t_fail "14.9 new-* guided: wrote a .pack-template (structured key-union did not fire)"
+rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────────────
 

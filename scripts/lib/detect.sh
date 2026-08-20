@@ -196,6 +196,137 @@ detect_ai_config() {
     fi
 }
 
+# _tp_dir_nonempty <path> — return-code predicate: 0 iff <path> is a directory
+# containing at least one entry (dotfiles included). A BARE (empty) dot-dir
+# returns 1. Used by detect_trinity_provenance's P1 config-shape guard.
+_tp_dir_nonempty() {
+    local d="$1"
+    [[ -d "$d" ]] || return 1
+    local e
+    for e in "$d"/* "$d"/.[!.]*; do
+        [[ -e "$e" ]] && return 0
+    done
+    return 1
+}
+
+# trinity-provenance: pack | handwritten | ambiguous  (single bare token)
+#
+# BD-285 C2 narrow provenance classifier for the guided keep/replace/merge
+# branch. Distinguishes a HANDWRITTEN trinity (a human's own CLAUDE.md /
+# AGENTS.md / GEMINI.md — possibly a lone starter file) from a PACK-installed
+# trinity (any pack version) so init offers the guided branch ONLY for the
+# handwritten case. Read-only with respect to the target.
+#
+# Returns (bare token on stdout, no key prefix):
+#   pack        — a load-bearing pack fingerprint is present: the v11 /pm-help
+#                 verb line, a project-owned marker pair, a v11 client surface
+#                 file, or the v10 marker-bearing shape. Route to the migrator
+#                 STOP.
+#   handwritten — a trinity FILE is present, NO pack fingerprint, and the
+#                 AI-config agent/skill trees are all BARE/absent (only a lone
+#                 structured config file and/or a bare dot-dir). Route to guided.
+#   ambiguous   — no trinity file, OR a POPULATED foreign agent/skill tree
+#                 (.claude/agents|skills, .codex/agents|skills, .agents/agents|skills,
+#                 .gemini/agents|skills non-empty). Generic STOP.
+#
+# EXCLUDES detect_target_pack_version's lenient "CLAUDE.md + .claude/ ⇒ v10"
+# fallback (Signal 4's bare arm): a bare CLAUDE.md + empty .claude/ is exactly
+# the handwritten starter this branch serves, so that lenient arm must NOT
+# force a `pack` verdict here. detect_target_pack_version + detect_ai_config are
+# left byte-unchanged.
+#
+# F-6: `.github/ISSUE_TEMPLATE/work-item.yml` is NOT in this helper's v11
+# surface set (a hand-authored repo may carry a GitHub issue form that is not a
+# pack signal); detect_target_pack_version keeps its own copy of that marker.
+detect_trinity_provenance() {
+    local target="${1:-.}"
+    local t
+
+    # A trinity file must be present at all — else this is not a guided case.
+    local has_trinity=0
+    for t in CLAUDE.md AGENTS.md GEMINI.md; do
+        [[ -f "$target/$t" ]] && { has_trinity=1; break; }
+    done
+    if (( has_trinity == 0 )); then
+        echo "ambiguous"
+        return 0
+    fi
+
+    # Fingerprint 1: the v11 /pm-help verb line in any trinity file.
+    for t in CLAUDE.md AGENTS.md GEMINI.md; do
+        [[ -f "$target/$t" ]] || continue
+        if grep -q 'run `/pm-help` for the full verb list' "$target/$t" 2>/dev/null; then
+            echo "pack"
+            return 0
+        fi
+    done
+
+    # Fingerprint 2: a project-owned marker pair (BEGIN + END) in any trinity
+    # file — only a pack-installed trinity carries the marker seed slots.
+    for t in CLAUDE.md AGENTS.md GEMINI.md; do
+        [[ -f "$target/$t" ]] || continue
+        if grep -q '<!-- BEGIN project-owned' "$target/$t" 2>/dev/null \
+           && grep -q '<!-- END project-owned' "$target/$t" 2>/dev/null; then
+            echo "pack"
+            return 0
+        fi
+    done
+
+    # Fingerprint 3: a v11-only client surface file (F-6: work-item.yml is NOT
+    # in this set).
+    if [[ -f "$target/.claude/skills/pm-help/SKILL.md" \
+       || -f "$target/.codex/skills/pm-help/SKILL.md" \
+       || -f "$target/.agents/skills/pm-help/SKILL.md" \
+       || -f "$target/docs/pack/HELP-FRAGMENT.md" ]]; then
+        echo "pack"
+        return 0
+    fi
+
+    # Fingerprint 4: the DISTINGUISHING v10 marker-bearing shape — a relocated
+    # v10 doc under docs/pack/ alongside CLAUDE.md + .claude/. (This is NOT the
+    # lenient bare CLAUDE.md+.claude fallback, which is excluded on purpose.)
+    if [[ -f "$target/CLAUDE.md" && -d "$target/.claude" ]]; then
+        if [[ -f "$target/docs/pack/PROMPT-TEMPLATES.md" \
+           || -f "$target/docs/pack/PM-CHAT.md" \
+           || -f "$target/docs/pack/METHODOLOGY.md" ]]; then
+            echo "pack"
+            return 0
+        fi
+    fi
+
+    # P1 config-shape guard: a POPULATED foreign agent/skill tree is NOT a
+    # handwritten trinity — reaching the guided branch would layer v11 over a
+    # foreign tool's agents/skills. Only a trinity FILE + at most a lone
+    # structured config file and/or a BARE dot-dir may reach the guided branch.
+    # (Scoped to the agent/skill SUBTREES — not the whole .codex/.agents dirs —
+    # so a lone structured config (.claude/settings.json, .agents/mcp_config.json,
+    # .codex/config.toml, .codex/requirements.toml) still reaches the guided
+    # branch's safe 2-way structured key-union.)
+    # `.gemini/agents|skills` is included for detection completeness: v11 never
+    # writes `.gemini/` (it is a migrator-only legacy-READ carve-out, recognized
+    # by detect_ai_config), but v10 used `.gemini/agents` as its Antigravity
+    # agent roster, so a POPULATED `.gemini/agents|skills` is a bona-fide foreign
+    # agent/skill tree. Routing it to `ambiguous` STOPs the guided fresh-install
+    # and points the user at the migrator (whose job is to retire `.gemini/`)
+    # rather than silently layering v11 alongside a stranded legacy roster.
+    if _tp_dir_nonempty "$target/.claude/agents" \
+       || _tp_dir_nonempty "$target/.claude/skills" \
+       || _tp_dir_nonempty "$target/.codex/agents" \
+       || _tp_dir_nonempty "$target/.codex/skills" \
+       || _tp_dir_nonempty "$target/.agents/agents" \
+       || _tp_dir_nonempty "$target/.agents/skills" \
+       || _tp_dir_nonempty "$target/.gemini/agents" \
+       || _tp_dir_nonempty "$target/.gemini/skills"; then
+        echo "ambiguous"
+        return 0
+    fi
+
+    # A trinity FILE, no pack fingerprint, no populated foreign agent/skill
+    # tree → the handwritten starter this branch serves.
+    echo "handwritten"
+    return 0
+}
+
 # x-files: <loc>/<name> lines (one per match) | x-files: (none)
 # Scans the six pack scan locations for `x-`-prefixed entries.
 detect_x_files() {

@@ -316,6 +316,19 @@ _mp_sidecar_conflict() {
 # marker_preserve_trinity BASE OURS THEIRS REL DEST
 #   BASE may be "" (Regime B). Records exactly one disposition, writes DEST
 #   (and a sidecar where needed), returns 0.
+#
+# OI-C (BD-285, architect-doc-reality-reconciliation): the REALIZED consumer of
+# the empty-BASE Regime B path (BASE == "", the "cannot attribute a divergence"
+# reconciliation) is the resolve-merge-conflicts skill's Case 3 — the install
+# 2-way trinity fold at project-template/skills/resolve-merge-conflicts/SKILL.md
+# (its Case-3 procedure). BD-285's init-project.sh guided merge (m) branch
+# records a `merge-2way` disposition row (class `trinity`) into
+# <TARGET>/.pack-install-reconcile/dispositions.tsv, and that skill's Case-3
+# selector reads it to fold OURS (<file>.user-orig) into the pack's marker
+# structure. This CORRECTS BD-287 OI-11's forward-pointer, which speculated
+# `tw_merge_file` (scripts/lib/three-way-merge.sh) would be the empty-BASE
+# consumer — `tw_merge_file`'s I3 guard refuses a no-BASE merge, so the trinity
+# 2-way fold is instead an AI-skill job (Case 3), not a `tw_merge_file` call.
 marker_preserve_trinity() {
     local base="$1" ours="$2" theirs="$3" rel="$4" dest="$5"
     # ALL loop / read-into variables are declared local up front. This function
