@@ -444,15 +444,17 @@ last argument if needed.
 
 ### Interactive reconciliation (`--interactive` / TTY-auto)
 
-When a file has BOTH pack and project edits, the migrator can resolve it
-one of two ways:
+When a file has BOTH pack and project edits, the migrator auto-merges it
+first at dispatch (see Step 2 below); only files it cannot merge safely
+reach a prompt, which it can present one of two ways:
 
 - **Interactive** — the default when stdin is a terminal, or when you pass
   `--interactive`. The migrator walks each conflicting file and applies
   your choice in place:
   - `[1] accept pack` — discard your edit to this file; keep the new template.
   - `[2] keep yours` — discard the pack update to this file; restore your copy.
-  - `[3] merge later` — leave it for a hand-merge (defers to `--resume`).
+  - `[3] merge later` — leave it for a hand-merge or the
+    `resolve-merge-conflicts` skill (defers to `--resume`).
   - `[s] skip` — leave it unresolved for now (defers to `--resume`).
   - `[q] quit` — stop the loop; defer this file and the rest.
 
@@ -467,9 +469,12 @@ one of two ways:
   migrator prints the copy-paste menu and pauses for `--resume`, exactly as
   it always has. Nothing about the automated / audit path changes.
 
-The two flags are mutually exclusive. Interactive mode never auto-merges:
-a genuine line-by-line merge still defers to a hand-edit + `--resume`
-(option 3) — the layer removes the transcription burden, not the decision.
+The two flags are mutually exclusive. By the time a file reaches this
+prompt the migrator has already auto-merged what it safely could at
+dispatch (see Step 2 below); `[1]`/`[2]` are wholesale one-side selections.
+The loop itself never LINE-merges the fall-through — same-line prose or a
+trinity fold defers to the `resolve-merge-conflicts` skill or a hand-edit +
+`--resume` (option 3).
 
 The script runs 7 framework stages (S0..S6). Stage S4 is split into two
 sub-banners (`S4a` and `S4b`) and stage S5 into three (`S5`, `S5a`,
@@ -535,19 +540,32 @@ less .pack-migrate-v10-to-v11/report.md
 The report is **truthful** (per the migrator contract): every file the
 migrator processed appears in exactly one section. No silent drops.
 
+**The migrator auto-merges first.** When both you and the pack edited a
+file, the migrator attempts a real automatic merge before ever asking you
+to reconcile: a line-level 3-way union for prose docs (`generic` /
+`pm-chat`), a marker-aware graft for the trinity, and a key-level merge for
+structured JSON / TOML configs. Non-overlapping edits merge hands-free and
+land as `merged-with-customization`. Only what the migrator cannot merge
+safely — overlapping prose lines, an unwrapped trinity edit, or an
+executable/agent (never line-merged, by design) — falls through to the
+reconciliation section below.
+
 Sections you may see:
 
 - **Files updated to new pack version** (`pack-update-applied`) — pack
   changes adopted; you had no customizations on these files. No action
   needed.
 - **Files merged (project customizations preserved)**
-  (`merged-with-customization`) — pack changes adopted AND your edits
-  preserved. No action needed; `git diff` to confirm.
+  (`merged-with-customization`) — the migrator's automatic 3-way merge
+  adopted the pack changes AND preserved your edits. No action needed;
+  `git diff` to confirm.
 - **Files needing manual reconciliation**
-  (`customization-detected-needs-reconciliation`) — both you and the
-  pack edited these files; the migrator wrote the new pack template
-  to the live file and saved your pre-migration copy as a
-  `<file>.v10-customized` sidecar. **You resolve.**
+  (`customization-detected-needs-reconciliation`) — the migrator could not
+  fully auto-merge these; it wrote the new pack template to the live file
+  and saved your pre-migration copy as a `<file>.v10-customized` sidecar.
+  The report splits them into four groups by cause (prose markers /
+  trinity / scripts-and-agents / structured configs); **you resolve** per
+  the group instructions in the reconcile loop below.
 - **Files retired by pack** (`removed-by-design`) — file no longer
   ships in v11. If you'd customized it, your pre-migration copy is
   in a sidecar.
@@ -564,21 +582,35 @@ Sections you may see:
 > `--no-interactive` / CI runs, every conflicting file. The steps below are
 > the by-hand path for those files; finish with `--resume` when done.
 
-For every `Files needing manual reconciliation` row:
+The `Files needing manual reconciliation` section is split into four
+groups by what the migrator could and could not merge automatically.
+Handle each per its heading:
 
-1. Open the destination file (e.g., `CLAUDE.md`) — it now has the v11
-   template.
-2. Open the sidecar (`CLAUDE.md.v10-customized`) — your pre-migration
-   content.
-3. Open the structured diff at
-   `.pack-migrate-v10-to-v11/diffs/CLAUDE.md.three-way.diff`. The diff
-   shows BASE→OURS (your edits since v10) and BASE→THEIRS (pack edits
-   v10→v11) separately.
-4. Manually merge your customizations into the new template.
-5. `rm` the sidecar.
-6. `git add` the file.
+1. **Auto-merged — resolve remaining conflict markers** (prose docs). The
+   migrator 3-way merged both sides, but some lines overlapped, so the
+   live file carries `<<<<<<< / ======= / >>>>>>>` conflict markers.
+   Resolve them by hand, or run the `resolve-merge-conflicts` skill.
+2. **Trinity** (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`). The live file
+   holds the new pack trinity; your prior copy is in the sidecar. The
+   `resolve-merge-conflicts` skill folds your customizations back in
+   section-aware, or fold by hand per `PRE-RECONCILE-v10-to-v11.md`.
+3. **Scripts and agents** (`pack-script` / `pack-agent`). The migrator does
+   NOT line-merge executables or agents — a blind line-union can be
+   textually clean yet behaviourally wrong, so these get a loud sidecar
+   instead. The live file is the valid pack v11 version; re-apply your edit
+   by hand over it from the sidecar.
+4. **Structured configs** (JSON / TOML). Already key-merged into the live
+   file, with warnings where keys overlapped. No conflict markers; the
+   skill does not apply — review the merged file and adjust by hand if
+   needed.
 
-See `MERGE-STRATEGY.md` for the per-file class matrix that explains
+For every reconciled file: read the structured diff at
+`.pack-migrate-v10-to-v11/diffs/CLAUDE.md.three-way.diff` (BASE→OURS = your
+edits since v10, BASE→THEIRS = pack edits v10→v11) if you need to see what
+each side changed, resolve per its group above, then mark it resolved (`rm`
+the sidecar or add its `.resolved` companion) and `git add`.
+
+See `MERGE-STRATEGY.md` for the full per-file class matrix that explains
 which strategy was used for each file and why.
 
 ---

@@ -45,6 +45,21 @@ listed in `report.md` under one of:
 
 ---
 
+## The four merge behaviors (auto-merge summary)
+
+The 11 classes reduce to **four merge behaviors** for a both-edited file; each
+ships only a provably-lossless result. The `resolve-merge-conflicts` skill runs
+AFTER dispatch behind a zero-loss gate, never auto-invoked by the migrator.
+
+| Behavior | Classes | Handler | Both-edited outcome | Zero-marker path |
+|---|---|---|---|---|
+| **Prose auto-merge** | `generic`, `pm-chat` | `tw_merge_file` (git `merge-file -p --diff3`), real line-level 3-way | different-line → clean union, drop sidecar, `merged-with-customization`; same-line → `--diff3` markers, keep sidecar, `needs-reconciliation` (action `merged`) | dispatch (different-line) OR the skill (same-line markers) |
+| **Trinity graft-or-fold** | `CLAUDE/AGENTS/GEMINI.md` | marker-aware graft (`marker_preserve_trinity`) | WRAPPED → clean graft, `merged-with-customization`; UNWRAPPED hand-edit → sidecar (+ stashed `.v10-base`), `needs-reconciliation` (class `trinity`) | the graft (wrapped) OR the skill's section-aware fold (unwrapped) — automating `supporting-docs/PRE-RECONCILE-v10-to-v11.md`'s recipe |
+| **Hand sidecar (no line-merge — safety)** | `pack-script`, `pack-agent` | loud sidecar; NEVER line-merged | OURS → sidecar, THEIRS → live file, `needs-reconciliation` | client HAND-reapplies over the pack file (skill out of scope) |
+| **Structured key-merge** | JSON / TOML configs | key-union (`scripts/merge-json.py` / `scripts/merge-toml.py`) | clean key-merge, warnings on overlap; rc-error → sidecar | dispatch (key merge); skill N/A |
+
+---
+
 ## The 11 file classes
 
 ### 1. `trinity` — `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`
@@ -116,11 +131,13 @@ sections alike.
 **What gets updated:** the pack-owned skeleton (headings + out-of-marker
 canonical body) when it evolved between the baseline and the new pack.
 
-**On `customization-detected-needs-reconciliation`:** the merge writes
-the new pack template to `<file>.md` and saves your pre-update copy as
-`<file>.md.v10-customized` (migrator) or `<file>.md.pre-update`
-(`init-project.sh --update`). Open both, manually merge the project
-content into the new template, delete the sidecar, and `git add`.
+**On `customization-detected-needs-reconciliation`:** an UNWRAPPED hand-edit
+routes to a sidecar (`.v10-customized` migrator / `.pre-update` `--update`),
+and — on the migrator path — the v10 baseline is stashed as `<file>.md.v10-base`
+(the third merge input). Resolve by running the `resolve-merge-conflicts` skill
+(folds the sidecar into the marker sections section-aware, behind a zero-loss
+gate) or by hand per `supporting-docs/PRE-RECONCILE-v10-to-v11.md` (which the
+skill automates); then delete the sidecar and `git add`. Never auto-invoked.
 
 ---
 
@@ -203,16 +220,13 @@ Same strategy as `codex-config`.
 
 ### 6. `pm-chat` — `docs/pack/PM-CHAT.md`
 
-**Strategy:** 3-way text dispatch (same as `trinity`).
+**Strategy:** prose auto-merge — the `_cp_strategy_text` real-merge arm
+(`tw_merge_file`), identical behavior to `generic` (class 11).
 
-PM-CHAT.md mixes pack-managed operating rules (pack maintainer behavior,
-Stage Coverage spec) with project-specific customizations (project-name
-substitution, project-specific role definitions). Both layers must
-survive a refresh.
-
-The current implementation routes through the generic 3-way text
-dispatcher — same algorithm as `trinity`. The single dispatcher handles
-both surfaces correctly when the project keeps marker headers intact.
+PM-CHAT.md mixes pack-managed operating rules with project customizations
+(project-name substitution, role definitions); both layers survive the real
+3-way merge exactly as `generic` — a clean union, or `--diff3` markers +
+sidecar on overlap, resolved by hand or via the `resolve-merge-conflicts` skill.
 
 ---
 
@@ -262,6 +276,10 @@ identical treatment across the loose surfaces AND the Antigravity bundle.
 Trinity rule applies — refreshes are delivered in lockstep across the CLI
 variants.
 
+**No line-merge (safety).** A both-edited agent is NEVER line-unioned (a blind
+merge can be clean yet behaviourally wrong): it gets a loud sidecar — re-apply
+by hand over the pack v11 file; the skill is out of scope.
+
 ---
 
 ### 9. `custom-script` — `scripts/x-*.sh`, `scripts/<project-added>.{sh,py}`
@@ -298,23 +316,30 @@ classifier branch.
 
 ### 10. `pack-script` — `scripts/<pack-shipped>.{sh,py}`
 
-**Strategy:** 3-way text dispatch.
+**Strategy:** 3-way text dispatch — but NO line-merge on a both-edited
+file (safety).
 
-Pack-shipped scripts get the canonical 4-case classification.
-Customizations (e.g., a project that added a `--quick-mode` flag to
-a pack script) surface as `customization-detected-needs-reconciliation`
-with sidecar.
+Pack-shipped scripts get the canonical 4-case classification; a customization
+(e.g., a project `--quick-mode` flag added to a pack script) surfaces as
+`customization-detected-needs-reconciliation` with sidecar. Unlike prose, a
+both-edited script is NEVER passed through `tw_merge_file` (a bash/Python
+line-union can be lossless yet behaviourally wrong — a duplicated function
+shadows): the live file becomes the pack v11 script, your copy stays in the
+sidecar, re-apply by hand. The skill does not apply to executables.
 
 ---
 
 ### 11. `generic` — everything else
 
-**Strategy:** 3-way text dispatch (default).
+**Strategy:** prose auto-merge — the `_cp_strategy_text` real-merge arm
+(`tw_merge_file`), the default for text files.
 
-Catch-all for files the classifier doesn't recognize. HELP-FRAGMENT
-files and issue-template forms route through this class. The classifier
-is conservative: when unsure, fall back to text 3-way which preserves
-project edits via sidecar.
+Catch-all for files the classifier doesn't recognize (HELP-FRAGMENT files,
+issue-template forms). A both-edited file runs the real 3-way merge (needs a
+real baseline; BASE-absent `--update` keeps the legacy sidecar): non-overlapping
+edits union cleanly (`merged-with-customization`); overlapping lines produce
+`--diff3` markers + sidecar (`needs-reconciliation`, action `merged`), resolved
+by hand or via the skill.
 
 **v11.0 per-entry trees — flat-file source of truth (no mirror).**
 Per-entry tree files under `docs/project/backlog/`,

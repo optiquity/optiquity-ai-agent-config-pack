@@ -10,6 +10,17 @@ You do not need this guide to migrate — the migrator is safe without it (an
 unprepared conflict pauses cleanly and you reconcile after). Use it when you
 want the trinity to migrate hands-free.
 
+> **The `resolve-merge-conflicts` skill now automates this fold (hands-off
+> default).** When a trinity file pauses at migration, the client's AI agent
+> runs the `resolve-merge-conflicts` skill, which performs the SAME
+> section-aware marker-fold this guide describes — but AFTER dispatch, on the
+> sidecar, behind a zero-loss gate — so you no longer have to fold by hand.
+> Pre-folding by hand per this guide is now the **OPTIONAL pause-free
+> durability path**: fold BEFORE migrating and the trinity never pauses at all
+> (a clean graft at dispatch). This guide remains the source recipe the skill
+> follows — the two paths are complementary, not redundant. Use it when you
+> want zero interruption; otherwise let the skill fold after the pause.
+
 ---
 
 ## 1. What this is / when to use it
