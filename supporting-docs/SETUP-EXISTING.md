@@ -8,9 +8,12 @@ no prior AI agent configuration.
 - The project has existing source, docs, or both.
 - There is **no existing** `.claude/`, `.codex/`, `.agents/` directory
   or `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` file at the project root.
-  (If any AI config is present, `init-project.sh` stops with exit
-  code 20 and routes you to `MIGRATION-v10-to-v11.md` or asks you to
-  archive the other AI tooling first.)
+  A pack-generated config or a populated foreign agent/skill tree makes
+  `init-project.sh` stop (exit 20) — routing you to
+  `MIGRATION-v10-to-v11.md` or asking you to archive the other AI tooling
+  first. A **hand-written trinity** (no agent/skill tree) instead reaches
+  the guided keep / replace / merge branch — see **Installing over a
+  handwritten trinity** below.
 
 **If your project is fresh (no code yet):** see `SETUP-NEW.md`.
 
@@ -68,9 +71,11 @@ written until you confirm. Study each section of the preview
 carefully before typing `y`:
 
 - **Classification.** Expect `existing-source` or `existing-bare`
-  (the "existing" paths). If you see `already-configured`, the script
-  stops (exit 20) — you have prior AI config that the script won't
-  overwrite.
+  (the "existing" paths). `already-configured` caused by a **pack** config
+  or a populated foreign agent/skill tree stops the script (exit 20) — prior
+  AI config the script won't overwrite. `already-configured` caused only by a
+  **hand-written trinity** instead routes to the guided keep / replace / merge
+  branch (see **Installing over a handwritten trinity** below).
 - **Language markers found.** Confirm the detected languages match
   your project. If markers are missed (e.g., your Python project
   lives in a subdirectory deeper than depth 2), you may need to
@@ -130,6 +135,47 @@ and reruns idempotently on a clean tree.
 
 On success, the script prints an **end-of-run PM chat kickoff prompt**
 at the end. Copy or note this prompt — Step 8 uses it.
+
+---
+
+## Installing over a handwritten trinity (keep / replace / merge)
+
+If your existing project already carries a hand-written trinity (`CLAUDE.md`,
+`AGENTS.md`, `GEMINI.md`) — but no pack agent/skill tree — `init-project.sh`
+does not flatly stop. It detects the handwritten trinity and asks how to handle
+it, or you name the choice up front with `--trinity=keep|replace|merge`:
+
+- **keep** — your trinity files stay live; the pack versions are written beside
+  them as `<file>.pack-template` for manual reconcile.
+- **replace** — the pack trinity is installed live; your original is saved as
+  `<file>.user-orig` (a pure recovery copy).
+- **merge** — the pack trinity is installed live; your original is saved as
+  `<file>.user-orig`, and a reconcile row is recorded so the
+  `resolve-merge-conflicts` skill can fold your content back in.
+
+**Selection.** `--trinity=…` is honored with or without a TTY. `--yes` alone
+does NOT pick a trinity handling — a non-interactive run without `--trinity=…`
+stops (exit 20) and leaves your trinity byte-untouched, naming the three re-run
+forms. An absent trinity sibling (a lone-`CLAUDE.md` starter's missing
+`AGENTS.md` / `GEMINI.md`) is a plain pack install with no `.user-orig`.
+
+**Recovery — `.user-orig`.** After a `merge` or `replace` install your original
+trinity content is always preserved at `<file>.user-orig` (captured before the
+pack template is written; a pre-existing `<file>.user-orig` aborts the install
+loud rather than overwriting it). `replace` is pure recovery; `merge`
+additionally records the fold for the skill.
+
+**Skill follow-up (merge only).** After a `--trinity=merge` install, run the
+`resolve-merge-conflicts` skill (**Case 3** — the install 2-way trinity fold) to
+re-home your customizations into the pack's marker structure. The skill KEEPS
+`<file>.user-orig` on success, so your original stays recoverable.
+
+**State-dir lifecycle.** A `<TARGET>/.pack-install-reconcile/` directory appears
+ONLY after a `--trinity=merge` install (it holds the reconcile rows the skill
+reads). A `keep` or `replace` install — and any install with no handwritten
+trinity — leaves no such directory. Pre-existing structured configs
+(`.claude/settings.json`, `.mcp.json`, `.codex/config.toml`, …) are
+key-union-merged in place with no bookkeeping-dir residue.
 
 ---
 

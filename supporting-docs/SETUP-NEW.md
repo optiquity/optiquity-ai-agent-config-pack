@@ -88,10 +88,13 @@ The script will:
 
 1. Detect your project state (five classes: `new-empty`, `new-bare`,
    `existing-bare`, `existing-source`, `already-configured`).
-2. Stop (exit 20) if any AI config is already present — tell you to
-   archive the conflicting config (or, if you're already on a prior
-   pack version, route you to the appropriate `MIGRATION-vN-to-vM.md`
-   guide; v9.x is no longer supported).
+2. Stop (exit 20) if a **pack** config or a populated foreign agent/skill
+   tree is already present — telling you to archive the conflicting config
+   (or, if you're already on a prior pack version, routing you to the
+   appropriate `MIGRATION-vN-to-vM.md` guide; v9.x is no longer supported).
+   A hand-written **starter trinity** instead reaches the guided
+   keep / replace / merge branch (see **Seeding a new project with a
+   starter trinity** below).
 3. Print a preview of every operation: files to add, `.gitignore`
    lines to merge, conditional files to remove based on detected
    languages, any skill-coverage gaps (e.g., Kotlin / TypeScript not
@@ -130,6 +133,22 @@ Exit codes (reference):
 | 31 | Blast-radius sweep failure |
 | 40 | Conditional-removal failure |
 | 99 | Internal error |
+
+### Seeding a new project with a starter trinity
+
+If you hand-write a starter trinity (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) to
+seed the new repo BEFORE running `init-project.sh`, **commit it first**.
+`init-project.sh` requires a clean working tree; an uncommitted starter trips
+the working-tree-not-clean gate (exit 12), whose message names the one-step
+`git add -A && git commit -m 'starter trinity'` workaround. Once committed, init
+detects the handwritten trinity and offers the guided keep / replace / merge
+branch (`--trinity=keep|replace|merge`); a `merge` or `replace` saves your
+original at `<file>.user-orig`, and `merge` lets you fold it back in with the
+`resolve-merge-conflicts` skill afterward.
+
+This starter-trinity coverage holds ONLY when the starter is **committed** (or
+VCS-ignored) — init never installs over a dirty (uncommitted) tree, so an
+in-progress, unsaved starter is not covered until you commit it.
 
 ---
 

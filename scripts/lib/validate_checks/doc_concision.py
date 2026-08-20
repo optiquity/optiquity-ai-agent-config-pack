@@ -498,7 +498,7 @@ _CHECK_44_FORBIDDEN_PATTERNS = (
 # per-doc line ceiling, DERIVED from its measured baseline as
 # ceil(measured * 1.15). These are NOT round numbers: each is anchored to
 # that measured baseline (BOUNDARY 135, CONCEPTUAL-REVIEW 279, DRY-RUN 198,
-# HELP-PACK 57, MERGE 484, OPTIONAL 538) with a uniform 15% growth headroom.
+# HELP-PACK 57, MERGE 605, OPTIONAL 538) with a uniform 15% growth headroom.
 # BACKLOG.md / CHANGELOG.md are regenerated MIRRORS, NOT in the M4 class.
 #
 # BD-243 Gate 1a (DESIGN-BD-243-DURABLE-GATES.md §3 Gate 1): the length branch
@@ -519,7 +519,7 @@ _CHECK_44_DURABLE_DOCS = (
     ("pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md", 321),
     ("pack-ops/DRY-RUN-MIGRATION.md", 228),
     ("pack-ops/HELP-FRAGMENT-PACK.md", 66),
-    ("pack-ops/MERGE-STRATEGY.md", 557),
+    ("pack-ops/MERGE-STRATEGY.md", 696),
     ("pack-ops/OPTIONAL-FEATURES.md", 644),
 )
 

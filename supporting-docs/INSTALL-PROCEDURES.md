@@ -35,6 +35,50 @@ doing nothing. `--no-interactive` forces the non-prompting path explicitly
 
 ---
 
+## Installing over a handwritten trinity (keep / replace / merge)
+
+When `scripts/init-project.sh` (fresh install, not `--update`) detects a
+**hand-written trinity** (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) with no pack
+agent/skill tree, it offers a guided branch instead of stopping. The choice is
+`keep`, `replace`, or `merge`, named interactively or up front with
+`--trinity=keep|replace|merge`:
+
+| Choice | Live trinity after install | Saved copy | Reconcile row |
+|---|---|---|---|
+| `keep` | your files (unchanged) | pack version → `<file>.pack-template` | none |
+| `replace` | pack template | your original → `<file>.user-orig` | none |
+| `merge` | pack template | your original → `<file>.user-orig` | `merge-2way` row in `<TARGET>/.pack-install-reconcile/dispositions.tsv` |
+
+**Selection semantics.** `--trinity=…` is honored with or without a TTY. `--yes`
+alone does NOT choose a trinity handling; a non-interactive run without
+`--trinity=…` stops (exit 20) with the trinity left byte-untouched. An absent
+trinity sibling (a lone-`CLAUDE.md` starter's missing `AGENTS.md` / `GEMINI.md`)
+is a plain pack install with no `.user-orig` and no reconcile row.
+
+**`.user-orig` recovery.** `replace` and `merge` always preserve your original
+trinity bytes at `<file>.user-orig` before the pack template is written — the
+pack template touches the live file last, and a pre-existing `<file>.user-orig`
+aborts the install loud rather than overwriting a recovery copy. `replace` is
+pure recovery; keep or discard `<file>.user-orig` once satisfied.
+
+**Skill follow-up (merge only).** After a `--trinity=merge` install, run the
+`resolve-merge-conflicts` skill (**Case 3** — the install 2-way trinity fold) to
+fold your `<file>.user-orig` content into the pack's marker structure. The skill
+KEEPS `<file>.user-orig` on success: unlike its migration cases there is no
+pre-install baseline, so `<file>.user-orig` is the sole purpose-built recovery
+copy.
+
+**State-dir lifecycle.** The persistent `<TARGET>/.pack-install-reconcile/`
+directory is created ONLY by a `--trinity=merge` install (it records the
+`merge-2way` rows Case 3 reads). A `keep` or `replace` install — and any install
+with no handwritten trinity — leaves no such directory. Pre-existing structured
+configs (`.claude/settings.json`, `.mcp.json`, `.codex/config.toml`, …) are 2-way
+key-union-merged in place with no bookkeeping-dir residue; a malformed existing
+config falls back to keep-your-file-live plus a `<file>.pack-template` sidecar
+(never a silent pack adoption).
+
+---
+
 ## Project file conventions in pack-controlled directories
 
 Some pack-controlled directories may legitimately contain

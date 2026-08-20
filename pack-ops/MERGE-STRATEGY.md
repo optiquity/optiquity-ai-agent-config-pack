@@ -60,6 +60,57 @@ AFTER dispatch behind a zero-loss gate, never auto-invoked by the migrator.
 
 ---
 
+## Install (base-absent) merge
+
+The matrix above governs a **refresh** (`--update` / migrate) with a previous-pack
+baseline. A **fresh** `scripts/init-project.sh` run has NO baseline — every merge
+is base-absent (Regime B). It fires when a fresh install collides with a
+**handwritten trinity** (`CLAUDE.md`/`AGENTS.md`/`GEMINI.md`, no pack agent/skill
+tree — routed to the guided `--trinity=keep|replace|merge` branch) or with an
+**existing-source** project's own structured config.
+
+| Collision class | Install behavior | Recovery / follow-up |
+|---|---|---|
+| **trinity — `merge`** | pack template live; original stashed to `<file>.user-orig`; one `merge-2way` row in `<TARGET>/.pack-install-reconcile/dispositions.tsv` | fold `<file>.user-orig` into the pack markers via the `resolve-merge-conflicts` skill (**Case 3**), which KEEPS `<file>.user-orig` on success |
+| **trinity — `replace`** | pack template live; original stashed to `<file>.user-orig` (pure recovery); NO row | keep/discard `<file>.user-orig`, or hand-reapply |
+| **trinity — `keep`** | your files stay live; pack version → `<file>.pack-template` | reconcile from `<file>.pack-template` by hand |
+| **structured config** (JSON/TOML) | 2-way **key-union** in place (project keys win a scalar conflict; pack-only keys added; project-only kept), driven off `customization_classify` | none — union applied live |
+| **every other collision** | your file stays live; pack version → `<file>.pack-template` | hand-reapply over the pack file |
+
+**Never-lose floor (`merge`/`replace`).** The guarded order is non-reorderable:
+(1) copy the live file to `<file>.user-orig`; (2) verify it byte-equals the live
+file BEFORE any overwrite (a pre-existing `<file>.user-orig` aborts loud); (3)
+ONLY THEN overwrite with the pack template (it touches the live file LAST) — so
+the recovery copy is always the project's original bytes. An absent sibling (a
+lone-`CLAUDE.md` starter's missing `AGENTS.md`/`GEMINI.md`) is a plain install
+with NO `.user-orig` and NO row.
+
+**Honest 2-way completeness.** The fold has no baseline, so Case 3's completeness
+leg is a **lower bound**: it confirms every OURS line differing from the pack
+sits inside a marker region — which a dropped MULTI-LINE unit whose lines each
+coincide with pack lines can still pass. A green leg is NOT proof nothing dropped;
+`<file>.user-orig` is the floor, kept on success.
+
+**Parse-error fallback (F6).** The structured merge runs against a throwaway
+probe; only clean merged bytes are promoted. On a PARSE ERROR init does NOT adopt
+the pack file silently — it keeps the user file live plus a `<file>.pack-template`
+sidecar, so a malformed config never loses the project's version.
+
+**State-dir lifecycle.** `<TARGET>/.pack-install-reconcile/` is created ONLY by a
+`--trinity=merge` install (recording the `merge-2way` rows Case 3 reads).
+Structured key-unions merge in place with no bookkeeping-dir residue — a
+no-trinity install produces no `.pack-install-reconcile/` at all.
+
+**Realized empty-BASE (Regime B) consumer.** The empty-BASE path of
+`marker_preserve_trinity` (`scripts/lib/marker-preserve.sh`) is realized by the
+`resolve-merge-conflicts` skill's Case 3
+(`project-template/skills/resolve-merge-conflicts/SKILL.md`): the guided `merge`
+branch records the `merge-2way` `trinity` row and Case 3 reads it. `tw_merge_file`
+(`scripts/lib/three-way-merge.sh`) refuses a no-BASE merge, so the trinity 2-way
+fold is an AI-skill job, not a `tw_merge_file` call.
+
+---
+
 ## The 11 file classes
 
 ### 1. `trinity` — `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`
