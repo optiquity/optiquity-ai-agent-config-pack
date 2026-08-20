@@ -4,8 +4,8 @@
 # persona contract under scripts/persona-contracts/ and aggregates the
 # pass/fail outcome into a single CI-step result.
 #
-# Each contract (greenfield, mid-dev, migration) is a stand-alone bash
-# script that:
+# Each contract (greenfield, mid-dev, migration, existing-source) is a
+# stand-alone bash script that:
 #   - materializes a sandbox via test-fixtures/build.sh --for-contract,
 #   - drives the relevant pack script (init / init / migrate),
 #   - asserts derived expectations (template-derived enumerations + BD-088
@@ -13,8 +13,9 @@
 #   - cleans up its sandbox via trap.
 #
 # Each contract exits 0 on all-pass, non-zero on any failure. This wrapper
-# runs all three sequentially (independent — different sandboxes), reports
-# per-contract status, and exits non-zero if any contract failed. The
+# runs every rostered contract sequentially (independent — different
+# sandboxes), reports per-contract status, and exits non-zero if any
+# contract failed. The
 # wrapper does NOT short-circuit — every contract runs every time so a
 # regression in one does not mask a regression in another (parallel to
 # the validate-pack.yml `if: always():` per-step pattern).
@@ -41,6 +42,7 @@ contracts=(
     "contract-greenfield.sh"
     "contract-mid-dev.sh"
     "contract-migration.sh"
+    "contract-existing-source.sh"
 )
 
 failures=0

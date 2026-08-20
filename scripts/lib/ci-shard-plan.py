@@ -102,7 +102,7 @@ DEFAULT_WEIGHT_S = 3.0
 # members (auto-derived) are:
 #   test-v11-realistic-ot.sh   → built fixtures (BD-160/170 + per-entry)
 #   test-migrator-skills.sh    → v10-realistic-ot (G1 golden snapshot)
-#   test-persona-contracts.sh  → existing-project-mid-dev + v10-realistic-ot
+#   test-persona-contracts.sh  → existing-project-mid-dev + v10-realistic-ot + existing-project-collision
 #   test-dry-run-migration.sh  → v10-realistic-ot (T1 happy-path)
 #   test-add-capability.sh     → v11-flat-file (group 2 e2e)
 _FIXTURE_DEPENDENT_PREFIX = "scripts/tests/fixture-dependent/"

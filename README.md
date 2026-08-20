@@ -238,11 +238,12 @@ scripts/                                    Pack-level scripts
 scripts/test-migrator-core.sh               BD-119 unit tests — public API surface (v11)
 scripts/test-migrator-manifest.sh           BD-119 unit tests — manifest parser/validator (v11)
 scripts/tests/fixture-dependent/test-migrator-skills.sh    BD-147 unit tests — skill-rename helper + golden-snapshot regression (v11; fixture-dependent, BD-219)
-scripts/tests/fixture-dependent/test-persona-contracts.sh  BD-116 aggregator — runs all three persona contracts (v11; fixture-dependent, BD-219)
+scripts/tests/fixture-dependent/test-persona-contracts.sh  BD-116 aggregator — runs every rostered persona contract (v11; fixture-dependent, BD-219)
 scripts/persona-contracts/                  BD-116 per-persona contract scripts (v11)
 ├── contract-greenfield.sh                  init on empty dir matches template
 ├── contract-mid-dev.sh                     init on existing-project-mid-dev fixture preserves user files
-└── contract-migration.sh                   v10→v11 migration of v10-realistic-ot preserves customizations
+├── contract-migration.sh                   v10→v11 migration of v10-realistic-ot preserves customizations
+└── contract-existing-source.sh             init on existing-project-collision fixture parks pack scripts/test.sh at .pack-template (C1)
 scripts/tests/test-migrate-v10-to-v11-dry-run.sh   BD-095 tests — dry-run / apply / resume modes (70 cases)
 scripts/tests/test-migrate-v10-to-v11-gates.sh     BD-101 tests — Gate 1 / 2 / 3 verification (39 cases)
 scripts/tests/test-validate-pack-check-16.sh         BD-183 tests — trinity `## Project addenda` H2 (per-trinity-surface generalization)
@@ -270,7 +271,8 @@ test-fixtures/                              Persistent baseline fixtures for tes
 ├── v11-flat-file/                          v11 client, no tracker (gitignored)
 ├── v11-tracker-on/                         v11 client + synthesized tracker.toml (gitignored)
 ├── v11-trinity-marker-prepped/             synthetic trinity marker-prep golden fixture (committed; BD-136)
-└── existing-project-mid-dev/               In-progress Swift+Python+gRPC project, no pack files (gitignored; BD-115)
+├── existing-project-mid-dev/               In-progress Swift+Python+gRPC project, no pack files (gitignored; BD-115)
+└── existing-project-collision/             Existing-source Swift project owning a colliding scripts/test.sh (gitignored; BD-285)
 
 pack-ops/                                   Pack-internal operational files (v11; BD-175 directory reorg)
 ├── BOUNDARY-DEFINITION.md                  G7 boundary-rule reference for pack-ops/ scope (Commit 1)

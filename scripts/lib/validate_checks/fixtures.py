@@ -209,13 +209,13 @@ def check_manifest_structural() -> None:
     leaves the manifest unchanged is never a false positive (DESIGN §3.2(ii)).
 
     Asserts (on test-fixtures/manifest.txt, skipping `#`/blank lines):
-      (a) exactly len(FIXTURE_NAMES) data rows (== 6 on the current tree);
+      (a) exactly len(FIXTURE_NAMES) data rows (== 7 on the current tree);
       (b) the row NAMES, as a SET, equal `_load_fixture_names()`
           (the build.sh FIXTURE_NAMES set — the single source of truth);
       (c) each row is `<name>  <sha>` and the SHA matches `^[0-9a-f]{40}$`.
 
     Cheap (ci-check-runtime-compounding): ONE small file read + a per-line
-    regex over the 6-row manifest + reuse of the existing `_load_fixture_names()`
+    regex over the 7-row manifest + reuse of the existing `_load_fixture_names()`
     helper. NO fixture rebuild, NO subprocess, NO subprocess-per-entry, NO
     whole-real-tree scan — negligible cost across the ~155-invocation battery.
     Routes through `run_check`.

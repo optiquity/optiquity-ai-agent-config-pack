@@ -8,3 +8,4 @@ v11-realistic-ot  a38ff9d54b75382a7b5f391f4f5e3be4afed236d
 v11-flat-file  af56f9a167de483afd036c3c7dc0de767ce18029
 v11-tracker-on  69157ff3b3e4e81c8a4d41a2263f132d4baaa899
 existing-project-mid-dev  a54e081a9e1d04f293bfb38fa0af77fd9f7f8619
+existing-project-collision  7eb05e434cf050e005b582d94eba9105b67abda0

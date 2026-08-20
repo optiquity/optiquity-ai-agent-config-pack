@@ -16,9 +16,9 @@
 #                                        relevant committed fixture) and
 #                                        print its absolute path on stdout.
 #                                        Persona ∈ {greenfield, mid-dev,
-#                                        migration}. The sandbox is the
-#                                        caller's to mutate / drive scripts
-#                                        against / clean up after.
+#                                        migration, existing-collision}. The
+#                                        sandbox is the caller's to mutate /
+#                                        drive scripts against / clean up after.
 #
 # Fixtures (see README.md for the full description):
 #   v10-minimal               Bare v10 install via init-project.sh
@@ -33,8 +33,14 @@
 #                             NO pack files; input for "init --update on
 #                             top of an existing project" persona test
 #                             (BD-115).
+#   existing-project-collision  Existing-source Swift project that already
+#                             OWNS a non-trinity file the pack also ships
+#                             (scripts/test.sh, distinct content). Input for
+#                             the BD-285 C1 collision-sidecar persona test:
+#                             a fresh install leaves the user file live and
+#                             writes the pack version to scripts/test.sh.pack-template.
 #
-# Reference: BACKLOG.md BD-113, BD-115, BD-116.
+# Reference: BACKLOG.md BD-113, BD-115, BD-116, BD-285.
 
 set -euo pipefail
 
@@ -53,6 +59,7 @@ readonly FIXTURE_NAMES=(
     "v11-flat-file"
     "v11-tracker-on"
     "existing-project-mid-dev"
+    "existing-project-collision"
 )
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -76,8 +83,9 @@ Fixtures: ${FIXTURE_NAMES[*]}
   --for-contract <persona>    BD-116. Print to stdout the absolute path of a
                               freshly-materialized sandbox suitable for
                               persona-contract scripts. Persona ∈
-                              {greenfield, mid-dev, migration}. The caller
-                              owns the sandbox (must clean up).
+                              {greenfield, mid-dev, migration,
+                              existing-collision}. The caller owns the
+                              sandbox (must clean up).
 
 Without --clean, a build refuses to overwrite an existing fixture
 (safety; rebuild takes ~30s — surprises are bad). Combine with
@@ -868,6 +876,120 @@ EOF
         "wip: detail view model stub + TODO list in README"
 }
 
+# Existing-source Swift project that already OWNS a non-trinity file the
+# pack ALSO ships — a committed, executable scripts/test.sh with distinct
+# (user-authored) content. Input for the BD-285 C1 collision-sidecar
+# persona test.
+#
+# Why this shape:
+#   - A language marker (Package.swift) makes classify_project_state()
+#     return `existing-source`, so init-project.sh stage S5 routes every
+#     project-template/scripts/* file through existing_classifier_copy()
+#     (the four-case classifier, BASE absent).
+#   - NO trinity files and NO AI-config dirs (.claude/.codex/.agents),
+#     so classify does NOT short-circuit to `already-configured`.
+#   - The pack ships project-template/scripts/test.sh; this fixture owns a
+#     DIFFERENT scripts/test.sh. On install, existing_classifier_copy sees
+#     dst present + differing → three_way_classify "" ours theirs →
+#     `project-shadows-new-pack` → writes the pack version to
+#     scripts/test.sh.pack-template and leaves the user's file byte-identical
+#     (BD-285 FOLD F-1: the user file is never overwritten on a fresh
+#     install collision). test.sh is committed executable so stage S5's
+#     `chmod +x scripts/*.sh` is a no-op against the user's file.
+#
+# test.sh is the ONLY collision: the fixture ships no other pack-shipped
+# path (no docs/pack, no agent-run.sh, no trinity), so a clean install
+# yields exactly one `.pack-template` sidecar — the contract asserts that.
+_build_existing_project_collision() {
+    local target="$THIS_DIR/existing-project-collision"
+    info "  source: synthesized existing-source Swift project owning a colliding scripts/test.sh"
+    info "  pack files: none (pre-pack-install input shape; one shipped-path collision)"
+    _fixture_git_init "$target"
+
+    # ── Commit 1: initial scaffold ─────────────────────────────────────────
+    cat > "$target/.gitignore" <<'EOF'
+# Build output
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# OS
+.DS_Store
+EOF
+
+    cat > "$target/README.md" <<'EOF'
+# AcmeTool
+
+AcmeTool is an in-progress Swift command-line utility. This is a
+deterministic test fixture representing a real project at mid-development,
+before the AI agent config pack has been added. It is NOT itself a
+runnable application.
+
+The project already owns its own `scripts/test.sh` test runner (committed
+long before the pack was added). The pack ships its own `scripts/test.sh`,
+so this fixture exercises the fresh-install collision path: the user's
+runner must be preserved and the pack version parked in a
+`scripts/test.sh.pack-template` sidecar.
+EOF
+
+    cat > "$target/Package.swift" <<'EOF'
+// swift-tools-version: 5.9
+import PackageDescription
+
+let package = Package(
+    name: "AcmeTool",
+    platforms: [.macOS(.v14)],
+    products: [
+        .executable(name: "acmetool", targets: ["AcmeTool"]),
+    ],
+    targets: [
+        .executableTarget(
+            name: "AcmeTool",
+            path: "Sources/AcmeTool"
+        ),
+    ]
+)
+EOF
+
+    mkdir -p "$target/Sources/AcmeTool"
+    cat > "$target/Sources/AcmeTool/main.swift" <<'EOF'
+// AcmeTool entry point — in-progress CLI stub.
+import Foundation
+
+@main
+struct AcmeTool {
+    static func main() {
+        print("AcmeTool: nothing to do yet")
+    }
+}
+EOF
+
+    # The colliding file: the developer's OWN scripts/test.sh, committed
+    # executable, with content that DIFFERS from the pack's shipped
+    # project-template/scripts/test.sh (guaranteeing the classifier reaches
+    # the project-shadows-new-pack sidecar branch rather than the
+    # identical-content no-op).
+    mkdir -p "$target/scripts"
+    cat > "$target/scripts/test.sh" <<'EOF'
+#!/usr/bin/env bash
+# scripts/test.sh — AcmeTool project test runner (USER-OWNED).
+#
+# This is the developer's own pre-existing test script, committed before
+# the AI Agent Config Pack was ever added. It intentionally differs from
+# the pack's shipped scripts/test.sh so a fresh install preserves this
+# file verbatim and parks the pack version at scripts/test.sh.pack-template.
+set -euo pipefail
+
+echo "AcmeTool: running project test suite"
+swift test
+EOF
+    chmod +x "$target/scripts/test.sh"
+
+    _fixture_commit_all "$target" \
+        "scaffold: Package.swift, README, CLI stub + user-owned scripts/test.sh"
+}
+
 # ── Dispatch ───────────────────────────────────────────────────────────────
 
 # Run the per-fixture builder. Fail loud if name unknown.
@@ -885,6 +1007,7 @@ _build_one() {
         v11-flat-file)             _build_v11_flat_file ;;
         v11-tracker-on)            _build_v11_tracker_on ;;
         existing-project-mid-dev)  _build_existing_project_mid_dev ;;
+        existing-project-collision) _build_existing_project_collision ;;
         *) die "unknown fixture: $name (known: ${FIXTURE_NAMES[*]})" ;;
     esac
     info "built: $target"
@@ -975,6 +1098,11 @@ _verify() {
 #                  BACKLOG). Contract asserts that running the v10→v11
 #                  migrator produces the expected v11 shape with all four
 #                  customizations preserved (BD-088 invariants).
+#   existing-collision → copy of `existing-project-collision` (BD-285
+#                  fixture): existing-source Swift project that owns a
+#                  colliding scripts/test.sh. Contract asserts that a fresh
+#                  init preserves the user file and writes the pack version
+#                  to scripts/test.sh.pack-template (C1 collision sidecar).
 #
 # The sandbox is a top-level git repo with deterministic identity pins
 # (same env as the committed fixtures). Caller is responsible for
@@ -1013,8 +1141,17 @@ _materialize_for_contract() {
             git -C "$sandbox" config user.name  "$FIXTURE_AUTHOR_NAME"
             git -C "$sandbox" config user.email "$FIXTURE_AUTHOR_EMAIL"
             ;;
+        existing-collision)
+            local src="$THIS_DIR/existing-project-collision"
+            [[ -d "$src/.git" ]] \
+                || die "existing-collision source fixture not built; run build.sh --name existing-project-collision first" 5
+            rm -rf "$sandbox"
+            cp -R "$src" "$sandbox"
+            git -C "$sandbox" config user.name  "$FIXTURE_AUTHOR_NAME"
+            git -C "$sandbox" config user.email "$FIXTURE_AUTHOR_EMAIL"
+            ;;
         *)
-            die "unknown contract persona: $persona (known: greenfield, mid-dev, migration)" 6
+            die "unknown contract persona: $persona (known: greenfield, mid-dev, migration, existing-collision)" 6
             ;;
     esac
     printf '%s\n' "$sandbox"
