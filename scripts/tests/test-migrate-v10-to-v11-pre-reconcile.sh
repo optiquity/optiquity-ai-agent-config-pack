@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 # scripts/tests/test-migrate-v10-to-v11-pre-reconcile.sh — BD-286 demo test
-# proving the shipped PRE-RECONCILE-v10-to-v11.md guide's CORE claim on a real
-# v10→v11 migrator run: a trinity file that a client PRE-RECONCILES per the
-# guide's recipe migrates PAUSE-FREE while KEEPING the customization, and a
+# proving the shipped PRE-RECONCILE-v10-to-v11.md guide's pre-fold claim on a
+# real v10→v11 migrator run: a trinity file that a client PRE-RECONCILES per
+# the guide's recipe migrates PAUSE-FREE while KEEPING the customization, and a
 # WRONG prep BITES (the pause is load-bearing, not luck).
+#
+# Pre-folding is the OPTIONAL DURABILITY path, not the only path: the
+# `resolve-merge-conflicts` skill auto-folds the SAME recipe post-dispatch (the
+# hands-off default), so a client is not REQUIRED to pre-fold. The pre-fold
+# still works and still migrates a prepared trinity pause-free — that behaviour
+# is unchanged, and THIS test proves it. A non-pre-folded trinity simply pauses
+# with a trinity sidecar the skill (or the guide's hand-fold) resolves; the
+# skill's own post-dispatch fold is proved by test-resolve-merge-conflicts-skill.sh.
 #
 # The prep recipe (from the guide, measured in ARCHITECTURE-BD286.md EEB-2):
 #   (i)   reconcile the v10→v11 pack-section renames — delete from OURS every
@@ -28,7 +36,7 @@
 #
 # Matrix (declare-verify-backing targets in parentheses):
 #   P1  prepared trinity (variant G)          → PAUSE-FREE, merged-with-customization
-#                                               (the guide's core claim)
+#                                               (the guide's optional-durability claim)
 #   P2a stray out-of-marker blank (variant H) → BITES: pause, HELP-FRAGMENT absent
 #                                               (byte-exact contract is load-bearing)
 #   P2b unreconciled rename (variant A)       → BITES: pause, HELP-FRAGMENT absent
