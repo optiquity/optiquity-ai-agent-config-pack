@@ -204,7 +204,11 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # BD-205 adds Check 93 (public-launch no-leak GUARD — the two-leg literal-name +
 # domain-vocab enforcement backstop; one new registry entry): 89 → 90. (Next free
 # numeric ID = 94.)
-CHECK_REGISTRY_EXPECTED_COUNT = 90
+# BD-285 adds Check 94 (install-merge token-wire guard — LEG 1 the init↔skill
+# `merge-2way` action-token wire BITES + LEG 2 the Case-3 KEEP-`.user-orig`-on-
+# success static backstop, BOTH in one registry entry per ROI-2; one new registry
+# entry): 90 → 91. (Next free numeric ID = 95.)
+CHECK_REGISTRY_EXPECTED_COUNT = 91
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []

@@ -551,6 +551,18 @@ from validate_checks.mktemp_portability import *  # noqa: E402,F403  (BD-276 Che
 # no_leak.py; the facade carries no forked copy.
 from validate_checks.no_leak import *  # noqa: E402,F403  (BD-205 Check 93; single SSOT)
 
+# BD-285: Check 94 (check_install_merge_wire) lives in its own module
+# (validate_checks.install_merge_wire) per the FIRM own-module-per-new-check
+# convention — its candidate surface (the two named install-merge wire endpoints,
+# scripts/init-project.sh + the client resolve-merge-conflicts/SKILL.md) + its
+# module-private `_git_ls_files()` / `_slice_section()` helpers share no symbol with
+# any cluster. Placed ABOVE _build_check_registry() so the registry's bare
+# `check_install_merge_wire` reference resolves at assembly. Single SSOT — the
+# two-leg guard body (LEG 1 token-wire declare-verify-backing + LEG 2 Case-3
+# KEEP-`.user-orig`-on-success backstop) lives only in install_merge_wire.py; the
+# facade carries no forked copy.
+from validate_checks.install_merge_wire import *  # noqa: E402,F403  (BD-285 Check 94; single SSOT)
+
 # PER_ENTRY_LIB moved to validate_checks.per_entry_sync (BD-256 W7 — Cluster F
 # intra-cluster; sole source-consumer is Check 33's TOC-regenerator invocation)
 # — re-imported via the facade's `from validate_checks.per_entry_sync import *`
@@ -1425,6 +1437,25 @@ def _build_check_registry():
         # work tree. Number 93 is the next free integer (highest wired was 92).
         (93, "check_no_target_app_leak",
               check_no_target_app_leak, W),
+        # Check 94 — install-merge token-wire guard (BD-285 F9). ONE registry entry,
+        # TWO assertions (ROI-2). LEG 1 (declare-verify-backing): the column-4 action
+        # token scripts/init-project.sh WRITES into a class=="trinity" `_cp_record`
+        # row MUST equal the token the client resolve-merge-conflicts SKILL.md Case-3
+        # Locate selector READS (`$2=="trinity" && $4=="<token>"`) — verified BOTH
+        # directions (writer present + reader present + equal), so a declared selector
+        # with no matching writer (absence-of-backing) FAILs, not only a both-exist
+        # mismatch; the literals are read from both sources (never hardcoded). LEG 2
+        # (SHOULD-3 / Δ2 / P3): the SKILL.md Case-3 `### On success` block MUST NOT
+        # carry an AFFIRMATIVE `.user-orig` removal verb (the negated KEEP sentence is
+        # spared; a Case-2-style affirmative "remove the `.user-orig`" BITEs), scoped
+        # to the Case-3 On-success region only. Lives in its own module
+        # (validate_checks.install_merge_wire) per the FIRM own-module-per-new-check
+        # convention. git-TRACKED enumeration (git ls-files -- <two paths>), O(lines
+        # over two files), one subprocess, SKIP-lenient off a work tree / when either
+        # wire surface is untracked. Number 94 is the next free integer (highest wired
+        # was 93).
+        (94, "check_install_merge_wire",
+              check_install_merge_wire, W),
     ]
 
 
