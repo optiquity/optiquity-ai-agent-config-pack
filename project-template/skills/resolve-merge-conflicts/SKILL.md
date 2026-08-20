@@ -1,6 +1,6 @@
 ---
 name: resolve-merge-conflicts
-description: Use during a v10→v11 migration pause to resolve the reconciliation rows the migrator left behind — same-line prose conflict markers (Case 1) and trinity sidecars folded section-aware into the new pack file (Case 2), each behind a mechanical zero-loss gate. Scripts and agents are out of scope (re-apply by hand).
+description: Use during a v10→v11 migration pause, or after an `init --trinity=merge` install, to resolve the reconciliation rows left behind — same-line prose conflict markers (Case 1), migration trinity sidecars folded section-aware into the new pack file (Case 2), and install-time 2-way trinity folds with no base (Case 3), each behind a mechanical zero-loss gate. Scripts and agents are out of scope (re-apply by hand).
 allowed-tools: Read, Grep, Bash, Edit
 ---
 
@@ -8,10 +8,15 @@ allowed-tools: Read, Grep, Bash, Edit
 
 The migrator auto-merges what it can deterministically and PAUSES on the rest,
 recording each unresolved file in `<TARGET>/.pack-migrate-v10-to-v11/dispositions.tsv`.
-This skill resolves the two classes the migrator leaves for an agent: same-line
-**prose** markers (Case 1) and **trinity** sidecars (Case 2). It never runs
-automatically — you run it during the pause, before `--resume`. On any doubt it
-leaves the file untouched (still recoverable) and reports it as unresolved.
+Separately, an `init --trinity=merge` install writes the pack's v11 trinity live,
+stashes your original as `<file>.user-orig`, and records each merge-folded
+trinity file in `<TARGET>/.pack-install-reconcile/dispositions.tsv`. This skill
+resolves three classes across those two sources: same-line **prose** markers
+(Case 1) and migration **trinity** sidecars (Case 2) from the migration table,
+and install-time 2-way **trinity** folds (Case 3) from the install table. It
+never runs automatically — run it during the migration pause (before `--resume`)
+or after a merge install. On any doubt it leaves the file untouched (still
+recoverable) and reports it as unresolved.
 
 ## Locate the in-scope rows
 
@@ -26,9 +31,9 @@ STATE="<TARGET>/.pack-migrate-v10-to-v11"
 # BSD awk (stock macOS) rejects a line-final `(`.
 awk -F'\t' '
   $1=="customization-detected-needs-reconciliation" &&
-  ($2=="trinity" || ($4=="merged" && ($2=="generic" || $2=="pm-chat"))) { print }
+  (($2=="trinity" && $4=="sidecar") || ($4=="merged" && ($2=="generic" || $2=="pm-chat"))) { print }
 ' "$STATE/dispositions.tsv"
-# $2=="trinity"                                → Case 2 (trinity sidecar)
+# $2=="trinity" && $4=="sidecar"               → Case 2 (migration trinity sidecar)
 # $4=="merged" && $2 in {generic, pm-chat}     → Case 1 (prose markers)
 ```
 
@@ -150,8 +155,133 @@ Only when every gate leg passes: write the fold to the live file; remove the
 pre-migration backup). On any gate failure: leave the live file, sidecar, and
 stash untouched, and report the file as unresolved for hand reconciliation.
 
+## Locate the install fold rows (Case 3)
+
+An `init --trinity=merge` install records its 2-way trinity folds in a SEPARATE
+state directory (`<TARGET>/.pack-install-reconcile/dispositions.tsv`), with the
+same tab-separated columns
+(`disposition⇥class⇥rel⇥action⇥sidecar⇥diff⇥notes`). Select Case-3 rows with
+this awk:
+
+```bash
+INSTALL_STATE="<TARGET>/.pack-install-reconcile"
+awk -F'\t' '
+  $2=="trinity" && $4=="merge-2way" { print }
+' "$INSTALL_STATE/dispositions.tsv"
+# $2=="trinity" && $4=="merge-2way"            → Case 3 (install 2-way trinity fold)
+```
+
+The install writes the row with disposition `merged-with-customization` (the
+pack template is already live) and action `merge-2way`; OURS is the
+`<rel>.user-orig` sidecar (column 5). The strict `$4=="merge-2way"` key here and
+the `$4=="sidecar"` key in the Case-2 selector keep the two trinity cases self-
+disambiguating even if the migration and install tables were ever read together.
+
+## Case 3 — install 2-way trinity fold (`class` = `trinity`, action `merge-2way`)
+
+This case appears NOT during a migration but after an `init --trinity=merge`
+install. That install writes the pack's v11 trinity live and stashes your
+original trinity as `<file>.user-orig`. There is NO base — the install cannot
+attribute a divergence to a common ancestor — so the fold is a 2-way, no-BASE
+analog of Case 2. Two inputs (no BASE):
+
+- **THEIRS** — the live file (`rel`), the pack v11 trinity the installer just
+  wrote. Copy it to a temp (`THEIRS_tmp`) BEFORE any edit.
+- **OURS** — the `<rel>.user-orig` sidecar (column 5): your full pre-install
+  trinity.
+
+The empty-BASE verifier below is the pack's own `marker_preserve_trinity` engine
+run in its Regime B (BASE absent) path — the same engine whose header docstring
+in `scripts/lib/marker-preserve.sh` names this Case 3 as its realized empty-BASE
+consumer.
+
+### Fold procedure
+
+1. Compute your customizations as the OURS lines that are NOT already in THEIRS
+   (there is no BASE to diff against, so the pack v11 body is the reference):
+   the lines you added or changed relative to the pack trinity.
+2. Start from THEIRS (the v11 body + section skeleton). Place each customization
+   into the CORRECT v11 section, WRAPPED in a project-owned marker pair —
+   identical marker handling to Case 2:
+   - **Shape A** — a customization inside a section the pack ships: wrap only
+     your lines INSIDE that section's body, leaving the pack heading and body in
+     place.
+   - **Shape B** — a whole project-owned section (new, renamed, or an override):
+     wrap the heading line AND the body.
+3. Preserve every customization BYTE-IDENTICALLY inside its marker — this is what
+   the completeness gate checks and what lets the fold auto-graft on the next
+   install or migration.
+4. Loop the trinity files that carry a `merge-2way` row —
+   `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` — one at a time (a fresh sibling the
+   installer plain-wrote has no `.user-orig` and no row, so it is skipped).
+
+### Gate — zero-loss verification (run BEFORE writing the fold to the live file)
+
+The fold is the one non-deterministic step, so a mechanical gate must pass
+first. Prefer the pack's own tested marker engine as the verifier; the install
+report names the pack clone as `PACK`.
+
+**PRIMARY — round-trip through the marker engine (empty BASE).** Source the
+engine and run it on the folded output as if it were a fresh trinity installing
+to the SAME v11 canonical, with an EMPTY base:
+
+```bash
+( set -e
+  export _CP_PACK_ROOT="$PACK"
+  source "$PACK/scripts/lib/three-way.sh"
+  source "$PACK/scripts/lib/customization-preserve.sh"   # sources marker-preserve.sh + three-way-merge.sh
+  GATE="$(mktemp -d)"; customization_preserve_init "$GATE" ".user-orig" >/dev/null
+  marker_preserve_trinity "" "$FOLDED" "$THEIRS_tmp" "CLAUDE.md" "$GATE/throwaway" >/dev/null
+  disp="$(tail -1 "$GATE/dispositions.tsv" | awk -F'\t' '{print $1}')"
+  [ "$disp" = "merged-with-customization" ] || { echo "GATE FAIL: $disp"; exit 1; }
+)
+```
+
+This is the SAME empty-BASE Regime B path Case 2's gate uses (Case 2 also passes
+an empty base as the first argument), so the verifier is reused UNCHANGED.
+Passing it proves mechanically: well-formed markers; the v11 body fully adopted
+(out-of-marker body byte-identical to the canonical); no duplicated `##` heading;
+no residual conflict marker in the body; and durability (it will auto-graft next
+install or migration). Any of those defects routes the engine to a sidecar —
+disposition `customization-detected-needs-reconciliation`, NOT
+`merged-with-customization` — so the gate FAILS.
+
+**SUPPLEMENT — customization completeness (THEIRS-keyed lower bound).** A
+degenerate fold with EMPTY marker regions still passes the round-trip, so also
+require every OURS line that is byte-DISTINCT from THEIRS (i.e., not present
+anywhere in THEIRS) to appear INSIDE a marker region of the fold (scope the
+check to the region, not the whole file, to avoid a coincidental body match).
+
+**HONEST DISCLOSURE — the 2-way blind spot.** This line-level lower bound can
+PASS a dropped MULTI-LINE unit whose lines each individually coincide with pack
+lines; a green completeness leg is therefore NOT proof that nothing was dropped.
+The `<file>.user-orig` sidecar — KEPT on success (below) — is the authoritative
+recovery floor, not this gate.
+
+**SUPPLEMENT — zero conflict markers.** Grep the fold for all four `--diff3`
+tokens (as in Case 1); the result MUST be empty (catches a marker left inside a
+project region, which the body comparison would hide).
+
+**If `PACK` is unreachable** (no clone available): fall back to the self-
+contained checks — the four-token grep, a balanced-marker check
+(`<!-- BEGIN project-owned -->` / `<!-- END project-owned -->` pair for pair),
+a `##`-heading-set compare of the fold's out-of-marker body against `THEIRS_tmp`,
+and the completeness leg — and report the file as resolved UNDER REDUCED
+VERIFICATION. Never declare a file done under reduced verification without
+saying so.
+
+### On success
+
+Only when every gate leg passes: write the fold to the live file. **Case 3 does
+NOT remove `<file>.user-orig` on success (UNLIKE Case 2 — there is no
+pre-install backup; `.user-orig` is the sole purpose-built recovery copy).**
+Leave the `.user-orig` sidecar in place. On any gate failure: leave the live file
+and the `.user-orig` sidecar untouched, and report the file as unresolved for
+hand reconciliation.
+
 ## Report
 
 For each in-scope file: `resolved` or `left for hand reconciliation`, with the
 gate result. List the out-of-scope script/agent sidecars under "re-apply by
-hand." Then the migration continues with `--resume`.
+hand." After a migration, the migration continues with `--resume`; after an
+install merge (Case 3) there is nothing to resume — the report is the final step.
