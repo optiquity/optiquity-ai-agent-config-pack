@@ -192,8 +192,8 @@ analog of Case 2. Two inputs (no BASE):
 
 The empty-BASE verifier below is the pack's own `marker_preserve_trinity` engine
 run in its Regime B (BASE absent) path — the same engine whose header docstring
-in `scripts/lib/marker-preserve.sh` names this Case 3 as its realized empty-BASE
-consumer.
+in `$PACK/scripts/lib/marker-preserve.sh` names this Case 3 as its realized
+empty-BASE consumer.
 
 ### Fold procedure
 
