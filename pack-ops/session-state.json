@@ -1,25 +1,26 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "3da7f79",
-  "checkpoint": "2026-08-22T00:00:00Z",
-  "active": [],
+  "boundary_commit": "7a63c12",
+  "checkpoint": "2026-08-22T21:00:00Z",
+  "active": [
+    "BD-288 @ architect design stage (LARGE pipeline, stage 2 of the deterministic flow; the docs-researcher stage is satisfied by the Pack-Chat census recorded in the entry)."
+  ],
   "in_flight_agents": [
-    "NONE RUNNING. BD-093 + BD-280 Resolved; the v11.0 (RC1) cut is COMMITTED, TAGGED (v11.0-RC1) and PUSHED; Validate Pack CI green on both the branch and the tag push. Check 4 verified as a real tag match, not the dev-branch allowance.",
-    "ON RESUME: the remaining launch steps are USER-owned and NOT to be executed by Pack Chat: (5) force main to v11-dev, (6) verify CI on main, (7) transfer to the target GH account, (8) flip public. Pack Chat NEVER pushes to main (PACK-CHAT behavioral rule + EXECUTION-PLAN A.4 deliberate-handoff)."
+    "pack-architect, name architect-bd288-crossrefgap, spawned background + isolated (isolation_mode full), cd-ed to the canonical checkout. Handoff dir $XDG_STATE_HOME/optiquity-pack-handoff/bd288-architect/. Re-spawn FRESH if lost -- never re-use a returned instance for reconciliation.",
+    "ON RESUME: the one remaining launch step is USER-owned and NOT to be executed by Pack Chat: flip the repo public. Pack Chat NEVER pushes to main."
   ],
   "queue": [
-    "user: force main",
-    "user: verify CI on main",
-    "user: account transfer",
+    "BD-288: architect -> adversarial architect -> reconciliation architect (only if findings) -> USER design review -> planner -> adversarial planner -> reconciliation planner (only if findings) -> USER planner-to-coder gate -> parallel worktree coder waves",
     "user: flip public"
   ],
-  "parallelization": "SERIAL. Pack-side work COMPLETE for the RC1 cut; the remainder is a user-owned release handoff.",
-  "wave": "v11.0 (RC1) SHIPPED to the branch + tag. Open BDs now 15 (BD-093 and BD-280 both flipped Resolved this cut). BD-171 + BD-172 remain Status: Open by explicit user decision -- do NOT flip. main is still at the pre-v11 commit, 1209 behind, until the user performs the force-push.",
+  "parallelization": "SERIAL until the architect + planner emit the rule-10 parallel-vs-dependent map; coder waves may then run parallel on disjoint file sets.",
+  "wave": "v11.0 (RC1) is tagged v11.0-RC1 and CI-green; main and v11-dev both point at the boundary commit; the repo sits under the target GH account and is still private. Open BDs 16; highest is BD-288. BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
   "pending_decisions": [
-    "LOCKED: main is FORCE-POINTED at v11-dev by the USER (13 divergent main commits + 170 main-only files -- antigravity docs snapshot, 2 antigravity reference docs, 1 v11.1 parking-lot doc -- are DROPPED by user decision; BD-221 supersedes the snapshot). v11-dev history is PRESERVED intact -- NO squash, NO rewrite, ever.",
+    "LOCKED: v11-dev history is PRESERVED intact -- NO squash, NO rewrite, ever.",
     "LOCKED: NO scrub. Target-app initials and generic Target-App vocabulary are ACCEPTABLE on internal surfaces; the Check 93 two-tier model is UNCHANGED and the internal-surface exemption is PERMANENT (there is no separate scrubbed public copy). Leg 2 still guards client/public surfaces. ONE repo forever -- the work repo IS the public repo.",
-    "OPEN (deliberately unfixed, no BD opened per user direction): Check 40 walks pack-ops/ and Check 43 walks the client surface, so NON-client-installed supporting-docs/ files sit in a coverage gap between them -- this is why 12 bare cross-refs survived to the cut. The surface is verified clean NOW; closing the gap needs an architect pass (ci-guard-measure-then-bound), not a late patch.",
+    "LOCKED for BD-288: maintenance-docs/, backlog/, changelog/, test-fixtures/, scripts/tests/fixtures/ are PERMANENTLY out of scope for any bareness gate -- a constraint handed to the architect, not an open question.",
+    "LOCKED for BD-288: scope GROWS INTO BD-288. Anything any agent surfaces during this BD is folded into BD-288 and done now; opening a follow-on BD for work discovered here is tech debt and is prohibited absent explicit user authorization.",
     "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no past-action narration, <4096 B); modes review=itemized intervention=full isolation=full; scratch $XDG_STATE_HOME/optiquity-pack-handoff/; commit-msg files in /tmp."
   ],
-  "cycle_position": "BD-093 cycle COMPLETE and landed at the boundary commit. Agent reports preserved into maintenance-docs/v11-implementation/. The commit worktree may be torn down now that the commit is CONFIRMED landed. Next action is the USER's force-push of main."
+  "cycle_position": "No commit cycle in flight. BD-288 is at the design stage; no coder spawned, no worktree live. Uncommitted in the canonical tree: backlog/BD-288.md (new), backlog/_toc.md, pack-ops/session-state.json -- awaiting the user's commit approval."
 }

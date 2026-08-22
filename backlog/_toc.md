@@ -19,6 +19,7 @@
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
 - [BD-279](./BD-279.md) — Code-optimization methodology: skill(s) + existing-agent pipeline for intentional net-positive refactors of EXISTING code (pack + project, mirror-but-customize)
+- [BD-288](./BD-288.md) — CI guards that do not bite: the cross-reference BARENESS-gate coverage gap (Checks 40 + 43 walk neither the non-installed `supporting-docs/`, the repo-root README, the pack-root trinity, nor the per-CLI operating-doc set), Check 68's basename-index fallback resolving stale-but-resolvable paths, and Check 81's active-BD matcher that has never fired (pack gates + client twin)
 
 ## Deferred
 
