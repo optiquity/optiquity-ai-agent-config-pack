@@ -8,9 +8,7 @@
 # without open-coding the per-line scan + disambiguation + advisory
 # pattern that the v10→v11 BD-035 split helper proved out.
 #
-# Architecture: maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-DIMENSIONS.md §6.5
-#               maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md §3.1 (sibling-lib pattern)
-# Plan:         maintenance-docs/v11-implementation/PLAN-SKILL-DIMENSIONS.md §2 Batch 8 + §7.2
+# Architecture: maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md §3.1 (sibling-lib pattern)
 #
 # Public API (frozen at BD-147 ship):
 #   migrator_skill_rename <old-skill> <new-skill> [<advisory-path>]

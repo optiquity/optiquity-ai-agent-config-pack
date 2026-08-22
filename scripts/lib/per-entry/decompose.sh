@@ -12,11 +12,12 @@
 # Architecture:
 #   maintenance-docs/v11-research/ARCHITECTURE-PER-ENTRY-SPLIT.md
 #     §3 (per-entry directory shape, 5 streams)
-#   maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md
-#     §4.2 (Layer 2 — back-pointer add by decompose)
-#     §13.3 (signal-6 carve-out — helpers in scripts/lib/)
-#   maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-ADDENDUM-2.md
-#     §2 (back-pointer is HTML-comment line-1 ONLY)
+#
+# Design constraints binding on this file (their source architecture docs
+# were deleted at BD-210; the constraints themselves still hold):
+#   - Layer 2 — the back-pointer is added by decompose.
+#   - Signal-6 carve-out — these helpers live in scripts/lib/.
+#   - The back-pointer is an HTML comment on line 1 ONLY.
 #
 # Implementation: bash dispatch + python3 for the markdown parsing
 # (precedent: scripts/lib/tracker-mirror.sh). Python3 is a hard

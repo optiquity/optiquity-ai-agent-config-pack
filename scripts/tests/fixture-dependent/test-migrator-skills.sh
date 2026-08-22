@@ -11,8 +11,10 @@
 #        the `test-fixtures/v10-realistic-ot` fixture and asserts that
 #        the rewritten PLATFORM-SKILLS.md, the trinity files, AND the
 #        generated advisory match the byte-identical sha256 set captured
-#        from the pre-extraction inline implementation. This is the
-#        PLAN-SKILL-DIMENSIONS.md §4.5 mitigation.
+#        from the pre-extraction inline implementation. This IS the
+#        byte-identity mitigation for that extraction refactor: the
+#        helper was lifted out of the adapter, so only a golden snapshot
+#        proves the extraction changed no emitted byte.
 #
 #   G2 — `migrator_skill_rename` SIMPLE-mode unit tests.
 #        Synthetic fixture exercising the bare 2-arg API:
@@ -36,10 +38,10 @@
 # forward-declared API signature accepts (old, new-server, new-data,
 # advisory) and produces equivalent output.
 #
-# Usage:    bash scripts/test-migrator-skills.sh
+# Usage:    bash scripts/tests/fixture-dependent/test-migrator-skills.sh
 # Exit 0 on all pass; exit 1 on any failure.
 #
-# Per BD-147 / PLAN-SKILL-DIMENSIONS.md §2 Batch 8 + §4.5 + §7.2.
+# Per BD-147.
 #
 # ## Preconditions (BD-163)
 #

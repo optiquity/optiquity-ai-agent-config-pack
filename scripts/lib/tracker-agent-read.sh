@@ -160,8 +160,7 @@ _tar_read_entry_flat() {
     # surfaces — there is no regenerated monolith mirror to fall back
     # to (BD-203 pack-side, BD-206 project-side).
     #
-    # Mode-awareness per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-
-    # ADDENDUM.md §3.2: the prefer-then-fall-back logic is independent
+    # Mode-awareness: the prefer-then-fall-back logic is independent
     # of tracker mode (this function is the flat-file leg; tracker
     # mode goes through _tar_read_entry_tracker). The per-entry tree
     # is source of truth in flat-file mode (Mode 2) and a regenerated
@@ -169,8 +168,8 @@ _tar_read_entry_flat() {
     # mode does not call this function, so the per-entry-prefer
     # behavior here is correct for the flat-file leg in both modes.
     #
-    # Per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §6.3 + §18.1 #10:
-    # extend the existing function rather than add a sibling.
+    # Design constraint: extend the existing function rather than add a
+    # sibling.
     #
     # Stream resolution from pack-id prefix:
     #   BD-NNN     → pack backlog tree at $repo_root/backlog/
@@ -179,10 +178,8 @@ _tar_read_entry_flat() {
     #   phase-N    → project implementation-plan tree at
     #                $repo_root/docs/project/implementation-plan/
     #   phase-N.M  → also project implementation-plan tree (tasks
-    #                live inline in their phase-N.md per
-    #                ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-
-    #                ADDENDUM.md §6.4 BD-167 spec; reduce to phase-N
-    #                file lookup).
+    #                live inline in their phase-N.md per the BD-167
+    #                spec; reduce to phase-N file lookup).
     local per_entry_dir="" per_entry_file="" per_entry_id="$pack_id"
     case "$pack_id" in
         BD-*)
@@ -210,8 +207,7 @@ _tar_read_entry_flat() {
        && -f "$per_entry_file" ]]; then
         # Per-entry tree exists AND per-entry file is present —
         # source of truth in flat-file mode. Read the per-entry file
-        # directly. Strip the line-1 HTML-comment back-pointer per
-        # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-ADDENDUM-2.md §2
+        # directly. Strip the line-1 HTML-comment back-pointer
         # (the comment is meaningful only on the per-entry file as a
         # recovery anchor; agent-readable output should be the
         # byte-identical entry span starting at the bold-header /

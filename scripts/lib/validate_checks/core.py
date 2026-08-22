@@ -52,8 +52,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 # ── Per-entry tree streams (BD-168 Checks 32 / 33 / 34) ─────────────────────
 #
 # Each stream tuple: (stream_key, stream_dir_relative, mirror_relative,
-# entry_regex). Pack-side scope only per
-# ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.6 — `validate-pack.py`
+# entry_regex). Pack-side scope ONLY — `validate-pack.py`
 # runs in the pack repo CI; project-side per-entry trees under
 # `project-template/docs/project/<stream>/` are pack-shipped canonical
 # templates without entries during pack development, so they are NOT

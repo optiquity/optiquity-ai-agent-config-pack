@@ -1117,16 +1117,14 @@ def check_skill_cell_consistency() -> None:
       - Double-counted   : same skill listed in more than one inventory
                            subsection (D1-implied skills load via
                            multiple D-table rows but appear in exactly
-                           one inventory row — see ARCHITECTURE-SKILL-
-                           DIMENSIONS.md §3.7-§3.8).
+                           one inventory row).
       - Header drift     : '### <subsection> (NN)' count does not match
                            the row count in that subsection's table.
       - Total drift      : '**Total skills: NN**' line disagrees with
                            the sum across all inventory subsections.
 
     The Full skill inventory subsections are the authoritative
-    canonical-cell source per `maintenance-docs/v11-implementation/
-    ARCHITECTURE-SKILL-DIMENSIONS.md` §3 — the dimension tables (D1-D5)
+    canonical-cell source — the dimension tables (D1-D5)
     and intersection table reference loading-mechanism descriptors;
     the inventory rows are the per-skill canonical cell.
     """
@@ -1215,8 +1213,7 @@ def check_skill_cell_consistency() -> None:
         fail(
             f"PLATFORM-SKILLS.md — double-counted: '{s}' listed in "
             f"more than one inventory subsection [{sections}] (each "
-            f"skill must have exactly one canonical cell per "
-            f"ARCHITECTURE-SKILL-DIMENSIONS.md §3)"
+            f"skill must have exactly one canonical cell)"
         )
         any_failed = True
 

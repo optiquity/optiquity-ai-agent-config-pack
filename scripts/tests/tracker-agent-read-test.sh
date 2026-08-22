@@ -401,8 +401,7 @@ _setup_project_per_entry_repo() {
     mkdir -p "$repo/docs/project/backlog"
     mkdir -p "$repo/docs/project/implementation-plan"
     # Per-entry source-of-truth files (with line-1 HTML-comment
-    # back-pointer per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-
-    # ADDENDUM-2.md §2).
+    # back-pointer).
     cat > "$repo/docs/project/backlog/TD-005.md" <<'EOF'
 <!-- per-entry source: docs/project/backlog/TD-005.md; contract: docs/project/backlog/_rules.md -->
 **TD-005 — Document log rotation**

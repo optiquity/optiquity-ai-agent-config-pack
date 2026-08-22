@@ -56,15 +56,14 @@
 # Usage: bash scripts/tests/test-validate-pack-checks-32-33-34.sh
 # Exit:  0 if all PASS; 1 on any FAIL.
 #
-# Architecture:
-#   maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md
-#     §10.1 (Check 32 contract); §10.2 (Check 33); §10.3 (Check 34);
-#     §10.4 (pre-check folding); §10.5 (SKIP behavior); §10.6 (pack-side
-#     scope). (The former §11.3 `_v8-resolved-archive.md` cross-ref SKIP
-#     is removed by BD-203 B8; supporting files are now skipped generically
-#     by the walk loop's leading-underscore guard.)
-#   maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md
-#     §5.6 (BD-168 contract).
+# Contract under test (the source architecture + plan docs were deleted
+# at BD-210; the contract itself still holds):
+#   - Check 32 mirror-in-sync, Check 33 TOC-in-sync, Check 34 cross-refs.
+#   - Pre-check folding; SKIP behavior when the tree is absent; pack-side
+#     scope only.
+#   - The `_v8-resolved-archive.md` cross-ref SKIP was removed by BD-203
+#     B8; supporting files are now skipped generically by the walk loop's
+#     leading-underscore guard.
 
 set -u
 
@@ -1237,6 +1236,13 @@ assert_not_contains "T1c.2 old v11.0 → no dangling FAIL" "$T1C_OUT" "reference
 # findall pattern + the normalization regex directly (load the module,
 # reuse its exact patterns) — no git tags required, so the tag-comparison
 # branches are out of scope here (covered by Check 4's own skip paths).
+#
+# ROW SELECTION (BD-093): the README version table is ordered NEWEST-FIRST,
+# so the current version is `rows[0]`, not `rows[-1]`. This reproduction
+# mirrors production byte-for-byte; Tr.8 pins the multi-row case that the
+# old `rows[-1]` selection got wrong. Check 4's behavioral coverage (the
+# tag-comparison branches, the dev-branch + linked-worktree allowances, and
+# the FAIL bite) lives in `scripts/tests/test-validate-pack-check-4.sh`.
 
 printf "\n=== Group T-readme: BD-242 Check 4 display→tag normalization (R3) ===\n"
 
@@ -1254,7 +1260,9 @@ def cap_and_norm(line):
     rows = re.findall(findall_re, line, re.MULTILINE)
     if not rows:
         return ("<none>", "<none>")
-    cap = rows[-1].strip()
+    # NEWEST-FIRST table => the current version is rows[0] (production
+    # selects rows[0]; rows[-1] would select the OLDEST row).
+    cap = rows[0].strip()
     tag = re.sub(normalize_re, r"-\1", cap)
     return (cap, tag)
 
@@ -1275,6 +1283,20 @@ cap, tag = cap_and_norm("| v11.0 (work) | ... |")
 print(f"work cap={cap!r} tag={tag!r}")
 cap, tag = cap_and_norm("| v11.0.1 | ... |")
 print(f"patch cap={cap!r} tag={tag!r}")
+
+# Multi-row NEWEST-FIRST table: the selected row must be the FIRST
+# (current) row, never the LAST (oldest). This is the case the old
+# rows[-1] selection got wrong — it picked `v1`, whose tag always
+# exists, so the guard passed unconditionally (BD-093).
+multirow = "\n".join([
+    "| Version | Date | Key Additions |",
+    "|---|---|---|",
+    "| v11.0 (RC1) | May 2026 | current |",
+    "| v10.1 | May 2026 | older |",
+    "| v1 | 2025 | oldest |",
+])
+cap, tag = cap_and_norm(multirow)
+print(f"multirow cap={cap!r} tag={tag!r}")
 PYEOF
 )
 
@@ -1285,6 +1307,7 @@ assert_contains "Tr.4 'v11.0 (alpha)' → tag 'v11.0-alpha'" "$TREADME_OUT" "alp
 assert_contains "Tr.5 'v11.0 (GA)' → tag 'v11.0-GA'" "$TREADME_OUT" "GA cap='v11.0 (GA)' tag='v11.0-GA'"
 assert_contains "Tr.6 '| v11.0.1 |' → cap 'v11.0.1' tag 'v11.0.1' (PATCH via [\\d.]+)" "$TREADME_OUT" "patch cap='v11.0.1' tag='v11.0.1'"
 assert_contains "Tr.7 'v11.0 (work)' → tag 'v11.0-work'" "$TREADME_OUT" "work cap='v11.0 (work)' tag='v11.0-work'"
+assert_contains "Tr.8 newest-first table → selects the FIRST row, not the oldest (BD-093)" "$TREADME_OUT" "multirow cap='v11.0 (RC1)' tag='v11.0-RC1'"
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

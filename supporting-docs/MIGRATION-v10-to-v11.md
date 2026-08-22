@@ -51,7 +51,7 @@ project — there is no shared state between projects.
   one line for `pm-startup` recommended first action.
 - Customization-preservation contract: `init-project.sh --update`
   and `migrate-v10-to-v11.sh` share one library and one truthful
-  report format. See `MERGE-STRATEGY.md` for the per-file class matrix.
+  report format. See `pack-ops/MERGE-STRATEGY.md` for the per-file class matrix.
 - Legacy doc relocation tail: any v9-era reference docs still at project
   root (`METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, etc.) are moved to
   `docs/pack/` (with `git mv` when tracked, sidecared otherwise).
@@ -87,7 +87,7 @@ is reachable in v11.0 — flat-file per-entry is the sole supported mode.
 - `--dry-run` / `--apply` / `--resume` migrator modes — shipped in
   v11.0. Bare invocation defaults to `--apply` and
   auto-runs `--dry-run` first if no fresh dry-run output exists, so
-  the single-shot UX is preserved. See `MERGE-STRATEGY.md` §A1 for
+  the single-shot UX is preserved. See `pack-ops/MERGE-STRATEGY.md` §A1 for
   full mode semantics.
 
 ---
@@ -215,13 +215,13 @@ either. **What client projects must do:**
    and saves your pre-migration copy as
    `docs/pack/PLATFORM-SKILLS.md.v10-customized` (per the
    customization-preserve sidecar contract documented in
-   `MERGE-STRATEGY.md`); reconcile
+   `pack-ops/MERGE-STRATEGY.md`); reconcile
    manually as Step 2 above directs.
 3. **`## Custom agents` and `## Custom skills` sections are
    preserved byte-identical.** These two H2 sections at the bottom
    of `docs/pack/PLATFORM-SKILLS.md` are project-owned and
    preserved by the customization-preserve sidecar mechanism
-   regardless of the reframe (see `MERGE-STRATEGY.md` per-file
+   regardless of the reframe (see `pack-ops/MERGE-STRATEGY.md` per-file
    matrix entry for PLATFORM-SKILLS.md). The reframe does not
    touch their content.
 4. **Custom agents column header rename.**
@@ -249,7 +249,7 @@ because the reshape is doc-only at the pack level — the migrator
 ships the v11 PLATFORM-SKILLS.md template and the
 customization-preserve mechanism preserves project customizations
 under the per-class strategy in
-`MERGE-STRATEGY.md`.
+`pack-ops/MERGE-STRATEGY.md`.
 
 The one skill *rename* in v11 — the Python split
 (`python-architecture` → `python-server-architecture` +
@@ -389,7 +389,7 @@ To change an entry, edit its per-entry file directly under
 implementation-plan / changelog stream); the stream's `_toc.md`
 regenerates from the tree. CI gates per-entry↔`_toc.md` consistency
 via `validate-pack.py` Check 33 (TOC-in-sync). See
-`MERGE-STRATEGY.md` § "12. `generic` — everything else" for the
+`pack-ops/MERGE-STRATEGY.md` § "12. `generic` — everything else" for the
 per-entry-tree treatment in the customization-preserve pipeline.
 
 ---
@@ -404,12 +404,13 @@ per-entry-tree treatment in the customization-preserve pipeline.
    ```sh
    export PACK=/path/to/pack-repo
    git -C "$PACK" describe --tags
-   # → v11.0 (or later)
+   # → v11.0 or later. A pre-release tag carries a state qualifier
+   #   suffix (v11.0-RC1, v11.0-beta); the released form is bare (v11.0).
    ```
 4. **Understand sidecar conventions.** Files where the migrator can't
    safely auto-merge get a `.v10-customized` sidecar of your pre-migration
    copy. You reconcile manually after the migrator finishes. See
-   `MERGE-STRATEGY.md` for which classes can produce sidecars.
+   `pack-ops/MERGE-STRATEGY.md` for which classes can produce sidecars.
 5. **Pre-clean stale `--update` artifacts.** If you previously ran
    `init-project.sh --update`, remove any `*.pre-update` sidecars
    first — the v10→v11 migrator and `--update` use different sidecar
@@ -419,7 +420,7 @@ per-entry-tree treatment in the customization-preserve pipeline.
    pack repo to see exactly what files Step 1 below would change,
    without modifying anything. The dry-run renders a Markdown report
    showing the file-tree diff and any sidecars the real migration
-   would write. See `DRY-RUN-MIGRATION.md` for the full input
+   would write. See `pack-ops/DRY-RUN-MIGRATION.md` for the full input
    contract, output interpretation, and CI release-gate pattern.
 7. **(Optional but recommended) Step 0 — pre-reconcile the trinity.**
    If you customized your trinity (`CLAUDE.md` / `AGENTS.md` /
@@ -507,7 +508,7 @@ framework exit code (`24` for S4; `25` for S5).
 | 14 | v10 baseline tag missing in pack repo | `git -C "$PACK" fetch --tags` then retry. |
 | 15 | Customization-preserve library missing under pack | The pack repo is corrupt or incomplete; re-clone. |
 | 21–30 | Stage `S<n>` failure | Read the printed error message; address; retry. |
-| 31 | `EXIT_GATE_FAILED` — verification gate (Gate 1, 2, or 3) reported a defect | Read the printed `[FAIL]` lines and the gate's printed recovery banner. Gate 1 (during `--dry-run`) is read-only — fix the underlying defect and re-run `--dry-run`. Gate 2 (post-Phase-A) requires restoring the working tree from `.pack-migrate-v10-to-v11-backup/` via the rsync recipe in §Rollback below + re-run of `--dry-run` + `--apply`; fix-and-continue is NOT supported because S4/S5/S6 sentinels are already marked `.done`. (The legacy `scripts/restore-from-backup.sh` is for v9.3→v10 backups and does NOT apply to v10→v11.) Gate 3 (post-Phase-B, tracker-mode only) is recoverable without restoring from backup — run `pack tracker doctor` and follow the printed verbs. See `MERGE-STRATEGY.md` §A1 for full gate semantics. |
+| 31 | `EXIT_GATE_FAILED` — verification gate (Gate 1, 2, or 3) reported a defect | Read the printed `[FAIL]` lines and the gate's printed recovery banner. Gate 1 (during `--dry-run`) is read-only — fix the underlying defect and re-run `--dry-run`. Gate 2 (post-Phase-A) requires restoring the working tree from `.pack-migrate-v10-to-v11-backup/` via the rsync recipe in §Rollback below + re-run of `--dry-run` + `--apply`; fix-and-continue is NOT supported because S4/S5/S6 sentinels are already marked `.done`. (The legacy `scripts/restore-from-backup.sh` is for v9.3→v10 backups and does NOT apply to v10→v11.) Gate 3 (post-Phase-B, tracker-mode only) is recoverable without restoring from backup — run `pack tracker doctor` and follow the printed verbs. See `pack-ops/MERGE-STRATEGY.md` §A1 for full gate semantics. |
 
 **Verification gates.** During `--dry-run` and `--apply` the
 migrator emits one or more `── Gate N — ... ──` banners. There are
@@ -526,7 +527,7 @@ three gates:
 
 A FAIL banner always lists the failing checks as `[FAIL] <check-name>`
 lines and prints a recovery banner naming the supported recovery path
-for that gate. See `MERGE-STRATEGY.md` §A1 for the full gate
+for that gate. See `pack-ops/MERGE-STRATEGY.md` §A1 for the full gate
 semantics + recovery contracts.
 
 ---
@@ -610,7 +611,7 @@ edits since v10, BASE→THEIRS = pack edits v10→v11) if you need to see what
 each side changed, resolve per its group above, then mark it resolved (`rm`
 the sidecar or add its `.resolved` companion) and `git add`.
 
-See `MERGE-STRATEGY.md` for the full per-file class matrix that explains
+See `pack-ops/MERGE-STRATEGY.md` for the full per-file class matrix that explains
 which strategy was used for each file and why.
 
 ---
@@ -693,7 +694,7 @@ library:
 2. **Per-class strategies.** 11 classes covering trinity (3-way merge),
    structured configs (JSON/TOML allowlist), per-CLI agents (`x-`
    reserved-prefix preservation), pack-shipped scripts (3-way text),
-   and so on. See `MERGE-STRATEGY.md`.
+   and so on. See `pack-ops/MERGE-STRATEGY.md`.
 3. **Single-slot sidecars.** `<file>.v10-customized` for the migrator,
    `<file>.pre-update` for `init-project.sh --update`. The migrator
    refuses to run when its backup directory already exists; `--update`
@@ -823,7 +824,7 @@ the diff shows.
 
 ### My customizations weren't preserved
 
-This should never happen for the 12 documented classes (`MERGE-STRATEGY.md`).
+This should never happen for the 12 documented classes (`pack-ops/MERGE-STRATEGY.md`).
 If it does:
 
 1. Save `dispositions.tsv` and the relevant `<file>.v10-customized`.
@@ -877,5 +878,10 @@ The AI Agent Config Pack v11.0 is available at $PACK. Please:
    to confirm the addenda landed.
 ```
 
-The migrator itself is non-interactive (no prompts); the AI CLI
-handles the reconciliation step.
+When an AI CLI invokes the migrator, stdin is normally not a terminal,
+so the migrator takes the non-interactive path automatically: it prints
+the copy-paste menu and pauses for `--resume`, and the AI CLI handles
+the reconciliation step as above. Run it yourself in a terminal and the
+migrator instead walks each unmergeable file interactively — see
+"Interactive reconciliation" under Step 1. Pass `--no-interactive` to
+force the non-interactive path regardless of stdin.

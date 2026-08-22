@@ -884,7 +884,7 @@ C1 constraint: "Only phases can be members of a grouping. Phase parts (`phase-N.
 | ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md | `maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` | Defines the BD-164/167 integration with migrate-v10-to-v11. BD-185 changes to migrator must compose with this. |
 | ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-ADDENDUM-2.md | same dir | Line-1 HTML-comment back-pointer rule. BD-185 should not change this. |
 | ARCHITECTURE-BD-119.md | `maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md` | Migrator framework contract. New migrator operations BD-185 introduces must follow the contract. |
-| EXECUTION-PLAN-V11.0.md | `maintenance-docs/v11-implementation/EXECUTION-PLAN-V11.0.md` | Batch sequencing. BD-185 lands at Batch 19d per `pack-ops/BACKLOG.md:1789`. |
+| EXECUTION-PLAN-V11.0.md | `maintenance-docs/archive/v11/EXECUTION-PLAN-V11.0.md` | Batch sequencing. BD-185 lands at Batch 19d per `pack-ops/BACKLOG.md:1789`. |
 | TOUCH-POINT-INVENTORY-PER-ENTRY.md | `maintenance-docs/archive/v11/TOUCH-POINT-INVENTORY-PER-ENTRY.md` | Style mirror for THIS inventory. |
 | TOUCH-POINT-INVENTORY-GROUPINGS-V2.md | `maintenance-docs/v11-research/TOUCH-POINT-INVENTORY-GROUPINGS-V2.md` | Style mirror; §6.M + §8.4 cite BD-185 as a constraint surface for the v11.1+ groupings work. |
 | REQUIREMENTS-GROUPINGS-V11.md | `maintenance-docs/v11-research/REQUIREMENTS-GROUPINGS-V11.md` | C1 commits to "Parts NEVER members". |

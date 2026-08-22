@@ -225,16 +225,90 @@ def check_td_tbd_sentinels() -> None:
 
 # ── Check 4: README version table vs git tag ────────────────────────────────
 
+def _check_4_is_dev_branch(name: str) -> bool:
+    """True iff `name` is a development branch, matched on SEGMENT boundaries.
+
+    A bare `"dev" in name` substring test also accepts `main-devops` and
+    `feature/device-x`, silently granting the pre-release allowance to
+    branches that are NOT dev branches — and on the primary-checkout path
+    below that reaches CI, where the allowance must never fire by accident.
+    Splitting on `-` and `/` accepts every real spelling (`dev`, `dev/topic`,
+    `v11-dev`, `v10-dev`, `v11-dev-fixes`) and rejects the substring
+    lookalikes. Degradation direction is safe: an unrecognized dev-branch
+    spelling mis-FAILs loudly, never mis-PASSes.
+    """
+    return "dev" in re.split(r"[-/]", name.strip())
+
+
+def _check_4_dev_worktree_branch() -> str:
+    """Return a dev branch pointing at HEAD *iff* this checkout is a LINKED
+    git worktree; else "".
+
+    Rationale (ci-guard-runtime + BD-226 RW-agent worktree isolation): a
+    read-write pack agent runs in a linked worktree whose branch is a
+    throwaway (`worktree-agent-<id>`), so `git branch --show-current` does
+    NOT carry the development branch and the dev-branch allowance below
+    would mis-FAIL every agent verification run. The worktree's HEAD is the
+    dev branch's HEAD (agents never commit), so a dev branch `--points-at`
+    HEAD identifies the same pre-release context.
+
+    Gated on LINKED-worktree-ness on purpose: in the PRIMARY checkout — and
+    in CI, which is never a linked worktree — a `main` checkout sitting on
+    the same commit as a dev branch must STILL fail. That is precisely the
+    release-cut README-vs-tag mismatch this guard exists to catch.
+
+    Cost: two `git` calls, and only on the path that was otherwise about to
+    FAIL (ci-check-runtime-compounding — the hot path is untouched).
+    """
+    def _abs(rel_or_abs: str):
+        # `--git-dir` / `--git-common-dir` may answer relative on older git;
+        # `--path-format=absolute` is git>=2.31, so normalize here instead.
+        p = Path(rel_or_abs)
+        if not p.is_absolute():
+            p = Path(REPO_ROOT) / p
+        return p.resolve()
+
+    try:
+        git_dir = subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+        common_dir = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+        if git_dir.returncode != 0 or common_dir.returncode != 0:
+            return ""
+        if _abs(git_dir.stdout.strip()) == _abs(common_dir.stdout.strip()):
+            return ""  # primary checkout — no worktree allowance
+        points_at = subprocess.run(
+            ["git", "branch", "--points-at", "HEAD", "--format=%(refname:short)"],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+        if points_at.returncode != 0:
+            return ""
+        for name in points_at.stdout.split():
+            if _check_4_is_dev_branch(name):
+                return name
+    except (FileNotFoundError, OSError):
+        return ""
+    return ""
+
+
 def check_readme_version() -> None:
     print("\n── Check 4: README version table vs git tag ──")
     if not README.exists():
         fail("README.md not found")
         return
 
-    # Find the last table row with a version. The DISPLAY form may carry a
-    # parenthetical release-state qualifier — `v11.0 (RC1)` — with the
-    # bounded allowlist (work/alpha/beta lowercase, RC numbered, GA uppercase).
-    # `[\d.]+` already covers the optional `.PATCH` segment.
+    # Find the CURRENT version row. The README version table is ordered
+    # NEWEST-FIRST, so the current version is the FIRST match, not the last:
+    # `version_rows[0]`. (Taking `[-1]` selects the OLDEST row — `v1` — whose
+    # tag always exists, which made this guard pass unconditionally and catch
+    # nothing.) The DISPLAY form may carry a parenthetical release-state
+    # qualifier — `v11.0 (RC1)` — with the bounded allowlist (work/alpha/beta
+    # lowercase, RC numbered, GA uppercase). `[\d.]+` already covers the
+    # optional `.PATCH` segment.
     content = README.read_text()
     version_rows = re.findall(
         r"^\|\s*(v[\d.]+(?:\s*\((?:work|alpha|beta|RC\d+|GA)\))?)\s*\|",
@@ -243,7 +317,7 @@ def check_readme_version() -> None:
     if not version_rows:
         fail("README.md — no version table rows found")
         return
-    readme_version = version_rows[-1].strip()
+    readme_version = version_rows[0].strip()
     # Normalize the DISPLAY form to the git-TAG form before comparing to
     # tags: ` (X)` → `-X`, case preserved (git refs cannot carry spaces or
     # parentheses). A bare `v11.0` (no qualifier) normalizes to itself.
@@ -277,10 +351,23 @@ def check_readme_version() -> None:
                 capture_output=True, text=True, cwd=REPO_ROOT,
             )
             current_branch = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
-            if "dev" in current_branch:
+            if _check_4_is_dev_branch(current_branch):
                 ok(f"README.md version {readme_version} (dev branch — tag will be created at release)")
-            else:
-                fail(f"README.md latest version is {readme_version} but no matching git tag exists (tags: {tags[0]}...)")
+                return
+            wt_dev = _check_4_dev_worktree_branch()
+            if wt_dev:
+                ok(
+                    f"README.md version {readme_version} (linked worktree off "
+                    f"dev branch `{wt_dev}` — tag will be created at release)"
+                )
+                return
+            fail(
+                f"README.md current version is {readme_version} "
+                f"(tag form `{readme_version_tag}`) but no matching git tag "
+                f"exists (newest tag: {tags[0]}). The README version table is "
+                f"ordered newest-first; row 1 is the current version. Either "
+                f"create the tag or correct the README row."
+            )
 
     except FileNotFoundError:
         ok(f"README.md latest version: {readme_version} (git not available — skipping)")
@@ -1078,8 +1165,8 @@ def check_migrator_framework_inventory() -> None:
         `EXIT_ALREADY_MIGRATED`, `EXIT_INTERNAL`;
       - the `EXIT_NOT_V10` back-compat synonym (PLAN §3.5).
 
-    Per PLAN-SKILL-DIMENSIONS.md §7.2 (BD-147), the inventory now
-    includes `migrator-skills.sh` as a fourth blessed framework lib.
+    Per BD-147, the inventory now includes `migrator-skills.sh` as a
+    fourth blessed framework lib.
     `migrator-skills.sh` must additionally declare its public-API
     function `migrator_skill_rename` (and the forward-declared
     `migrator_skill_split` wrapper).
@@ -1165,7 +1252,7 @@ def check_migrator_framework_inventory() -> None:
     # BD-147 — migrator-skills.sh public-API surface. Both the skill-rename
     # adapter and the forward-declared skill-split wrapper must be present
     # as function definitions so adapters can rely on a stable API across
-    # N→N+1 migrators (per ARCHITECTURE-SKILL-DIMENSIONS.md §6.5).
+    # N→N+1 migrators.
     skills_text = skills.read_text()
     skills_required_names = [
         "migrator_skill_rename",

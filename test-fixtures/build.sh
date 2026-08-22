@@ -362,8 +362,7 @@ EOF
     #   v10: $target/BACKLOG.md (root; v10 had no per-entry tree and the
     #        project backlog convention lived at the repo root).
     #   v11: $target/docs/project/BACKLOG.md (the project-side per-entry
-    #        split moves project backlog under docs/project/ per
-    #        ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §3.3). The v11
+    #        split moves project backlog under docs/project/). The v11
     #        target file already exists as the BD-166 empty-seed mirror
     #        (intro-only, produced by init-project.sh's S11 sub-step 7).
     #        We APPEND the TD-NNN block AFTER the intro so the resulting

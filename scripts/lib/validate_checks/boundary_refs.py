@@ -44,6 +44,7 @@ from .core import (
     REPO_ROOT,
     fail,
     ok,
+    warn,
     failures,
     _PACK_CHAT_ONLY_PERMITTED_PATHS,
     _PACK_CHAT_ONLY_PERMITTED_PREFIXES,
@@ -55,7 +56,7 @@ from .core import (
 
 # ── Check 35: Phase-task lib invariants (BD-106 / V3.3 §3 line 27) ─────────
 # (Renumbered from Check 32 in BD-168 to make room for the per-entry
-# split validators per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.)
+# split validators.)
 
 def check_tracker_phase_task_invariants() -> None:
     """Check 35 (renumbered from Check 32 in BD-168) — phase-task lib
@@ -1149,6 +1150,87 @@ _CHECK_39_REVERSE_EXEMPTIONS: dict[str, str] = {
 }
 
 
+# ── Check 39 leg 3 (BD-093): the v10→v11 ADAPTER manifest reverse leg ──────
+#
+# WHY THIS LEG EXISTS. BD-180 observation E closed the stale-mapping class for
+# `init-project.sh` `cmd_update` — but the SAME class was left open one file
+# over: the migrator adapter declares its own pack→project path rows via the
+# `migrator_manifest()` / `migrator_directory_sweeps()` hooks, and nothing
+# verified those sources exist. The identical defect was still live at
+# BD-093: `migrator_manifest()` declared
+# `project-template/docs/pack/PROMPT-TEMPLATES.md`, retired in v10.0. It is
+# benign at runtime (`_manifest_dispatch_transform` does
+# `[[ -f "$theirs" ]] || theirs=""`, so the row is inert) — which is exactly
+# why it survived: a declared mapping with NO backing, invisible to every
+# gate. `declare-verify-backing`: a records-style check must verify the
+# LOAD-BEARING reality (the source SHIPS), not merely that a row is
+# well-formed.
+#
+# BOTH path-emitting hooks are covered, not just the file manifest. Guarding
+# `migrator_manifest` while leaving `migrator_directory_sweeps` unguarded
+# would reproduce the very asymmetric-coverage gap this leg closes
+# (`enumerate-encoding-surfaces`); the two hooks are the same adapter
+# contract — adjacent members of `_migrator_required_hooks` in
+# `scripts/lib/migrator-core.sh` (an adapter that declares one declares
+# both), and Check 47 already parses the pair JOINTLY via the shared
+# `_migrator_heredoc_first_fields()`. Their CONSUMERS differ and that is
+# immaterial here: `migrator_manifest` rows are read by `_manifest_parse`,
+# sweep rows by `_manifest_sweep_dirs` (`scripts/lib/migrator-manifest.sh`).
+#
+# MEASURE-THEN-BOUND (ci-guard-measure-then-bound), measured at BD-093
+# against the live tree BEFORE this leg was authored:
+#   migrator_manifest()          13 rows -> 12 KEEP, 1 STRIP
+#                                (STRIP = the PROMPT-TEMPLATES.md row, deleted
+#                                 in this same change)
+#   migrator_directory_sweeps()   3 rows ->  3 KEEP, 0 STRIP
+# Post-STRIP the legitimate set is 100% backed, so the exemption allowlist is
+# sized to EXACTLY ZERO — empty by construction, not by convenience (same
+# shape as `_CHECK_39_REVERSE_EXEMPTIONS` above).
+#
+# TRACKED-NESS IS THE ORACLE, not `is_file()`: the question this leg answers
+# is "does the declared source SHIP?", and an untracked-but-present working-
+# tree file does not ship. One pathspec-scoped `git ls-files --
+# project-template` call (the boundary_refs.py:_git_ls_files-multi precedent),
+# never a raw filesystem walk.
+#
+# RUNTIME (ci-check-runtime-compounding): one bounded subprocess plus one
+# read of the adapter file, then O(rows) set-membership tests over 16 rows.
+# No per-row subprocess, no whole-tree walk. SKIP-lenient when git is
+# unavailable or the adapter is absent.
+_CHECK_39_MIGRATOR_EXEMPTIONS: dict[str, str] = {
+    # Intentionally EMPTY at HEAD (measured: 0 legitimate-but-absent rows
+    # across both hooks). Add an entry only when an adapter-declared source
+    # intentionally lives outside tracked HEAD, with a one-line rationale.
+}
+
+
+def _parse_migrator_manifest_sources() -> tuple:
+    """Parse the v10→v11 adapter's two path-emitting hooks.
+
+    Returns `(file_rows, dir_rows)` — the pack-side source path of every
+    `migrator_manifest()` row and every `migrator_directory_sweeps()` row
+    (field 0 in both cases; the manifest is TAB-separated and the sweeps
+    space-separated, which the shared whitespace split handles alike).
+
+    Parsing is DELEGATED to `_migrator_heredoc_first_fields()` — the same
+    helper Check 47 already runs over these exact two hooks — rather than
+    re-implemented. A second, narrower parser here could disagree with
+    Check 47 and, worse, go SILENTLY INERT (return no rows, so the leg's
+    `if mig_files or mig_dirs:` short-circuits and Check 39 passes while
+    checking nothing) on an adapter that merely renamed its heredoc marker,
+    left it unquoted, used the `<<-` form, or put a comment before the
+    `cat`. That is the exact defect class BD-093 exists to close. Returns
+    `([], [])` only when the adapter FILE itself is absent.
+    """
+    adapter = REPO_ROOT / _MIGRATOR_REL
+    if not adapter.is_file():
+        return ([], [])
+    text = adapter.read_text()
+    file_rows = _migrator_heredoc_first_fields(text, "migrator_manifest")
+    dir_rows = _migrator_heredoc_first_fields(text, "migrator_directory_sweeps")
+    return ([p for p in file_rows if p], [p for p in dir_rows if p])
+
+
 
 
 def _parse_cmd_update_entries() -> set[str]:
@@ -1295,6 +1377,102 @@ def check_cmd_update_symmetry() -> None:
         )
         any_failed = True
 
+    # ── Leg 3: v10→v11 adapter manifest reverse direction (BD-093) ───────
+    # Same defect class as the BD-180 leg above, one file over: an adapter-
+    # declared pack-side source that does not ship. See the leg-3 block
+    # comment near `_CHECK_39_MIGRATOR_EXEMPTIONS` for the measurement.
+    mig_files, mig_dirs = _parse_migrator_manifest_sources()
+    mig_checked = 0
+    mig_exempted = 0
+    if mig_files or mig_dirs:
+        try:
+            # Pathspec DERIVED from the declared rows, never hard-coded.
+            # The adapter contract imposes no project-template/ restriction
+            # (`supporting-docs/` is an equally legitimate client-deliverable
+            # root — see `_is_pack_side_ship_source`), so scoping to a fixed
+            # prefix while testing EVERY row against that set would make a
+            # row sourced elsewhere FAIL with a message falsely asserting it
+            # "is NOT tracked at HEAD, so it does not ship". Deriving the
+            # scope keeps the single-subprocess cost
+            # (`ci-check-runtime-compounding`) with no false-FAIL possible.
+            mig_pathspecs = sorted({
+                p.split("/", 1)[0] for p in list(mig_files) + list(mig_dirs) if p
+            })
+            res = subprocess.run(
+                ["git", "ls-files", "--"] + mig_pathspecs,
+                cwd=REPO_ROOT, capture_output=True, text=True,
+            )
+            git_ok = res.returncode == 0
+        except (FileNotFoundError, OSError):
+            git_ok = False
+        if not git_ok:
+            ok(
+                "Check 39 leg 3 — git unavailable (not a git work tree) — "
+                "skipping the migrator-manifest reverse leg (lenient)"
+            )
+        else:
+            tracked = {ln.strip() for ln in res.stdout.splitlines() if ln.strip()}
+            tracked_dirs = {p.rsplit("/", 1)[0] for p in tracked if "/" in p}
+            # A declared directory is backed if ANY tracked path sits under
+            # it (a parent-of-a-tracked-file is itself a shipped directory).
+            for d in list(tracked_dirs):
+                parts = d.split("/")
+                for i in range(1, len(parts)):
+                    tracked_dirs.add("/".join(parts[:i]))
+
+            for pack_rel in mig_files:
+                mig_checked += 1
+                if pack_rel in tracked:
+                    continue
+                if pack_rel in _CHECK_39_MIGRATOR_EXEMPTIONS:
+                    mig_exempted += 1
+                    ok(
+                        f"{pack_rel} — exempt per "
+                        f"_CHECK_39_MIGRATOR_EXEMPTIONS: "
+                        f"{_CHECK_39_MIGRATOR_EXEMPTIONS[pack_rel]}"
+                    )
+                    continue
+                fail(
+                    f"{pack_rel} — `migrator_manifest()` in "
+                    f"scripts/migrate-v10-to-v11.sh declares a pack-side "
+                    f"source that is NOT tracked at HEAD, so it does not "
+                    f"ship: the mapping is stale and the row is silently "
+                    f"inert at migration time "
+                    f"(`_manifest_dispatch_transform` blanks an absent "
+                    f"`theirs`). Either delete the row from the "
+                    f"`migrator_manifest()` heredoc, or — if the source "
+                    f"intentionally lives outside tracked HEAD — add it to "
+                    f"`_CHECK_39_MIGRATOR_EXEMPTIONS` in "
+                    f"scripts/lib/validate_checks/boundary_refs.py with a "
+                    f"one-line rationale. Same class as the BD-180 "
+                    f"`cmd_update` stale-mapping fix; BD-093 closed it for "
+                    f"the migrator adapter."
+                )
+                any_failed = True
+
+            for pack_dir in mig_dirs:
+                mig_checked += 1
+                if pack_dir in tracked_dirs:
+                    continue
+                if pack_dir in _CHECK_39_MIGRATOR_EXEMPTIONS:
+                    mig_exempted += 1
+                    ok(
+                        f"{pack_dir} — exempt per "
+                        f"_CHECK_39_MIGRATOR_EXEMPTIONS: "
+                        f"{_CHECK_39_MIGRATOR_EXEMPTIONS[pack_dir]}"
+                    )
+                    continue
+                fail(
+                    f"{pack_dir} — `migrator_directory_sweeps()` in "
+                    f"scripts/migrate-v10-to-v11.sh declares a pack-side "
+                    f"directory with no tracked files under it, so the "
+                    f"sweep ships nothing. Either delete the row from the "
+                    f"`migrator_directory_sweeps()` heredoc, or add it to "
+                    f"`_CHECK_39_MIGRATOR_EXEMPTIONS` with a one-line "
+                    f"rationale."
+                )
+                any_failed = True
+
     if not any_failed:
         ok(
             f"Check 39 — {files_checked} `project-template/docs/pack/*.md` "
@@ -1303,9 +1481,12 @@ def check_cmd_update_symmetry() -> None:
             f"exemption allowlist. {reverse_checked} `cmd_update` "
             f"entries reverse-checked; {reverse_checked - reverse_exempted} "
             f"resolve to existing files at HEAD, {reverse_exempted} on "
-            f"reverse exemption allowlist. No asymmetric coverage between "
-            f"S6 fresh-install glob and `cmd_update` explicit mappings; "
-            f"no stale mappings."
+            f"reverse exemption allowlist. {mig_checked} v10→v11 adapter "
+            f"manifest/sweep row(s) reverse-checked against git-tracked "
+            f"HEAD; {mig_checked - mig_exempted} are backed by a shipped "
+            f"source, {mig_exempted} on the migrator exemption allowlist. "
+            f"No asymmetric coverage between S6 fresh-install glob and "
+            f"`cmd_update` explicit mappings; no stale mappings."
         )
 
 
@@ -3611,12 +3792,27 @@ def check_operating_doc_no_history() -> None:
     total_forbidden_outside = 0
     total_allowlisted = 0
 
+    # DEAD-RECORD TRACKING (declare-verify-backing). The allowlist header
+    # claims it is "sized to the KEEP set EXACTLY" and that a reviewer
+    # re-verifies each `reason:` — but nothing verified a record still
+    # matches anything. A record whose exempted line was edited or deleted
+    # simply stops firing and sits here invisibly, which is precisely what
+    # the removed K6 record had become. Recording which records actually
+    # FIRE makes that records-style claim load-bearing.
+    #
+    # ADVISORY ONLY, never a gate: a record can be legitimately un-triggered
+    # (its doc absent at HEAD, or momentarily outside the IN set), so a hard
+    # FAIL here would red CI on a false positive.
+    scanned_doc_set: set = set()
+    used_records: set = set()
+
     for doc_rel in _CHECK_65_OPERATING_DOCS:
         doc_path = REPO_ROOT / doc_rel
         if not doc_path.is_file():
             ok(f"{doc_rel} absent — skipping that doc (lenient)")
             continue
         scanned_docs += 1
+        scanned_doc_set.add(doc_rel)
         snippets = allowlist.get(doc_rel, [])
         lines = doc_path.read_text().splitlines()
 
@@ -3630,7 +3826,15 @@ def check_operating_doc_no_history() -> None:
             # ANCHOR-EXEMPT FIRST: a line is allowlisted iff one of the
             # doc's allowlist snippets is a substring of the line
             # (content-anchored, not line-number-anchored — lines drift).
-            covered = any(snip in line for snip in snippets)
+            # Iterate rather than `any(...)`: the short-circuit would hide a
+            # second snippet that also covers this line and mis-report its
+            # record as dead below. Cost is O(snippets), and only on a line
+            # that already matched a forbidden pattern.
+            covered = False
+            for snip in snippets:
+                if snip in line:
+                    covered = True
+                    used_records.add((doc_rel, snip))
             if covered:
                 total_allowlisted += 1
                 continue
@@ -3651,12 +3855,39 @@ def check_operating_doc_no_history() -> None:
             )
             any_fail = True
 
+    # O(records) set difference — no extra file read, no subprocess, no
+    # tree walk (ci-check-runtime-compounding).
+    declared = {(d, s) for d, snips in allowlist.items() for s in snips}
+    dead = sorted(
+        r for r in declared if r[0] in scanned_doc_set and r not in used_records
+    )
+    unscanned = sorted(r for r in declared if r[0] not in scanned_doc_set)
+
+    for doc_rel, snip in dead:
+        warn(
+            f"Check 65 allowlist — record `doc: {doc_rel}` / "
+            f"`snippet: {snip}` matched NO line in that doc. The allowlist "
+            f"is declared 'sized to the KEEP set EXACTLY', so a record that "
+            f"never fires is dead weight: either the line it exempted was "
+            f"edited/removed (drop the record) or the snippet drifted "
+            f"(re-anchor it). Advisory only — exit code unaffected."
+        )
+    for doc_rel, snip in unscanned:
+        warn(
+            f"Check 65 allowlist — record `doc: {doc_rel}` / "
+            f"`snippet: {snip}` names a doc outside the scanned operating-doc "
+            f"IN set (absent at HEAD, or not an IN doc), so the record can "
+            f"never fire. Advisory only — exit code unaffected."
+        )
+
     if not any_fail:
         ok(
             f"Check 65 — {scanned_docs} operating doc(s) scanned; "
             f"{total_forbidden_outside} history pattern(s) outside the "
             f"allowlist (0 = clean); {total_allowlisted} allowlisted KEEP "
-            f"occurrence(s) admitted."
+            f"occurrence(s) admitted. Allowlist backing: {len(declared)} "
+            f"record(s) declared, {len(used_records)} live, {len(dead)} dead, "
+            f"{len(unscanned)} on unscanned docs."
         )
 
 
@@ -4460,7 +4691,19 @@ def _migrator_heredoc_first_fields(text: str, func_name: str) -> list:
     fn = re.search(r"(?m)^" + re.escape(func_name) + r"\(\)\s*\{", text)
     if not fn:
         return fields
-    body = text[fn.end():]
+    # Bound the scan to THIS hook's own body. Unbounded, a hook that has no
+    # heredoc of its own (the `{ :; }` empty form) runs on and returns the
+    # NEXT hook's rows — a silently WRONG answer rather than an empty one,
+    # which is the same false-confidence class both callers (Check 39 leg 3,
+    # Check 47) exist to prevent. The body ends at the first column-0 `}` or
+    # the next column-0 function definition, whichever comes first.
+    rest_all = text[fn.end():]
+    end = len(rest_all)
+    for _bound in (r"(?m)^\}", r"(?m)^\w[\w.-]*\(\)\s*"):
+        _m = re.search(_bound, rest_all)
+        if _m and _m.start() < end:
+            end = _m.start()
+    body = rest_all[:end]
     opener = re.search(r"<<-?'?(\w+)'?\s*\n", body)
     if not opener:
         return fields
@@ -4645,7 +4888,9 @@ __all__ = [
     "check_pack_only_file_siting",
     "_CHECK_39_EXEMPTIONS",
     "_CHECK_39_REVERSE_EXEMPTIONS",
+    "_CHECK_39_MIGRATOR_EXEMPTIONS",
     "_parse_cmd_update_entries",
+    "_parse_migrator_manifest_sources",
     "check_cmd_update_symmetry",
     "_CHECK_40_ALLOWLIST",
     "_CHECK_40_ANCHOR_PHRASES",

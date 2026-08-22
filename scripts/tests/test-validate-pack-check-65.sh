@@ -294,6 +294,70 @@ if fc < 1:
 if "incident" not in cap:
     failures.append("T7b (standalone 'incident' FAIL) expected the offending line in output: %s" % cap)
 
+# T8: DEAD-RECORD ADVISORY (declare-verify-backing). The allowlist header
+#     claims it is "sized to the KEEP set EXACTLY"; nothing verified that a
+#     record still matches anything, so a record whose exempted line was
+#     edited or deleted sat there invisibly. Check 65 now reports per-record
+#     backing. T8a: a live record is counted LIVE and no WARN fires.
+#     T8b: a record whose snippet matches NOTHING is reported dead, WARNs,
+#     and — critically — does NOT change the failure count (ADVISORY ONLY,
+#     so a legitimately un-triggered record can never red CI).
+body = (
+    "# SYNTH-OPERATING.md\n"
+    "\n"
+    "See ARCHITECTURE-BD-119.md for the migrator framework.\n"
+)
+ALLOWLIST_ONE = (
+    "doc: %s\n"
+    "pattern: bd-tag\n"
+    "snippet: ARCHITECTURE-BD-119.md\n"
+    "reason: live doc cross-ref (synthetic K2).\n"
+) % SYNTH_DOC
+
+fc, pm, cap = run_check_with_synthetic(body, ALLOWLIST_ONE)
+if "1 live" not in cap:
+    failures.append("T8a expected '1 live' record in the backing summary: %s" % cap)
+if "0 dead" not in cap:
+    failures.append("T8a expected '0 dead' records for a fully-live allowlist: %s" % cap)
+if "matched NO line" in cap:
+    failures.append("T8a a live allowlist must emit no dead-record WARN: %s" % cap)
+
+ALLOWLIST_WITH_DEAD = ALLOWLIST_ONE + (
+    "\n"
+    "doc: %s\n"
+    "pattern: bd-tag\n"
+    "snippet: ZZZ-MATCHES-NOTHING-ZZZ\n"
+    "reason: synthetic DEAD record (must be reported, must not fail).\n"
+) % SYNTH_DOC
+fc, pm, cap = run_check_with_synthetic(body, ALLOWLIST_WITH_DEAD)
+if "matched NO line" not in cap:
+    failures.append("T8b expected the dead-record WARN: %s" % cap)
+if "ZZZ-MATCHES-NOTHING-ZZZ" not in cap:
+    failures.append("T8b dead-record WARN must name the dead snippet: %s" % cap)
+if "1 dead" not in cap:
+    failures.append("T8b expected '1 dead' in the backing summary: %s" % cap)
+if fc != 0:
+    failures.append("T8b ADVISORY ONLY — a dead record must not add a failure, got %d: %s" % (fc, cap))
+if not pm:
+    failures.append("T8b a dead record must not break the '0 = clean' PASS: %s" % cap)
+
+# T9: a record naming a doc OUTSIDE the scanned IN set can never fire, and is
+#     reported separately — also advisory, never a gate.
+ALLOWLIST_UNSCANNED = ALLOWLIST_ONE + (
+    "\n"
+    "doc: pack-ops/NO-SUCH-OPERATING-DOC.md\n"
+    "pattern: bd-tag\n"
+    "snippet: ZZZ-UNSCANNED-ZZZ\n"
+    "reason: synthetic record on a doc outside the IN set.\n"
+)
+fc, pm, cap = run_check_with_synthetic(body, ALLOWLIST_UNSCANNED)
+if "outside the scanned operating-doc IN set" not in cap:
+    failures.append("T9 expected the unscanned-doc WARN: %s" % cap)
+if "1 on unscanned docs" not in cap:
+    failures.append("T9 expected '1 on unscanned docs' in the backing summary: %s" % cap)
+if fc != 0:
+    failures.append("T9 ADVISORY ONLY — an unscanned-doc record must not add a failure, got %d: %s" % (fc, cap))
+
 if failures:
     print("FAILURES")
     for f in failures:

@@ -115,7 +115,6 @@ project-template/.agents/mcp_config.json.example	.agents/mcp_config.json	mcp-con
 project-template/docs/pack/PM-CHAT.md	docs/pack/PM-CHAT.md	pm-chat	transform
 project-template/docs/pack/PLATFORM-SKILLS.md	docs/pack/PLATFORM-SKILLS.md	generic	transform
 project-template/docs/pack/PACK-FEEDBACK.md	docs/pack/PACK-FEEDBACK.md	generic	transform
-project-template/docs/pack/PROMPT-TEMPLATES.md	docs/pack/PROMPT-TEMPLATES.md	generic	transform
 EOF
 }
 
@@ -176,8 +175,7 @@ migrator_post_dispatch_hook() {
     # `_toc.md` is the sole source of truth + readable form; no mirror
     # is regenerated).
     #
-    # Sequencing constraint per
-    # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §3.1 / §9.6: this
+    # Sequencing constraint: this
     # MUST run AFTER all 5 prior sub-ops so the decompose step reads
     # the FINAL v11-shape monolithic content (post BD-104 rename, post
     # BD-042 relocation, post v11 artifact install incl. BD-167
@@ -413,8 +411,7 @@ _v10_to_v11_install_v11_artifacts() {
     # Source: project-template/docs/project/<stream>/{_rules.md,
     # _intro.md}. Four streams: backlog,
     # implementation-plan, changelog, groupings (the fourth stream per
-    # BD-262/BD-263). Client-immutable per
-    # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §3.3 — the
+    # BD-262/BD-263). Client-immutable — the
     # supporting-file installation creates the directory if absent and
     # copies each support file iff the destination is absent (additive,
     # no overwrite of client-customized supporting files; BD-088
@@ -769,8 +766,7 @@ _v10_to_v11_rename_python_architecture_refs() {
 # Internal: BD-144 (v11.0 skill-dimensions reframe Batch 5) — translate
 # v10.x capability tokens on each trinity file's `capabilities:` line.
 #
-# Per ARCHITECTURE-SKILL-DIMENSIONS.md §3.5 + §3.7 and
-# PLAN-SKILL-DIMENSIONS.md §7.1, two v10.x tokens are realigned in v11:
+# Two v10.x capability tokens are realigned in v11:
 #
 #   1. `role:apple-app` is renamed to `deployment:apple` (Apple-app is a
 #      D5 deployment surface, not a D3 architectural role).
@@ -858,8 +854,7 @@ _v10_to_v11_translate_capability_tokens() {
                             printf '# capability-token translation advisory\n'
                             printf '#\n'
                             printf '# v11 renames `role:apple-app` to `deployment:apple` (D5 deployment\n'
-                            printf '# surface, not a D3 architectural role per\n'
-                            printf '# ARCHITECTURE-SKILL-DIMENSIONS.md §3.5).\n'
+                            printf '# surface, not a D3 architectural role).\n'
                             printf '# v11 also preserves `role:python-server` but its resolved skill\n'
                             printf '# list dropped `deployment-python` (now loads via the new\n'
                             printf '# `deployment:linux-container` D5 row); the migrator appends\n'
@@ -877,7 +872,7 @@ _v10_to_v11_translate_capability_tokens() {
                         printf '%s:%d: rename\n' "$rel" "$linenum"
                         printf '  before: %s\n' "$before_apple"
                         printf '  after:  %s\n' "$new_line"
-                        printf '  rationale: role:apple-app renamed to deployment:apple (D5 deployment surface, ARCHITECTURE-SKILL-DIMENSIONS.md §3.5)\n'
+                        printf '  rationale: role:apple-app renamed to deployment:apple (D5 deployment surface, not a D3 architectural role)\n'
                     } >>"$advisory"
                     touches=$((touches + 1))
                     had_change=1
@@ -909,8 +904,7 @@ _v10_to_v11_translate_capability_tokens() {
                             printf '# capability-token translation advisory\n'
                             printf '#\n'
                             printf '# v11 renames `role:apple-app` to `deployment:apple` (D5 deployment\n'
-                            printf '# surface, not a D3 architectural role per\n'
-                            printf '# ARCHITECTURE-SKILL-DIMENSIONS.md §3.5).\n'
+                            printf '# surface, not a D3 architectural role).\n'
                             printf '# v11 also preserves `role:python-server` but its resolved skill\n'
                             printf '# list dropped `deployment-python` (now loads via the new\n'
                             printf '# `deployment:linux-container` D5 row); the migrator appends\n'
@@ -928,7 +922,7 @@ _v10_to_v11_translate_capability_tokens() {
                         printf '%s:%d: append\n' "$rel" "$linenum"
                         printf '  before: %s\n' "$before_lxc"
                         printf '  after:  %s\n' "$new_line"
-                        printf '  rationale: role:python-server preserved but deployment-python now loads via deployment:linux-container (D2 ∩ D5, ARCHITECTURE-SKILL-DIMENSIONS.md §3.7)\n'
+                        printf '  rationale: role:python-server preserved but deployment-python now loads via deployment:linux-container (D2 ∩ D5)\n'
                     } >>"$advisory"
                     touches=$((touches + 1))
                     had_change=1
@@ -960,8 +954,7 @@ _v10_to_v11_translate_capability_tokens() {
 # advisory; tracker integration is deferred (BD-214), so no `pack tracker
 # init` opt-in is advertised. Mirrors the monolith's stage_s6_report tail.
 #
-# Also surfaces the BD-165 v11.0 per-entry decomposition advisory per
-# ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §8.18 / §9.4. v11.0
+# Also surfaces the BD-165 v11.0 per-entry decomposition advisory. v11.0
 # decomposition is non-reversible (the per-entry trees are now the sole
 # source of truth — no monolithic mirror is regenerated, BD-206); the
 # backup directory created by `_stage_backup`
@@ -1042,10 +1035,13 @@ fi
 # BD-165 — adapter-private 6th post-dispatch sub-op (per-entry split).
 # Sources the BD-164 helpers from scripts/lib/per-entry/; defines
 # `_v10_to_v11_decompose_streams` consumed by the post-dispatch hook
-# above. Architecture: ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §3.1
-# / §9.6 / §10.2 + ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-ADDENDUM-2.md
-# §4.5 + research-side ARCHITECTURE-PER-ENTRY-SPLIT.md §1.3 (constraint
-# statement on function naming / placement).
+# above. Architecture: maintenance-docs/v11-research/
+# ARCHITECTURE-PER-ENTRY-SPLIT.md §1.3 (constraint statement on function
+# naming / placement).
+# Constraint: decompose regenerates NO monolithic mirror (BD-206 no-mirror
+# model), so there is no mirror-divergence path and no
+# `--force-overwrite-mirror` override; its absence is asserted by
+# scripts/tests/test-migrate-v10-to-v11-decompose.sh.
 # shellcheck source=lib/migrate-v10-to-v11/decompose.sh disable=SC1091
 . "$SCRIPT_DIR/lib/migrate-v10-to-v11/decompose.sh"
 

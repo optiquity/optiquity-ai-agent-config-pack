@@ -15,6 +15,9 @@ set -u
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 VALIDATE="$REPO_ROOT/scripts/validate-pack.py"
 FIXTURES_DIR="$REPO_ROOT/scripts/tests/fixtures/cmd-update-symmetry"
+# Group 2c uses a QUOTED heredoc (so backticks in Python comments are not
+# run as command substitution) and takes its paths from the environment.
+export VP_CHECK39_REPO="$REPO_ROOT"
 
 PASS=0
 FAIL=0
@@ -44,6 +47,8 @@ required = [
     '_parse_cmd_update_entries',
     '_CHECK_39_EXEMPTIONS',
     '_CHECK_39_REVERSE_EXEMPTIONS',
+    '_parse_migrator_manifest_sources',
+    '_CHECK_39_MIGRATOR_EXEMPTIONS',
 ]
 missing = [n for n in required if not hasattr(mod, n)]
 if missing:
@@ -416,6 +421,370 @@ EOF
 case $? in
     0) t_pass "Reverse-direction synthetic tests (T6/T7/T8/T9)" ;;
     *) t_fail "Reverse-direction tests failed (see Python output above)" ;;
+esac
+
+# ─────────────────────────────────────────────────────────────────
+# Group 2c: leg 3 — v10→v11 adapter manifest reverse direction (BD-093)
+# ─────────────────────────────────────────────────────────────────
+#
+# Proves the widened leg BITES (declare-verify-backing): a
+# `migrator_manifest()` / `migrator_directory_sweeps()` row whose pack-side
+# source is not tracked at HEAD must FAIL, not merely be tolerated. The
+# empirical case is the PROMPT-TEMPLATES.md row BD-093 deleted — retired in
+# v10.0, silently inert at migration time, invisible to every prior gate.
+#
+# Hermetic: no test here creates a git repo, stages or commits. Each case
+# stubs `validate_checks.boundary_refs.subprocess` so the leg's single
+# `git ls-files -- project-template` call returns a controlled tracked set.
+
+printf "\n=== Group 2c: leg-3 migrator-manifest reverse tests (BD-093) ===\n"
+
+python3 <<'PYEOF'
+import contextlib
+import io
+import os
+import pathlib
+import re
+import subprocess
+import sys
+import tempfile
+
+sys.path.insert(0, os.environ["VP_CHECK39_REPO"] + "/scripts")
+import importlib.util
+spec = importlib.util.spec_from_file_location(
+    "vp", os.environ["VP_CHECK39_REPO"] + "/scripts/validate-pack.py")
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+bref = sys.modules["validate_checks.boundary_refs"]
+
+
+def _patch_root(mod, root):
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
+class FakeCompleted:
+    def __init__(self, stdout="", returncode=0):
+        self.stdout = stdout
+        self.stderr = ""
+        self.returncode = returncode
+
+
+class FakeSubprocess:
+    """Answers the leg-3 `git ls-files` call only, recording its argv so the
+    DERIVED pathspec (S3) is assertable."""
+
+    def __init__(self, tracked, rc=0):
+        self.tracked = tracked
+        self.rc = rc
+        self.last_ls_files_cmd = None
+
+    def run(self, cmd, **kw):
+        if cmd[:2] == ["git", "ls-files"]:
+            self.last_ls_files_cmd = list(cmd)
+            return FakeCompleted("\n".join(self.tracked), self.rc)
+        return FakeCompleted("", 1)
+
+
+# The most recent stub instance, so a test can inspect the argv leg 3 issued
+# (run_leg3 restores bref.subprocess in its finally block).
+LAST_FAKE = []
+
+
+failures = []
+
+ADAPTER_TMPL = """#!/usr/bin/env bash
+migrator_manifest() {
+    cat <<'EOF'
+%s
+EOF
+}
+
+migrator_directory_sweeps() {
+    cat <<'EOF'
+%s
+EOF
+}
+"""
+
+# Non-canonical but entirely VALID adapter shapes. The adapter contract
+# (`_migrator_required_hooks` in scripts/lib/migrator-core.sh) fixes the hook
+# NAMES, not the heredoc spelling, so every shape below is a legal adapter.
+# A parser that understands only the canonical `cat <<'EOF'` form returns no
+# rows on these, the leg's `if mig_files or mig_dirs:` short-circuits, and
+# Check 39 PASSES while checking nothing. T20-T23 pin that it bites on each.
+ADAPTER_TMPL_RENAMED_MARKER = (
+    ADAPTER_TMPL.replace("'EOF'", "'ROWS'").replace("\nEOF\n", "\nROWS\n"))
+ADAPTER_TMPL_UNQUOTED = ADAPTER_TMPL.replace("<<'EOF'", "<<EOF")
+ADAPTER_TMPL_COMMENT_FIRST = ADAPTER_TMPL.replace(
+    "() {\n", "() {\n    # a leading comment\n")
+ADAPTER_TMPL_INDENTED = (
+    ADAPTER_TMPL.replace("cat <<'EOF'", "cat <<-'EOF'")
+                .replace("\nEOF\n}", "\n\tEOF\n}"))
+
+# An adapter whose manifest hook is the EMPTY `{ :; }` form (the shape
+# migrator_relocations/migrator_artifact_installs already use in the live
+# adapter). `%.0s` swallows the manifest-rows argument so the template still
+# takes the same two format arguments as the others.
+ADAPTER_TMPL_EMPTY_MANIFEST = """#!/usr/bin/env bash
+migrator_manifest() { :; }%.0s
+
+migrator_directory_sweeps() {
+    cat <<'EOF'
+%s
+EOF
+}
+"""
+
+
+def run_leg3(manifest_rows, sweep_rows, tracked, git_rc=0, exemptions=None,
+             tmpl=None):
+    """Run Check 39 with a synthetic adapter + stubbed git ls-files.
+
+    Legs 1+2 are made trivially clean (one docs/pack file with a matching,
+    resolvable cmd_update entry) so any failure counted here is leg 3's."""
+    tmpdir = tempfile.mkdtemp(prefix="vp-check39-leg3-")
+    root = pathlib.Path(tmpdir)
+    (root / "scripts").mkdir()
+    (root / "project-template" / "docs" / "pack").mkdir(parents=True)
+    (root / "project-template" / "docs" / "pack" / "FOO.md").write_text("# stub\n")
+    (root / "scripts" / "init-project.sh").write_text(
+        '#!/usr/bin/env bash\ncmd_update() {\n    local entries=(\n'
+        '        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"\n'
+        '    )\n    echo stub\n}\n')
+    (root / "scripts" / "migrate-v10-to-v11.sh").write_text(
+        (tmpl or ADAPTER_TMPL)
+        % ("\n".join(manifest_rows), "\n".join(sweep_rows)))
+
+    saved_root = mod.REPO_ROOT
+    saved_sub = bref.subprocess
+    saved_exempt = dict(bref._CHECK_39_MIGRATOR_EXEMPTIONS)
+    saved_failures = list(mod.failures)
+    mod.failures.clear()
+    _patch_root(mod, root)
+    bref.subprocess = FakeSubprocess(tracked, git_rc)
+    LAST_FAKE.append(bref.subprocess)
+    if exemptions is not None:
+        bref._CHECK_39_MIGRATOR_EXEMPTIONS.clear()
+        bref._CHECK_39_MIGRATOR_EXEMPTIONS.update(exemptions)
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            mod.check_cmd_update_symmetry()
+        n = len(mod.failures)
+        captured = buf.getvalue()
+    finally:
+        _patch_root(mod, saved_root)
+        bref.subprocess = saved_sub
+        bref._CHECK_39_MIGRATOR_EXEMPTIONS.clear()
+        bref._CHECK_39_MIGRATOR_EXEMPTIONS.update(saved_exempt)
+        mod.failures.clear()
+        mod.failures.extend(saved_failures)
+    return (n, captured)
+
+
+TRACKED_OK = [
+    "project-template/docs/pack/FOO.md",
+    "project-template/CLAUDE.md",
+    "project-template/scripts/validate.sh",
+]
+
+# T10 — PASS: every declared manifest row + sweep dir is tracked.
+n, out = run_leg3(
+    ["project-template/CLAUDE.md\tCLAUDE.md\ttrinity\ttransform"],
+    ["project-template/scripts pack-script"],
+    TRACKED_OK)
+if n != 0:
+    failures.append("T10 expected 0 failures for a fully-backed adapter, got %d\n%s" % (n, out))
+
+# T11 — THE BITE: a manifest row whose source is NOT tracked (the empirical
+# PROMPT-TEMPLATES.md case) must FAIL.
+n, out = run_leg3(
+    ["project-template/CLAUDE.md\tCLAUDE.md\ttrinity\ttransform",
+     "project-template/docs/pack/PROMPT-TEMPLATES.md\tdocs/pack/PROMPT-TEMPLATES.md\tgeneric\ttransform"],
+    ["project-template/scripts pack-script"],
+    TRACKED_OK)
+if n != 1:
+    failures.append("T11 expected exactly 1 failure for a dead manifest row, got %d\n%s" % (n, out))
+if "PROMPT-TEMPLATES.md" not in out or "migrator_manifest()" not in out:
+    failures.append("T11 failure message did not name the dead row + hook:\n%s" % out)
+
+# T12 — BITE on the sweep hook: a declared directory with nothing tracked
+# under it must FAIL (no asymmetric coverage between the two hooks).
+n, out = run_leg3(
+    ["project-template/CLAUDE.md\tCLAUDE.md\ttrinity\ttransform"],
+    ["project-template/scripts pack-script",
+     "project-template/.gemini/agents pack-agent"],
+    TRACKED_OK)
+if n != 1:
+    failures.append("T12 expected exactly 1 failure for a dead sweep dir, got %d\n%s" % (n, out))
+if "migrator_directory_sweeps()" not in out:
+    failures.append("T12 failure message did not name the sweep hook:\n%s" % out)
+
+# T13 — a tracked-but-only-as-a-parent directory is backed (the sweep dir is
+# a PARENT of tracked files, never itself a tracked path).
+n, out = run_leg3(
+    [], ["project-template/scripts pack-script"], TRACKED_OK)
+if n != 0:
+    failures.append("T13 expected 0 failures for a parent-of-tracked sweep dir, got %d\n%s" % (n, out))
+
+# T14 — the exemption allowlist clears an intentionally-absent row.
+n, out = run_leg3(
+    ["project-template/docs/pack/PROMPT-TEMPLATES.md\tdocs/pack/PROMPT-TEMPLATES.md\tgeneric\ttransform"],
+    [], TRACKED_OK,
+    exemptions={"project-template/docs/pack/PROMPT-TEMPLATES.md": "test rationale"})
+if n != 0:
+    failures.append("T14 expected 0 failures when the row is allowlisted, got %d\n%s" % (n, out))
+
+# T15 — allowlist is NOT a blanket: a DIFFERENT dead row still FAILs.
+n, out = run_leg3(
+    ["project-template/docs/pack/PROMPT-TEMPLATES.md\tdocs/pack/PROMPT-TEMPLATES.md\tgeneric\ttransform",
+     "project-template/docs/pack/GHOST.md\tdocs/pack/GHOST.md\tgeneric\ttransform"],
+    [], TRACKED_OK,
+    exemptions={"project-template/docs/pack/PROMPT-TEMPLATES.md": "test rationale"})
+if n != 1:
+    failures.append("T15 expected exactly 1 failure (GHOST.md still dead), got %d\n%s" % (n, out))
+
+# T16 — git unavailable => leg 3 SKIPs leniently, never a false FAIL.
+n, out = run_leg3(
+    ["project-template/docs/pack/PROMPT-TEMPLATES.md\tdocs/pack/PROMPT-TEMPLATES.md\tgeneric\ttransform"],
+    [], [], git_rc=1)
+if n != 0:
+    failures.append("T16 expected 0 failures when git is unavailable, got %d\n%s" % (n, out))
+if "skipping the migrator-manifest reverse leg" not in out:
+    failures.append("T16 did not report the lenient skip:\n%s" % out)
+
+# T17 — the REAL adapter must parse to a NON-EMPTY, well-formed result.
+# UNCONDITIONAL BY DESIGN. An outer `if srcs != ([], []):` guard would gate
+# the non-emptiness assertion on the result ALREADY being non-empty, so the
+# one and only case it could never detect is total parser inertness — which
+# is precisely the failure mode this test exists to pin. REPO_ROOT is
+# restored by now, so this reads the REAL adapter.
+f_rows, d_rows = bref._parse_migrator_manifest_sources()
+if not f_rows:
+    failures.append(
+        "T17 real adapter yielded ZERO migrator_manifest rows — the parser is "
+        "INERT, so leg 3 short-circuits and Check 39 passes checking nothing")
+if not d_rows:
+    failures.append(
+        "T17 real adapter yielded ZERO migrator_directory_sweeps rows — the "
+        "parser is INERT on the sweep hook")
+if any("\t" in r or " " in r for r in f_rows + d_rows):
+    failures.append(
+        "T17 parsed rows are not bare paths: %r" % ((f_rows, d_rows),))
+
+# T18 — LIVE summary floor. T17 pins the parser in isolation; this pins the
+# number the CHECK ITSELF prints on the real tree, so a leg that quietly
+# reports "0 row(s) reverse-checked" and passes cannot go unnoticed.
+_repo = os.environ["VP_CHECK39_REPO"]
+_r = subprocess.run(
+    [sys.executable, _repo + "/scripts/validate-pack.py", "--only-check", "39"],
+    cwd=_repo, capture_output=True, text=True)
+_m = re.search(
+    r"(\d+) v10.{0,3}v11 adapter manifest/sweep row\(s\) reverse-checked",
+    _r.stdout)
+if not _m:
+    failures.append(
+        "T18 leg-3 summary absent from the live --only-check 39 run "
+        "(rc=%d):\n%s" % (_r.returncode, _r.stdout[-1500:]))
+elif int(_m.group(1)) < 1:
+    failures.append(
+        "T18 live leg-3 summary reports %s row(s) reverse-checked — the leg "
+        "is INERT on the real adapter" % _m.group(1))
+
+# T19 — adapter absent entirely => leg 3 contributes nothing (Group 2b's
+# synthetic trees have no adapter; this pins that backward compatibility).
+_empty_root = pathlib.Path(tempfile.mkdtemp(prefix="vp-check39-noadapter-"))
+_saved = mod.REPO_ROOT
+try:
+    _patch_root(mod, _empty_root)
+    _srcs = bref._parse_migrator_manifest_sources()
+finally:
+    _patch_root(mod, _saved)
+if _srcs != ([], []):
+    failures.append("T19 absent adapter should parse to ([], []), got %r" % (_srcs,))
+
+# T20-T23 — PARSER BITE across non-canonical adapter shapes. Each adapter is
+# legal and carries the SAME dead manifest row; the leg must FAIL on every
+# one. A parser that only understands `cat <<'EOF'` returns no rows here and
+# these tests go to 0 failures — which is the regression they exist to catch.
+DEAD_ROW = ("project-template/docs/pack/PROMPT-TEMPLATES.md\t"
+            "docs/pack/PROMPT-TEMPLATES.md\tgeneric\ttransform")
+GOOD_ROW = "project-template/CLAUDE.md\tCLAUDE.md\ttrinity\ttransform"
+GOOD_SWEEP = "project-template/scripts pack-script"
+
+for _tid, _label, _tmpl in (
+    ("T20", "renamed heredoc marker", ADAPTER_TMPL_RENAMED_MARKER),
+    ("T21", "unquoted heredoc", ADAPTER_TMPL_UNQUOTED),
+    ("T22", "comment before the cat", ADAPTER_TMPL_COMMENT_FIRST),
+    ("T23", "indented <<- heredoc", ADAPTER_TMPL_INDENTED),
+):
+    n, out = run_leg3([GOOD_ROW, DEAD_ROW], [GOOD_SWEEP], TRACKED_OK,
+                      tmpl=_tmpl)
+    if n != 1:
+        failures.append(
+            "%s (%s) expected exactly 1 failure for the dead row, got %d — "
+            "the parser went INERT on this adapter shape, so leg 3 checked "
+            "nothing\n%s" % (_tid, _label, n, out))
+    elif "PROMPT-TEMPLATES.md" not in out:
+        failures.append(
+            "%s (%s) failure did not name the dead row:\n%s" % (_tid, _label, out))
+
+# T24 — an EMPTY hook must yield NO rows, never the NEXT hook's rows. An
+# unbounded heredoc scan runs past the empty `migrator_manifest() { :; }`
+# and returns the sweep rows as manifest rows: `project-template/scripts` is
+# then tested as a FILE, is not a tracked file path, and FAILs. A wrong
+# answer is worse than an empty one, so this must stay at 0 failures.
+n, out = run_leg3([DEAD_ROW], [GOOD_SWEEP], TRACKED_OK,
+                  tmpl=ADAPTER_TMPL_EMPTY_MANIFEST)
+if n != 0:
+    failures.append(
+        "T24 expected 0 failures for an empty manifest hook, got %d — the "
+        "parser leaked the NEXT hook's rows into the manifest result\n%s"
+        % (n, out))
+
+# T25 — S3: the `git ls-files` pathspec is DERIVED from the declared rows,
+# never hard-coded to `project-template`. The adapter contract imposes no
+# such restriction and `supporting-docs/` is an equally legitimate
+# client-deliverable root, so a row sourced there must be tested against a
+# tracked set that CAN contain it — otherwise the leg FAILs with a message
+# falsely asserting the source "is NOT tracked at HEAD, so it does not ship".
+n, out = run_leg3(
+    ["supporting-docs/MIGRATION-v10-to-v11.md\tdocs/MIGRATION.md\tgeneric\ttransform"],
+    ["project-template/scripts pack-script"],
+    TRACKED_OK + ["supporting-docs/MIGRATION-v10-to-v11.md"])
+_cmd = LAST_FAKE[-1].last_ls_files_cmd
+if not _cmd:
+    failures.append("T25 leg 3 issued no `git ls-files` call at all")
+else:
+    _specs = _cmd[_cmd.index("--") + 1:] if "--" in _cmd else []
+    if "supporting-docs" not in _specs:
+        failures.append(
+            "T25 pathspec %r omits `supporting-docs` — the pathspec is "
+            "hard-coded, so a row sourced outside project-template/ is tested "
+            "against a set that cannot contain it (false FAIL)" % (_specs,))
+    if "project-template" not in _specs:
+        failures.append("T25 pathspec %r dropped `project-template`" % (_specs,))
+    if len(_specs) != 2:
+        failures.append(
+            "T25 expected exactly the 2 derived prefixes, got %r" % (_specs,))
+if n != 0:
+    failures.append(
+        "T25 expected 0 failures for a tracked supporting-docs/ row, got "
+        "%d\n%s" % (n, out))
+
+if failures:
+    for f in failures:
+        print("FAILURE: " + f)
+    sys.exit(1)
+print("OK")
+PYEOF
+case $? in
+    0) t_pass "leg-3 migrator-manifest reverse tests (T10-T25)" ;;
+    *) t_fail "leg-3 migrator-manifest tests failed (see Python output above)" ;;
 esac
 
 # ─────────────────────────────────────────────────────────────────

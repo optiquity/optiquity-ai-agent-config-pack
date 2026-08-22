@@ -16,15 +16,16 @@
 #   - Standard helpers (read-only `pe_die`, idempotent atomic write).
 #
 # Architecture:
-#   maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md
-#     §4.2 (Layer 2 strip discipline)
-#     §7.5 (`_rules.md` runtime-read scope split)
-#     §13.3 (signal-6 carve-out — helpers in scripts/lib/)
 #   maintenance-docs/v11-research/ARCHITECTURE-PER-ENTRY-SPLIT.md
 #     §3 (per-entry directory shape, 5 streams)
 #     §6.2 (per-entry parsing contract)
-#   maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-ADDENDUM-2.md
-#     §2 (line-1 HTML-comment ONLY back-pointer)
+#
+# Design constraints binding on this file (their source architecture docs
+# were deleted at BD-210; the constraints themselves still hold):
+#   - Layer 2 strip discipline.
+#   - `_rules.md` runtime-read scope split.
+#   - Signal-6 carve-out — these helpers live in scripts/lib/.
+#   - The back-pointer is a line-1 HTML comment ONLY.
 #
 # Public API (consumed by sibling helpers):
 #   - pe_stream_for_path <abs_dir>            -> echoes stream key

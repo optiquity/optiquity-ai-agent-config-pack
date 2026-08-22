@@ -23,8 +23,10 @@ BD-276 mktemp sweep. It has TWO legs:
     (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`). INTERNAL surfaces (`backlog/`,
     `changelog/`, `maintenance-docs/`, `test-fixtures/`) are NOT scanned by leg 2
     (their internal `OT` shorthand + the `realistic-ot` / fake-OT fixture-name
-    keeps stay; they are removed by the separate launch-time scrubbed public copy,
-    out of scope here). Allowlist: EXACTLY ONE entry (below).
+    keeps are PERMANENT — this repo is the single work repo and goes public with
+    its history intact, so there is no separate scrubbed copy and the
+    internal-surface exemption is a settled decision, not pending cleanup; do not
+    re-open it). Allowlist: EXACTLY ONE entry (below).
 
 The literal product name is ASSEMBLED at import from two fragments
 (`_LITERAL_NAME`), so this guard's OWN source never carries — and, once the repo
@@ -104,7 +106,9 @@ _LITERAL_NAME_BYTES = _LITERAL_NAME.encode("utf-8")
 # to clients). Prefixes match by `str.startswith`; the four repo-root files match
 # by exact relpath. INTERNAL surfaces (backlog/ changelog/ maintenance-docs/
 # test-fixtures/) are deliberately OUT of this set — their internal `OT` shorthand
-# + fixture-name keeps stay until the separate launch-time scrubbed public copy.
+# + fixture-name keeps are PERMANENT. This repo is the single work repo and goes
+# public with its history intact; there is no separate scrubbed public copy, so
+# the internal-surface exemption is settled by decision, not pending cleanup.
 _CLIENT_PREFIXES = ("project-template/", "supporting-docs/", ".github/")
 _CLIENT_ROOT_FILES = frozenset({"README.md", "CLAUDE.md", "AGENTS.md", "GEMINI.md"})
 

@@ -89,7 +89,7 @@ def _list_unknown_files(stream_dir: Path, entry_regex: str,
     """List basenames in `stream_dir` that are neither known supporting
     files (e.g. `_rules.md`, `_intro.md`, `_toc.md`) nor matching the
     entry regex. Used by Check 32 pre-check (b) — non-conforming
-    filenames per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.4.
+    filenames.
     (Post-BD-203 B8 there is no `_v8-resolved-archive.md` supporting
     file — the BD-001..019 entries are now normal per-entry files — so
     it is no longer a known-supporting basename; see the
@@ -448,10 +448,9 @@ def check_toc_in_sync() -> None:
 
 # ── Check 34: cross-reference integrity (BD-168) ───────────────────────────
 
-# Per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §11.2, the reference
-# regex matches BD-NNN, TD-NNN, vN.M (with optional `-suffix`),
-# `phase-N`, and `phase-N.M`. Conservative — false positives in code
-# blocks / quoted text are tolerated per §11.2.
+# The reference regex matches BD-NNN, TD-NNN, vN.M (with optional
+# `-suffix`), `phase-N`, and `phase-N.M`. Conservative by design —
+# false positives in code blocks / quoted text are tolerated.
 # BD-211: the cross-ref TOKEN for BD/TD is canonical `BD-NNN` / `TD-NNN`
 # — NO letter suffix (the former suffix sub-entries were folded into
 # their base entries; no suffix ID exists). CROSS-SURFACE: the `TD-\d+`

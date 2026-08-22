@@ -20,7 +20,6 @@
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
 - [BD-279](./BD-279.md) — Code-optimization methodology: skill(s) + existing-agent pipeline for intentional net-positive refactors of EXISTING code (pack + project, mirror-but-customize)
-- [BD-280](./BD-280.md) — Dashboard doc-index staleness: the spec-embedded `maintenance-docs/` list references deleted docs (BD-210 fallout) — drop stale entries or make it live-derived
 
 ## Deferred
 
@@ -278,6 +277,7 @@
 - [BD-276](./BD-276.md) — Systemic BSD-mktemp portability sweep + Check 92 3-class regression guard + root-cause teaching-surface fix
 - [BD-277](./BD-277.md) — Client-side (project-template) BSD-mktemp portability: sweep + guard assessment (client deliverable analog of BD-276)
 - [BD-278](./BD-278.md) — Client `validate.sh` enforcement: opt-in pre-push hook installer + `/pm-startup` detect-and-suggest (client deliverable)
+- [BD-280](./BD-280.md) — Dashboard doc-index staleness: the spec-embedded `maintenance-docs/` list references deleted docs (BD-210 fallout) — drop stale entries or make it live-derived
 - [BD-281](./BD-281.md) — Migrator `--dry-run` pause-prediction is false: the dry-run dispatch legs record a blind `pack-update-applied` instead of classifying, so Gate-1's "will run end-to-end without pausing" is unreliable — run the real classifier read-only in dry-run
 - [BD-282](./BD-282.md) — Migrator pause is mislabeled "migration failed": the framework exit-trap alarms on a deliberate customization pause — reword to "paused — requires attention" and present clear reconciliation options + exact commands
 - [BD-283](./BD-283.md) — Turnkey interactive migration reconciliation: prompt per customization conflict, apply the choice in-process, auto-continue (no copy-paste, no separate `--resume`)

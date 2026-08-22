@@ -30,7 +30,7 @@
 # Usage:    bash scripts/test-migrator-capability-translation.sh
 # Exit 0 on all pass; exit 1 on any failure.
 #
-# Per BD-144 spec / PLAN-SKILL-DIMENSIONS.md §7.1 step 9.
+# Per the BD-144 spec.
 
 set -uo pipefail
 

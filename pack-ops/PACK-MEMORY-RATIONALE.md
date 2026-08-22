@@ -439,7 +439,7 @@ that govern project-side semantics.
 `phase-task-skeleton` wi-type options (pack doesn't file TDs or phase-skeletons
 against itself); `pack-ops/` files referencing project-side TD entries
 operationally (pack-ops uses BDs in `/backlog/` and batch labels in
-`maintenance-docs/v11-implementation/EXECUTION-PLAN-V11.0.md`); pack-root
+`maintenance-docs/archive/v11/EXECUTION-PLAN-V11.0.md`); pack-root
 configs (`.claude/`, `.codex/`,
 `.agents/` / `.agents-plugin/` at pack-root) using project-side concepts for pack-self-management.
 
@@ -1290,7 +1290,10 @@ bans the literal product name in ANY git-tracked file (tree-wide), leg 2 bans
 the domain vocabulary on the client/public subset. Internal dev-history surfaces
 (`backlog/`, `changelog/`, `maintenance-docs/`, `test-fixtures/`) are out of
 leg-2 scope: they keep their internal shorthand and fixture-name keeps per the
-two-tier keep-list until the separate scrubbed public copy is produced.
+two-tier keep-list. Those keeps are PERMANENT — this repo is the single work
+repo and goes public with its history intact, so there is no separate scrubbed
+copy and the internal-surface exemption is a settled decision, not pending
+cleanup; do not re-open it.
 
 **How to apply.** Before adding text to any client/public surface, keep the
 target project's name and its domain-specific vocabulary out of it entirely;

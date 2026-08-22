@@ -938,9 +938,8 @@ def _build_check_registry():
         (31, "check_skill_cell_consistency", check_skill_cell_consistency, W),
         # ── BD-168 (Batch 19, Commit 19e): per-entry split validators. ──
         # Order: 32 (mirror-in-sync) → 33 (TOC-in-sync) → 34 (cross-refs).
-        # Per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10. Each SKIPs
-        # gracefully when the per-entry tree is absent (pre-BD-102
-        # dog-food pack-self / pre-v11.0 client).
+        # Each SKIPs gracefully when the per-entry tree is absent
+        # (pre-BD-102 dog-food pack-self / pre-v11.0 client).
         (32, "check_mirror_in_sync", check_mirror_in_sync, W),
         (33, "check_toc_in_sync", check_toc_in_sync, W),
         (34, "check_cross_reference_integrity", check_cross_reference_integrity, W),

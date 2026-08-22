@@ -162,8 +162,8 @@ _load_capability_tables() {
 #
 # BD-144: forward-declared platform rows (platform:android,
 # platform:web-browser, platform:embedded-mcu) reference SKILL.md targets
-# that don't yet ship in v11.0 (they ship in Phase 3 per
-# PLAN-SKILL-DIMENSIONS.md §6). When a resolved skill is absent from
+# that don't yet ship in v11.0 (they ship in a later phase). When a
+# resolved skill is absent from
 # $PACK/project-template/skills/<skill>/SKILL.md, emit a stderr warning
 # but allow the operation to proceed — the PM-chat-driven workflow can
 # declare D1 ahead of skill ship.

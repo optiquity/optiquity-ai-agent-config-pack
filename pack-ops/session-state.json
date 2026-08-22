@@ -1,19 +1,28 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "f35c66b",
-  "checkpoint": "2026-08-20T00:00:00Z",
-  "active": [],
-  "in_flight_agents": [
-    "NONE RUNNING. BD-285 COMPLETE (5 waves committed + flipped Resolved; _toc.md regenerated; validate-pack green). A bookkeeping commit (backlog/BD-285.md + backlog/_toc.md + this snapshot) is staged awaiting user approval.",
-    "ON RESUME: next is BD-172 (rebase Gate 2 onto the BD-287/BD-285 merged + sidecar rows in apply.sh/checkpoint.sh) -- assess size first (LARGE vs base flow); then BD-093 (release pin) LAST -> launch. NO push yet (single user-approved push covers the accumulated A..E + bookkeeping commits + BD-172)."
+  "boundary_commit": "ee66ba5",
+  "checkpoint": "2026-08-21T00:00:00Z",
+  "active": [
+    "BD-093"
   ],
-  "queue": ["BD-172", "BD-093"],
-  "parallelization": "SERIAL program. BD-285 done. BD-172 rebases the migrator Gate 2 next. BD-093 release pin last.",
-  "wave": "Onboarding-UX program (user: turnkey-it-all-in-v11.0). DONE: BD-287 (migrator auto-merge) + BD-285 (fresh-install collision C1 + guided keep/replace/merge C2, folded to a UNIVERSAL 2-way onboarding merge via the resolve-merge-conflicts skill). NEXT: BD-172 Gate-2 rebase -> BD-093 release pin -> launch.",
+  "in_flight_agents": [
+    "RUNNING: reviewer-bd093-final (fresh pack-reviewer, RO; isolated per isolation_mode=full then cd'd to the commit worktree). FINAL independent verdict on the complete 43-file change set. Deliberately given NO prior review report (no-prior-reviews-to-reviewer) so the pass is unbiased.",
+    "ON RESUME: read PACK-REVIEW-BD-093-FINAL.md. If CLEAN -> SendMessage the most-recent RW agent (fixcoder-bd093-refs-2) to emit `git diff > <handoff>/changes.patch`, apply it, then commit with user approval. If NOT CLEAN -> the bounded cycle is EXHAUSTED: spawn pack-architect for root cause; NO fix pass 3."
+  ],
+  "queue": [
+    "BD-093",
+    "release-mechanics",
+    "account-transfer"
+  ],
+  "parallelization": "SERIAL. One coder wave; bounded review/fix cycle; then the release mechanics.",
+  "wave": "v11.0 (RC1) release cut. BD-285/286/287 Resolved and pushed. BD-171 + BD-172 stay Status: Open by user decision -- do NOT flip them. Check 4 is now LIVE, so the tag v11.0-RC1 MUST be pushed BEFORE main is pushed (CI runs validate-pack on main and Check 4 will correctly FAIL on a README claiming an untagged version). After the coder cycle lands: orchestrator edits README version cell to `v11.0 (RC1)`;  full battery; commit; push v11-dev; CI green; point main at v11-dev (force push, separate approval); tag v11.0-RC1; transfer to the optiquity GH account.",
   "pending_decisions": [
-    "LAUNCH: BD-093 release pin LAST. USER decides every tag / state transition. OT migration testbed on Basquiat ONLY, never Agam.",
-    "PUSH: BD-285 waves A..E + the bookkeeping commit accumulate on branch v11-dev ahead of origin. NO push without explicit user approval; a single push later. Before push: run scripts/manifest-sync.sh (push-time manifest job) + confirm CI green after.",
+    "LOCKED: main is FORCE-POINTED at v11-dev (13 divergent main commits + 170 main-only files -- the antigravity-cli docs snapshot, 2 antigravity reference docs, 1 v11.1 GitHub-Projects parking-lot doc -- are DROPPED by user decision; BD-221 supersedes the snapshot). v11-dev's own history is PRESERVED intact -- NO squash, NO history rewrite, ever. Adoption depends on visible real history.",
+    "LOCKED: NO scrub. Target-app initials (the 2-letter codename) and generic Target-App vocabulary are ACCEPTABLE on internal surfaces; the Check 93 two-tier model is UNCHANGED and the internal-surface exemption is PERMANENT by decision (there is no separate scrubbed public copy). Leg 2 keeps guarding client/public surfaces strictly. ONE repo forever -- the work repo IS the public repo.",
+    "LOCKED: tag is v11.0-RC1 (RC, not GA). BD-093 is the GA release-cut entry and stays Open after the RC tag unless the user says otherwise. USER decides every tag and state transition.",
+    "RESOLVED: Check 39 two-hook scope excess -- reviewer ruled SOUND, KEEP (fix only the false justification comment, N1). BD-280 -- USER DIRECTED: land it now; NO new BDs for v11.0, period. OI-2 / OI-3 / OI-4 approved. Backlog path repoints done by the orchestrator.",
+    "OPEN: repo transfer to the optiquity GH account -- outward-facing, needs its own explicit confirmation. User flips public when ready. Constraints: PAT has no repo-delete permission (archive only); branch protection unavailable on the current plan.",
     "Standing: PUBLIC-BOUND PACK; push USER-APPROVED then Pack-Chat-executed; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, no other 7-40 hex incl. agent/worktree ids, one date in checkpoint, no past-action narration, <4096 B); modes review=itemized intervention=full isolation=full; scratch $XDG_STATE_HOME/optiquity-pack-handoff/; commit-msg files in /tmp."
   ],
-  "cycle_position": "BD-285 COMPLETE (all 5 rule-10 waves committed; Resolved). Bookkeeping commit staged (backlog flip + snapshot) awaiting approval. NEXT: BD-172 (Gate-2 rebase, assess size) -> BD-093 (release pin) -> launch. session-state.json committed with the bookkeeping commit."
+  "cycle_position": "BD-093 FINAL reviewer pass IN FLIGHT. Fix budget EXHAUSTED (2 of 2 pairs used); this is the last gate. Fix pass 2 resolved T1 (12 bare MERGE-STRATEGY.md refs qualified; the not-client-installed premise verified 4 ways incl. executing the validator's own client-surface function -> False), T2 (changelog BD-280 line rewritten from the SSOT Resolved: line), T3 (carried-over list re-derived: 16 Open minus BD-093 = 15; matches existing 5/5 + 10/10, no change). Verification: validate 0 both modes, 132/132, build --verify 7/7, shard OK. Nothing staged; nothing pushed."
 }

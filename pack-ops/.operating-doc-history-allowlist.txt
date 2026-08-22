@@ -21,13 +21,13 @@
 # T-def (a live pointer that is not itself a deferred-feature description).
 # A reviewer re-verifies each `reason:` still names LIVE-and-CURRENT work.
 #
-# K-set (BD-243 DESIGN §B.1): K1 live transitional pointer; K2-K6 live doc
-# cross-refs; K7 filename/grammar examples; K9-K11 date format examples;
+# K-set (BD-243 DESIGN §B.1): K1 live transitional pointer; K2-K4 live doc
+# cross-refs; K7 filename/grammar examples; K10-K11 date format examples;
 # K12 the new no-history rule's own self-defining lines (the rule quotes the
 # forbidden shapes verbatim — the rule defining itself, not provenance);
 # K13 live maintenance-doc cross-refs whose filename embeds a BD number (the
 # BD digits are in the path, not provenance — the doc exists + is read at
-# task time, the same class as K2-K6 but the BD is carried by the filename).
+# task time, the same class as K2-K4 but the BD is carried by the filename).
 #
 # FORMAT: one allowlisted occurrence per record, blank-line separated.
 #   doc:      <path relative to repo root>
@@ -106,28 +106,6 @@ doc: pack-ops/PACK-MEMORY-RATIONALE.md
 pattern: bd-tag
 snippet: ARCHITECTURE-BD-208.md
 reason: live doc cross-ref (the rationale doc exists + is read at task time).
-
-# ── K5: live doc cross-ref ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md ──
-doc: pack-ops/PACK-CHAT.md
-pattern: bd-tag
-snippet: ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md
-reason: live doc cross-ref (the skill/agent maintainability doc exists + is read at task time).
-
-doc: pack-ops/PACK-AGENTS.md
-pattern: bd-tag
-snippet: ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md
-reason: live doc cross-ref (the skill/agent maintainability doc exists + is read at task time).
-
-doc: pack-ops/PACK-MEMORY-RATIONALE.md
-pattern: bd-tag
-snippet: ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md
-reason: live doc cross-ref (the skill/agent maintainability doc exists + is read at task time).
-
-# ── K6: live doc cross-ref ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md ──
-doc: pack-ops/PACK-CHAT.md
-pattern: bd-tag
-snippet: ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md
-reason: live doc cross-ref (the per-entry split-integration doc exists + is read at task time).
 
 # ── K7: filename-grammar examples the backlog write-contract acts on ──
 doc: backlog/_rules.md
@@ -244,7 +222,7 @@ reason: the operating-docs-no-history-no-bloat rule's own definition quotes the 
 # ── K13: live maintenance-doc cross-refs whose FILENAME embeds a BD number.
 #        The `bd-tag` (BD-\d+) pattern trips on the BD digits carried in the
 #        path — but the digits are part of the filename of an EXISTING doc
-#        that is read at task time, not provenance. Same KEEP class as K2-K6
+#        that is read at task time, not provenance. Same KEEP class as K2-K4
 #        (live doc cross-ref); the BD is in the path, not a `(BD-NNN)` tag.
 #        Each snippet is the full filename — unique to its one intended line
 #        in its one doc; clears no other line and no contamination a strip

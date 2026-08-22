@@ -33,8 +33,9 @@
 #     manifest verify` step.
 # Gate items 1 (per-version migrator framework adoption) and 2 (BD-114
 # real-target-app dry-run) are pre-tag manual checks - intentionally NOT in CI
-# (item 2 touches a network-hosted real repo). See
-# `maintenance-docs/v11-implementation/RELEASE-GATE.md`.
+# (item 2 touches a network-hosted real repo); the BD-093 release cut
+# carries them. (The standalone RELEASE-GATE checklist doc was one of the superseded
+# maintenance-docs deleted at BD-210 - do not cite it.)
 #
 # Step ordering for the BD-115/116/117 surface (intentional):
 #   (a)  build test fixtures              - rebuilds fixtures from scratch.

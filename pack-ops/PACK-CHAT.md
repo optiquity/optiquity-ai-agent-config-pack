@@ -150,8 +150,6 @@ These rules are non-negotiable and always apply:
   `### Agent invocation rules`.
 - **Push to v11-dev only during the v11-dev phase.** Never push to
   `main` from this chat; v11.0 ships via a deliberate release handoff.
-  EXECUTION-PLAN-V11.0.md §A.4 carries the same rule for
-  agent / planner contexts.
 - **Batch close commit shapes.** Single-BD batches: combine the fix
   commit and the status flip into ONE final commit
   (`fix: vN — BD-NNN ... + status flip`). Multi-BD batches: ship the
@@ -478,25 +476,6 @@ serialize rule.
   (the existing chat-ownership-boundaries rule) so collisions are
   structurally rare; conflict-resolution authority caps at orchestrator +
   user, never the agent.
-
----
-
-## Action items (PM coordination)
-
-Standing PM-coordination items that need Pack Chat surfacing to the
-user at PM-discussion time. Distinct from `## Behavioral rules` (which
-contains timeless standing rules) — items here have an expected
-resolution and should be closed out via a follow-up commit or
-user-discussion decision.
-
-- **Architect-doc reconciliation (PM-owned).** The STATUS.md disclaimer
-  wording at `maintenance-docs/v11-implementation/
-  ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §5.3 diverges from the
-  canonical wording. The per-entry-split architect docs are PM-owned.
-  Pack Chat is to surface this divergence to the user at PM-discussion
-  time to pick the canonical wording and edit
-  ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §5.3 to match. Tracked as
-  a Pack-Chat-side coordination item; not a code defect.
 
 ---
 

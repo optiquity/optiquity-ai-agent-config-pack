@@ -15,21 +15,14 @@
 #   maintenance-docs/v11-research/ARCHITECTURE-PER-ENTRY-SPLIT.md
 #     §1.3 (constraint statement: function name + placement)
 #     §10.2 (post-dispatch hook is the right hook for this sub-op)
-#   maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md
-#     §3.1 (downgrade-to-constraint: 6th sub-op MUST run AFTER all 5
-#           existing sub-ops so the decompose step reads the FINAL
-#           v11-shape monolithic content)
-#     §9.1 (hook integration restated for the planner)
-#     §9.6 (sequencing inside the v10→v11 hook)
-#     §9.7 (`_intro.md` and `_v8-resolved-archive.md` initial install)
-#     §10.2 (helper location: this directory)
-#     §18.1 #3, #4 (helper location + sequencing planner-deferred items
-#                   resolved in this commit per plan §5.4)
-#   maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-ADDENDUM-2.md
-#     §6.4 (verify-by-`ls` for the per-entry helpers' location at
-#           scripts/lib/per-entry/)
-#   maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md
-#     §5.4 (this commit's binding spec)
+#
+# Design constraints binding on this file (their source architecture + plan
+# docs were deleted at BD-210; the constraints themselves still hold):
+#   - Sequencing: this 6th sub-op MUST run AFTER all 5 existing sub-ops, so
+#     the decompose step reads the FINAL v11-shape monolithic content.
+#   - `_intro.md` and `_v8-resolved-archive.md` are installed initially.
+#   - Helper location: this directory (the adapter-scope helpers), with the
+#     shared per-entry helpers at scripts/lib/per-entry/.
 #
 # Public API (sourced into the adapter's shell):
 #   _v10_to_v11_decompose_streams
@@ -110,12 +103,10 @@ _v10_to_v11_decompose_streams() {
     # monolith input filename + relative stream directory. Pack-side streams
     # (pack-backlog / pack-changelog) are NOT decomposed by this
     # migrator — pack-self decomposition lands in Batch 23 (BD-102)
-    # dog-food per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.5
-    # (last paragraph). The v10→v11 client migrator only touches
+    # dog-food. The v10→v11 client migrator only touches
     # docs/project/<stream>/.
     #
-    # Per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §3.3 / §9.7 the
-    # _rules.md / _intro.md supporting files were installed in the
+    # The _rules.md / _intro.md supporting files were installed in the
     # prior sub-op (_v10_to_v11_install_v11_artifacts) at the BD-167
     # templates step — verified by `ls scripts/migrate-v10-to-v11.sh:355-374`.
     # The decompose step relies on them being present.
