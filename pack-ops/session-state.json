@@ -1,28 +1,25 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "ee66ba5",
-  "checkpoint": "2026-08-21T00:00:00Z",
-  "active": [
-    "BD-093"
-  ],
+  "boundary_commit": "3da7f79",
+  "checkpoint": "2026-08-22T00:00:00Z",
+  "active": [],
   "in_flight_agents": [
-    "RUNNING: reviewer-bd093-final (fresh pack-reviewer, RO; isolated per isolation_mode=full then cd'd to the commit worktree). FINAL independent verdict on the complete 43-file change set. Deliberately given NO prior review report (no-prior-reviews-to-reviewer) so the pass is unbiased.",
-    "ON RESUME: read PACK-REVIEW-BD-093-FINAL.md. If CLEAN -> SendMessage the most-recent RW agent (fixcoder-bd093-refs-2) to emit `git diff > <handoff>/changes.patch`, apply it, then commit with user approval. If NOT CLEAN -> the bounded cycle is EXHAUSTED: spawn pack-architect for root cause; NO fix pass 3."
+    "NONE RUNNING. BD-093 + BD-280 Resolved; the v11.0 (RC1) cut is COMMITTED, TAGGED (v11.0-RC1) and PUSHED; Validate Pack CI green on both the branch and the tag push. Check 4 verified as a real tag match, not the dev-branch allowance.",
+    "ON RESUME: the remaining launch steps are USER-owned and NOT to be executed by Pack Chat: (5) force main to v11-dev, (6) verify CI on main, (7) transfer to the target GH account, (8) flip public. Pack Chat NEVER pushes to main (PACK-CHAT behavioral rule + EXECUTION-PLAN A.4 deliberate-handoff)."
   ],
   "queue": [
-    "BD-093",
-    "release-mechanics",
-    "account-transfer"
+    "user: force main",
+    "user: verify CI on main",
+    "user: account transfer",
+    "user: flip public"
   ],
-  "parallelization": "SERIAL. One coder wave; bounded review/fix cycle; then the release mechanics.",
-  "wave": "v11.0 (RC1) release cut. BD-285/286/287 Resolved and pushed. BD-171 + BD-172 stay Status: Open by user decision -- do NOT flip them. Check 4 is now LIVE, so the tag v11.0-RC1 MUST be pushed BEFORE main is pushed (CI runs validate-pack on main and Check 4 will correctly FAIL on a README claiming an untagged version). After the coder cycle lands: orchestrator edits README version cell to `v11.0 (RC1)`;  full battery; commit; push v11-dev; CI green; point main at v11-dev (force push, separate approval); tag v11.0-RC1; transfer to the optiquity GH account.",
+  "parallelization": "SERIAL. Pack-side work COMPLETE for the RC1 cut; the remainder is a user-owned release handoff.",
+  "wave": "v11.0 (RC1) SHIPPED to the branch + tag. Open BDs now 15 (BD-093 and BD-280 both flipped Resolved this cut). BD-171 + BD-172 remain Status: Open by explicit user decision -- do NOT flip. main is still at the pre-v11 commit, 1209 behind, until the user performs the force-push.",
   "pending_decisions": [
-    "LOCKED: main is FORCE-POINTED at v11-dev (13 divergent main commits + 170 main-only files -- the antigravity-cli docs snapshot, 2 antigravity reference docs, 1 v11.1 GitHub-Projects parking-lot doc -- are DROPPED by user decision; BD-221 supersedes the snapshot). v11-dev's own history is PRESERVED intact -- NO squash, NO history rewrite, ever. Adoption depends on visible real history.",
-    "LOCKED: NO scrub. Target-app initials (the 2-letter codename) and generic Target-App vocabulary are ACCEPTABLE on internal surfaces; the Check 93 two-tier model is UNCHANGED and the internal-surface exemption is PERMANENT by decision (there is no separate scrubbed public copy). Leg 2 keeps guarding client/public surfaces strictly. ONE repo forever -- the work repo IS the public repo.",
-    "LOCKED: tag is v11.0-RC1 (RC, not GA). BD-093 is the GA release-cut entry and stays Open after the RC tag unless the user says otherwise. USER decides every tag and state transition.",
-    "RESOLVED: Check 39 two-hook scope excess -- reviewer ruled SOUND, KEEP (fix only the false justification comment, N1). BD-280 -- USER DIRECTED: land it now; NO new BDs for v11.0, period. OI-2 / OI-3 / OI-4 approved. Backlog path repoints done by the orchestrator.",
-    "OPEN: repo transfer to the optiquity GH account -- outward-facing, needs its own explicit confirmation. User flips public when ready. Constraints: PAT has no repo-delete permission (archive only); branch protection unavailable on the current plan.",
-    "Standing: PUBLIC-BOUND PACK; push USER-APPROVED then Pack-Chat-executed; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, no other 7-40 hex incl. agent/worktree ids, one date in checkpoint, no past-action narration, <4096 B); modes review=itemized intervention=full isolation=full; scratch $XDG_STATE_HOME/optiquity-pack-handoff/; commit-msg files in /tmp."
+    "LOCKED: main is FORCE-POINTED at v11-dev by the USER (13 divergent main commits + 170 main-only files -- antigravity docs snapshot, 2 antigravity reference docs, 1 v11.1 parking-lot doc -- are DROPPED by user decision; BD-221 supersedes the snapshot). v11-dev history is PRESERVED intact -- NO squash, NO rewrite, ever.",
+    "LOCKED: NO scrub. Target-app initials and generic Target-App vocabulary are ACCEPTABLE on internal surfaces; the Check 93 two-tier model is UNCHANGED and the internal-surface exemption is PERMANENT (there is no separate scrubbed public copy). Leg 2 still guards client/public surfaces. ONE repo forever -- the work repo IS the public repo.",
+    "OPEN (deliberately unfixed, no BD opened per user direction): Check 40 walks pack-ops/ and Check 43 walks the client surface, so NON-client-installed supporting-docs/ files sit in a coverage gap between them -- this is why 12 bare cross-refs survived to the cut. The surface is verified clean NOW; closing the gap needs an architect pass (ci-guard-measure-then-bound), not a late patch.",
+    "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no past-action narration, <4096 B); modes review=itemized intervention=full isolation=full; scratch $XDG_STATE_HOME/optiquity-pack-handoff/; commit-msg files in /tmp."
   ],
-  "cycle_position": "BD-093 FINAL reviewer pass IN FLIGHT. Fix budget EXHAUSTED (2 of 2 pairs used); this is the last gate. Fix pass 2 resolved T1 (12 bare MERGE-STRATEGY.md refs qualified; the not-client-installed premise verified 4 ways incl. executing the validator's own client-surface function -> False), T2 (changelog BD-280 line rewritten from the SSOT Resolved: line), T3 (carried-over list re-derived: 16 Open minus BD-093 = 15; matches existing 5/5 + 10/10, no change). Verification: validate 0 both modes, 132/132, build --verify 7/7, shard OK. Nothing staged; nothing pushed."
+  "cycle_position": "BD-093 cycle COMPLETE and landed at the boundary commit. Agent reports preserved into maintenance-docs/v11-implementation/. The commit worktree may be torn down now that the commit is CONFIRMED landed. Next action is the USER's force-push of main."
 }

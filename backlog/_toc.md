@@ -8,7 +8,6 @@
 - [BD-036](./BD-036.md) — IDE and editor coverage gaps
 - [BD-037](./BD-037.md) — Platform update cycle observability
 - [BD-039](./BD-039.md) — Prototype / speed mode
-- [BD-093](./BD-093.md) — v11.0 release pin (tag, README, CHANGELOG, MIGRATION cross-link)
 - [BD-109](./BD-109.md) — Project-side `auditor-issue-tracking` sub-agent
 - [BD-110](./BD-110.md) — Pack-side `pack-auditor` agent
 - [BD-171](./BD-171.md) — Real-OT scratch-clone FLAT-FILE v10→v11 migration test harness
@@ -128,6 +127,7 @@
 - [BD-090](./BD-090.md) — QUICKSTART.md callout + cross-references
 - [BD-091](./BD-091.md) — BD-042 doc relocation (Phase 1: relocate)
 - [BD-092](./BD-092.md) — Cross-reference sweep for relocated docs + v11 verbs
+- [BD-093](./BD-093.md) — v11.0 release pin (tag, README, CHANGELOG, MIGRATION cross-link)
 - [BD-094](./BD-094.md) — `MERGE-STRATEGY.md` deliverable (per-file matrix + A1 UX)
 - [BD-095](./BD-095.md) — `migrate-v10-to-v11.sh` two-phase `--dry-run` / `--apply` / `--resume` workflow
 - [BD-096](./BD-096.md) — Synthetic-fixture set (general-use coverage; OT is one example)
