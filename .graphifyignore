@@ -20,6 +20,16 @@
 .mcp.json
 .claude/settings.local.json
 
+# ── Sub-agent worktree checkouts (mirrors .gitignore) ──
+# Isolated per-agent worktrees materialized by sub-agent worktree isolation.
+# Each is a FULL second checkout of this repo, so indexing one duplicates every
+# node in the graph and corrupts query/affected results. This list is read
+# INSTEAD of .gitignore (see the ONE-FILE-OR-THE-OTHER note above), so the
+# .gitignore entry does NOT propagate here — the exclusion must be restated.
+# Plain literal, not a `**/` form: the matcher is fnmatch, where `*` crosses
+# `/` and `**` is not special.
+.claude/worktrees/
+
 # ── Local tracker state (regenerable; no graph value) ──
 .pack-tracker/
 /tracker.toml

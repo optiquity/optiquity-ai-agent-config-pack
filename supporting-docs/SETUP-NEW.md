@@ -30,13 +30,17 @@ template).
   chat).
 - **Pack cloned locally.** Clone the `optiquity-ai-agent-config-pack`
   repo to a stable location and use that location wherever
-  `/path/to/pack` appears in this guide. Check out the v11 tag or track
-  v11-dev. Set `PACK` to its absolute path in your shell:
+  `/path/to/pack` appears in this guide. Pin to a released tag, or track
+  `main` to follow the current state. Set `PACK` to its absolute path in
+  your shell:
 
   ```bash
   export PACK=/path/to/pack
   git -C "$PACK" fetch --tags
-  git -C "$PACK" checkout v11.0   # or v11 floating tag
+  git -C "$PACK" tag -l 'v11*'         # list the available v11 tags
+  git -C "$PACK" checkout v11.0-RC1    # pin to one of them
+  # or, to follow the current state instead:
+  # git -C "$PACK" checkout main
   ```
 
 ---

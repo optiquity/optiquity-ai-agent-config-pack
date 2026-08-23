@@ -148,8 +148,11 @@ These rules are non-negotiable and always apply:
   the Pack Chat surface (chat replies); agent prompts already enforce a
   related but distinct "no solutions / no biased framing" rule under
   `### Agent invocation rules`.
-- **Push to v11-dev only during the v11-dev phase.** Never push to
-  `main` from this chat; v11.0 ships via a deliberate release handoff.
+- **Push to `main`; never force, never rewrite.** `main` is the working
+  branch: Pack Chat commits there and pushes approved commits as ordinary
+  work. Absolute: no force-push of `main`, no rewrite of landed history
+  (amend of a pushed commit, rebase, reset + re-push, `filter-branch`).
+  The "No commit without explicit approval" rule above governs every push.
 - **Batch close commit shapes.** Single-BD batches: combine the fix
   commit and the status flip into ONE final commit
   (`fix: vN — BD-NNN ... + status flip`). Multi-BD batches: ship the

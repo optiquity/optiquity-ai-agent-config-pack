@@ -16,6 +16,13 @@
 # NEVER mutates the real tree), and proves the allowlist + self-skip behave
 # exactly (narrow: a DIFFERENT scripts/tests file is NOT allowlisted).
 #
+# The synthetic tree is a THROWAWAY GIT REPO (`git init` + `git add -A` in
+# /tmp), because Check 53 draws its candidate set from git-TRACKED files
+# (`git ls-files`) per `ci-guard-measure-then-bound` — a raw filesystem walk
+# would descend into live sub-agent worktrees under `.claude/worktrees/`.
+# Untracked fixtures would make the check lenient-SKIP and the negative legs
+# would pass vacuously. Same idiom as test-validate-pack-check-63.sh.
+#
 # Coverage:
 #   Group 0: module import + Check 53 symbol registration
 #   Group 1: synthetic-tree end-to-end (mod.REPO_ROOT pointed at /tmp):
@@ -28,6 +35,8 @@
 #            E  FAIL — NARROW: a DIFFERENT scripts/tests file is NOT allowed
 #            F  PASS — baseRef/bgIsolation keys do NOT trip the matcher
 #   Group 2: end-to-end validate-pack.py exit-status on HEAD (Check 53 clean)
+#   Group 3: the two lenient-SKIP branches (git absent / not a work tree),
+#            each pinned with a fixture that carries the prohibition prose
 #
 # Usage: bash scripts/tests/test-validate-pack-check-53.sh
 
@@ -84,7 +93,7 @@ fi
 printf "\n=== Group 1: End-to-end synthetic-tree tests ===\n"
 
 python3 <<EOF
-import sys, tempfile, pathlib, shutil, io, contextlib
+import sys, tempfile, pathlib, shutil, io, contextlib, subprocess
 sys.path.insert(0, '$REPO_ROOT/scripts')
 import importlib.util
 spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
@@ -111,6 +120,18 @@ def run(build):
     tmpdir = tempfile.mkdtemp(prefix="vp-check53-")
     root = pathlib.Path(tmpdir)
     build(root)
+    # Check 53's candidate set is the git-TRACKED file list, so the synthetic
+    # tree must be a REAL throwaway git repo with the fixtures ADDED to the
+    # index. Without this the check lenient-SKIPs off a non-git /tmp dir and
+    # the negative legs (A/A2/E) would silently lose their teeth. Same
+    # throwaway-scratch-repo idiom as
+    # scripts/tests/test-validate-pack-check-63.sh. Never touches the real
+    # tree. NOTE: this heredoc is UNQUOTED, so backticks would be command-
+    # substituted by bash -- keep this block backtick-free.
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t.t"], cwd=root, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=root, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
     saved_root = mod.REPO_ROOT
     saved_failures = list(mod.failures)
     mod.failures.clear()
@@ -223,6 +244,98 @@ else
             "Tail: $(tail -40 /tmp/vp-check53-e2e.out)"
     fi
 fi
+
+# ─────────────────────────────────────────────────────────────────
+# Group 3: the two lenient-SKIP branches, pinned
+#   3a  git binary absent            -> "git not available"
+#   3b  REPO_ROOT not a git work tree -> "not a git work tree"
+# Both fixtures CARRY the prohibition prose in an active surface, so a
+# non-lenient implementation would FAIL them -- the pass can only come from
+# the SKIP branch, which is what makes this a real pin rather than a vacuous
+# green. Mirrors Group 3 of test-validate-pack-check-69.sh.
+# ─────────────────────────────────────────────────────────────────
+printf "\n=== Group 3: git-unavailable / not-a-work-tree -> lenient SKIP ===\n"
+
+python3 <<EOF
+import sys, tempfile, pathlib, shutil, io, contextlib
+sys.path.insert(0, '$REPO_ROOT/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+import validate_checks.discipline_parity as dp
+
+
+def _patch_root(mod, root):
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
+class _NoGit:
+    """Stands in for the module's subprocess binding: every run() raises
+    FileNotFoundError, simulating an absent git binary."""
+    @staticmethod
+    def run(*a, **k):
+        raise FileNotFoundError("git")
+
+
+def run_lenient(stub_git_missing):
+    # A /tmp REPO_ROOT that is deliberately NOT a git work tree, carrying the
+    # prohibition prose in an ACTIVE surface (pack-ops). If the SKIP branch
+    # ever stops firing, this FAILs loudly instead of passing vacuously.
+    tmpdir = tempfile.mkdtemp(prefix="vp-check53-lenient-")
+    root = pathlib.Path(tmpdir)
+    (root / "pack-ops").mkdir(parents=True, exist_ok=True)
+    (root / "pack-ops" / "SOME-RULE.md").write_text(
+        "Spawn all sub-agents with no worktree isolation.\n")
+    saved_root = mod.REPO_ROOT
+    saved_failures = list(mod.failures)
+    saved_sub = dp.subprocess
+    mod.failures.clear()
+    _patch_root(mod, root)
+    if stub_git_missing:
+        dp.subprocess = _NoGit
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            mod.check_worktree_isolation_prohibition_flip_block()
+        return len(mod.failures), buf.getvalue()
+    finally:
+        dp.subprocess = saved_sub
+        _patch_root(mod, saved_root)
+        mod.failures.clear()
+        mod.failures.extend(saved_failures)
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+failures = []
+
+n, cap = run_lenient(stub_git_missing=True)
+if n != 0:
+    failures.append("3a (git binary absent) expected lenient SKIP, got %d failure(s): %s" % (n, cap))
+if "git not available" not in cap:
+    failures.append("3a expected the git-not-available lenient message, got: %s" % cap)
+
+n, cap = run_lenient(stub_git_missing=False)
+if n != 0:
+    failures.append("3b (not a git work tree) expected lenient SKIP, got %d failure(s): %s" % (n, cap))
+if "not a git work tree" not in cap:
+    failures.append("3b expected the not-a-work-tree lenient message, got: %s" % cap)
+
+if failures:
+    print("FAILURES")
+    for f in failures:
+        print(" ", f)
+    sys.exit(1)
+print("OK")
+EOF
+case $? in
+    0) t_pass "lenient-SKIP branches pinned (3a git absent + 3b non-work-tree; both fixtures carry prohibition prose)" ;;
+    *) t_fail "Check 53 lenient-SKIP branch tests failed (see Python output)" ;;
+esac
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

@@ -2,6 +2,14 @@
 # May contain local paths or tokens — never commit
 .claude/settings.local.json
 
+# ── Sub-agent worktree checkouts ───────────────────────────────────────────
+# Isolated per-agent worktrees materialized here by sub-agent worktree
+# isolation. Each is a full second checkout, transient and machine-local —
+# never committed. Scoped to the `worktrees/` subdirectory on purpose: the
+# tracked `.claude/agents/`, `.claude/skills/`, and `.claude/settings.json`
+# entries must stay tracked.
+.claude/worktrees/
+
 # ── Machine-local MCP config ─────────────────────────────────────────────────
 # May contain API keys or local server paths — never commit
 .mcp.json

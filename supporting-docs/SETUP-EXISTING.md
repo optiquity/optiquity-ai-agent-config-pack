@@ -33,11 +33,16 @@ historical, available via `git checkout v10 -- <path>`.)
   without polluting main.
 - **Pack cloned locally.** Clone the `optiquity-ai-agent-config-pack`
   repo to a stable location and use that location wherever
-  `/path/to/pack` appears in this guide. Export `$PACK`:
+  `/path/to/pack` appears in this guide. Pin to a released tag, or track
+  `main` to follow the current state. Export `$PACK`:
 
   ```bash
   export PACK=/path/to/pack
-  git -C "$PACK" checkout v10.0   # or v10 floating tag
+  git -C "$PACK" fetch --tags
+  git -C "$PACK" tag -l 'v11*'         # list the available v11 tags
+  git -C "$PACK" checkout v11.0-RC1    # pin to one of them
+  # or, to follow the current state instead:
+  # git -C "$PACK" checkout main
   ```
 
 ---

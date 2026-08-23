@@ -1,26 +1,31 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "7a63c12",
-  "checkpoint": "2026-08-22T21:00:00Z",
+  "boundary_commit": "cfd5b02",
+  "checkpoint": "2026-08-23T13:30:00Z",
   "active": [
-    "BD-288 @ architect design stage (LARGE pipeline, stage 2 of the deterministic flow; the docs-researcher stage is satisfied by the Pack-Chat census recorded in the entry)."
+    "BD-288 @ commit gate. Bounded cycle COMPLETE: review pass 1 + fix pass 1 + review pass 2 (CLEAN) + fix pass 2. Patch applied to canonical; full battery green with an agent worktree present."
   ],
   "in_flight_agents": [
-    "pack-architect, name architect-bd288-crossrefgap, spawned background + isolated (isolation_mode full), cd-ed to the canonical checkout. Handoff dir $XDG_STATE_HOME/optiquity-pack-handoff/bd288-architect/. Re-spawn FRESH if lost -- never re-use a returned instance for reconciliation.",
-    "ON RESUME: the one remaining launch step is USER-owned and NOT to be executed by Pack Chat: flip the repo public. Pack Chat NEVER pushes to main."
+    "coder-bd288-hygiene ALIVE, holding its worktree pending commit-landed confirmation. Tear it down ONLY after the commit exits 0; a failed commit KEEPS it as the recovery fallback.",
+    "reviewer-bd288-cycle2 and architect-bd288-guardbite RETURNED. Do NOT re-engage either; the next design pass takes a fresh instance.",
+    "ON RESUME: the one remaining launch step is USER-owned: flip the repo public. Pack Chat NEVER force-pushes or rewrites main."
   ],
   "queue": [
-    "BD-288: architect -> adversarial architect -> reconciliation architect (only if findings) -> USER design review -> planner -> adversarial planner -> reconciliation planner (only if findings) -> USER planner-to-coder gate -> parallel worktree coder waves",
+    "commit the 10-file change (no scope keyword -- mixed pack + supporting-docs, Check 36 skips)",
+    "tear down the coder worktree once the commit is confirmed landed",
+    "FRESH architect on the full four-defect BD-288 scope -> adversarial -> user design review -> planner -> coder waves",
+    "user: fix the isolation mode (deferred by explicit user direction until BD-288 work completes)",
     "user: flip public"
   ],
-  "parallelization": "SERIAL until the architect + planner emit the rule-10 parallel-vs-dependent map; coder waves may then run parallel on disjoint file sets.",
-  "wave": "v11.0 (RC1) is tagged v11.0-RC1 and CI-green; main and v11-dev both point at the boundary commit; the repo sits under the target GH account and is still private. Open BDs 16; highest is BD-288. BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
+  "parallelization": "SERIAL. One RW worktree live; no parallel wave scheduled.",
+  "wave": "v11.0 (RC1) tagged and CI-green; the only v11 tag on the remote is the RC1 tag; main is the sole live development branch (the v11-dev branch no longer exists anywhere). Repo under the target GH account, still private. Open BDs 16; highest is BD-288. BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
   "pending_decisions": [
-    "LOCKED: v11-dev history is PRESERVED intact -- NO squash, NO rewrite, ever.",
-    "LOCKED: NO scrub. Target-app initials and generic Target-App vocabulary are ACCEPTABLE on internal surfaces; the Check 93 two-tier model is UNCHANGED and the internal-surface exemption is PERMANENT (there is no separate scrubbed public copy). Leg 2 still guards client/public surfaces. ONE repo forever -- the work repo IS the public repo.",
-    "LOCKED for BD-288: maintenance-docs/, backlog/, changelog/, test-fixtures/, scripts/tests/fixtures/ are PERMANENTLY out of scope for any bareness gate -- a constraint handed to the architect, not an open question.",
-    "LOCKED for BD-288: scope GROWS INTO BD-288. Anything any agent surfaces during this BD is folded into BD-288 and done now; opening a follow-on BD for work discovered here is tech debt and is prohibited absent explicit user authorization.",
-    "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no past-action narration, <4096 B); modes review=itemized intervention=full isolation=full; scratch $XDG_STATE_HOME/optiquity-pack-handoff/; commit-msg files in /tmp."
+    "LOCKED: main history is PRESERVED intact -- NO squash, NO rewrite, ever.",
+    "LOCKED: NO scrub. Target-app initials and generic Target-App vocabulary are ACCEPTABLE on internal surfaces; the Check 93 two-tier model is UNCHANGED and the internal-surface exemption is PERMANENT. Leg 2 still guards client/public surfaces. ONE repo forever -- the work repo IS the public repo.",
+    "LOCKED for BD-288: maintenance-docs/, backlog/, changelog/, test-fixtures/, scripts/tests/fixtures/ are PERMANENTLY out of scope for any bareness gate.",
+    "LOCKED for BD-288: scope GROWS INTO BD-288; opening a follow-on BD for work discovered here is prohibited absent explicit user authorization.",
+    "OPEN for the user: isolation_mode. Measured this session -- full breaks cross-tree git (blocks review of an uncommitted worktree and fresh fix-coders); read-write-only restores that but loses agent-completion notifications AND the peer-message boilerplate defect RESURFACED on the first RO return. Neither mode is clean.",
+    "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no past-action narration, no path literal carrying a date-like digit run, under the byte cap); modes review=itemized intervention=full isolation=read-write-only; commit-msg files in the OS temp dir."
   ],
-  "cycle_position": "No commit cycle in flight. BD-288 is at the design stage; no coder spawned, no worktree live. Uncommitted in the canonical tree: backlog/BD-288.md (new), backlog/_toc.md, pack-ops/session-state.json -- awaiting the user's commit approval."
+  "cycle_position": "Bounded cycle spent and clean; nothing further owed to it. Canonical carries the applied patch plus this snapshot, unstaged, awaiting the user's commit approval."
 }

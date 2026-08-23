@@ -51,8 +51,8 @@ See `scripts/lib/validate_checks/README.md` and
 `maintenance-docs/v11-implementation/ARCHITECTURE-BD-256.md`.
 """
 
-import os
 import re
+import subprocess
 from pathlib import Path
 
 from .core import (
@@ -663,11 +663,23 @@ def check_pack_rw_ro_two_class() -> None:
 #        whole `scripts/tests/` dir; that dir holds many unrelated tests and
 #        a future test must not be able to smuggle prohibition prose).
 #
-# RUNTIME (ci-check-runtime-compounding): a SINGLE in-process whole-tree walk
-# (`REPO_ROOT.rglob("*")`, the Check-40 precedent), text/markdown files only,
-# in-process `re` matching — NO subprocess, NO subprocess-per-entry, NO `rg`
-# fork. The active-tree exclusion list (`.git/`, `test-fixtures/`, the two
-# allowlisted process dirs) keeps the scanned set small. Negligible across
+# CANDIDATE SET (ci-guard-measure-then-bound): git-TRACKED files
+# (`git ls-files`), NEVER a raw `REPO_ROOT.rglob("*")` filesystem walk. A raw
+# walk enumerates whatever is ON DISK rather than what the repo CONTAINS, so it
+# descends into live sub-agent worktrees (`.claude/worktrees/agent-*/`) and
+# re-reports this repo's own files, seen through a second checkout, as fresh
+# offenders — and it reads gitignored build output (`graphify-out/`) the repo
+# does not own. Both are environment artifacts, not pack surfaces. Guard-A
+# asserts a property of the REPO, so the REPO's file set is the only correct
+# candidate set. Lenient SKIP when git is unavailable / this is not a work tree
+# (the Check 63 + Check 69 posture — never hard-fail on a non-git environment).
+#
+# RUNTIME (ci-check-runtime-compounding): ONE `git ls-files` subprocess per
+# invocation — NOT per-entry — then text/markdown files only and in-process
+# `re` matching; no `rg` fork. Same single-subprocess shape as Checks 63/69.
+# The 3-entry exclusion list (`test-fixtures/`, `scripts/tests/fixtures/`,
+# `node_modules/`) plus the two allowlisted process dirs keeps the scanned set
+# small. Negligible across
 # the battery's ~202 validate-pack invocations; `run_check` times it and
 # WARNs on the 2.0 s per-check budget.
 _CHECK_53_PROHIBITION_PATTERNS = (
@@ -686,8 +698,11 @@ _CHECK_53_ALLOWLIST_DIR_PREFIXES = (
 )
 # ALWAYS-EXCLUDED dirs (not scanned at all): pack-internal git state +
 # synthetic fixtures (the latter can carry arbitrary injected strings).
+# Under the git-TRACKED candidate set `.git/` is STRUCTURALLY unreachable (git
+# never tracks its own metadata dir), so it was dropped. `node_modules/` is
+# retained deliberately: it is NOT in `.gitignore`, so vendored deps could be
+# committed into the tracked set and must stay excluded if they ever are.
 _CHECK_53_EXCLUDE_DIR_PREFIXES = (
-    ".git/",
     "test-fixtures/",
     "scripts/tests/fixtures/",
     "node_modules/",
@@ -741,25 +756,38 @@ def check_worktree_isolation_prohibition_flip_block() -> None:
     `baseRef`/`bgIsolation`. Measure-then-bound allowlist = the two
     process/history directories that carry the legitimate documentation of
     the removed rule, PLUS the narrow self-exception (validator self-skip +
-    ONLY the single check-53 test). Single in-process whole-tree walk; no
-    subprocess.
+    ONLY the single check-53 test). Candidate set = git-TRACKED files
+    (`git ls-files`), never a raw filesystem walk; lenient SKIP off a git
+    work tree.
     """
     print("\n── Check 53: BD-197 worktree-isolation prohibition flip-block (Guard-A) ──")
+    # Candidate set = git-TRACKED files, NOT a raw filesystem walk (see the
+    # CANDIDATE SET note above). `git ls-files` already emits POSIX-relative
+    # paths, so no separator normalization is needed.
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "-z"],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+    except FileNotFoundError:
+        ok("git not available — skipping (lenient)")
+        return
+    if result.returncode != 0:
+        ok("git ls-files unavailable (not a git work tree) — skipping (lenient)")
+        return
+
     offenders = []
-    for path in sorted(REPO_ROOT.rglob("*")):
+    for rel_str in sorted(r for r in result.stdout.split("\0") if r.strip()):
+        path = REPO_ROOT / rel_str
         # Self-skip the validator by NAME (Check-51 precedent) — it quotes
         # the matcher regex literal and would otherwise self-match.
         if path.name == _CHECK_53_SELF_SKIP_NAME:
             continue
+        # tracked-but-absent (deleted-not-committed) — nothing to scan.
         if not path.is_file():
             continue
         if path.suffix not in _CHECK_53_SCAN_SUFFIXES:
             continue
-        try:
-            rel = path.relative_to(REPO_ROOT)
-        except ValueError:
-            continue
-        rel_str = str(rel).replace(os.sep, "/")
         # Skip always-excluded dirs (git state, fixtures).
         skip = False
         for excl in _CHECK_53_EXCLUDE_DIR_PREFIXES:
