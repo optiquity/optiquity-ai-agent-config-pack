@@ -656,12 +656,6 @@ def check_durable_doc_concision() -> None:
 
 
 # ── Check 66 (Gate 1b): operating-doc bullet-concision gate (BD-243) ───────
-# AUTHORED-UNREGISTERED at CG-14-prep-b — its body + constant + allowlist ship
-# now but it is NOT in CHECK_REGISTRY (count stays 63); CG-14 registers it.
-# Exercised meanwhile via its per-check test's in-process body invocation (NOT
-# `--only-check 66`, which resolves against the registry and so cannot reach an
-# unregistered check).
-#
 # WHAT IT CATCHES (DESIGN-BD-243-DURABLE-GATES.md §3 Gate 1b): a single rule /
 # bullet whose char length exceeds a per-bullet cap (the B1 mega-bullet pattern
 # — e.g. the graph-first-context rule). A whole-DOC ceiling (Check 44 Gate 1a)
@@ -797,8 +791,7 @@ def check_operating_doc_bullet_concision() -> None:
     reasonable doc. VOLUME only — the cap is a character count; it asserts
     nothing about meaning.
 
-    AUTHORED-UNREGISTERED at CG-14-prep-b (not in CHECK_REGISTRY; count stays
-    63). CG-14 registers it. Per DESIGN-BD-243-DURABLE-GATES.md §3 Gate 1b.
+    Per DESIGN-BD-243-DURABLE-GATES.md §3 Gate 1b.
 
     measure-then-bound: the allowlist is sized to the measured over-cap KEEP
     set EXACTLY — never widened to admit a reducible bullet. A reviewer

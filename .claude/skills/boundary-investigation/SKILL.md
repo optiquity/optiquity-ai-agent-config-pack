@@ -70,8 +70,8 @@ project-side SSOTs:
 | Universal project rules (trinity) | `project-template/CLAUDE.md` / `AGENTS.md` / `GEMINI.md` |
 | Per-agent prompt templates | `project-template/docs/pack/prompts/<agent>.md` |
 | Project-side skills (methodology) | `project-template/skills/<name>/SKILL.md` |
-| Install + setup procedures | `project-template/docs/pack/INSTALL-PROCEDURES.md` |
-| Methodology + procedures | `project-template/supporting-docs/METHODOLOGY.md` (when applicable) |
+| Install + setup procedures | `supporting-docs/INSTALL-PROCEDURES.md` |
+| Methodology + procedures | `supporting-docs/METHODOLOGY.md` (when applicable) |
 
 If the project-side SSOT for the concept is not obvious from this table,
 grep `project-template/` for keywords related to the concept. The

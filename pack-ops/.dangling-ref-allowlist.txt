@@ -10,13 +10,20 @@
 # (`_strip_code_blocks`, the bare-ref/hyperlink regex, the `_CHECK_40_ANCHOR_
 # PHRASES` self-flagging-non-existence window, and the basename index).
 #
-# THE TEETH: a reference that resolves to NO file (qualified-path direct +
-# basename-index fallback) AND is NOT cleared by the anchor-phrase window AND
-# is NOT on this allowlist FAILs. measure-then-bound (CLAUDE.md "CI guard
-# design — measure-then-bound"): this allowlist is sized EXACTLY to the
-# measured intentional-non-existence KEEP set — filename/path grammar patterns,
-# regenerated-mirror references, runtime-generated outputs, template
-# placeholders, out-of-repo memory files, and teaching/example client paths.
+# THE TEETH: a reference that resolves to NO file AND is NOT cleared by the
+# anchor-phrase window AND is NOT on this allowlist FAILs. A QUALIFIED path
+# resolves only through the install-path-aware ladder — the git-TRACKED path
+# itself, then the `project-template/` client-install prefix, then the
+# `_CLIENT_INSTALLED_FILES` dest->source reverse map — and NEVER by bare
+# basename, so a reference to a MOVED file is a FAIL and not something to
+# allowlist. A BARE ref still resolves by basename index. Every leg tests
+# git-TRACKED membership, so a TRACKED target needs no record here: a record
+# whose target is tracked can never fire and is dead weight to be removed.
+# measure-then-bound (CLAUDE.md "CI guard design — measure-then-bound"): this
+# allowlist is sized EXACTLY to the measured intentional-non-existence KEEP
+# set — filename/path grammar patterns, regenerated-mirror references,
+# runtime-generated outputs, template placeholders, out-of-repo memory files,
+# and teaching/example client paths.
 # Every token here is a reference that is dangling BY DESIGN. A new dangling
 # ref must be EITHER fixed (restore/correct the target) OR, if it is
 # intentionally non-existent, added here WITH a reason; it is NEVER auto-
@@ -76,6 +83,9 @@ reason: G1 — implementation-plan per-entry qualified-path grammar placeholder.
 token: x-foo.md
 reason: G1 — the x- custom-prefix grammar example (an illustrative client-added roster file name).
 
+token: CLAUDE/AGENTS/GEMINI.md
+reason: G1 — trinity prose shorthand naming the three CLI files as a set; not a path (no file of this name exists by design).
+
 # ─────────────────────────────────────────────────────────────────
 # G2 — regenerated-MIRROR references (flat-file per-entry is SSOT)
 # ─────────────────────────────────────────────────────────────────
@@ -119,14 +129,14 @@ reason: G2 — a STATUS search-location reference in the install procedure (rege
 token: docs/project/pm-session-state.json
 reason: the runtime-authored client PM-Chat resume snapshot (committed after the first PM-Chat session; absent from the bare template); cited by name from the client trinity / PM-CHAT / pm-startup / impl-plan _rules.md. Distinct basename vs the pack-internal pack-ops/session-state.json.
 
-token: pack-ops/dashboard-approvals/dashboard.html
-reason: the runtime-authored latest dashboard render — written into the tracked pack-ops/dashboard-approvals/ dir by the /pack-dashboard committed-renderer flow (scripts/dashboard-render.py build), overwritten each render, absent from the bare tree. Runtime-authored-but-TRACKED (committed after first use), matching the pm-session-state.json precedent — NOT gitignored.
+token: docs/project/backlog/_toc.md
+reason: G2 — runtime-GENERATED per-entry index (regenerated after every entry edit per this stream's _rules.md); absent from the shipped template by design.
 
-token: pack-ops/dashboard-approvals/dashboard-url.txt
-reason: the runtime-authored one-line reused claude.ai artifact URL — written by the foreground publish step after the first render, absent from the bare tree. Runtime-authored-but-TRACKED (committed after first use), matching the pm-session-state.json precedent — NOT gitignored.
+token: docs/project/changelog/_toc.md
+reason: G2 — runtime-GENERATED per-entry index (regenerated after every entry edit per this stream's _rules.md); absent from the shipped template by design.
 
-token: pack-ops/dashboard-approvals/dashboard-shell.html
-reason: the runtime-authored spec-fingerprinted dashboard shell — written into the tracked pack-ops/dashboard-approvals/ dir by the /pack-dashboard committed-renderer flow (scripts/dashboard-render.py build), regenerated only when the build spec changes and reused otherwise, absent from the bare tree. Runtime-authored-but-TRACKED (committed after first use), matching the pm-session-state.json precedent — NOT gitignored.
+token: docs/project/groupings/_toc.md
+reason: G2 — runtime-GENERATED per-entry index (regenerated after every entry edit per this stream's _rules.md); absent from the shipped template by design.
 
 # ─────────────────────────────────────────────────────────────────
 # G3 — self-flagged RETIRED / DECLINED / ORPHAN / HISTORICAL references
@@ -210,3 +220,9 @@ reason: G7 — an illustrative client repository-class filename in an audit teac
 
 token: inventory_repository.py
 reason: G7 — an illustrative client repository-class filename in an audit teaching scenario.
+
+token: docs/project/ARCHITECTURE.md
+reason: G7 — a CLIENT-side project path named from a client-audience doc; no pack-repo file is the referent.
+
+token: docs/ARCHITECTURE.md
+reason: G7 — a CLIENT-side project path in setup prose that explicitly guards on its presence ("if present" / "already present at"); no pack-repo file is the referent.

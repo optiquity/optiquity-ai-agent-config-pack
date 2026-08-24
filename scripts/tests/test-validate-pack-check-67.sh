@@ -10,9 +10,9 @@
 # pack-ops/.operating-doc-deferred-feature-allowlist.txt record FAILs. A RECALL
 # gate, not precision; the human adjudicates each hit.
 #
-# REGISTERED at CG-14: the check BODY + patterns + allowlist plus the
-# CHECK_REGISTRY entry are all live, so Check 67 IS in CHECK_REGISTRY (the count
-# is 69). This test exercises Check 67's BODY IN-PROCESS against (a) synthetic
+# REGISTERED: the check BODY + patterns + allowlist plus the
+# CHECK_REGISTRY entry are all live, so Check 67 IS in CHECK_REGISTRY. This test
+# exercises Check 67's BODY IN-PROCESS against (a) synthetic
 # /tmp trees and (b) the live tree, and asserts that 67 IS in the registry while
 # the count invariant holds DYNAMICALLY (never a hardcoded literal).
 #
@@ -73,8 +73,7 @@ if len(mod._build_check_registry()) != mod.CHECK_REGISTRY_EXPECTED_COUNT:
           mod.CHECK_REGISTRY_EXPECTED_COUNT); sys.exit(1)
 nums = [t[0] for t in mod._build_check_registry()]
 if 67 not in nums:
-    print('FAIL_67_NOT_REGISTERED — CG-14 registers Check 67 in '
-          'CHECK_REGISTRY (count 63 -> 69)');
+    print('FAIL_67_NOT_REGISTERED — Check 67 must be in CHECK_REGISTRY');
     sys.exit(1)
 print('OK')
 " > /tmp/vp-check67-import.out 2>&1

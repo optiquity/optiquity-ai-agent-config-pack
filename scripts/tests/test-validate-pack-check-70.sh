@@ -17,8 +17,8 @@
 # Bidirectional set-equality: forward (a constant marker absent from the gate
 # FAILs) + reverse (a gate `# AXIS:` marker absent from the constant FAILs).
 #
-# REGISTERED at CG-14: the check BODY + constants plus the CHECK_REGISTRY entry
-# are all live, so Check 70 IS in CHECK_REGISTRY (the count is 69). This test
+# REGISTERED: the check BODY + constants plus the CHECK_REGISTRY entry
+# are all live, so Check 70 IS in CHECK_REGISTRY. This test
 # exercises Check 70's BODY by calling the function IN-PROCESS against
 # (a) synthetic /tmp trees and (b) the live tree, and asserts that 70 IS in the
 # registry while the count invariant holds DYNAMICALLY (never a hardcoded
@@ -92,11 +92,10 @@ if '# AXIS: conformance' not in mod._CHECK_70_AXIS_MARKERS:
 if len(mod._build_check_registry()) != mod.CHECK_REGISTRY_EXPECTED_COUNT:
     print('FAIL_COUNT_MISMATCH', len(mod._build_check_registry()),
           mod.CHECK_REGISTRY_EXPECTED_COUNT); sys.exit(1)
-# Check 70 is REGISTERED at CG-14: 70 must be in the registry (count 69).
+# Check 70 is REGISTERED: 70 must be in the registry.
 nums = [t[0] for t in mod._build_check_registry()]
 if 70 not in nums:
-    print('FAIL_70_NOT_REGISTERED — CG-14 registers Check 70 in '
-          'CHECK_REGISTRY (count 63 -> 69)');
+    print('FAIL_70_NOT_REGISTERED — Check 70 must be in CHECK_REGISTRY');
     sys.exit(1)
 print('OK')
 " > /tmp/vp-check70-import.out 2>&1

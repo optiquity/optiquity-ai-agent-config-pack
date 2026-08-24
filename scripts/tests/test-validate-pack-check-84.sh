@@ -15,7 +15,7 @@
 #     monolith. Functional bites are staged against a temp copy of the
 #     shipped template (stray entry / monolith / missing `_intro.md`).
 #
-# REGISTERED: Check 84 IS in CHECK_REGISTRY (count 81). Group 0 asserts the
+# REGISTERED: Check 84 IS in CHECK_REGISTRY. Group 0 asserts the
 # registration landed + the dynamic count-invariant holds (never a
 # hardcoded literal) — a registry mismatch FAILS here.
 #

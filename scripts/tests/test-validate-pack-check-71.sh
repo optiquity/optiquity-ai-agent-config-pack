@@ -11,8 +11,8 @@
 # property is byte-identity because pack SKILLS share ONE format across all 3
 # CLIs (the WRONG property for agents — 3 formats — which use Check 11/56).
 #
-# REGISTERED at CG-14: the check BODY + constant plus the CHECK_REGISTRY entry
-# are all live, so Check 71 IS in CHECK_REGISTRY (the count is 69). This test
+# REGISTERED: the check BODY + constant plus the CHECK_REGISTRY entry
+# are all live, so Check 71 IS in CHECK_REGISTRY. This test
 # exercises Check 71's BODY by calling the function IN-PROCESS against
 # (a) synthetic /tmp trees and (b) the live tree, and asserts that 71 IS in the
 # registry while the count invariant holds DYNAMICALLY (never a hardcoded
@@ -81,11 +81,10 @@ if tuple(dirs) != ('.claude/skills', '.codex/skills', '.agents/skills'):
 if len(mod._build_check_registry()) != mod.CHECK_REGISTRY_EXPECTED_COUNT:
     print('FAIL_COUNT_MISMATCH', len(mod._build_check_registry()),
           mod.CHECK_REGISTRY_EXPECTED_COUNT); sys.exit(1)
-# Check 71 is REGISTERED at CG-14: 71 must be in the registry (count 69).
+# Check 71 is REGISTERED: 71 must be in the registry.
 nums = [t[0] for t in mod._build_check_registry()]
 if 71 not in nums:
-    print('FAIL_71_NOT_REGISTERED — CG-14 registers Check 71 in '
-          'CHECK_REGISTRY (count 63 -> 69)');
+    print('FAIL_71_NOT_REGISTERED — Check 71 must be in CHECK_REGISTRY');
     sys.exit(1)
 print('OK')
 " > /tmp/vp-check71-import.out 2>&1

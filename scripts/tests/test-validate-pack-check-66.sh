@@ -9,9 +9,9 @@
 # pack-ops/.bullet-concision-allowlist.txt record FAILs. VOLUME only — the cap
 # is a character count; it asserts nothing about meaning.
 #
-# REGISTERED at CG-14: the check BODY + constant + allowlist plus the
-# CHECK_REGISTRY entry are all live, so Check 66 IS in CHECK_REGISTRY (the count
-# is 69). This test exercises Check 66's BODY by calling the function IN-PROCESS
+# REGISTERED: the check BODY + constant + allowlist plus the
+# CHECK_REGISTRY entry are all live, so Check 66 IS in CHECK_REGISTRY. This test
+# exercises Check 66's BODY by calling the function IN-PROCESS
 # against (a) synthetic /tmp trees and (b) the live tree, and asserts that 66
 # IS in the registry while the count invariant holds DYNAMICALLY (never a
 # hardcoded literal). The Group-0 `66 in nums` assertion verifies the
@@ -83,8 +83,7 @@ if len(mod._build_check_registry()) != mod.CHECK_REGISTRY_EXPECTED_COUNT:
           mod.CHECK_REGISTRY_EXPECTED_COUNT); sys.exit(1)
 nums = [t[0] for t in mod._build_check_registry()]
 if 66 not in nums:
-    print('FAIL_66_NOT_REGISTERED — CG-14 registers Check 66 in '
-          'CHECK_REGISTRY (count 63 -> 69)');
+    print('FAIL_66_NOT_REGISTERED — Check 66 must be in CHECK_REGISTRY');
     sys.exit(1)
 print('OK')
 " > /tmp/vp-check66-import.out 2>&1

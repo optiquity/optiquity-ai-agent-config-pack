@@ -8,8 +8,8 @@
 # so a NEW operating doc cannot silently escape the content gates. It reads NO
 # file bodies (path enumeration + set arithmetic).
 #
-# REGISTERED at CG-14: the check BODY + constants plus the CHECK_REGISTRY entry
-# are all live, so Check 69 IS in CHECK_REGISTRY (the count is 69). This test
+# REGISTERED: the check BODY + constants plus the CHECK_REGISTRY entry
+# are all live, so Check 69 IS in CHECK_REGISTRY. This test
 # exercises Check 69's BODY by calling the function IN-PROCESS against
 # (a) synthetic /tmp trees and (b) the live tree, and asserts that 69 IS in the
 # registry while the count invariant holds DYNAMICALLY (never a hardcoded
@@ -87,11 +87,10 @@ if missing:
 if len(mod._build_check_registry()) != mod.CHECK_REGISTRY_EXPECTED_COUNT:
     print('FAIL_COUNT_MISMATCH', len(mod._build_check_registry()),
           mod.CHECK_REGISTRY_EXPECTED_COUNT); sys.exit(1)
-# Check 69 is REGISTERED at CG-14: 69 must be in the registry (count 69).
+# Check 69 is REGISTERED: 69 must be in the registry.
 nums = [t[0] for t in mod._build_check_registry()]
 if 69 not in nums:
-    print('FAIL_69_NOT_REGISTERED — CG-14 registers Check 69 in '
-          'CHECK_REGISTRY (count 63 -> 69)');
+    print('FAIL_69_NOT_REGISTERED — Check 69 must be in CHECK_REGISTRY');
     sys.exit(1)
 print('OK')
 " > /tmp/vp-check69-import.out 2>&1

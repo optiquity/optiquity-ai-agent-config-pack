@@ -1758,13 +1758,23 @@ def _git_tracked_relpaths(*trees: str) -> list[str] | None:
 
 
 
-def _build_basename_index() -> dict[str, list[Path]] | None:
+def _build_basename_index(
+    rels: list[str] | None = None,
+) -> dict[str, list[Path]] | None:
     """Build a basename → [relative-paths] index from git-TRACKED files
     (`git ls-files`), NOT a raw `REPO_ROOT.rglob("*")` walk
     (`ci-guard-measure-then-bound`: an untracked artifact must not mask a
     dangling ref). Returns None if git is unavailable / not a work tree —
     the caller then SKIPs leniently (mirrors Check 63 / Check 69).
     Used for the §5.1 D4 candidate-path lookup.
+
+    `rels` — an already-fetched `_git_tracked_relpaths()` result. A caller
+    that needs the same tracked list for its OWN scope walk (Check 68,
+    `check_dangling_file_refs`) passes it through, so the pair costs ONE
+    `git ls-files` instead of two (`ci-check-runtime-compounding`: the
+    second fetch is ~10.8 ms per invocation against the 10.0 s
+    `RUN_CHECK_TOTAL_GENERAL_BUDGET_S`). Omitted, the index fetches its own
+    list — the form Checks 40 and 43 use.
 
     Per §5.1 EXCLUDE list (with OQ-S1 expansion 2026-05-20):
       - `.git/` always skipped (pack-internal git state)
@@ -1773,7 +1783,8 @@ def _build_basename_index() -> dict[str, list[Path]] | None:
       - `scripts/tests/fixtures/` (per-script synthetic fixture trees)
       - `node_modules`-like dirs (defensive; not present at HEAD)
     """
-    rels = _git_tracked_relpaths()
+    if rels is None:
+        rels = _git_tracked_relpaths()
     if rels is None:
         return None
     index: dict[str, list[Path]] = {}
@@ -2988,6 +2999,54 @@ def _parse_client_installed_file_stages() -> dict[str, set[str]]:
 
 
 
+def _client_install_dest_to_source() -> dict[str, str]:
+    """Reverse the `_CLIENT_INSTALLED_FILES` inventory: project_relpath ->
+    pack_relpath.
+
+    Sibling of `_parse_client_installed_files()` (whose 5-tuple arity is
+    UNCHANGED and whose unpack sites stay intact) and of
+    `_parse_client_installed_file_stages()`, which solves the same
+    different-column problem with the same self-contained second parse.
+    Check 68 (`check_dangling_file_refs`, leg B) consumes this to resolve a
+    reference written in the CLIENT's post-install path form against the
+    pack-storage path it is copied FROM — a reference that resolves at a
+    client install but has no pack-repo file at its literal path.
+    Returns {} if init-project.sh is absent or the markers are not
+    exactly-once (lenient — leg B then resolves nothing and the ref falls
+    through to the anchor window / allowlist / FAIL).
+    """
+    init_sh = REPO_ROOT / "scripts" / "init-project.sh"
+    if not init_sh.is_file():
+        return {}
+    text = init_sh.read_text()
+    start_marker = "_CLIENT_INSTALLED_FILES_START"
+    end_marker = "_CLIENT_INSTALLED_FILES_END"
+    if text.count(start_marker) != 1 or text.count(end_marker) != 1:
+        return {}
+    m = re.search(
+        rf"{re.escape(start_marker)}\s*\n(.+?)\n[^\n]*{re.escape(end_marker)}",
+        text, re.DOTALL,
+    )
+    if not m:
+        return {}
+    out: dict[str, str] = {}
+    for line in m.group(1).splitlines():
+        s = line.strip()
+        if not s.startswith("#"):
+            continue
+        content = s.lstrip("#").strip()
+        if "->" not in content:
+            continue
+        pack_rel, rest = content.split("->", 1)
+        pack_rel = pack_rel.strip()
+        proj_rel = re.sub(r"\[stage:[^\]]*\]", "", rest).strip()
+        if pack_rel and proj_rel:
+            out[proj_rel] = pack_rel
+    return out
+
+
+
+
 def check_client_installed_files() -> None:
     """Check 41 — _CLIENT_INSTALLED_FILES self-doc list integrity (BD-180 G).
 
@@ -3453,12 +3512,6 @@ def _iter_operating_docs() -> list:
 
 
 # ── Check 69 (Gate 4): operating-doc scope-completeness meta-check (BD-243) ─
-# AUTHORED-UNREGISTERED at CG-14-prep-a — its body + constants ship now but it
-# is NOT in CHECK_REGISTRY (count stays 63); CG-14 registers it (count 63→68
-# with the other four gates). Exercised meanwhile via its per-check test's
-# in-process body invocation (NOT `--only-check 69`, which resolves against
-# the registry and so cannot reach an unregistered check).
-#
 # THE HOLE IT CLOSES: auto-discovery (_iter_operating_docs) is only as good as
 # its family patterns + EXEMPT list. A doc added in an un-globbed LOCATION (a
 # family the glob does not cover) would still escape the content gates. Gate 4
@@ -3585,9 +3638,8 @@ def check_operating_doc_scope_completeness() -> None:
     the closed-world assertion — the env is irrelevant by construction. See the
     header comment for the META-PRINCIPLE GUARD + reviewer protocol.
 
-    AUTHORED-UNREGISTERED at CG-14-prep-a (not in CHECK_REGISTRY; count stays
-    63). CG-14 registers it. Per DESIGN-BD-243-DURABLE-GATES.md §3 Gate 4 + §5
-    and DESIGN-BD-243-CHECK69-ENV-ROBUSTNESS.md.
+    Per DESIGN-BD-243-DURABLE-GATES.md §3 Gate 4 + §5 and
+    DESIGN-BD-243-CHECK69-ENV-ROBUSTNESS.md.
 
     Lenient mode: `git` unavailable or the cwd is not a git work tree
     (`git ls-files` raises FileNotFoundError / returns non-zero) → SKIP the
@@ -3894,11 +3946,6 @@ def check_operating_doc_no_history() -> None:
 
 
 # ── Check 67 (Gate 2): operating-doc deferred-feature recall gate (BD-243) ─
-# AUTHORED-UNREGISTERED at CG-14-prep-b — body + patterns + allowlist ship now
-# but Check 67 is NOT in CHECK_REGISTRY (count stays 63); CG-14 registers it.
-# Exercised meanwhile via its per-check test's in-process body invocation (NOT
-# `--only-check 67`, which resolves against the registry).
-#
 # WHAT IT CATCHES (DESIGN-BD-243-DURABLE-GATES.md §3 Gate 2): an operating-doc
 # line that ADVERTISES a deferred / unimplemented / future-version FEATURE
 # ("tracker integration is deferred", "deferred to a future release", "once
@@ -3982,8 +4029,7 @@ def check_operating_doc_no_deferred_feature() -> None:
     rule itself). The allowlist is sized to the measured KEEP set EXACTLY
     (measure-then-bound) — never widened to admit a contamination hit.
 
-    AUTHORED-UNREGISTERED at CG-14-prep-b (not in CHECK_REGISTRY; count stays
-    63). CG-14 registers it. Per DESIGN-BD-243-DURABLE-GATES.md §3 Gate 2.
+    Per DESIGN-BD-243-DURABLE-GATES.md §3 Gate 2.
 
     Lenient mode: an IN doc absent at HEAD SKIPs that doc; a missing allowlist
     file means an empty allowlist (every marker hit then FAILs — fail-loud).
@@ -4048,11 +4094,6 @@ def check_operating_doc_no_deferred_feature() -> None:
 
 
 # ── Check 68 (Gate 3): dangling-reference gate (BD-243) ────────────────────
-# AUTHORED-UNREGISTERED at CG-14-prep-b — body + pattern + allowlist ship now
-# but Check 68 is NOT in CHECK_REGISTRY (count stays 63); CG-14 registers it.
-# Exercised meanwhile via its per-check test's in-process body invocation (NOT
-# `--only-check 68`, which resolves against the registry).
-#
 # WHAT IT CATCHES (DESIGN-BD-243-DURABLE-GATES.md §3 Gate 3): a file/path
 # reference in an operating doc (and the deliverable surface) whose target does
 # NOT exist — a dead pointer. Generalizes Check 64's existence-precedent from
@@ -4068,12 +4109,28 @@ def check_operating_doc_no_deferred_feature() -> None:
 # hid). All run AFTER _strip_code_blocks() (fenced/indented code is not a prose
 # citation).
 #
-# EXISTENCE CHECK: a qualified-path ref resolves if REPO_ROOT/<path> exists OR
-# (fallback) its basename is in the once-built basename index. A bare-ref
-# resolves if its basename is in the index. A ref within the _CHECK_40_ANCHOR_
-# PHRASES window ("archived"/"does not exist"/"post-install") is intentional
-# non-existence, auto-cleared. A ref that resolves to NO file AND is not
-# anchor-cleared AND is not on pack-ops/.dangling-ref-allowlist.txt FAILs.
+# EXISTENCE CHECK: a QUALIFIED-path ref resolves through a 3-leg
+# install-path-aware ladder, in this order — (1) DIRECT: <path> is git-TRACKED;
+# (2) leg A: project-template/<path> is git-TRACKED, the client-install prefix,
+# so a client-audience relative path that resolves at an install resolves here
+# too; (3) leg B: <path> is a `_CLIENT_INSTALLED_FILES` DEST whose pack-storage
+# SOURCE is git-TRACKED (_client_install_dest_to_source). Every leg tests the
+# TRACKED set, never the filesystem (`ci-guard-measure-then-bound`), so the
+# verdict is identical on a developer box and on a fresh CI clone. The
+# ladder is install-path-aware, NOT citer-audience-aware: leg A is an
+# unconditional union, deliberately un-scoped by citing tree.
+# A BARE ref resolves if its basename is in the once-built basename index —
+# bareness is a different axis and that leg is unchanged.
+# A ref within the _CHECK_40_ANCHOR_PHRASES window ("archived"/"does not
+# exist"/"post-install") is intentional non-existence, auto-cleared. A ref that
+# clears NO resolution leg AND is not anchor-cleared AND is not on
+# pack-ops/.dangling-ref-allowlist.txt FAILs.
+#
+# WHY THE QUALIFIED LEG IS NOT BASENAME-MATCHED: resolving `a/b/DOC.md` because
+# SOME `DOC.md` exists anywhere in the tree makes the gate blind to a MOVED
+# file — the reference keeps pointing at a path that no longer holds anything
+# and the guard stays green. The leg order above is load-bearing; in
+# particular the allowlist escape stays BELOW every resolution leg.
 #
 # measure-then-bound: the allowlist is sized EXACTLY to the measured
 # intentional-non-existence KEEP set (grammar patterns, deleted/retired
@@ -4086,7 +4143,10 @@ def check_operating_doc_no_deferred_feature() -> None:
 # RUNTIME COST (ci-check-runtime-compounding): one pass over the IN set + the
 # Check-64 deliverable trees, extracting refs (3 compiled patterns) and
 # resolving each against a basename index BUILT ONCE (_build_basename_index,
-# the same builder Check 40 uses). No per-ref subprocess, no per-entry storm.
+# the same builder Check 40 uses) plus an install-map reverse index parsed ONCE
+# (~0.13 ms). ONE `git ls-files` serves both the index and the deliverable-tree
+# walk. No per-ref subprocess, no per-entry storm, no filesystem walk of the
+# deliverable trees.
 
 # The ONE new bounded pattern: a backtick qualified-path ref (>=1 slash), first
 # char [A-Za-z] (so a `.dotfile` qualified ref is out of scope — Check 64 owns
@@ -4104,8 +4164,15 @@ _CHECK_68_QUALIFIED_PATH_PATTERN = re.compile(
 _CHECK_68_INCLUDE_TREES = ("project-template", "supporting-docs")
 
 
+# The two history-tree members are ENTRY-shaped, not TREE-shaped, and that is
+# deliberate: a per-entry BODY is history and stays out of scope, but each
+# tree's `_rules.md` write-contract is an ACTIVE citation surface and belongs
+# on this EXISTENCE axis. `changelog/v` admits `changelog/_rules.md` exactly as
+# `backlog/BD-` already admits `backlog/_rules.md` — the two are symmetric.
+# A gate on a DIFFERENT axis over the same trees may legitimately exclude them
+# wholesale; do not harmonize this constant to that shape.
 _CHECK_68_EXCLUDE_PREFIXES = (
-    "changelog/",
+    "changelog/v",
     "backlog/BD-",
     "maintenance-docs/",
     "test-fixtures/",
@@ -4142,13 +4209,27 @@ def check_dangling_file_refs() -> None:
 
     Reuses Check 40's extraction (_strip_code_blocks, the bare-ref/hyperlink
     regex, the _CHECK_40_ANCHOR_PHRASES self-flagging-non-existence window, the
-    _build_basename_index index). A ref resolves via direct path existence
-    (qualified) or basename-index membership; an anchor-windowed ref is
-    intentional non-existence (auto-cleared); else the allowlist
+    _build_basename_index index). A QUALIFIED ref resolves through the 3-leg
+    install-path-aware ladder — the git-TRACKED path itself, then the
+    `project-template/` client-install prefix, then the
+    `_CLIENT_INSTALLED_FILES` dest->source reverse map
+    (_client_install_dest_to_source) — and NEVER by bare basename, which would
+    make the gate blind to a moved file. A BARE ref resolves by basename-index
+    membership (unchanged). An anchor-windowed ref is intentional non-existence
+    (auto-cleared); else the allowlist
     (pack-ops/.dangling-ref-allowlist.txt, token-keyed) must clear it.
 
-    AUTHORED-UNREGISTERED at CG-14-prep-b (not in CHECK_REGISTRY; count stays
-    63). CG-14 registers it. Per DESIGN-BD-243-DURABLE-GATES.md §3 Gate 3.
+    Every RESOLUTION leg is git-TRACKED (`ci-guard-measure-then-bound`): the
+    basename index and the three qualified legs read the same one
+    `git ls-files` result, so an untracked artifact can never resolve a
+    reference. The SCANNED set is tracked for the deliverable trees only — its
+    operating-doc half (`_iter_operating_docs()`'s family globs, shared with
+    Checks 65/67/69) and the README literal are filesystem-based, so an
+    untracked file in a globbed family location IS scanned. Polarity is
+    benign: that can only add scrutiny locally, never remove it, and a fresh
+    CI clone carries no untracked files.
+
+    Per DESIGN-BD-243-DURABLE-GATES.md §3 Gate 3.
 
     measure-then-bound: the allowlist is sized to the measured intentional-non-
     existence KEEP set EXACTLY — never widened to admit a real dead pointer. A
@@ -4161,10 +4242,18 @@ def check_dangling_file_refs() -> None:
     print("\n── Check 68: dangling-reference gate (BD-243) ──")
 
     allowlist = _check_68_load_allowlist()
-    index = _build_basename_index()
+    # ONE `git ls-files` feeds BOTH the basename index and the deliverable-tree
+    # walk below (ci-check-runtime-compounding).
+    rels = _git_tracked_relpaths()
+    index = _build_basename_index(rels) if rels is not None else None
     if index is None:
         ok("git unavailable (not a git work tree) — skipping (lenient)")
         return
+    # Both built ONCE, before the file loop — never per line, never per ref.
+    # `tracked` is a SET: the qualified ladder does up to 3 membership tests per
+    # reference, and a list scan there would be O(refs x tracked-files).
+    tracked = set(rels)
+    dest_to_source = _client_install_dest_to_source()
     anchor_window = _CHECK_40_ANCHOR_WINDOW
 
     def _excluded(rel_posix: str) -> bool:
@@ -4188,16 +4277,10 @@ def check_dangling_file_refs() -> None:
     if readme.is_file():
         scope.add("README.md")
     for tree in _CHECK_68_INCLUDE_TREES:
-        root = REPO_ROOT / tree
-        if not root.is_dir():
-            continue
-        for path in root.rglob("*"):
-            if not path.is_file():
-                continue
-            rel_posix = path.relative_to(REPO_ROOT).as_posix()
-            if _excluded(rel_posix):
-                continue
-            scope.add(rel_posix)
+        prefix = tree + "/"
+        for rel_posix in rels:
+            if rel_posix.startswith(prefix) and not _excluded(rel_posix):
+                scope.add(rel_posix)
 
     any_fail = False
     files_scanned = 0
@@ -4229,12 +4312,23 @@ def check_dangling_file_refs() -> None:
                 continue
             for token, is_qualified in tokens:
                 refs_checked += 1
-                # existence resolution
+                # Existence resolution. Leg order is load-bearing: direct ->
+                # client-install prefix -> install-map reverse -> anchor ->
+                # allowlist -> FAIL. Never hoist the allowlist escape above a
+                # resolution leg, and never resolve a QUALIFIED path by bare
+                # basename (that is what made a moved file invisible). Every
+                # qualified leg tests git-TRACKED membership, never the
+                # filesystem: an untracked artifact present on a developer box
+                # but absent from a fresh clone must not resolve a reference.
                 if is_qualified:
-                    if (REPO_ROOT / token).exists():
+                    if token in tracked:
                         resolved += 1
                         continue
-                    if Path(token).name in index:
+                    if "project-template/" + token in tracked:
+                        resolved += 1
+                        continue
+                    src = dest_to_source.get(token)
+                    if src and src in tracked:
                         resolved += 1
                         continue
                 else:
@@ -4252,10 +4346,17 @@ def check_dangling_file_refs() -> None:
                 any_fail = True
                 fail(
                     f"{rel}:{lineno} — dangling reference `{token}`: the cited "
-                    f"target does NOT exist (no direct path, no basename match, "
-                    f"no self-flagging anchor). Per BD-243 Gate 3, a file/path "
+                    f"target is not a git-TRACKED file (for a qualified "
+                    f"path also no `project-template/` client-install prefix "
+                    f"and no `_CLIENT_INSTALLED_FILES` dest->source match; no "
+                    f"self-flagging anchor). An UNTRACKED file present on your "
+                    f"box does NOT resolve a reference — CI would not see it. "
+                    f"Per BD-243 Gate 3, a file/path "
                     f"reference in an operating doc / deliverable must resolve "
-                    f"to an existing target. Remediation: restore/correct the "
+                    f"to an existing target. NOTE: a qualified path is NOT "
+                    f"resolved by bare basename — if the target MOVED, correct "
+                    f"the path; a same-named file elsewhere does not clear it. "
+                    f"Remediation: restore/correct the "
                     f"target OR drop the cite OR, if it is non-existent BY "
                     f"DESIGN (a filename/path grammar pattern, a regenerated "
                     f"mirror, a self-flagged retired/declined ref, a runtime-"
@@ -4343,10 +4444,8 @@ def check_client_doc_gate_parity() -> None:
     verification). It NEVER edits the gate and NEVER makes the gate a runtime
     dependency of a pack operation.
 
-    AUTHORED-UNREGISTERED at CG-14-prep-b (not in CHECK_REGISTRY; count stays
-    63). CG-14 registers it. Per DESIGN-BD-243-CLIENT-GATE.md §C.3 +
-    PLAN-BD-243-FINAL-V4.md §3.3. Because CG-CLIENT already landed the real
-    gate, this passes against the live deliverable now (no lenient mode).
+    Per DESIGN-BD-243-CLIENT-GATE.md §C.3 + PLAN-BD-243-FINAL-V4.md §3.3.
+    No lenient mode — the check runs against the live shipped deliverable.
 
     Lenient mode: the gate file WHOLLY ABSENT SKIPs (an init/state problem, not
     a parity violation — mirrors the lenient-absent posture of the other gates);
@@ -4502,10 +4601,6 @@ def check_pack_skill_mirror_identity() -> None:
     md/toml/md — can never byte-equal), which keep Check 11 lenient parity +
     Check 56 semantic-verb-presence instead. Do not reuse this mechanism for
     agents.
-
-    AUTHORED-UNREGISTERED at CG-14-prep-b (not in CHECK_REGISTRY; count stays
-    63). CG-14 registers it. Because CB-04 unified the skill mirrors
-    (byte-identical), this passes against the live tree now.
 
     measure-then-bound: the gate is sized EXACTLY to the 3 pack-root mirror
     trees × the canonical skill set — no allowlist (byte-identity is absolute),
@@ -4926,6 +5021,7 @@ __all__ = [
     "_CHECK_41_COPY_VERB",
     "_parse_client_installed_files",
     "_parse_client_installed_file_stages",
+    "_client_install_dest_to_source",
     "check_client_installed_files",
     "_CHECK_OPERATING_DOC_FAMILIES",
     "_CHECK_OPERATING_DOC_EXEMPT",

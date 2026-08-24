@@ -18,7 +18,7 @@
 # generator + shared validator in `scripts/lib/per-entry/index-generate.sh`
 # (covered by `test-index-generate.sh`).
 #
-# REGISTERED: Check 73 IS in CHECK_REGISTRY (count 71). Group 0 asserts the
+# REGISTERED: Check 73 IS in CHECK_REGISTRY. Group 0 asserts the
 # registration landed + the dynamic count-invariant holds.
 #
 # Test infra is self-provisioned (in-memory matcher calls + the live empty
