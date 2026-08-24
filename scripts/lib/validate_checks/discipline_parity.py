@@ -458,11 +458,15 @@ def check_tracker_deferral_flip_block() -> None:
 #    mandate headers}
 # for the 5 pack agents × 3 CLIs.
 #
-# BINDS TO THE PROSE HEADER, NEVER `tools:` (design §13.2). `pack-reviewer`
-# carries `Write, Edit` in its `tools:` yet is RO — keying on `tools:` would
-# misclassify it. The discriminator is the mandate header
-# (`**Source-write within scope.**` = RW / `**Read-only.**` = RO) and the
-# roster `Class` column; the tool list is irrelevant to the class.
+# BINDS TO THE PROSE HEADER, NEVER `tools:` (design §13.2). All four RO pack
+# agents (`pack-architect`, `pack-planner`, `pack-reviewer`,
+# `pack-docs-researcher`) carry `Write, Edit` in their Claude `tools:` line
+# yet are RO — keying on `tools:` would misclassify them. The Antigravity
+# bundle agent files carry NO `tools:` field at all (measured 0/5), so a
+# `tools:`-keyed guard is impossible there anyway. The discriminator is the
+# mandate header (`**Source-write within scope.**` = RW / `**Read-only.**`
+# = RO) and the roster `Class` column; the tool list is irrelevant to the
+# class.
 #
 # Measure-then-bound (ci-guard-design-measure-then-bound): sized to EXACTLY
 # the measured 5-agent pack set (1 RW `pack-coder` + 4 RO) — no broader. A
@@ -541,8 +545,9 @@ def check_pack_rw_ro_two_class() -> None:
 
     Asserts set-equality between the PACK-AGENTS roster `Class` cells and
     the per-agent-file PROSE mandate headers, for the 5 pack agents × 3
-    CLIs. Binds to the prose header, NEVER `tools:` (pack-reviewer carries
-    Write/Edit yet is RO). Sized to exactly the measured 5-agent set.
+    CLIs. Binds to the prose header, NEVER `tools:` (RO pack agents carry
+    Write/Edit; Antigravity bundle files carry no `tools:`). Sized to
+    exactly the measured 5-agent set.
     """
     print("\n── Check 52: BD-197 pack RW/RO two-class consistency (Guard-B) ──")
     any_fail = False

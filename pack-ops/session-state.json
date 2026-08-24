@@ -1,31 +1,30 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "cfd5b02",
-  "checkpoint": "2026-08-23T13:30:00Z",
+  "boundary_commit": "47f8467",
+  "checkpoint": "2026-08-24T02:40:00Z",
   "active": [
-    "BD-288 @ commit gate. Bounded cycle COMPLETE: review pass 1 + fix pass 1 + review pass 2 (CLEAN) + fix pass 2. Patch applied to canonical; full battery green with an agent worktree present."
+    "BD-288 @ two parallel tracks. Track A: the wave plan is reconciled and every open item closed; next is the coder waves. Track B: the RO agent tool-grant fix is in its bounded cycle, fix pass 1 done, second review pending."
   ],
   "in_flight_agents": [
-    "coder-bd288-hygiene ALIVE, holding its worktree pending commit-landed confirmation. Tear it down ONLY after the commit exits 0; a failed commit KEEPS it as the recovery fallback.",
-    "reviewer-bd288-cycle2 and architect-bd288-guardbite RETURNED. Do NOT re-engage either; the next design pass takes a fresh instance.",
+    "planner-bd288-reconcile, RO, idle; re-engaged to apply the final three decisions to the plan.",
+    "coder-bd288-agenttoolgrant, RW, holds its worktree; fix pass 1 landed, awaiting reviewer pass 2.",
+    "All earlier BD-288 agents RETURNED or STOPPED. Every later stage takes a FRESH instance.",
     "ON RESUME: the one remaining launch step is USER-owned: flip the repo public. Pack Chat NEVER force-pushes or rewrites main."
   ],
   "queue": [
-    "commit the 10-file change (no scope keyword -- mixed pack + supporting-docs, Check 36 skips)",
-    "tear down the coder worktree once the commit is confirmed landed",
-    "FRESH architect on the full four-defect BD-288 scope -> adversarial -> user design review -> planner -> coder waves",
-    "user: fix the isolation mode (deferred by explicit user direction until BD-288 work completes)",
+    "BD-288 track A: updated plan -> coder waves W1+W2+W4 parallel, then W3",
+    "BD-288 track B: reviewer pass 2 -> commit the tool-grant fix",
+    "user: fix the isolation mode (parked until BD-288 completes)",
     "user: flip public"
   ],
-  "parallelization": "SERIAL. One RW worktree live; no parallel wave scheduled.",
-  "wave": "v11.0 (RC1) tagged and CI-green; the only v11 tag on the remote is the RC1 tag; main is the sole live development branch (the v11-dev branch no longer exists anywhere). Repo under the target GH account, still private. Open BDs 16; highest is BD-288. BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
+  "parallelization": "Two independent tracks; within track A the waves run W1+W2+W4 parallel then W3 serial.",
+  "wave": "v11.0 (RC1) tagged and CI-green; main is the sole live branch; repo under the target GH account, still private. Open BDs 16. BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
   "pending_decisions": [
+    "STANDING (user, until BD-288 completes): ACCEPT ALL agent recommendations and FIX ALL findings without per-item triage. Pack Chat takes the agent's own recommendation and surfaces outcomes, not choices. UNCHANGED: commits still need explicit user approval, and agents still never commit.",
     "LOCKED: main history is PRESERVED intact -- NO squash, NO rewrite, ever.",
-    "LOCKED: NO scrub. Target-app initials and generic Target-App vocabulary are ACCEPTABLE on internal surfaces; the Check 93 two-tier model is UNCHANGED and the internal-surface exemption is PERMANENT. Leg 2 still guards client/public surfaces. ONE repo forever -- the work repo IS the public repo.",
-    "LOCKED for BD-288: maintenance-docs/, backlog/, changelog/, test-fixtures/, scripts/tests/fixtures/ are PERMANENTLY out of scope for any bareness gate.",
-    "LOCKED for BD-288: scope GROWS INTO BD-288; opening a follow-on BD for work discovered here is prohibited absent explicit user authorization.",
-    "OPEN for the user: isolation_mode. Measured this session -- full breaks cross-tree git (blocks review of an uncommitted worktree and fresh fix-coders); read-write-only restores that but loses agent-completion notifications AND the peer-message boilerplate defect RESURFACED on the first RO return. Neither mode is clean.",
-    "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no past-action narration, no path literal carrying a date-like digit run, under the byte cap); modes review=itemized intervention=full isolation=read-write-only; commit-msg files in the OS temp dir."
+    "LOCKED: NO scrub. Target-app initials and generic vocabulary are ACCEPTABLE on internal surfaces; the Check 93 two-tier model is UNCHANGED. ONE repo forever.",
+    "LOCKED for BD-288: the history trees are PERMANENTLY out of scope for any bareness gate; scope grows into BD-288, never a new entry.",
+    "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no narration, no date-like digit run in a path literal, under the byte cap); modes review=itemized intervention=full isolation=read-write-only."
   ],
-  "cycle_position": "Bounded cycle spent and clean; nothing further owed to it. Canonical carries the applied patch plus this snapshot, unstaged, awaiting the user's commit approval."
+  "cycle_position": "Track B is mid-cycle: fix pass 1 of 2 spent, reviewer pass 2 next. Track A has no commit cycle open. Canonical clean apart from this snapshot; the tool-grant work lives in its coder worktree."
 }

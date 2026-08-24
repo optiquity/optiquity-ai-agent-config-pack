@@ -2,9 +2,12 @@ name = "pack-reviewer"
 description = "Use for reviewing pack changes — trinity rule compliance, stale cross-references, doc consistency, CI alignment."
 model = "gpt-5"
 approval_policy = "on-request"
-# workspace-write is required so the agent can emit its final report
-# file at the prompted path. The prose policy below restricts writes
-# to that one file; all other file modifications are forbidden.
+# workspace-write grants in-workspace writes; it does NOT reach the
+# caller-specified deliverable path, which lies outside the workspace and
+# is written via the `approval_policy = "on-request"` escalation above.
+# It does not narrow writes either — no pack-side .codex/config.toml sets
+# `writable_roots`. The prose policy below is what restricts this agent to
+# that one file.
 sandbox_mode = "workspace-write"
 model_reasoning_effort = "high"
 developer_instructions = """

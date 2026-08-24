@@ -1058,7 +1058,8 @@ def _build_check_registry():
         # ── BD-197 (C3): pack RW/RO two-class consistency (Guard-B). A bounded
         # single-pass set-equality between the PACK-AGENTS roster `Class` cells
         # and the per-agent-file PROSE mandate headers (5 agents × 3 CLIs); binds
-        # to the prose header, never `tools:` (pack-reviewer Write/Edit-yet-RO).
+        # to the prose header, never `tools:` (RO pack agents carry Write/Edit;
+        # Antigravity bundle files carry no `tools:`).
         # Per ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.2 + §4.3.
         (52, "check_pack_rw_ro_two_class", check_pack_rw_ro_two_class, W),
         # ── BD-197 (C5): worktree-isolation prohibition flip-block (Guard-A). A

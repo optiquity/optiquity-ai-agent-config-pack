@@ -176,10 +176,13 @@ enforceable. RO agents run in the tree the work lives in.
   report; read-only on the codebase otherwise. RO agents run in the tree
   the work lives in — the main checkout when the work is committed; the
   commit's live worktree when the work is still uncommitted there (cd in
-  + verify pwd/HEAD); RO is NOT "always in-place". (`pack-reviewer`
-  carries `Write, Edit` in its `tools:` to emit that one report — it is
-  still RO; the class is keyed off the prose mandate header, never
-  `tools:`.)
+  + verify pwd/HEAD); RO is NOT "always in-place". (Each RO agent carries
+  the capability to emit that one report — `Write, Edit` in the Claude
+  `tools:` line, `workspace-write` in the Codex `sandbox_mode`, no
+  capability field in the Antigravity bundle — and is still RO; the class
+  is keyed off the prose mandate header, never the tool grant. No grant is
+  narrowed to the report path, so the RO guarantee rests on that prose plus
+  the spawn's rules-in-force block, not on a mechanical barrier.)
 
 Both classes obey `agents-never-commit` + the full destructive-git-verb
 ban identically, and delete nothing outside their owned handoff dir + OS

@@ -5,7 +5,8 @@
 # Check 52 asserts SET-EQUALITY between the PACK-AGENTS roster `Class`
 # cells and the per-agent-file PROSE mandate headers, for the 5 pack
 # agents × 3 CLIs. It BINDS TO THE PROSE HEADER, NEVER `tools:`
-# (`pack-reviewer` carries `Write, Edit` yet is RO). This test proves
+# (the RO pack agents carry `Write, Edit` in their `tools:` yet are RO;
+# the Antigravity bundle files carry no `tools:`). This test proves
 # the guard PASSes on the well-formed tree and FAILs on injected
 # class mismatches / missing headers in a synthetic tree.
 #

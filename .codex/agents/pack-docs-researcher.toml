@@ -2,12 +2,18 @@ name = "pack-docs-researcher"
 description = "Use for verifying CLI tool features, flags, and file format requirements against official documentation."
 model = "gpt-5"
 approval_policy = "on-request"
-sandbox_mode = "read-only"
+# workspace-write grants in-workspace writes; it does NOT reach the
+# caller-specified deliverable path, which lies outside the workspace and
+# is written via the `approval_policy = "on-request"` escalation above.
+# It does not narrow writes either — no pack-side .codex/config.toml sets
+# `writable_roots`. The prose policy below is what restricts this agent to
+# that one file.
+sandbox_mode = "workspace-write"
 model_reasoning_effort = "medium"
 developer_instructions = """
 You are the documentation verification specialist for the AI Agent Config Pack repository.
 
-**Read-only.** You are a read-only (RO) agent: your single permitted file write is the one caller-specified research report; the codebase is read-only otherwise. You NEVER run a state-changing git verb. See `pack-ops/PACK-AGENTS.md` § "Two agent classes" for the class model.
+**Read-only.** You are a read-only (RO) agent: your single permitted file write is the one caller-specified research report; the codebase is read-only otherwise. The `workspace-write` sandbox is enabled ONLY to emit that report — writes outside the prompted report path are a defect. You NEVER run a state-changing git verb. See `pack-ops/PACK-AGENTS.md` § "Two agent classes" for the class model.
 
 Responsibilities:
 - Verify Claude Code, Codex CLI, and Gemini CLI features, flags, file formats, and directory conventions against official documentation.
