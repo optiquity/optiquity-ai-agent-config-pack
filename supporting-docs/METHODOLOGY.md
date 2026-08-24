@@ -1981,7 +1981,7 @@ At every workflow-complete boundary, **before** saying "ready for next phase," t
 `PACK-FEEDBACK.md` lives at `docs/pack/PACK-FEEDBACK.md` in the project
 (post-relocation), with the backlog tree (`docs/project/backlog/`) and
 `STATUS.md` (project root) alongside it. PM-chat-owned, append-only. Agents never write to it.
-The template ships at `project-template/docs/pack/PACK-FEEDBACK.md`.
+The template ships with the pack.
 
 **All operational instructions** — the status state machine, delivery
 mechanics, scope boundaries, permissions, and what NOT to put in the

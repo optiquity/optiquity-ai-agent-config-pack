@@ -28,7 +28,7 @@ operational concerns (per `audit-methodology` rule 21):
   SLO definitions. For the full ownership boundary (auditor-ops vs
   auditor-architecture vs auditor-security on observability findings,
   including the named-test rubric and the "when uncertain, file under
-  auditor-ops" default), see `project-template/skills/audit-methodology/SKILL.md`
+  auditor-ops" default), see `skills/audit-methodology/SKILL.md`
   rule 21 (auditor-ops scope and boundary clarification). The skill is
   canonical; this bullet does not restate it.
 - **CI workflow correctness** — `.github/workflows/*.yml` or equivalent:

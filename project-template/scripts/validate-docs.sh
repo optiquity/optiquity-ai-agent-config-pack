@@ -177,7 +177,13 @@ def _commit_record(rec, by_doc, dangling_targets):
         return
     target = rec.get("target")
     if target:
-        dangling_targets.add(target.lstrip("./"))
+        # PREFIX strip, never a character-class strip: str.lstrip takes a SET
+        # of characters and eats every leading `.` and `/`, so a genuine
+        # dot-DIRECTORY record (`.agents/mcp_config.json`) would be stored as
+        # `agents/...` and stop matching its reference. The reference side in
+        # scan_doc normalizes the same way, so both meet at the same string.
+        dangling_targets.add(
+            target[2:] if target.startswith("./") else target)
         return
     doc = rec.get("doc")
     snippet = rec.get("snippet")
@@ -260,9 +266,10 @@ TRINITY_MEMORY_HEADING = "## Project rules"
 
 # AXIS: dangling
 # Backtick / hyperlink qualified-path file refs (containing a '/') resolved
-# against the project basename + relative-path index. Project-grammar
-# placeholders and anchor-phrase self-flagged refs are carved out; the
-# allowlist `target:` records cover will-exist-at-install cross-references.
+# against the project relative-path index — the ref's OWN path must exist.
+# Project-grammar placeholders and anchor-phrase self-flagged refs are carved
+# out; the allowlist `target:` records cover will-exist-at-install
+# cross-references.
 _DANGLING_EXT = "md|sh|py|toml|yml|yaml|json|txt|proto|swift"
 DANGLING_BACKTICK = re.compile(
     r"`([A-Za-z0-9_.][\w./-]*/[\w./-]*\.(?:" + _DANGLING_EXT + r"))`")
@@ -279,16 +286,23 @@ DANGLING_ANCHORS = (
 )
 
 
+# Directories pruned from the index walk: VCS internals, build output, and
+# dependency/tool caches. None can hold a legitimate operating-doc reference
+# target, and all are large. `.pack-migration-backup/` is deliberately NOT
+# pruned — a live allowlisted reference points into it.
+INDEX_PRUNE_DIRS = {
+    ".git", ".build", "build", "dist", "node_modules", ".venv", "venv",
+    "DerivedData", "__pycache__", ".mypy_cache", ".ruff_cache",
+}
+
+
 def build_index(root):
-    basenames = set()
     relpaths = set()
     for dp, dns, fns in os.walk(root):
-        if os.sep + ".git" in dp:
-            continue
+        dns[:] = [d for d in dns if d not in INDEX_PRUNE_DIRS]
         for fn in fns:
-            basenames.add(fn)
             relpaths.add(os.path.relpath(os.path.join(dp, fn), root))
-    return basenames, relpaths
+    return relpaths
 
 
 def covered(line, snippets):
@@ -368,7 +382,7 @@ REMEDIATION_DANGLING = (
 )
 
 
-def scan_doc(rel, root, by_doc, dangling_targets, basenames, relpaths):
+def scan_doc(rel, root, by_doc, dangling_targets, relpaths):
     """Return list of failure strings for one doc."""
     fails = []
     path = os.path.join(root, rel)
@@ -421,9 +435,13 @@ def scan_doc(rel, root, by_doc, dangling_targets, basenames, relpaths):
         refs = ([m.group(1) for m in DANGLING_BACKTICK.finditer(line)]
                 + [m.group(1) for m in DANGLING_HYPERLINK.finditer(line)])
         for ref in refs:
-            norm = ref.lstrip("./")
-            base = os.path.basename(ref)
-            if norm in relpaths or base in basenames:
+            # PREFIX strip, never a character-class strip — see
+            # _commit_record. A ref resolves ONLY when its own path exists;
+            # there is no basename fallback, because a wrong path whose
+            # basename happens to exist elsewhere is exactly the dead
+            # pointer this axis is for.
+            norm = ref[2:] if ref.startswith("./") else ref
+            if norm in relpaths:
                 continue
             if norm in dangling_targets:
                 continue
@@ -438,12 +456,11 @@ def scan_doc(rel, root, by_doc, dangling_targets, basenames, relpaths):
 
 
 def run_scan(targets, root, by_doc, dangling_targets):
-    basenames, relpaths = build_index(root)
+    relpaths = build_index(root)
     all_fails = []
     for rel in targets:
         all_fails.extend(
-            scan_doc(rel, root, by_doc, dangling_targets,
-                     basenames, relpaths))
+            scan_doc(rel, root, by_doc, dangling_targets, relpaths))
     return all_fails
 
 
@@ -1924,14 +1941,23 @@ def run_selftest():
 
     failures = []
 
-    def gate(text, expect_fail, label, fname="CLAUDE.md"):
+    def gate(text, expect_fail, label, fname="CLAUDE.md",
+             extra_files=None, targets=None):
+        """Write `text` as `fname` into a temp tree, optionally seed
+        `extra_files` (relpath -> content) alongside it, index the tree, and
+        scan. `targets` is passed as the dangling-axis `target:` allowlist."""
         with tempfile.TemporaryDirectory() as td:
             # mirror the trinity location so bloat + IN membership apply
             p = os.path.join(td, fname)
             with open(p, "w", encoding="utf-8") as fh:
                 fh.write(text)
-            basenames, relpaths = build_index(td)
-            fails = scan_doc(fname, td, {}, set(), basenames, relpaths)
+            for extra_rel, extra_text in (extra_files or {}).items():
+                extra_path = os.path.join(td, extra_rel)
+                os.makedirs(os.path.dirname(extra_path), exist_ok=True)
+                with open(extra_path, "w", encoding="utf-8") as fh:
+                    fh.write(extra_text)
+            relpaths = build_index(td)
+            fails = scan_doc(fname, td, {}, targets or set(), relpaths)
             got_fail = bool(fails)
             if got_fail != expect_fail:
                 failures.append(
@@ -1944,6 +1970,47 @@ def run_selftest():
     gate(dirty_deferred, True, "deferred")
     gate(dirty_dangling, True, "dangling")
     gate(dirty_bloat, True, "bloat")
+
+    # --- DANGLING RESOLUTION legs: one per resolution rule the axis relies
+    #     on. A reference resolves ONLY when its own relative path is in the
+    #     index; a leading `./` is stripped as a PREFIX, never as a character
+    #     class. Each leg pins one rule so a regression is a FAILING
+    #     --self-test rather than a silently vacuous scan. ---
+
+    # (1) A wrong path whose BASENAME exists elsewhere must NOT resolve. This
+    #     is the axis's whole point: a doc pointing at a file that MOVED still
+    #     names a real basename, so a basename fallback would pass it.
+    gate("See `docs/WRONGDIR/PM-CHAT.md` for the roster.\n",
+         True, "dangling-wrong-path-basename-exists",
+         extra_files={"docs/pack/PM-CHAT.md": "the real file\n"})
+
+    # (2) A plain dead pointer (no file of that basename anywhere) FAILs.
+    gate("See `docs/pack/MOVED-AWAY.md` for the roster.\n",
+         True, "dangling-moved-file")
+
+    # (3) A dot-DIRECTORY reference whose file EXISTS must resolve. Under a
+    #     character-class strip this normalizes to `claude/settings.json`,
+    #     misses the index, and (with no basename fallback) FAILs.
+    gate("Configure `.claude/settings.json` before the first run.\n",
+         False, "dangling-dot-dir-resolves",
+         extra_files={".claude/settings.json": "{}\n"})
+
+    # (4) The prefix strip must not have become a blanket pass: a dot-
+    #     directory reference that does NOT exist still FAILs.
+    gate("Configure `.claude/NOPE/settings.json` before the first run.\n",
+         True, "dangling-dot-dir-bite")
+
+    # (5) The ALLOWLIST side must strip the same way: a dot-directory
+    #     `target:` record has to keep its leading dot to match its
+    #     reference. Fixing the reference side alone kills records like this.
+    #     The target set is built by _commit_record, NOT handed in literally
+    #     — passing the string directly would bypass the record-side
+    #     normalization and leave this leg unable to see the defect at all.
+    dot_dir_targets = set()
+    _commit_record({"target": ".agents/mcp_config.json"}, {}, dot_dir_targets)
+    gate("Configure `.agents/mcp_config.json` before the first run.\n",
+         False, "dangling-dot-dir-allowlisted",
+         targets=dot_dir_targets)
 
     # --- BLOAT-HEADING BIJECTION leg: assert the bloat matcher's heading and
     #     the synthetic self-test docs' heading are the SAME literal. Both

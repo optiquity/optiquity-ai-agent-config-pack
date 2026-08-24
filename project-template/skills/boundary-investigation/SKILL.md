@@ -104,7 +104,7 @@ canonical list):
 <!-- DENY-LIST-CONTENT-START -->
 - **File names:** `PACK-AGENTS.md`, `PACK-CHAT.md`, `HELP-FRAGMENT-PACK.md`,
   `OPTIONAL-FEATURES.md` (bare-filename refs; project-side has its own
-  `project-template/docs/pack/OPTIONAL-FEATURES.md`)
+  `docs/pack/OPTIONAL-FEATURES.md`)
 - **Path prefixes:** `maintenance-docs/`, `pack-ops/` (any file there —
   PACK × OPERATIONS files including `pack-ops/BOUNDARY-DEFINITION.md`,
   `pack-ops/BACKLOG.md`, `pack-ops/CHANGELOG.md`, `pack-ops/PACK-AGENTS.md`,

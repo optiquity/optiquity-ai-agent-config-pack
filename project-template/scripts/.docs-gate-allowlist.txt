@@ -527,3 +527,21 @@ reason: conditional search candidate — the reconcile task text searches candid
 
 target: docs/STATUS.md
 reason: conditional search candidate — same reconcile task line; absence is handled by the task text.
+
+target: scripts/proto-gen.sh
+reason: conditionally-installed proto script — the installer removes it when the project carries no proto marker; the citing prose is explicitly proto-scoped, so the reference is correct when the file is present and absent by design otherwise.
+
+target: scripts/format-swift.sh
+reason: conditionally-installed Swift script — the installer removes it when the project carries no Swift marker; the citing prose is explicitly Swift-scoped, so the reference is correct when the file is present and absent by design otherwise.
+
+target: scripts/test-python.sh
+reason: conditionally-installed Python script — the installer removes it when the project carries no Python marker, so the file is absent by design in a project with no Python. Its one citation is an illustrative list of example test-script names ("... etc."), which reads correctly whether or not this particular script is present.
+
+target: scripts/test-swift.sh
+reason: conditionally-installed Swift script — the installer removes it when the project carries no Swift marker, so the file is absent by design in a project with no Swift. Most citations are explicitly Swift-scoped; one is an illustrative list of example test-script names ("... etc."). Both read correctly when the file is absent.
+
+target: scripts/validate-swift.sh
+reason: conditionally-installed Swift script — the installer removes it when the project carries no Swift marker; the citing prose is explicitly Swift-scoped, so the reference is correct when the file is present and absent by design otherwise.
+
+target: supporting-docs/METHODOLOGY.md
+reason: pack-repo self-banner — the installed methodology doc names its own single-source-of-truth location in the pack repo, which has no counterpart inside an installed project, so the citation is deliberate provenance rather than a project path. Recorded here rather than by widening the dangling anchor-word list, which would clear far more than this one line. Keep the words "pack-repo" in this reason — that phrase is what marks this target as a pack-repo location rather than a path expected inside the project.

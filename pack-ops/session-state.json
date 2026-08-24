@@ -1,30 +1,23 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "47f8467",
-  "checkpoint": "2026-08-24T02:40:00Z",
-  "active": [
-    "BD-288 @ two parallel tracks. Track A: the wave plan is reconciled and every open item closed; next is the coder waves. Track B: the RO agent tool-grant fix is in its bounded cycle, fix pass 1 done, second review pending."
-  ],
+  "boundary_commit": "efc975c",
+  "checkpoint": "2026-08-24T18:00:00Z",
+  "active": [],
   "in_flight_agents": [
-    "planner-bd288-reconcile, RO, idle; re-engaged to apply the final three decisions to the plan.",
-    "coder-bd288-agenttoolgrant, RW, holds its worktree; fix pass 1 landed, awaiting reviewer pass 2.",
-    "All earlier BD-288 agents RETURNED or STOPPED. Every later stage takes a FRESH instance.",
-    "ON RESUME: the one remaining launch step is USER-owned: flip the repo public. Pack Chat NEVER force-pushes or rewrites main."
+    "NONE RUNNING. BD-288 is Resolved and its final wave is committed. No agent to re-spawn.",
+    "ON RESUME: the only remaining launch step is USER-owned -- flip the repo public. Pack Chat NEVER force-pushes or rewrites main."
   ],
   "queue": [
-    "BD-288 track A: updated plan -> coder waves W1+W2+W4 parallel, then W3",
-    "BD-288 track B: reviewer pass 2 -> commit the tool-grant fix",
-    "user: fix the isolation mode (parked until BD-288 completes)",
-    "user: flip public"
+    "user: flip the repo public (the launch; never gated on BD-288)",
+    "user: fix the isolation mode -- full breaks cross-tree git; read-write-only loses completion notifications and reproduces the peer-message boilerplate defect"
   ],
-  "parallelization": "Two independent tracks; within track A the waves run W1+W2+W4 parallel then W3 serial.",
-  "wave": "v11.0 (RC1) tagged and CI-green; main is the sole live branch; repo under the target GH account, still private. Open BDs 16. BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
+  "parallelization": "SERIAL. No pack-side work in flight.",
+  "wave": "v11.0 (RC1) tagged and CI-green; main is the sole live branch; repo under the target GH account, still private. BD-288 Resolved. Open BDs 15. BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
   "pending_decisions": [
-    "STANDING (user, until BD-288 completes): ACCEPT ALL agent recommendations and FIX ALL findings without per-item triage. Pack Chat takes the agent's own recommendation and surfaces outcomes, not choices. UNCHANGED: commits still need explicit user approval, and agents still never commit.",
     "LOCKED: main history is PRESERVED intact -- NO squash, NO rewrite, ever.",
     "LOCKED: NO scrub. Target-app initials and generic vocabulary are ACCEPTABLE on internal surfaces; the Check 93 two-tier model is UNCHANGED. ONE repo forever.",
-    "LOCKED for BD-288: the history trees are PERMANENTLY out of scope for any bareness gate; scope grows into BD-288, never a new entry.",
-    "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no narration, no date-like digit run in a path literal, under the byte cap); modes review=itemized intervention=full isolation=read-write-only."
+    "RECORDED (user, BD-288 close): W3, W5 and W6 were DROPPED as optional internal hygiene. Their design and plan survive in the maintenance record; they are not deferred work and no entry tracks them.",
+    "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no narration, under the byte cap); modes review=itemized intervention=full isolation=read-write-only."
   ],
-  "cycle_position": "Track B is mid-cycle: fix pass 1 of 2 spent, reviewer pass 2 next. Track A has no commit cycle open. Canonical clean apart from this snapshot; the tool-grant work lives in its coder worktree."
+  "cycle_position": "No commit cycle open, no worktree live. BD-288 closed."
 }

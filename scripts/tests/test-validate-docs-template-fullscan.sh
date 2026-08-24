@@ -6,7 +6,7 @@
 # AND on the fresh-install overlay tree, and the guard's own moving parts must
 # stay tethered to the surfaces they mirror.
 #
-# Seven legs:
+# Eight legs:
 #   L1  Bare-template full scan green (the BD's core guard). Runs the REAL
 #       shipped gate IN PLACE, deliberately DELEGATING doc enumeration to the
 #       gate itself: the gate globs the live tree, so a new not-yet-tracked
@@ -52,6 +52,15 @@
 #       of the copy-line form fails LOUD (derivation-empty). RESIDUAL
 #       (honest): a future overlay added via a form matching NEITHER grep
 #       pattern escapes this tether.
+#   L8  S9 conditional-removal profile matrix: re-run the gate on L5's
+#       staged install tree once per language profile, with exactly the
+#       paths stage_s9_conditional_remove() deletes for that profile
+#       removed. The three rosters are DERIVED from init-project.sh and
+#       asserted set-equal to expected (L7's tether pattern), so an S9
+#       roster change fails LOUD instead of drifting silently. L5 alone is structurally blind here — the S6 overlay keeps
+#       every conditional file, so no reference INTO a removed file can
+#       show up. Worst case is `none-detected` (a strict superset of every
+#       other profile's removals), which is why all 7 run rather than one.
 #
 # Pattern mirrors scripts/tests/test-validate-docs-client-deferred-shipped-docs.sh
 # (BD-250): real shipped bytes + the real gate + the real client allowlist;
@@ -205,7 +214,7 @@ for r in records:
     target = r.get("target")
     if target:
         n_target += 1
-        norm = target.lstrip("./")
+        norm = target[2:] if target.startswith("./") else target
         if not any(norm in txt for txt in corpus_text.values()):
             dead.append("dead target: %r — no corpus doc references it" % target)
         continue
@@ -300,6 +309,112 @@ elif [[ "$derived" == $'INSTALL-PROCEDURES.md\nMETHODOLOGY.md' ]]; then
 else
     fail "L7: init-project.sh S6 overlay set != the guard's staged/mapped set {INSTALL-PROCEDURES.md, METHODOLOGY.md} — update L3's overlay map + L5's staging cp set + this expected set in the SAME commit" \
         "derived: $(printf '%s' "$derived" | tr '\n' ' ')"
+fi
+
+# ── L8: S9 conditional-removal install-profile matrix ───────────────────────
+# L5 measures the S6 overlay, which KEEPS every conditional file — so it is
+# structurally blind to any reference INTO a file S9 removes. This leg copies
+# L5's staged $INSTALL_ROOT once per language profile, deletes exactly the
+# paths stage_s9_conditional_remove() (scripts/init-project.sh) names for that
+# profile, and asserts the shipped gate still exits 0.
+#
+# The three rosters are DERIVED from stage_s9_conditional_remove() in
+# scripts/init-project.sh at run time, then asserted set-equal to the expected
+# sets below -- the same derive-and-tether pattern L7 uses 12 lines earlier.
+# Hardcoding alone would drift silently: if S9 gained a removal path, a
+# hardcoded roster would keep deleting the old set and stay green. With the
+# derivation, an S9 roster change fails LOUD here, and an empty derivation
+# (the copy-line form changed) fails LOUD too rather than silently removing
+# nothing.
+#
+# Worst case is `none-detected`, not `python-only`: none-detected removes
+# python ∪ swift ∪ proto, a strict SUPERSET of python-only's swift ∪ proto,
+# and at least one live reference targets a python-set path.
+S9_PY_EXPECTED="pyproject.toml pyrightconfig.json scripts/bootstrap-python.sh scripts/format-python.sh scripts/test-python.sh scripts/validate-python.sh server"
+S9_SW_EXPECTED="scripts/bootstrap-swift.sh scripts/format-swift.sh scripts/test-swift.sh scripts/validate-swift.sh"
+S9_PR_EXPECTED="proto scripts/proto-gen.sh scripts/validate-proto.sh"
+
+# Extract one language block's removal roster from stage_s9_conditional_remove:
+# the `for f in ... ; do` list (with backslash continuations) PLUS the
+# `[[ -d "$TARGET/<dir>" ]]` directory special-cases. Sorted + deduped so the
+# comparison is order-insensitive.
+derive_s9_set() {
+    awk -v want="$1" '
+        /^stage_s9_conditional_remove\(\)/ { inf = 1 }
+        inf && /^\}/                       { inf = 0 }
+        !inf { next }
+        /if \(\( has_python == 0 \)\)/  { blk = "py"; inlist = 0; next }
+        /if \(\( has_swift  *== 0 \)\)/ { blk = "sw"; inlist = 0; next }
+        /if \(\( has_proto  *== 0 \)\)/ { blk = "pr"; inlist = 0; next }
+        blk != "" && (inlist || /for f in/) {
+            line = $0
+            sub(/^.*for f in /, "", line)
+            sub(/;[ \t]*do.*/, "", line)
+            gsub(/\\/, "", line)
+            n = split(line, a, /[ \t]+/)
+            for (i = 1; i <= n; i++) if (a[i] != "" && blk == want) print a[i]
+            inlist = ($0 ~ /\\[ \t]*$/) ? 1 : 0
+            next
+        }
+        blk == want && /\[\[ -d "\$TARGET\// {
+            if (match($0, /\$TARGET\/[A-Za-z0-9_.-]+/))
+                print substr($0, RSTART + 8, RLENGTH - 8)
+        }
+    ' "$INIT_SCRIPT" | sort -u | tr '\n' ' ' | sed 's/ $//'
+}
+
+S9_PY_SET="$(derive_s9_set py)"
+S9_SW_SET="$(derive_s9_set sw)"
+S9_PR_SET="$(derive_s9_set pr)"
+
+s9_tether_ok=1
+for pair in "py:$S9_PY_SET:$S9_PY_EXPECTED" "sw:$S9_SW_SET:$S9_SW_EXPECTED" "pr:$S9_PR_SET:$S9_PR_EXPECTED"; do
+    tag="${pair%%:*}"
+    rest="${pair#*:}"
+    got="${rest%%:*}"
+    want="${rest#*:}"
+    if [[ -z "$got" ]]; then
+        fail "L8: S9 roster derivation EMPTY for '$tag' (stage_s9_conditional_remove's removal-line form changed — update derive_s9_set)"
+        s9_tether_ok=0
+    elif [[ "$got" != "$want" ]]; then
+        fail "L8: S9 roster for '$tag' derived from init-project.sh != this test's expected set — reconcile BOTH in the same commit" \
+            "derived: $got | expected: $want"
+        s9_tether_ok=0
+    fi
+done
+[[ $s9_tether_ok -eq 1 ]] && pass "L8 tether: all 3 S9 rosters derived from stage_s9_conditional_remove() match the expected sets (a roster change fails loud here)"
+
+l8_fails=0
+run_profile() {
+    prof="$1"
+    removals="$2"
+    pdir="$FIXTURE_BASE/s9-$prof"
+    cp -R "$INSTALL_ROOT" "$pdir"
+    for rel in $removals; do
+        rm -rf "${pdir:?}/$rel"
+    done
+    pout="$(bash "$pdir/scripts/validate-docs.sh" 2>&1)"
+    prc=$?
+    if [[ $prc -ne 0 ]]; then
+        l8_fails=$((l8_fails + 1))
+        fail "L8[$prof]: install profile should exit 0, got $prc" \
+            "$(printf '%s' "$pout" | grep -E '\[(history|deferred|bloat|dangling)\]' | head -5 | tr '\n' '; ')"
+    fi
+}
+
+if [[ -d "$INSTALL_ROOT" ]]; then
+    run_profile keepall ""
+    run_profile swift-only "$S9_PY_SET $S9_PR_SET"
+    run_profile python-only "$S9_SW_SET $S9_PR_SET"
+    run_profile swift-py "$S9_PR_SET"
+    run_profile py-proto "$S9_SW_SET"
+    run_profile swift-proto "$S9_PY_SET"
+    run_profile none-detected "$S9_PY_SET $S9_SW_SET $S9_PR_SET"
+    if [[ $l8_fails -eq 0 ]]; then
+        pass "L8: all 7 S9 language profiles scan clean (a reference into a conditionally-removed file would red the worst-case none-detected profile)"
+    fi
+else
+    fail "L8: L5's \$INSTALL_ROOT was never staged — cannot run the S9 profile matrix"
 fi
 
 # ── Summary ──────────────────────────────────────────────────────────────────

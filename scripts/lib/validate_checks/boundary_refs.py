@@ -2126,6 +2126,19 @@ _CHECK_43_PACK_INTERNAL_PREFIXES = ("maintenance-docs/", "pack-ops/")
 
 
 
+# Qualified prefixes that are pack-internal when cited FROM a client-installed
+# file. A client install has no `project-template/` directory — the tree under
+# it IS the install — so such a path is dead at every install even though it
+# resolves in the pack repo (which is why Check 68 never sees it).
+#
+# Deliberately NOT merged into `_CHECK_43_PACK_INTERNAL_PREFIXES`: that tuple
+# ALSO feeds the bare-ref class test below, where `project-template/` would
+# make every client-shipped basename a pack-internal target (measured: 130 new
+# FAILures across 26 basenames).
+_CHECK_43_SELF_TREE_PREFIXES = ("project-template/",)
+
+
+
 # pack-ops/ files that ARE client-installed (excluded from the pack-
 # internal-target FAIL because they resolve at client install time).
 # Currently empty — no pack-ops/ file is a client-install source.
@@ -2323,6 +2336,18 @@ _CHECK_43_PACK_INTERNAL_PREFIX_PATTERNS = {
 }
 
 
+# Self-tree prefix detectors — same pattern body as the pack-internal
+# detectors above, keyed off `_CHECK_43_SELF_TREE_PREFIXES`. Module-
+# precompiled rather than built per (line x prefix) inside the line loop
+# (`ci-check-runtime-compounding`).
+_CHECK_43_SELF_TREE_PREFIX_PATTERNS = {
+    prefix: re.compile(
+        re.escape(prefix) + r"([A-Za-z0-9_/\.-]+(?:\.[A-Za-z0-9]+)+)"
+    )
+    for prefix in _CHECK_43_SELF_TREE_PREFIXES
+}
+
+
 
 
 def check_project_side_bare_internal_refs() -> None:
@@ -2351,12 +2376,28 @@ def check_project_side_bare_internal_refs() -> None:
       - FAIL (broken): 0 candidates AND not on allowlist AND no anchor
       - FAIL (ambiguous): 2+ candidates AND none is a client-installed
         legitimate target AND no same-dir match
+      - FAIL (self-tree): a QUALIFIED `project-template/<X>` path on any
+        walked file, where `<X>` ENDS IN A FILENAME WITH AN EXTENSION.
+        There is no `project-template/` directory at a client install, so
+        the pointer is dead there; the path DOES resolve in the pack
+        repo, which is why the existence checks stay green on it. Keyed
+        off `_CHECK_43_SELF_TREE_PREFIXES`, a separate tuple from
+        `_CHECK_43_PACK_INTERNAL_PREFIXES` (see that constant for why
+        merging them is wrong).
+        BOUND (measured, not incidental): the matcher requires a dotted
+        filename, so a bare `project-template/` or a bare-DIRECTORY
+        reference (`project-template/skills/`) is OUT of its reach — 5
+        occurrences matched vs 11 not matched on the current walk. The
+        bound is deliberate; widening it needs a KEEP/STRIP census of
+        those 11 first (`ci-guard-measure-then-bound`).
 
     PASS notices:
       - Allowlist hit → "exempt: <rationale>"
       - Anchor-phrase hit → "anchor-phrase-exempt"
       - Same-dir-legit → "same-dir resolution"
       - Client-installed pack-side resolution → "client-installed-exempt"
+      - Self-provenance banner (`*Copied from: <self-path>*`, where the
+        cited path EQUALS the citing file's own) → "self-provenance-banner"
 
     See ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md §1.1-§1.12 for the
     verbatim contract.
@@ -2402,6 +2443,7 @@ def check_project_side_bare_internal_refs() -> None:
     hits_same_dir = 0
     hits_client_installed = 0
     hits_fenced = 0
+    hits_self_provenance = 0
 
     walked_files = _iter_client_installed_files()
 
@@ -2426,6 +2468,7 @@ def check_project_side_bare_internal_refs() -> None:
         files_walked += 1
         stripped_lines = _strip_code_blocks(text)
         rel_dir = str(rel_path.parent).replace(os.sep, "/")
+        rel_posix = str(rel_path).replace(os.sep, "/")
 
         # Guardrail 2 (BD-173 H.13) fence skip-set — Check 43 inherits
         # the same per-line-fence semantics as Check 37 so deny-list-
@@ -2608,6 +2651,55 @@ def check_project_side_bare_internal_refs() -> None:
                     )
                     any_failed = True
 
+            # Qualified project-template/<X> detection (BD-288). A client
+            # install has no `project-template/` directory, so such a path
+            # is dead at every install; it stays invisible to Check 68
+            # because it DOES resolve in the pack repo.
+            #
+            # The leg runs on the WHOLE walk with no citer scoping: Check
+            # 43's walk IS the client-installed surface, so every walked
+            # file is one where a `project-template/...` path is dead.
+            # Scoping it to citers under `project-template/` would drop the
+            # occurrences in the two client-installed `supporting-docs/`
+            # files (measured: 3 of 9).
+            #
+            # BOUND: the pattern requires the prefix to be followed by a
+            # path ENDING IN A DOTTED FILENAME, so a bare
+            # `project-template/` or a bare-DIRECTORY reference is NOT
+            # reached (measured on the current walk: 5 matched, 11 not).
+            # That is deliberate — widening it needs a KEEP/STRIP census
+            # of those 11 first (`ci-guard-measure-then-bound`), since
+            # they are a mixed population (some anchor-cleared, some
+            # deny-list teaching content, some genuine dead pointers).
+            for prefix in _CHECK_43_SELF_TREE_PREFIXES:
+                pattern = _CHECK_43_SELF_TREE_PREFIX_PATTERNS[prefix]
+                for m in pattern.finditer(line):
+                    full_target = prefix + m.group(1)
+                    # Self-provenance banner: `*Copied from: <self-path>*`.
+                    # Equality with the citing file's own repo-relative
+                    # path means the reference is source attribution, not
+                    # an actionable pointer, and it stays accurate at a
+                    # client install (it names where the file came FROM).
+                    if full_target == rel_posix:
+                        hits_self_provenance += 1
+                        continue
+                    if _check_43_context_has_anchor(stripped_lines, lineno):
+                        hits_anchor += 1
+                        continue
+                    fail(
+                        f"{rel_path}:{lineno} — qualified file reference "
+                        f"`{full_target}` names the pack-repo storage path "
+                        f"of a client-installed file; there is no "
+                        f"`project-template/` directory at a client "
+                        f"install, so the pointer is dead there. "
+                        f"Remediation: cite the client-resolvable path "
+                        f"(drop the `{prefix}` prefix) OR drop the cite "
+                        f"OR — if intentional pack-as-product cite — add "
+                        f"an anchor phrase like \"in the pack repo\" "
+                        f"within ±2 lines."
+                    )
+                    any_failed = True
+
             # Bare-ref matches (P1 + P2 + P3 + P5) reuse Check 40
             # regex patterns per §1.3 (NO new regex).
             matches: list[str] = []
@@ -2749,6 +2841,7 @@ def check_project_side_bare_internal_refs() -> None:
             f"({hits_allowlist} allowlist-exempt + {hits_anchor} anchor-"
             f"phrase-exempt + {hits_same_dir} same-dir-legit + "
             f"{hits_client_installed} client-installed-legit + "
+            f"{hits_self_provenance} self-provenance-banner + "
             f"{hits_fenced} fenced-line(s) accepted)"
         )
 
@@ -5003,6 +5096,7 @@ __all__ = [
     "_CHECK_43_ANCHOR_PHRASES",
     "_CHECK_43_ANCHOR_WINDOW",
     "_CHECK_43_PACK_INTERNAL_PREFIXES",
+    "_CHECK_43_SELF_TREE_PREFIXES",
     "_CHECK_43_PACK_OPS_CLIENT_INSTALLED",
     "_CHECK_43_EXTRA_WALK_SUFFIXES",
     "_CHECK_43_PACK_ONLY_DOC_TREES",
@@ -5012,6 +5106,7 @@ __all__ = [
     "_build_pack_only_doc_basenames",
     "_build_bare_prose_alternation",
     "_CHECK_43_PACK_INTERNAL_PREFIX_PATTERNS",
+    "_CHECK_43_SELF_TREE_PREFIX_PATTERNS",
     "check_project_side_bare_internal_refs",
     "_check_43_context_has_anchor",
     "_CHECK_41_EXEMPTIONS",

@@ -1333,7 +1333,7 @@ are informational notes inside Form R, whose own reply grammar
 covers the read-only discovery decision.
 
 For concurrent / interrupted kickoff handling, see
-`project-template/docs/pack/PM-CHAT.md` § Before starting a new
+`docs/pack/PM-CHAT.md` § Before starting a new
 project ("Never run two PM chats simultaneously for the same
 project").
 
@@ -1364,7 +1364,7 @@ directory exists at the project root; the Python Form I quadruplet
 under §7.3.2 runs iff Python is also detected.
 
 The kickoff-variant continuation pointer in
-`project-template/docs/pack/prompts/pm-chat.md` Variant: kickoff is
+`docs/pack/prompts/pm-chat.md` Variant: kickoff is
 the invocation point for Procedure 7.
 
 ## Optional — refuse local commits that drift an immutable file

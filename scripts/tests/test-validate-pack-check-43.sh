@@ -16,12 +16,17 @@
 #   Group 1: _CHECK_43_ALLOWLIST sanity (non-empty + rationale-keyed)
 #   Group 2: _iter_client_installed_files() base-set verification
 #   Group 3: Anchor-phrase aliasing (smoke test; Check 40 covers full)
-#   Group 4: End-to-end synthetic-tree check (T1-T9 per §1.10)
+#   Group 4: End-to-end synthetic-tree check (T1-T9 per §1.10; T10-T13 =
+#            the BD-288 self-tree leg, incl. the anti-vacuity leg T11 that
+#            tells a whole-walk leg apart from a citer-scoped one)
 #   Group 5: Static fixture file sanity (under scripts/tests/fixtures/project-side-refs/)
 #   Group 6: End-to-end validate-pack.py exit-status on HEAD
 #   Group 7: JC-2 broadening (BD-195 C2 §2.2 Step-5)
 #   Group 8: BD-257 — empty sanctioned set (no-dual-use) + Check 47 EMPTY
 #            invariant (supersedes the BD-195 2-member freeze)
+#   Group 9: BD-288 — the self-tree carve-out is load-bearing on the REAL
+#            tree (mutation: remove it and the 5 banners FAIL) + the
+#            post-STRIP residue is 0
 #
 # Usage: bash scripts/tests/test-validate-pack-check-43.sh
 
@@ -518,6 +523,79 @@ if fail_count != 0:
         f"T9 (_intro.md allowlist PASS) expected 0 failures, got {fail_count}: {captured}"
     )
 
+# ── BD-288: the self-tree leg (qualified project-template/<X> refs) ──
+#
+# A client install has no project-template/ directory, so a
+# project-template/-prefixed path on a client-installed surface is dead at
+# every install. It stays invisible to Check 68 because the path DOES
+# resolve in the pack repo.
+
+# T10: FAIL — a project-template/<X> cite from a project-template/ citer.
+fail_count, pass_msg, captured = run_check_with_synthetic(
+    {"docs/pack/GUIDE.md":
+        "See \`project-template/skills/foo/SKILL.md\` for the rule.\n",
+     "skills/foo/SKILL.md": "stub"},
+)
+if fail_count < 1 or "docs/pack/GUIDE.md" not in captured:
+    failures.append(
+        f"T10 (project-template/ cite from a project-template/ citer) "
+        f"expected >=1 failure naming docs/pack/GUIDE.md, got "
+        f"{fail_count}: {captured}"
+    )
+
+# T11: FAIL — the SAME cite from a client-installed supporting-docs/ citer.
+#      [BINDING, anti-vacuity] This leg is the ONLY assertion that
+#      distinguishes a whole-walk leg from one scoped to citers under
+#      project-template/. Under a citer-scoped conditional the leg never
+#      runs here and this case passes trivially, so the assertion checks
+#      the FAILURE TEXT names the supporting-docs/ citer — a bare
+#      "some failure occurred" would not tell the two designs apart.
+fail_count, pass_msg, captured = run_check_with_synthetic(
+    {"skills/foo/SKILL.md": "stub"},
+    {"supporting-docs/METHODOLOGY.md":
+        "See \`project-template/skills/foo/SKILL.md\` for the rule.\n"},
+)
+if fail_count < 1 or "supporting-docs/METHODOLOGY.md" not in captured:
+    failures.append(
+        f"T11 (project-template/ cite from a client-installed "
+        f"supporting-docs/ citer) expected >=1 failure naming "
+        f"supporting-docs/METHODOLOGY.md — a citer-scoped leg would skip "
+        f"this file entirely; got {fail_count}: {captured}"
+    )
+
+# T12: PASS — the self-provenance banner. The cited path EQUALS the citing
+#      file's own repo-relative path, so it is source attribution (it names
+#      where the file was copied FROM) and stays accurate at a client
+#      install.
+banner = (
+    "# Guide\n"
+    "*Copied from: project-template/docs/pack/GUIDE.md*\n"
+)
+fail_count, pass_msg, captured = run_check_with_synthetic(
+    {"docs/pack/GUIDE.md": banner},
+)
+if fail_count != 0:
+    failures.append(
+        f"T12 (self-provenance banner carve-out) expected 0 failures, got "
+        f"{fail_count}: {captured}"
+    )
+
+# T13: FAIL — the carve-out is EQUALITY-scoped, not a blanket pass for any
+#      "Copied from:" line. Byte-identical banner text placed in a
+#      DIFFERENT file (so target != citer) must still FAIL. T12 + T13
+#      pin the predicate from both sides: delete the carve-out and T12
+#      flips; widen it to any banner line and T13 flips.
+fail_count, pass_msg, captured = run_check_with_synthetic(
+    {"docs/pack/OTHER.md": banner,
+     "docs/pack/GUIDE.md": "stub"},
+)
+if fail_count < 1 or "docs/pack/OTHER.md" not in captured:
+    failures.append(
+        f"T13 (banner in a non-matching file) expected >=1 failure naming "
+        f"docs/pack/OTHER.md — the carve-out must key on equality with the "
+        f"citing file, not on the banner shape; got {fail_count}: {captured}"
+    )
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -526,7 +604,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "End-to-end synthetic-tree tests T1-T9 (PASS / FAIL / exemption / code-block)" ;;
+    0) t_pass "End-to-end synthetic-tree tests T1-T13 (PASS / FAIL / exemption / code-block / self-tree leg)" ;;
     *) t_fail "End-to-end check_project_side_bare_internal_refs tests failed (see Python output)" ;;
 esac
 
@@ -1153,6 +1231,119 @@ EOF
 case $? in
     0) t_pass "BD-257 empty-sanction: non-empty FAILS C47 (empty-invariant), empty PASSES, lazy-add FAILS, walk-gate admits nothing, migrator clean PASSES / pack-side copy FAILS (install path 2)" ;;
     *) t_fail "BD-257 Check-47 empty-invariant / empty-sanction / migrator-scan regression failed (see Python output)" ;;
+esac
+
+# ─────────────────────────────────────────────────────────────────
+# Group 9: BD-288 self-tree carve-out necessity, against the REAL tree
+# ─────────────────────────────────────────────────────────────────
+#
+# The Group-4 legs prove the carve-out's predicate on synthetic trees. This
+# group proves it is LOAD-BEARING on the shipped tree: it re-runs the leg's
+# own matcher over the real walk WITHOUT the carve-out and asserts the
+# carve-out is exactly what keeps those lines green.
+#
+# Everything is derived from the shipped constants
+# (_CHECK_43_SELF_TREE_PREFIXES / _CHECK_43_SELF_TREE_PREFIX_PATTERNS /
+# _iter_client_installed_files), so a pattern that stops matching collapses
+# the count to 0 and fails this group rather than passing vacuously.
+
+printf "\n=== Group 9: BD-288 self-tree carve-out necessity (real tree) ===\n"
+
+python3 <<EOF
+import sys, os
+sys.path.insert(0, '$REPO_ROOT/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+failures = []
+
+# The banner population is a hand-authored set with no generator, so its
+# SIZE is pinned here in lock-step. A new *Copied from:* banner is a
+# reviewable event: add the file and update this count in the same change.
+EXPECTED_BANNERS = 5
+
+exts = set(mod._CHECK_40_FILE_EXTS.split("|")) | set(mod._CHECK_43_EXTRA_WALK_SUFFIXES)
+carved = []
+uncarved_fail = 0
+for rel in mod._iter_client_installed_files():
+    if rel.suffix.lstrip(".") not in exts:
+        continue
+    try:
+        text = (mod.REPO_ROOT / rel).read_text()
+    except (UnicodeDecodeError, OSError):
+        continue
+    rel_posix = str(rel).replace(os.sep, "/")
+    stripped = mod._strip_code_blocks(text)
+    if mod._has_per_line_fence(rel):
+        fenced = mod._build_fence_skip_lineset(text) or set()
+    else:
+        fenced = set()
+    for lineno, line in enumerate(stripped, 1):
+        if lineno in fenced:
+            continue
+        for prefix in mod._CHECK_43_SELF_TREE_PREFIXES:
+            for m in mod._CHECK_43_SELF_TREE_PREFIX_PATTERNS[prefix].finditer(line):
+                target = prefix + m.group(1)
+                # MUTATION: the carve-out (\`if target == rel_posix: continue\`)
+                # is deliberately NOT applied here.
+                if mod._check_43_context_has_anchor(stripped, lineno):
+                    continue
+                uncarved_fail += 1
+                if target == rel_posix:
+                    carved.append((rel_posix, lineno, line))
+
+# (a) Without the carve-out the shipped tree FAILs — the carve-out is
+#     load-bearing, not decorative.
+if len(carved) != EXPECTED_BANNERS:
+    failures.append(
+        "carve-out necessity: expected %d self-provenance banner(s) to FAIL "
+        "with the carve-out removed, got %d (%s). Either a banner was added "
+        "or removed (update EXPECTED_BANNERS in the same change), or the "
+        "self-tree pattern stopped matching."
+        % (EXPECTED_BANNERS, len(carved),
+           sorted((f, n) for f, n, _ in carved))
+    )
+
+# (b) Every carved occurrence is a provenance BANNER line. This is the
+#     carve-out's safety argument: it clears self-references because they
+#     are source attribution, not actionable pointers. Self-reference alone
+#     is true by construction of the append above and would assert nothing;
+#     banner-ness is measured from the line text, so a NON-banner
+#     self-reference (a real dead pointer that happens to name its own
+#     file) fires this leg instead of being silently cleared.
+BANNER_MARKER = "Copied from"
+non_banner = [(f, n, l.strip()[:70]) for f, n, l in carved
+              if BANNER_MARKER not in l]
+if non_banner:
+    failures.append(
+        "carve-out safety: %d carved occurrence(s) are NOT provenance "
+        "banners (no %r on the line) — the carve-out would be clearing a "
+        "non-attribution self-reference: %s"
+        % (len(non_banner), BANNER_MARKER, non_banner)
+    )
+
+# (c) With the carve-out applied the residue is ZERO: the STRIPs and the
+#     carve-out together leave nothing, so neither half is masking the
+#     other.
+residue = uncarved_fail - len(carved)
+if residue != 0:
+    failures.append(
+        "self-tree residue: expected 0 non-banner project-template/ "
+        "reference(s) on the client-installed walk, got %d" % residue
+    )
+
+if failures:
+    print("FAILURES")
+    for f in failures:
+        print(" ", f)
+    sys.exit(1)
+print("OK carved=%d residue=%d" % (len(carved), residue))
+EOF
+case $? in
+    0) t_pass "BD-288 self-tree carve-out is load-bearing on the real tree (removing it FAILs the 5 self-provenance banners) and the post-STRIP residue is 0" ;;
+    *) t_fail "BD-288 self-tree carve-out necessity / residue assertion failed (see Python output)" ;;
 esac
 
 # ─────────────────────────────────────────────────────────────────

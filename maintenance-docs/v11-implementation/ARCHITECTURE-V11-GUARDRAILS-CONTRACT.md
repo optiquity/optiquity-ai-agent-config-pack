@@ -176,10 +176,14 @@ Single bare ref produces ONE of these verdicts:
 | PASS (anchor) | `_CHECK_43_ANCHOR_PHRASES` match in ±2-line window | `hits_anchor += 1`; no print |
 | PASS (same-dir) | exactly one candidate, candidate dir == referencing-file dir | `hits_same_dir += 1`; no print |
 | PASS (client-installed) | basename resolves to a client-installed pack-ops/supporting-docs/scripts/ file | `hits_client_installed += 1`; no print |
-| **FAIL (pack-internal target)** | basename resolves into `maintenance-docs/` OR `pack-ops/` (excluding client-installed `pack-ops/HELP-FRAGMENT-TRACKER.md`) | `fail(...)` with file:line + matched basename + resolution target |
-| **FAIL (pre-install-only `supporting-docs/`)** | basename resolves into `supporting-docs/<X>` AND `<X>` not in client-install set | `fail(...)` with "pre-install reference; not shipped to clients" |
+| PASS (self-provenance banner) | a QUALIFIED `project-template/<X>` path whose value EQUALS the citing file's own repo-relative path (the `*Copied from: <self-path>*` banner) | `hits_self_provenance += 1`; no print |
+| **FAIL (pack-internal target)** | basename resolves into `maintenance-docs/` OR `pack-ops/` (excluding any `pack-ops/` file listed in `_CHECK_43_PACK_INTERNAL_PREFIXES`'s companion `_CHECK_43_PACK_OPS_CLIENT_INSTALLED` — currently EMPTY: no `pack-ops/` file is a client-install source) | `fail(...)` with file:line + matched basename + resolution target |
+| **FAIL (pre-install-only `supporting-docs/`)** | a QUALIFIED `supporting-docs/<X>` path on a client surface — UNCONDITIONALLY, whether or not `<X>` ships elsewhere. The JC-2 broadening (BD-195 C2 §2.2 axis d) removed the former "`<X>` not in client-install set" condition: there is no `supporting-docs/` directory at a client install, so even an installed-elsewhere basename (e.g. `METHODOLOGY.md`, which ships to `docs/pack/`) must be cited by its client-resolvable path. Anchor-phrase exemption applies. The bare-ref (basename) form still FAILs only when `<X>` is NOT in the client-install set | `fail(...)` with "pre-install reference; not shipped to clients" |
 | **FAIL (broken)** | 0 candidates AND not on allowlist AND no anchor | `fail(...)` with "broken ref" |
 | **FAIL (ambiguous)** | 2+ candidates AND none is a client-installed legitimate target AND no same-dir match | `fail(...)` with "qualify to one of" |
+| **FAIL (commit-SHA provenance)** | a `commit <sha>` provenance citation (`_CHECK_43_COMMIT_SHA_PATTERN`) on a walked file, with no anchor phrase in the ±2-line window — pack-repo git history is not resolvable at a client install | `fail(...)` with "commit-SHA provenance citation … names pack-repo git history" |
+| **FAIL (bare-prose pack-doc-basename)** | JC-2 axis (i) (BD-195 C2 §2.2): a bare-PROSE mention (no backticks) of a basename whose EVERY repo location is under a pack-only tree, drawn from `_build_pack_only_doc_basenames()` (built from the tree, not hand-listed) and matched via the descending-length alternation `_build_bare_prose_alternation()`. Backtick-delimited hits are skipped (the bare-ref legs own those) | `fail(...)` with "bare-prose reference to pack-only doc" |
+| **FAIL (self-tree)** | a QUALIFIED `project-template/<X>` path on ANY walked file (no citer scoping — the walk IS the client-installed surface), where `<X>` ENDS IN A FILENAME WITH AN EXTENSION. **Bound (measured):** the matcher requires a dotted filename, so a bare `project-template/` or a bare-DIRECTORY reference (`project-template/skills/`) is OUT of reach — 5 matched vs 11 not matched on the current walk; widening needs a KEEP/STRIP census of those 11 first (`ci-guard-measure-then-bound`). There is no `project-template/` directory at a client install, so the pointer is dead there; the path DOES resolve in the pack repo, which is why the existence checks stay green on it. Keyed off `_CHECK_43_SELF_TREE_PREFIXES` — a SEPARATE tuple from `_CHECK_43_PACK_INTERNAL_PREFIXES`, which also feeds the bare-ref class test where `project-template/` would make every client-shipped basename a pack-internal target | `fail(...)` with "names the pack-repo storage path of a client-installed file" |
 
 ### 1.8 Failure message format
 
@@ -248,8 +252,12 @@ Follow the structural pattern of `test-validate-pack-check-40.sh`. Seven test gr
 | T7 | Project-side file with bare ref inside a fenced code block | PASS (code-block stripping) |
 | T8 | `scripts/lib/detect.sh` synthetic with `# maintenance-docs/v11-implementation/ARCHITECTURE-FOO.md:` comment | FAIL (verifies .sh scope + path-prefix detection) |
 | T9 | `project-template/docs/project/backlog/_rules.md` synthetic with same-dir bare ref `_intro.md` | PASS (allowlist same-dir; resolves via _CHECK_43_ALLOWLIST) |
+| T10 | Project-side file citing `project-template/skills/foo/SKILL.md`, cited FROM a `project-template/` file | FAIL (self-tree) |
+| T11 | The SAME cite FROM a client-installed `supporting-docs/` file | FAIL (self-tree). **Anti-vacuity leg:** the only case that distinguishes the whole-walk leg from a citer-scoped one — under citer scoping it passes trivially, so the assertion checks the failure TEXT names the `supporting-docs/` citer |
+| T12 | `*Copied from: project-template/<self-path>*` banner whose cited path EQUALS the citing file's own | PASS (self-provenance carve-out) |
+| T13 | The byte-identical banner text in a DIFFERENT file (cited path != citer) | FAIL (self-tree) — pins the carve-out to path EQUALITY, not to the banner's shape |
 
-**Total: 9 synthetic-tree test cases.**
+**Total: 13 synthetic-tree test cases.**
 
 ### 1.11 CI wiring — `.github/workflows/validate-pack.yml`
 
