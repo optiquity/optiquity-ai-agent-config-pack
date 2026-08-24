@@ -35,6 +35,11 @@
 #                           shared `project-template/skills/` prefix + both BDs,
 #                           exit 0 (the BD-257<->BD-037 placeholder blind spot
 #                           the placeholder-segment terminator closes)
+#            T6 PASS+WARN — two open BDs share a DOT-LEADING surface
+#                           (`.claude/agents/pack-planner.md`) => a WARN naming
+#                           that surface + both BDs, exit 0 (a span that OPENS
+#                           with a dot must tokenize, or no `.claude/`/`.codex/`/
+#                           `.github/` collision is ever visible to the scan)
 #   Group 2: end-to-end validate-pack.py exit-status on HEAD, shape-only +
 #            live-state-INDEPENDENT: Check 82 runs in the battery, exit 0;
 #            IF any shared-surface WARN is present it matches the canonical
@@ -238,6 +243,24 @@ elif "WARN" not in cap or "project-template/skills/" not in cap \
         or "BD-920" not in cap or "BD-921" not in cap:
     failures.append(f"T5 expected a WARN naming the shared project-template/skills/ prefix + both BDs (placeholder-segment path must tokenize its literal directory prefix), got: {cap}")
 
+# T6: two open BDs share a DOT-LEADING surface
+# (.claude/agents/pack-planner.md) => a WARN naming that surface + both BDs,
+# exit 0. The first character class of the path-token grammar admits a leading
+# dot; without it a backtick span that OPENS with a dot tokenizes to nothing,
+# so no dotfile surface (.claude/, .codex/, .github/, .gemini/) can enter the
+# surface->BDs map and a collision on one is invisible to the scan. Both BDs
+# name ONLY dot-leading paths, so the leg has no non-dot route to a WARN.
+SHARED_DOT = f"{BT}.claude/agents/pack-planner.md{BT}"
+fc, cap = run([
+    ("BD-922", "Open", f"{SHARED_DOT}, {BT}.codex/agents/only-922.toml{BT}"),
+    ("BD-923", "Open", f"{SHARED_DOT}, {BT}.codex/agents/only-923.toml{BT}"),
+])
+if fc != 0:
+    failures.append(f"T6 expected 0 failures (advisory NEVER fails), got {fc}: {cap}")
+elif "WARN" not in cap or ".claude/agents/pack-planner.md" not in cap \
+        or "BD-922" not in cap or "BD-923" not in cap:
+    failures.append(f"T6 expected a WARN naming the shared DOT-LEADING surface + both BDs, got: {cap}")
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -246,7 +269,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "End-to-end synthetic-tree tests T1-T5 (WARN-on-shared-surface bite naming surface+pair; no-overlap clean; 3-BD overlap; bare single-segment DIRECTORY collision; placeholder-SEGMENT path collides on its literal directory prefix; advisory NEVER fails)" ;;
+    0) t_pass "End-to-end synthetic-tree tests T1-T6 (WARN-on-shared-surface bite naming surface+pair; no-overlap clean; 3-BD overlap; bare single-segment DIRECTORY collision; placeholder-SEGMENT path collides on its literal directory prefix; DOT-LEADING surface collision; advisory NEVER fails)" ;;
     *) t_fail "End-to-end check_cross_bd_surface_advisory tests failed (see Python output)" ;;
 esac
 

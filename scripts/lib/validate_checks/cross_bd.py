@@ -594,6 +594,16 @@ _CHECK_81_TBD_MARKERS = (
 # surface→BDs map keys). Bounded to the field VALUE (no tree walk, no
 # subprocess).
 #
+# Dot-leading surfaces: the FIRST character class admits a leading `.`, so a
+# dot-directory surface (`.claude/agents/pack-planner.md`, `.github/workflows/`,
+# `.codex/`) tokenizes like any other path and is visible to the collision
+# scan. The CONTINUATION grammar is UNCHANGED, which is what keeps a backticked
+# bare extension (`.md`, `.sh`, `.gitignore`) from tokenizing: a token still
+# requires a `/<segment>`, a `.<ext>` suffix, or a trailing `/` AFTER its first
+# segment. Bounded (ci-guard-measure-then-bound): measured corpus-wide over
+# `backlog/BD-*.md`, the widening is purely ADDITIVE — no existing token is
+# lost and no existing token's occurrence count changes.
+#
 # Placeholder-segment terminator: a path token may ALSO be terminated by a
 # `<placeholder>` SEGMENT — a `<` that immediately follows a `/` — in which
 # case the captured token is the literal DIRECTORY PREFIX up to (and
@@ -614,7 +624,7 @@ _CHECK_81_TBD_MARKERS = (
 # unchanged; the single capture group is preserved so `.group(1)` call sites
 # are untouched).
 _CHECK_81_PATH_TOKEN_RE = re.compile(
-    r"`([A-Za-z0-9_][A-Za-z0-9_./-]*"
+    r"`([A-Za-z0-9_.][A-Za-z0-9_./-]*"
     r"(?:/[A-Za-z0-9_./-]+|\.[A-Za-z0-9_]+|/))"
     r"(?:`|(?<=/)(?=<))"
 )
@@ -692,7 +702,21 @@ def _check_81_active_bd_ids():
     token; design DECISION C2-a). Reads `pack-ops/session-state.json` via the
     shared `_session_state_load()`; returns an EMPTY set (SKIP-lenient) when
     the snapshot is absent, unparseable, or carries no usable `active[]` (a
-    fresh clone / pre-feature HEAD must not crash the check)."""
+    fresh clone / pre-feature HEAD must not crash the check).
+
+    TWO member SHAPES are matched, because the surface carries both:
+    - a STRING whose LEADING token is the BD-ID (`"BD-288 @ <free text>"`) —
+      the shape `pack-ops/session-state.json` and `scripts/dashboard-render.py`
+      (`" ".join(session.get("active", []) or [])`) use;
+    - a DICT carrying a `bd` key (`{"bd": "BD-288", ...}`).
+
+    The string leg anchors at the START of the member (`re.match`, a leading
+    whitespace skip, and a trailing word boundary), so ONLY the BD-ID that
+    OPENS the member is gated. A mid-string BD-ID is free text naming some
+    OTHER entry (a member of the form
+    `"BD-224 @ design pass ... (BD-25...)"`), not a second active BD, so a
+    permissive scan of the whole member would gate entries that are not in
+    active design."""
     loaded = _session_state_load()
     if loaded is None or loaded[0] == "PARSE_ERROR":
         return set()
@@ -708,6 +732,10 @@ def _check_81_active_bd_ids():
             bd = member.get("bd")
             if isinstance(bd, str) and re.match(r"^BD-\d+$", bd):
                 ids.add(bd)
+        elif isinstance(member, str):
+            m = re.match(r"\s*(BD-\d+)\b", member)
+            if m:
+                ids.add(m.group(1))
     return ids
 
 
