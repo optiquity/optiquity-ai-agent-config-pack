@@ -1,0 +1,1302 @@
+[
+ {
+  "file": ".claude/skills/architecture-review/SKILL.md",
+  "line": 44,
+  "basename": "ARCHITECTURE.md",
+  "candidates": 1,
+  "targets": [
+   "maintenance-docs/v11-research/ARCHITECTURE.md"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": ".claude/skills/boundary-investigation/SKILL.md",
+  "line": 99,
+  "basename": "PACK-AGENTS.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-AGENTS.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": ".claude/skills/boundary-investigation/SKILL.md",
+  "line": 99,
+  "basename": "PACK-CHAT.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-CHAT.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": ".claude/skills/boundary-investigation/SKILL.md",
+  "line": 99,
+  "basename": "HELP-FRAGMENT-PACK.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/HELP-FRAGMENT-PACK.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": ".claude/skills/boundary-investigation/SKILL.md",
+  "line": 102,
+  "basename": "OPTIONAL-FEATURES.md",
+  "candidates": 2,
+  "targets": [
+   "pack-ops/OPTIONAL-FEATURES.md",
+   "project-template/docs/pack/OPTIONAL-FEATURES.md"
+  ],
+  "verdict": "KEEP",
+  "rationale": "directory named in the same sentence; bareness is contextually resolved"
+ },
+ {
+  "file": ".claude/skills/boundary-investigation/SKILL.md",
+  "line": 121,
+  "basename": "SETUP-EXISTING.md",
+  "candidates": 1,
+  "targets": [
+   "supporting-docs/SETUP-EXISTING.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": ".claude/skills/boundary-investigation/SKILL.md",
+  "line": 165,
+  "basename": "PACK-AGENTS.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-AGENTS.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": ".claude/skills/commit-discipline/SKILL.md",
+  "line": 235,
+  "basename": "agent-run.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/agent-run.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": ".claude/skills/dashboard-render/SKILL.md",
+  "line": 23,
+  "basename": "PACK-AGENTS.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-AGENTS.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": ".claude/skills/pack-help/SKILL.md",
+  "line": 3,
+  "basename": "validate-pack.py",
+  "candidates": 1,
+  "targets": [
+   "scripts/validate-pack.py"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": ".claude/skills/verification-harness/SKILL.md",
+  "line": 239,
+  "basename": "test-migrator-core.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/test-migrator-core.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "AGENTS.md",
+  "line": 273,
+  "basename": "agent-run.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/agent-run.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "AGENTS.md",
+  "line": 348,
+  "basename": "validate-pack.py",
+  "candidates": 1,
+  "targets": [
+   "scripts/validate-pack.py"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "AGENTS.md",
+  "line": 475,
+  "basename": "PACK-AGENTS.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-AGENTS.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "AGENTS.md",
+  "line": 490,
+  "basename": "PACK-CHAT.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-CHAT.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "AGENTS.md",
+  "line": 490,
+  "basename": "PACK-AGENTS.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-AGENTS.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "AGENTS.md",
+  "line": 492,
+  "basename": "PACK-MEMORY-RATIONALE.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-MEMORY-RATIONALE.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "AGENTS.md",
+  "line": 578,
+  "basename": "BACKLOG.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "AGENTS.md",
+  "line": 579,
+  "basename": "IMPLEMENTATION-PLAN.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "AGENTS.md",
+  "line": 579,
+  "basename": "CHANGELOG.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "AGENTS.md",
+  "line": 665,
+  "basename": "SKILL.md",
+  "candidates": 100,
+  "targets": [
+   ".agents/skills/architecture-review/SKILL.md",
+   ".agents/skills/boundary-investigation/SKILL.md",
+   ".agents/skills/commit-discipline/SKILL.md"
+  ],
+  "verdict": "KEEP",
+  "rationale": "ecosystem-fixed name (filename-uniqueness structural exemption)"
+ },
+ {
+  "file": "AGENTS.md",
+  "line": 697,
+  "basename": "init-project.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/init-project.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "AGENTS.md",
+  "line": 787,
+  "basename": "no_leak.py",
+  "candidates": 1,
+  "targets": [
+   "scripts/lib/validate_checks/no_leak.py"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "CLAUDE.md",
+  "line": 272,
+  "basename": "agent-run.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/agent-run.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "CLAUDE.md",
+  "line": 359,
+  "basename": "validate-pack.py",
+  "candidates": 1,
+  "targets": [
+   "scripts/validate-pack.py"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "CLAUDE.md",
+  "line": 600,
+  "basename": "PACK-AGENTS.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-AGENTS.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "CLAUDE.md",
+  "line": 609,
+  "basename": "PACK-CHAT.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-CHAT.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "CLAUDE.md",
+  "line": 609,
+  "basename": "PACK-AGENTS.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-AGENTS.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "CLAUDE.md",
+  "line": 611,
+  "basename": "PACK-MEMORY-RATIONALE.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-MEMORY-RATIONALE.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "CLAUDE.md",
+  "line": 697,
+  "basename": "BACKLOG.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "CLAUDE.md",
+  "line": 698,
+  "basename": "IMPLEMENTATION-PLAN.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "CLAUDE.md",
+  "line": 698,
+  "basename": "CHANGELOG.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "CLAUDE.md",
+  "line": 784,
+  "basename": "SKILL.md",
+  "candidates": 100,
+  "targets": [
+   ".agents/skills/architecture-review/SKILL.md",
+   ".agents/skills/boundary-investigation/SKILL.md",
+   ".agents/skills/commit-discipline/SKILL.md"
+  ],
+  "verdict": "KEEP",
+  "rationale": "ecosystem-fixed name (filename-uniqueness structural exemption)"
+ },
+ {
+  "file": "CLAUDE.md",
+  "line": 816,
+  "basename": "init-project.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/init-project.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "CLAUDE.md",
+  "line": 918,
+  "basename": "no_leak.py",
+  "candidates": 1,
+  "targets": [
+   "scripts/lib/validate_checks/no_leak.py"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "GEMINI.md",
+  "line": 235,
+  "basename": "plugin.json",
+  "candidates": 2,
+  "targets": [
+   ".agents-plugin/pack-agents/plugin.json",
+   "project-template/.agents-plugin/optiquity-agents/plugin.json"
+  ],
+  "verdict": "KEEP",
+  "rationale": "directory named in the same sentence; bareness is contextually resolved"
+ },
+ {
+  "file": "GEMINI.md",
+  "line": 237,
+  "basename": "RUNTIME-SUBAGENT-PATTERN.md",
+  "candidates": 2,
+  "targets": [
+   ".agents-plugin/pack-agents/RUNTIME-SUBAGENT-PATTERN.md",
+   "project-template/.agents-plugin/optiquity-agents/RUNTIME-SUBAGENT-PATTERN.md"
+  ],
+  "verdict": "KEEP",
+  "rationale": "directory named in the same sentence; bareness is contextually resolved"
+ },
+ {
+  "file": "GEMINI.md",
+  "line": 243,
+  "basename": "agent-run.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/agent-run.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "GEMINI.md",
+  "line": 317,
+  "basename": "validate-pack.py",
+  "candidates": 1,
+  "targets": [
+   "scripts/validate-pack.py"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "GEMINI.md",
+  "line": 444,
+  "basename": "PACK-AGENTS.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-AGENTS.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "GEMINI.md",
+  "line": 462,
+  "basename": "PACK-CHAT.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-CHAT.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "GEMINI.md",
+  "line": 462,
+  "basename": "PACK-AGENTS.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-AGENTS.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "GEMINI.md",
+  "line": 464,
+  "basename": "PACK-MEMORY-RATIONALE.md",
+  "candidates": 1,
+  "targets": [
+   "pack-ops/PACK-MEMORY-RATIONALE.md"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "GEMINI.md",
+  "line": 550,
+  "basename": "BACKLOG.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "GEMINI.md",
+  "line": 551,
+  "basename": "IMPLEMENTATION-PLAN.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "GEMINI.md",
+  "line": 551,
+  "basename": "CHANGELOG.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "GEMINI.md",
+  "line": 637,
+  "basename": "SKILL.md",
+  "candidates": 100,
+  "targets": [
+   ".agents/skills/architecture-review/SKILL.md",
+   ".agents/skills/boundary-investigation/SKILL.md",
+   ".agents/skills/commit-discipline/SKILL.md"
+  ],
+  "verdict": "KEEP",
+  "rationale": "ecosystem-fixed name (filename-uniqueness structural exemption)"
+ },
+ {
+  "file": "GEMINI.md",
+  "line": 669,
+  "basename": "init-project.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/init-project.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "GEMINI.md",
+  "line": 760,
+  "basename": "no_leak.py",
+  "candidates": 1,
+  "targets": [
+   "scripts/lib/validate_checks/no_leak.py"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "README.md",
+  "line": 19,
+  "basename": "agent-run.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/agent-run.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "README.md",
+  "line": 32,
+  "basename": "agent-run.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/agent-run.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "README.md",
+  "line": 290,
+  "basename": "MIGRATION-vN-to-vM.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "filename GRAMMAR pattern, not a file"
+ },
+ {
+  "file": "changelog/_rules.md",
+  "line": 32,
+  "basename": "vN.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "filename GRAMMAR pattern, not a file"
+ },
+ {
+  "file": "changelog/_rules.md",
+  "line": 35,
+  "basename": "vN.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "filename GRAMMAR pattern, not a file"
+ },
+ {
+  "file": "supporting-docs/AGENT_KICKOFF_TEMPLATE.md",
+  "line": 83,
+  "basename": "ARCHITECTURE.md",
+  "candidates": 1,
+  "targets": [
+   "maintenance-docs/v11-research/ARCHITECTURE.md"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/AGENT_KICKOFF_TEMPLATE.md",
+  "line": 128,
+  "basename": "ARCHITECTURE.md",
+  "candidates": 1,
+  "targets": [
+   "maintenance-docs/v11-research/ARCHITECTURE.md"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 4,
+  "basename": "bootstrap.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/scripts/bootstrap.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 4,
+  "basename": "validate.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/scripts/validate.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 25,
+  "basename": "agent-run.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/agent-run.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 51,
+  "basename": "format.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/scripts/format.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 61,
+  "basename": "bootstrap.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/scripts/bootstrap.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 61,
+  "basename": "validate.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/scripts/validate.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 67,
+  "basename": "format.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/scripts/format.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 67,
+  "basename": "validate.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/scripts/validate.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 68,
+  "basename": "pyproject.toml",
+  "candidates": 1,
+  "targets": [
+   "project-template/pyproject.toml"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 74,
+  "basename": "validate.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/scripts/validate.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 75,
+  "basename": "pyproject.toml",
+  "candidates": 1,
+  "targets": [
+   "project-template/pyproject.toml"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 81,
+  "basename": "validate.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/scripts/validate.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 82,
+  "basename": "pyproject.toml",
+  "candidates": 1,
+  "targets": [
+   "project-template/pyproject.toml"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 92,
+  "basename": "proto-gen.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/scripts/proto-gen.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 92,
+  "basename": "bootstrap.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/scripts/bootstrap.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 92,
+  "basename": "validate.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/scripts/validate.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 98,
+  "basename": "proto-gen.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/scripts/proto-gen.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 104,
+  "basename": "proto-gen.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/scripts/proto-gen.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/DEPENDENCIES.md",
+  "line": 144,
+  "basename": "BACKLOG.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 53,
+  "basename": "migrate-v10-to-v11.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/migrate-v10-to-v11.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 56,
+  "basename": "PROMPT-TEMPLATES.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "retired/historical name cited in migration prose"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 59,
+  "basename": "inbound.yml",
+  "candidates": 3,
+  "targets": [
+   ".github/ISSUE_TEMPLATE/inbound.yml",
+   "maintenance-docs/v11-research/templates-archive/v11.0/forms/inbound.yml",
+   "project-template/.github/ISSUE_TEMPLATE/inbound.yml"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 59,
+  "basename": "config.yml",
+  "candidates": 2,
+  "targets": [
+   ".github/ISSUE_TEMPLATE/config.yml",
+   "project-template/.github/ISSUE_TEMPLATE/config.yml"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 59,
+  "basename": "inbound.yml",
+  "candidates": 3,
+  "targets": [
+   ".github/ISSUE_TEMPLATE/inbound.yml",
+   "maintenance-docs/v11-research/templates-archive/v11.0/forms/inbound.yml",
+   "project-template/.github/ISSUE_TEMPLATE/inbound.yml"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 75,
+  "basename": "BACKLOG.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 76,
+  "basename": "BACKLOG.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 103,
+  "basename": "plugin.json",
+  "candidates": 2,
+  "targets": [
+   ".agents-plugin/pack-agents/plugin.json",
+   "project-template/.agents-plugin/optiquity-agents/plugin.json"
+  ],
+  "verdict": "KEEP",
+  "rationale": "directory named in the same sentence; bareness is contextually resolved"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 104,
+  "basename": "RUNTIME-SUBAGENT-PATTERN.md",
+  "candidates": 2,
+  "targets": [
+   ".agents-plugin/pack-agents/RUNTIME-SUBAGENT-PATTERN.md",
+   "project-template/.agents-plugin/optiquity-agents/RUNTIME-SUBAGENT-PATTERN.md"
+  ],
+  "verdict": "KEEP",
+  "rationale": "directory named in the same sentence; bareness is contextually resolved"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 131,
+  "basename": "plugin.json",
+  "candidates": 2,
+  "targets": [
+   ".agents-plugin/pack-agents/plugin.json",
+   "project-template/.agents-plugin/optiquity-agents/plugin.json"
+  ],
+  "verdict": "KEEP",
+  "rationale": "directory named in the same sentence; bareness is contextually resolved"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 131,
+  "basename": "RUNTIME-SUBAGENT-PATTERN.md",
+  "candidates": 2,
+  "targets": [
+   ".agents-plugin/pack-agents/RUNTIME-SUBAGENT-PATTERN.md",
+   "project-template/.agents-plugin/optiquity-agents/RUNTIME-SUBAGENT-PATTERN.md"
+  ],
+  "verdict": "KEEP",
+  "rationale": "directory named in the same sentence; bareness is contextually resolved"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 317,
+  "basename": "BACKLOG.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 317,
+  "basename": "IMPLEMENTATION-PLAN.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 318,
+  "basename": "CHANGELOG.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 346,
+  "basename": "validate-pack.py",
+  "candidates": 1,
+  "targets": [
+   "scripts/validate-pack.py"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 391,
+  "basename": "validate-pack.py",
+  "candidates": 1,
+  "targets": [
+   "scripts/validate-pack.py"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 492,
+  "basename": "IMPLEMENTATION_PLAN.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 492,
+  "basename": "IMPLEMENTATION-PLAN.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 507,
+  "basename": "init-project.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/init-project.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 769,
+  "basename": "pyproject.toml",
+  "candidates": 1,
+  "targets": [
+   "project-template/pyproject.toml"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 769,
+  "basename": "pyrightconfig.json",
+  "candidates": 1,
+  "targets": [
+   "project-template/pyrightconfig.json"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/MIGRATION-v10-to-v11.md",
+  "line": 835,
+  "basename": "test-customization-preserve.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/tests/test-customization-preserve.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "supporting-docs/PRE-RECONCILE-v10-to-v11.md",
+  "line": 250,
+  "basename": "PLATFORM-SKILLS.md",
+  "candidates": 1,
+  "targets": [
+   "project-template/docs/pack/PLATFORM-SKILLS.md"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/PRE-RECONCILE-v10-to-v11.md",
+  "line": 251,
+  "basename": "PACK-FEEDBACK.md",
+  "candidates": 1,
+  "targets": [
+   "project-template/docs/pack/PACK-FEEDBACK.md"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-installed file named from a client-audience doc; bare form is the client-relative shape"
+ },
+ {
+  "file": "supporting-docs/PRE-RECONCILE-v10-to-v11.md",
+  "line": 251,
+  "basename": "PROMPT-TEMPLATES.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "retired/historical name cited in migration prose"
+ },
+ {
+  "file": "supporting-docs/SETUP-EXISTING.md",
+  "line": 12,
+  "basename": "init-project.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/init-project.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "supporting-docs/SETUP-EXISTING.md",
+  "line": 21,
+  "basename": "MIGRATION-v9-to-v10.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "retired/historical name cited in migration prose"
+ },
+ {
+  "file": "supporting-docs/SETUP-EXISTING.md",
+  "line": 63,
+  "basename": "init-project.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/init-project.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "supporting-docs/SETUP-EXISTING.md",
+  "line": 149,
+  "basename": "init-project.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/init-project.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "supporting-docs/SETUP-EXISTING.md",
+  "line": 284,
+  "basename": "init-project.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/init-project.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "supporting-docs/SETUP-EXISTING.md",
+  "line": 313,
+  "basename": "CHANGELOG.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/SETUP-EXISTING.md",
+  "line": 358,
+  "basename": "init-project.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/init-project.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "supporting-docs/SETUP-EXISTING.md",
+  "line": 422,
+  "basename": "agent-run.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/agent-run.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/SETUP-EXISTING.md",
+  "line": 473,
+  "basename": "MIGRATION-vN-to-vM.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "filename GRAMMAR pattern, not a file"
+ },
+ {
+  "file": "supporting-docs/SETUP-NEW.md",
+  "line": 70,
+  "basename": "init-project.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/init-project.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "supporting-docs/SETUP-NEW.md",
+  "line": 80,
+  "basename": "init-project.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/init-project.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "supporting-docs/SETUP-NEW.md",
+  "line": 98,
+  "basename": "MIGRATION-vN-to-vM.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "filename GRAMMAR pattern, not a file"
+ },
+ {
+  "file": "supporting-docs/SETUP-NEW.md",
+  "line": 144,
+  "basename": "init-project.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/init-project.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "supporting-docs/SETUP-NEW.md",
+  "line": 145,
+  "basename": "init-project.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/init-project.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "supporting-docs/SETUP-NEW.md",
+  "line": 419,
+  "basename": "SETUP.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/SETUP-NEW.md",
+  "line": 421,
+  "basename": "AGENT_KICKOFF.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/SETUP-NEW.md",
+  "line": 450,
+  "basename": "ARCHITECTURE.md",
+  "candidates": 1,
+  "targets": [
+   "maintenance-docs/v11-research/ARCHITECTURE.md"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/SETUP-NEW.md",
+  "line": 511,
+  "basename": "migrate-vN-to-vM.sh",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "filename GRAMMAR pattern, not a file"
+ },
+ {
+  "file": "supporting-docs/SETUP-NEW.md",
+  "line": 514,
+  "basename": "agent-run.sh",
+  "candidates": 1,
+  "targets": [
+   "project-template/agent-run.sh"
+  ],
+  "verdict": "KEEP",
+  "rationale": "client-side artifact / coincidental-basename; no pack file is the referent"
+ },
+ {
+  "file": "supporting-docs/SETUP-NEW.md",
+  "line": 531,
+  "basename": "MIGRATION-vN-to-vM.md",
+  "candidates": 0,
+  "targets": [],
+  "verdict": "KEEP",
+  "rationale": "filename GRAMMAR pattern, not a file"
+ },
+ {
+  "file": "supporting-docs/SETUP_TEMPLATE.md",
+  "line": 73,
+  "basename": "init-project.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/init-project.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ },
+ {
+  "file": "supporting-docs/SETUP_TEMPLATE.md",
+  "line": 85,
+  "basename": "init-project.sh",
+  "candidates": 1,
+  "targets": [
+   "scripts/init-project.sh"
+  ],
+  "verdict": "STRIP",
+  "rationale": "pack-audience actionable pointer to a single pack-side file"
+ }
+]

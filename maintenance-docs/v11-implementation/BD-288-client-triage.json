@@ -1,0 +1,292 @@
+[
+ {
+  "citer_client_path": ".claude/agents/auditor-architecture.md",
+  "line": 37,
+  "ref": "project-template/skills/audit-methodology/SKILL.md",
+  "verdict": "STRIP",
+  "keep_class": null,
+  "fix": "rewrite to `skills/audit-methodology/SKILL.md`",
+  "visible_on_profiles": "ALL (incl. bare template)",
+  "rationale": "actionable 'go read this file' pointer; a client install has no project-template/ directory, so the ref is dead at every install. Pack-side counterpart caught by the Check-43 prefix extension."
+ },
+ {
+  "citer_client_path": ".claude/agents/auditor-ops.md",
+  "line": 31,
+  "ref": "project-template/skills/audit-methodology/SKILL.md",
+  "verdict": "STRIP",
+  "keep_class": null,
+  "fix": "rewrite to `skills/audit-methodology/SKILL.md`",
+  "visible_on_profiles": "ALL (incl. bare template)",
+  "rationale": "actionable 'go read this file' pointer; a client install has no project-template/ directory, so the ref is dead at every install. Pack-side counterpart caught by the Check-43 prefix extension."
+ },
+ {
+  "citer_client_path": ".codex/agents/auditor-architecture.toml",
+  "line": 19,
+  "ref": "project-template/skills/audit-methodology/SKILL.md",
+  "verdict": "STRIP",
+  "keep_class": null,
+  "fix": "rewrite to `skills/audit-methodology/SKILL.md`",
+  "visible_on_profiles": "ALL (incl. bare template)",
+  "rationale": "actionable 'go read this file' pointer; a client install has no project-template/ directory, so the ref is dead at every install. Pack-side counterpart caught by the Check-43 prefix extension."
+ },
+ {
+  "citer_client_path": ".codex/agents/auditor-ops.toml",
+  "line": 19,
+  "ref": "project-template/skills/audit-methodology/SKILL.md",
+  "verdict": "STRIP",
+  "keep_class": null,
+  "fix": "rewrite to `skills/audit-methodology/SKILL.md`",
+  "visible_on_profiles": "ALL (incl. bare template)",
+  "rationale": "actionable 'go read this file' pointer; a client install has no project-template/ directory, so the ref is dead at every install. Pack-side counterpart caught by the Check-43 prefix extension."
+ },
+ {
+  "citer_client_path": ".agents-plugin/optiquity-agents/agents/auditor-architecture.md",
+  "line": 41,
+  "ref": "project-template/skills/audit-methodology/SKILL.md",
+  "verdict": "STRIP",
+  "keep_class": null,
+  "fix": "rewrite to `skills/audit-methodology/SKILL.md`",
+  "visible_on_profiles": "ALL (incl. bare template)",
+  "rationale": "actionable 'go read this file' pointer; a client install has no project-template/ directory, so the ref is dead at every install. Pack-side counterpart caught by the Check-43 prefix extension."
+ },
+ {
+  "citer_client_path": ".agents-plugin/optiquity-agents/agents/auditor-ops.md",
+  "line": 35,
+  "ref": "project-template/skills/audit-methodology/SKILL.md",
+  "verdict": "STRIP",
+  "keep_class": null,
+  "fix": "rewrite to `skills/audit-methodology/SKILL.md`",
+  "visible_on_profiles": "ALL (incl. bare template)",
+  "rationale": "actionable 'go read this file' pointer; a client install has no project-template/ directory, so the ref is dead at every install. Pack-side counterpart caught by the Check-43 prefix extension."
+ },
+ {
+  "citer_client_path": "docs/pack/INSTALL-PROCEDURES.md",
+  "line": 1336,
+  "ref": "project-template/docs/pack/PM-CHAT.md",
+  "verdict": "STRIP",
+  "keep_class": null,
+  "fix": "rewrite to `docs/pack/PM-CHAT.md` (edit the pack source supporting-docs/INSTALL-PROCEDURES.md)",
+  "visible_on_profiles": "overlay + all install profiles",
+  "rationale": "actionable 'see X' pointer on a client-installed doc; dead at install. NOT caught by the pack-side Check-43 conditional (citer is not under project-template/) -- the client gate is its only gate."
+ },
+ {
+  "citer_client_path": "docs/pack/INSTALL-PROCEDURES.md",
+  "line": 1367,
+  "ref": "project-template/docs/pack/prompts/pm-chat.md",
+  "verdict": "STRIP",
+  "keep_class": null,
+  "fix": "rewrite to `docs/pack/prompts/pm-chat.md` (edit supporting-docs/INSTALL-PROCEDURES.md)",
+  "visible_on_profiles": "overlay + all install profiles",
+  "rationale": "actionable 'invocation point' pointer; dead at install. Same pack-side blind spot as the row above."
+ },
+ {
+  "citer_client_path": "docs/pack/METHODOLOGY.md",
+  "line": 1984,
+  "ref": "project-template/docs/pack/PACK-FEEDBACK.md",
+  "verdict": "STRIP",
+  "keep_class": null,
+  "fix": "reword: drop the pack-storage path (the preceding sentence already gives the client path `docs/pack/PACK-FEEDBACK.md`); e.g. 'The template ships with the pack.' (edit supporting-docs/METHODOLOGY.md)",
+  "visible_on_profiles": "overlay + all install profiles",
+  "rationale": "the sentence's only payload is a pack-internal storage path, redundant for a client reader. Allowlisting a project-template/ path client-side would contradict the 9 STRIPs above; rewording removes the ref."
+ },
+ {
+  "citer_client_path": "skills/boundary-investigation/SKILL.md",
+  "line": 107,
+  "ref": "project-template/docs/pack/OPTIONAL-FEATURES.md",
+  "verdict": "STRIP",
+  "keep_class": null,
+  "fix": "rewrite to `docs/pack/OPTIONAL-FEATURES.md`",
+  "visible_on_profiles": "NONE -- deny-list-fenced on BOTH gates (pack Check 43 fence-skip; client strip_blocks DENY-LIST leg)",
+  "rationale": "real dead pointer at every install, reported by NO gate. It is the allow-side counterexample inside a deny-list teaching block, not deny-list content. Fixed as content; the guard-bite claim does NOT rest on it."
+ },
+ {
+  "citer_client_path": "docs/pack/METHODOLOGY.md",
+  "line": 12,
+  "ref": "supporting-docs/METHODOLOGY.md",
+  "verdict": "KEEP",
+  "keep_class": "pack-repo SSOT self-banner",
+  "fix": "add `target: supporting-docs/METHODOLOGY.md` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "overlay + all install profiles",
+  "rationale": "THE HAZARD the review flagged: pack-side this line clears on Check 43's 'in the pack repo' anchor; the client gate's DANGLING_ANCHORS has NO pack-repo anchor, so there is no anchor path client-side. Resolved with the project-side SSOT (a target: record), NOT by widening the shared anchor vocabulary -- consistent with OI-7."
+ },
+ {
+  "citer_client_path": "CLAUDE.md",
+  "line": 287,
+  "ref": "scripts/validate-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/validate-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "CLAUDE.md",
+  "line": 288,
+  "ref": "scripts/test-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/test-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "AGENTS.md",
+  "line": 272,
+  "ref": "scripts/validate-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/validate-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "AGENTS.md",
+  "line": 273,
+  "ref": "scripts/test-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/test-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "GEMINI.md",
+  "line": 283,
+  "ref": "scripts/validate-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/validate-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "GEMINI.md",
+  "line": 284,
+  "ref": "scripts/test-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/test-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "docs/pack/INSTALL-PROCEDURES.md",
+  "line": 1124,
+  "ref": "scripts/validate-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/validate-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "docs/pack/INSTALL-PROCEDURES.md",
+  "line": 1125,
+  "ref": "scripts/test-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/test-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "docs/pack/INSTALL-PROCEDURES.md",
+  "line": 1126,
+  "ref": "scripts/format-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/format-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "docs/pack/INSTALL-PROCEDURES.md",
+  "line": 1347,
+  "ref": "scripts/validate-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/validate-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "docs/pack/INSTALL-PROCEDURES.md",
+  "line": 1348,
+  "ref": "scripts/test-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/test-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "docs/pack/INSTALL-PROCEDURES.md",
+  "line": 1348,
+  "ref": "scripts/format-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/format-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "docs/pack/OPTIONAL-FEATURES.md",
+  "line": 382,
+  "ref": "scripts/test-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/test-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "docs/pack/OPTIONAL-FEATURES.md",
+  "line": 382,
+  "ref": "scripts/test-python.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/test-python.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Python marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Python marker is detected; the citing prose is explicitly Python-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "docs/pack/prompts/pm-chat.md",
+  "line": 104,
+  "ref": "scripts/validate-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/validate-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "docs/pack/prompts/pm-chat.md",
+  "line": 104,
+  "ref": "scripts/test-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/test-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "docs/pack/prompts/pm-chat.md",
+  "line": 109,
+  "ref": "scripts/format-swift.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/format-swift.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a Swift marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no Swift marker is detected; the citing prose is explicitly Swift-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ },
+ {
+  "citer_client_path": "docs/pack/prompts/pm-chat.md",
+  "line": 122,
+  "ref": "./scripts/proto-gen.sh",
+  "verdict": "KEEP",
+  "keep_class": "S9 conditional-removal path",
+  "fix": "add `target: scripts/proto-gen.sh` to project-template/scripts/.docs-gate-allowlist.txt",
+  "visible_on_profiles": "install profiles WITHOUT a proto marker (invisible to the S6 overlay, which keeps every conditional file)",
+  "rationale": "init-project.sh stage S9 removes this file when no proto marker is detected; the citing prose is explicitly proto-scoped, so the reference is correct-when-present. This is the OI-2 fidelity class the overlay-only measurement could not see."
+ }
+]
