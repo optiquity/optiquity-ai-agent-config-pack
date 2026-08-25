@@ -3,13 +3,18 @@
 # BD-197 Check 53 (worktree-isolation prohibition flip-block, Guard-A).
 #
 # Check 53 asserts the REMOVED worktree-isolation prohibition prose
-# (`no worktree isolation` / `Do not pass ...isolation...worktree`) does
-# NOT reappear in any ACTIVE pack surface. The matcher keys on the
-# prohibition SIGNATURE only — NEVER the legitimate setting keys
+# (`no worktree isolation` / `Do not pass ...isolation...worktree`) AND the
+# RETIRED isolated-agent placement-contract prose (the "then cd to the
+# target tree" ritual / the literal `cd-REUSE` convention — Guard 1 per
+# maintenance-docs/v11-implementation/ARCHITECTURE-BD-290.md §6) do NOT
+# reappear in any ACTIVE pack surface. The matcher keys on the retired
+# SIGNATURES only — NEVER the legitimate setting keys
 # `baseRef`/`bgIsolation` (design §11.5 G-1/G-2). Allowlist (measure-then-
 # bound) = the two process/history doc dirs (`maintenance-docs/archive/`,
-# `maintenance-docs/v11-implementation/`) PLUS the NARROW self-exception
-# (validator self-skip by name + ONLY the single check-53 test file).
+# `maintenance-docs/v11-implementation/`) + the two record-stream trees
+# (`backlog/`, `changelog/` — entry bodies quote retired text when recording
+# removals) PLUS the NARROW self-exception (validator self-skip by name +
+# ONLY the single check-53 test file).
 #
 # This test proves the guard PASSes on the well-formed tree and FAILs on an
 # injected prohibition in an active surface (in a synthetic /tmp tree — it
@@ -34,9 +39,19 @@
 #            D  PASS — the single check-53 test allowlisted by exact path
 #            E  FAIL — NARROW: a DIFFERENT scripts/tests file is NOT allowed
 #            F  PASS — baseRef/bgIsolation keys do NOT trip the matcher
+#            A3  FAIL — retired placement phrase, plain form (then cd to the
+#                       target tree), FAIL text names pattern + file
+#            A3b FAIL — the cd-s variant of the placement phrase
+#            A4  FAIL — the literal cd-REUSE, FAIL text names pattern + file
+#                (A3/A3b/A4 each carry a MUTATION leg: re-run with the
+#                 pre-extension 2-pattern tuple must NOT fail — the FAIL text
+#                 appears ONLY when the new pattern is live)
+#            B3  PASS — the placement phrase in the backlog/ record stream
+#            B4  PASS — cd-REUSE in the changelog/ record stream
 #   Group 2: end-to-end validate-pack.py exit-status on HEAD (Check 53 clean)
 #   Group 3: the two lenient-SKIP branches (git absent / not a work tree),
-#            each pinned with a fixture that carries the prohibition prose
+#            each pinned with a fixture that carries retired prose from BOTH
+#            families (prohibition + placement-contract)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-53.sh
 
@@ -99,6 +114,7 @@ import importlib.util
 spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
+import validate_checks.discipline_parity as dp
 
 def _patch_root(mod, root):
     """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
@@ -153,6 +169,34 @@ def w(root, rel, text):
     p = root / rel
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text)
+
+def run_with_patterns(build, patterns):
+    """run(), but with the module-level pattern tuple temporarily replaced
+    (the MUTATION leg: proving a FAIL comes from a specific pattern by
+    re-running WITHOUT it). The check body resolves the tuple from the
+    discipline_parity module globals, so patch it there."""
+    saved = dp._CHECK_53_PROHIBITION_PATTERNS
+    dp._CHECK_53_PROHIBITION_PATTERNS = tuple(patterns)
+    try:
+        return run(build)
+    finally:
+        dp._CHECK_53_PROHIBITION_PATTERNS = saved
+
+# Mutation-leg precondition: the tuple's first two members are the original
+# BD-197 prohibition patterns and the last two are the retired
+# placement-contract patterns, so the [:2] slice below IS the pre-extension
+# matcher set.
+_srcs = tuple(p.pattern for p in dp._CHECK_53_PROHIBITION_PATTERNS)
+if (len(_srcs) != 4
+        or _srcs[0] != "no worktree isolation"
+        or not _srcs[1].startswith("Do not pass")
+        or "to the target tree" not in _srcs[2]
+        or _srcs[3] != "cd-REUSE"):
+    print("FAILURES")
+    print("  pattern-tuple shape unexpected (mutation legs cannot anchor):",
+          _srcs)
+    sys.exit(1)
+PRE_EXTENSION_PATTERNS = dp._CHECK_53_PROHIBITION_PATTERNS[:2]
 
 # A: injected prohibition in an ACTIVE surface (pack-ops doc) -> FAIL
 def bA(root): w(root, "pack-ops/SOME-RULE.md",
@@ -210,6 +254,56 @@ n, cap = run(bF)
 if n != 0:
     failures.append(f"F (baseRef/bgIsolation keys do NOT trip matcher) expected PASS, got {n}: {cap}")
 
+# A3: retired placement phrase, PLAIN form, in an active surface -> FAIL,
+# and the FAIL text must name the matched pattern + the file.
+def bA3(root): w(root, "pack-ops/Y.md",
+                 "spawn the reviewer in place, then cd to the target tree.\n")
+n, cap = run(bA3)
+if n < 1 or "Y.md" not in cap or "then .?cd.?(-s it)? to the target tree" not in cap:
+    failures.append(f"A3 (retired placement phrase, plain form) expected FAIL naming pattern+file, got {n}: {cap}")
+# A3-MUTATION: with the pre-extension 2-pattern tuple the same fixture must
+# NOT produce the FAIL text -- the bite comes from the NEW pattern only.
+n, cap = run_with_patterns(bA3, PRE_EXTENSION_PATTERNS)
+if n != 0:
+    failures.append(f"A3-mut (pre-extension patterns, same fixture) expected PASS, got {n}: {cap}")
+
+# A3b: the cd-s variant of the placement phrase -> FAIL (same pattern).
+def bA3b(root): w(root, "pack-ops/Y2.md",
+                  "spawns RO in place, then \`cd\`-s it to the target tree.\n")
+n, cap = run(bA3b)
+if n < 1 or "Y2.md" not in cap or "then .?cd.?(-s it)? to the target tree" not in cap:
+    failures.append(f"A3b (placement phrase, cd-s variant) expected FAIL naming pattern+file, got {n}: {cap}")
+n, cap = run_with_patterns(bA3b, PRE_EXTENSION_PATTERNS)
+if n != 0:
+    failures.append(f"A3b-mut (pre-extension patterns, same fixture) expected PASS, got {n}: {cap}")
+
+# A4: the literal cd-REUSE in an active surface -> FAIL, FAIL text names
+# the matched pattern + the file.
+def bA4(root): w(root, "pack-ops/Z.md",
+                 "every later RW agent does a cd-REUSE of that tree.\n")
+n, cap = run(bA4)
+if n < 1 or "Z.md" not in cap or "matched pattern: cd-REUSE" not in cap:
+    failures.append(f"A4 (literal cd-REUSE) expected FAIL naming pattern+file, got {n}: {cap}")
+n, cap = run_with_patterns(bA4, PRE_EXTENSION_PATTERNS)
+if n != 0:
+    failures.append(f"A4-mut (pre-extension patterns, same fixture) expected PASS, got {n}: {cap}")
+
+# B3: the SAME placement phrase in the backlog/ record stream -> PASS
+# (record-stream allowlist prefix).
+def bB3(root): w(root, "backlog/BD-123.md",
+                 "the defective ritual read: then cd to the target tree.\n")
+n, cap = run(bB3)
+if n != 0:
+    failures.append(f"B3 (backlog/ record stream allowlisted) expected PASS, got {n}: {cap}")
+
+# B4: the literal cd-REUSE in the changelog/ record stream -> PASS
+# (covers the second new allowlist prefix).
+def bB4(root): w(root, "changelog/v11.md",
+                 "removed the cd-REUSE convention from the coder defs.\n")
+n, cap = run(bB4)
+if n != 0:
+    failures.append(f"B4 (changelog/ record stream allowlisted) expected PASS, got {n}: {cap}")
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -218,7 +312,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "End-to-end synthetic-tree tests A/A2/B/B2/C/D/E/F (injected-prohibition catch + allowlist + narrow self-exception + key-not-tripped)" ;;
+    0) t_pass "End-to-end synthetic-tree tests A/A2/B/B2/C/D/E/F + A3/A3b/A4 (mutation-proven placement-pattern bites) + B3/B4 (record-stream allowlist)" ;;
     *) t_fail "End-to-end check_worktree_isolation_prohibition_flip_block tests failed (see Python output)" ;;
 esac
 
@@ -249,10 +343,11 @@ fi
 # Group 3: the two lenient-SKIP branches, pinned
 #   3a  git binary absent            -> "git not available"
 #   3b  REPO_ROOT not a git work tree -> "not a git work tree"
-# Both fixtures CARRY the prohibition prose in an active surface, so a
-# non-lenient implementation would FAIL them -- the pass can only come from
-# the SKIP branch, which is what makes this a real pin rather than a vacuous
-# green. Mirrors Group 3 of test-validate-pack-check-69.sh.
+# Both fixtures CARRY retired prose from BOTH families (the prohibition
+# prose AND the retired placement-contract phrase) in an active surface, so
+# a non-lenient implementation would FAIL them -- the pass can only come
+# from the SKIP branch, which is what makes this a real pin rather than a
+# vacuous green. Mirrors Group 3 of test-validate-pack-check-69.sh.
 # ─────────────────────────────────────────────────────────────────
 printf "\n=== Group 3: git-unavailable / not-a-work-tree -> lenient SKIP ===\n"
 
@@ -290,7 +385,8 @@ def run_lenient(stub_git_missing):
     root = pathlib.Path(tmpdir)
     (root / "pack-ops").mkdir(parents=True, exist_ok=True)
     (root / "pack-ops" / "SOME-RULE.md").write_text(
-        "Spawn all sub-agents with no worktree isolation.\n")
+        "Spawn all sub-agents with no worktree isolation, "
+        "then cd to the target tree.\n")
     saved_root = mod.REPO_ROOT
     saved_failures = list(mod.failures)
     saved_sub = dp.subprocess
@@ -333,7 +429,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "lenient-SKIP branches pinned (3a git absent + 3b non-work-tree; both fixtures carry prohibition prose)" ;;
+    0) t_pass "lenient-SKIP branches pinned (3a git absent + 3b non-work-tree; both fixtures carry retired prose from both families)" ;;
     *) t_fail "Check 53 lenient-SKIP branch tests failed (see Python output)" ;;
 esac
 

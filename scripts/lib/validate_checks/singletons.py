@@ -244,13 +244,16 @@ def _check_4_dev_worktree_branch() -> str:
     """Return a dev branch pointing at HEAD *iff* this checkout is a LINKED
     git worktree; else "".
 
-    Rationale (ci-guard-runtime + BD-226 RW-agent worktree isolation): a
-    read-write pack agent runs in a linked worktree whose branch is a
-    throwaway (`worktree-agent-<id>`), so `git branch --show-current` does
-    NOT carry the development branch and the dev-branch allowance below
-    would mis-FAIL every agent verification run. The worktree's HEAD is the
-    dev branch's HEAD (agents never commit), so a dev branch `--points-at`
-    HEAD identifies the same pre-release context.
+    Rationale (ci-guard-runtime + BD-226 RW-agent worktree isolation): agent
+    verification runs happen in linked worktrees of BOTH kinds — a platform
+    agent worktree, whose branch is a throwaway (`worktree-agent-<id>`), and
+    an orchestrator-created detached-HEAD commit workspace, which has no
+    branch at all — so `git branch --show-current` does NOT carry the
+    development branch in either and the dev-branch allowance below would
+    mis-FAIL every agent verification run. The worktree's HEAD is the dev
+    branch's HEAD (agents never commit), so a dev branch `--points-at` HEAD
+    identifies the same pre-release context; the resolution is name-agnostic
+    across both worktree kinds.
 
     Gated on LINKED-worktree-ness on purpose: in the PRIMARY checkout — and
     in CI, which is never a linked worktree — a `main` checkout sitting on

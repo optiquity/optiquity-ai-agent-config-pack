@@ -10,15 +10,27 @@
 # §11.5 gate (b)). This keeps the un-prohibited worktree-isolation feature +
 # its in-session backstop recipe DOCUMENTED on both surfaces.
 #
+# Check 54 ALSO carries the MODE-CONTRACT presence leg (Guard 2 per
+# maintenance-docs/v11-implementation/ARCHITECTURE-BD-290.md §6): each of the
+# 6 `_CHECK_54_MODE_CONTRACT_SURFACES` files (pack + project mode tables, the
+# pack isolation-mode skill triple, the project isolation-mode skill) must
+# carry the `_CHECK_54_MODE_CONTRACT_TOKENS` token (`only in its own
+# worktree`) verbatim, per file; an absent surface FAILs (absence-of-backing).
+#
 # This test proves the guard PASSes when all three tokens are present in BOTH
 # files, and FAILs when ANY token is missing from EITHER file — exercised in a
 # synthetic /tmp tree (it NEVER mutates the real tree). It also confirms the
 # measure-then-bound sizing (exactly 3 tokens × 2 files; the prose `isolation`
-# param is NOT folded in).
+# param is NOT folded in), and proves the mode-contract leg bites per-file.
 #
 # Coverage:
-#   Group 0: module import + Check 54 symbol registration
-#   Group 1: synthetic-tree end-to-end (mod.REPO_ROOT pointed at /tmp):
+#   Group 0: module import + Check 54 symbol registration + EXACT tuple
+#            equality on the mode-contract surfaces + token seams (the
+#            facade-reachability idiom: passes only with BOTH __all__ exports
+#            — discipline_parity + core — in place)
+#   Group 1: synthetic-tree end-to-end (mod.REPO_ROOT pointed at /tmp; every
+#            case also provisions the 6 mode-contract surfaces carrying the
+#            token, so the OPTIONAL-FEATURES legs stay isolated):
 #            A  PASS — all 3 tokens present in BOTH files
 #            B  FAIL — `permissions.deny` missing from the PACK file
 #            C  FAIL — `permissions.deny` missing from the PROJECT file
@@ -28,6 +40,15 @@
 #            G  PASS — token set is sized to exactly the 3 keys (a file with
 #                      the 3 tokens but WITHOUT the prose `isolation` param
 #                      still PASSes — the param is deliberately NOT asserted)
+#            H  FAIL — mode-contract token removed from the pack mode table
+#            I  FAIL — mode-contract token removed from a MIRROR skill copy
+#                      (proves the leg asserts PER FILE — defense-in-depth
+#                      beyond Check 71's byte-lock)
+#            J  FAIL — a mode-contract surface absent entirely
+#                      (absence-of-backing)
+#            K  PASS — a mode surface carrying the token but NONE of the
+#                      other contract vocabulary still PASSes (the leg is
+#                      sized to exactly 1 token × 6 files)
 #   Group 2: end-to-end validate-pack.py exit-status on HEAD (Check 54 clean)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-54.sh
@@ -62,6 +83,8 @@ required = [
     'check_optional_features_presence',
     '_CHECK_54_OPTIONAL_FEATURES_SURFACES',
     '_CHECK_54_REQUIRED_TOKENS',
+    '_CHECK_54_MODE_CONTRACT_SURFACES',
+    '_CHECK_54_MODE_CONTRACT_TOKENS',
 ]
 missing = [n for n in required if not hasattr(mod, n)]
 if missing:
@@ -77,11 +100,27 @@ if surfs != ('pack-ops/OPTIONAL-FEATURES.md',
              'project-template/docs/pack/OPTIONAL-FEATURES.md'):
     print('FAIL_SURFACES ' + repr(surfs))
     sys.exit(1)
+# Mode-contract leg sizing: EXACT tuple equality on both seams (reachable on
+# the facade only with BOTH __all__ exports — discipline_parity's surfaces
+# tuple + core's token seam — in place).
+mtoks = tuple(mod._CHECK_54_MODE_CONTRACT_TOKENS)
+msurfs = tuple(mod._CHECK_54_MODE_CONTRACT_SURFACES)
+if mtoks != ('only in its own worktree',):
+    print('FAIL_MODE_TOKENS ' + repr(mtoks))
+    sys.exit(1)
+if msurfs != ('pack-ops/OPERATING-MODES.md',
+              '.claude/skills/pack-isolation-mode/SKILL.md',
+              '.codex/skills/pack-isolation-mode/SKILL.md',
+              '.agents/skills/pack-isolation-mode/SKILL.md',
+              'project-template/docs/pack/PM-OPERATING-MODES.md',
+              'project-template/skills/pm-isolation-mode/SKILL.md'):
+    print('FAIL_MODE_SURFACES ' + repr(msurfs))
+    sys.exit(1)
 print('OK')
 " > /tmp/vp-check54-import.out 2>&1
 
 if grep -q "^OK$" /tmp/vp-check54-import.out; then
-    t_pass "validate-pack.py imports + Check 54 symbols registered + sized to 3 tokens × 2 surfaces"
+    t_pass "validate-pack.py imports + Check 54 symbols registered + sized to 3 tokens × 2 surfaces + mode-contract seams exact (1 token × 6 surfaces)"
 else
     t_fail "validate-pack.py import / Check 54 symbol registration / sizing failed" \
         "$(cat /tmp/vp-check54-import.out)"
@@ -126,6 +165,21 @@ ALL3 = (
     'Pass isolation:"worktree" per spawn.\n'
 )
 
+# The 6 mode-contract surfaces (must mirror _CHECK_54_MODE_CONTRACT_SURFACES;
+# Group 0 asserts the exact tuple) + content carrying the mode-contract token.
+MODE_SURFS = (
+    "pack-ops/OPERATING-MODES.md",
+    ".claude/skills/pack-isolation-mode/SKILL.md",
+    ".codex/skills/pack-isolation-mode/SKILL.md",
+    ".agents/skills/pack-isolation-mode/SKILL.md",
+    "project-template/docs/pack/PM-OPERATING-MODES.md",
+    "project-template/skills/pm-isolation-mode/SKILL.md",
+)
+MODE_TXT = (
+    "An isolated agent runs git only in its own worktree or the "
+    "orchestrator-injected commit workspace.\n"
+)
+
 def run(build):
     """build(root) populates a synthetic tree; return (n_failures, output)."""
     tmpdir = tempfile.mkdtemp(prefix="vp-check54-")
@@ -153,10 +207,20 @@ def w(root, rel, text):
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text)
 
+def w6(root, skip=None, text=MODE_TXT):
+    """Provision the 6 mode-contract surfaces with the token (optionally
+    skipping one — the absent-surface leg). Called by EVERY case builder so
+    the OPTIONAL-FEATURES legs (A-G) stay isolated from the mode leg."""
+    for s in MODE_SURFS:
+        if s == skip:
+            continue
+        w(root, s, text)
+
 # A: all 3 tokens present in BOTH files -> PASS
 def bA(root):
     w(root, PACK, ALL3)
     w(root, PROJ, ALL3)
+    w6(root)
 n, cap = run(bA)
 if n != 0:
     failures.append(f"A (all 3 tokens both files) expected PASS, got {n}: {cap}")
@@ -165,6 +229,7 @@ if n != 0:
 def bB(root):
     w(root, PACK, "worktree.baseRef:head and worktree.bgIsolation only.\n")
     w(root, PROJ, ALL3)
+    w6(root)
 n, cap = run(bB)
 if n < 1 or PACK not in cap or "permissions.deny" not in cap:
     failures.append(f"B (permissions.deny missing from PACK) expected FAIL naming {PACK}+token, got {n}: {cap}")
@@ -173,6 +238,7 @@ if n < 1 or PACK not in cap or "permissions.deny" not in cap:
 def bC(root):
     w(root, PACK, ALL3)
     w(root, PROJ, "worktree.baseRef:head and worktree.bgIsolation only.\n")
+    w6(root)
 n, cap = run(bC)
 if n < 1 or PROJ not in cap or "permissions.deny" not in cap:
     failures.append(f"C (permissions.deny missing from PROJECT) expected FAIL naming {PROJ}+token, got {n}: {cap}")
@@ -181,6 +247,7 @@ if n < 1 or PROJ not in cap or "permissions.deny" not in cap:
 def bD(root):
     w(root, PACK, "worktree.bgIsolation gate; the permissions.deny recipe.\n")
     w(root, PROJ, ALL3)
+    w6(root)
 n, cap = run(bD)
 if n < 1 or PACK not in cap or "baseRef" not in cap:
     failures.append(f"D (baseRef missing from PACK) expected FAIL naming {PACK}+baseRef, got {n}: {cap}")
@@ -189,6 +256,7 @@ if n < 1 or PACK not in cap or "baseRef" not in cap:
 def bE(root):
     w(root, PACK, ALL3)
     w(root, PROJ, "worktree.baseRef:head; the permissions.deny recipe.\n")
+    w6(root)
 n, cap = run(bE)
 if n < 1 or PROJ not in cap or "bgIsolation" not in cap:
     failures.append(f"E (bgIsolation missing from PROJECT) expected FAIL naming {PROJ}+bgIsolation, got {n}: {cap}")
@@ -196,6 +264,7 @@ if n < 1 or PROJ not in cap or "bgIsolation" not in cap:
 # F: a surface file is absent entirely -> FAIL (not found)
 def bF(root):
     w(root, PACK, ALL3)
+    w6(root)
     # PROJ deliberately not written
 n, cap = run(bF)
 if n < 1 or PROJ not in cap or "not" not in cap:
@@ -210,9 +279,55 @@ def bG(root):
     )
     w(root, PACK, no_param)
     w(root, PROJ, no_param)
+    w6(root)
 n, cap = run(bG)
 if n != 0:
     failures.append(f"G (3 tokens, no isolation param -> still PASS) expected PASS, got {n}: {cap}")
+
+# H: mode-contract token removed from the pack mode table -> FAIL naming
+# the surface + the token (the token-removal bite).
+def bH(root):
+    w(root, PACK, ALL3)
+    w(root, PROJ, ALL3)
+    w6(root, skip="pack-ops/OPERATING-MODES.md")
+    w(root, "pack-ops/OPERATING-MODES.md",
+      "full: all agents spawn isolated; git stays bounded per contract.\n")
+n, cap = run(bH)
+if n < 1 or "pack-ops/OPERATING-MODES.md" not in cap or "only in its own worktree" not in cap:
+    failures.append(f"H (token removed from pack mode table) expected FAIL naming surface+token, got {n}: {cap}")
+
+# I: mode-contract token removed from a MIRROR skill copy -> FAIL (proves
+# the leg asserts PER FILE — defense-in-depth beyond Check 71's byte-lock).
+def bI(root):
+    w(root, PACK, ALL3)
+    w(root, PROJ, ALL3)
+    w6(root, skip=".codex/skills/pack-isolation-mode/SKILL.md")
+    w(root, ".codex/skills/pack-isolation-mode/SKILL.md",
+      "full: mirrors the canonical claim without the contract sentence.\n")
+n, cap = run(bI)
+if n < 1 or ".codex/skills/pack-isolation-mode/SKILL.md" not in cap:
+    failures.append(f"I (token removed from mirror skill copy) expected FAIL naming the mirror path, got {n}: {cap}")
+
+# J: one mode-contract surface ABSENT entirely -> FAIL (absence-of-backing).
+def bJ(root):
+    w(root, PACK, ALL3)
+    w(root, PROJ, ALL3)
+    w6(root, skip="project-template/skills/pm-isolation-mode/SKILL.md")
+n, cap = run(bJ)
+if n < 1 or "project-template/skills/pm-isolation-mode/SKILL.md" not in cap or "not" not in cap:
+    failures.append(f"J (mode-contract surface absent) expected FAIL naming the absent surface, got {n}: {cap}")
+
+# K: sizing (case-G analog) — a mode surface carrying the token but NONE of
+# the other contract vocabulary (no commit-workspace / platform-refusal /
+# clean-channel prose) still PASSes: the leg is sized to exactly 1 token x
+# 6 files, no broader.
+def bK(root):
+    w(root, PACK, ALL3)
+    w(root, PROJ, ALL3)
+    w6(root, text="git runs only in its own worktree.\n")
+n, cap = run(bK)
+if n != 0:
+    failures.append(f"K (token only, no other contract vocabulary -> still PASS) expected PASS, got {n}: {cap}")
 
 if failures:
     print("FAILURES")
@@ -222,7 +337,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "End-to-end synthetic-tree tests A/B/C/D/E/F/G (presence PASS + missing-token catch in EITHER file + absent-surface FAIL + measure-then-bound sizing)" ;;
+    0) t_pass "End-to-end synthetic-tree tests A-G (OPTIONAL-FEATURES legs) + H/I/J/K (mode-contract leg: token-removal bites per-file, absent-surface FAIL, 1-token-x-6-files sizing)" ;;
     *) t_fail "End-to-end check_optional_features_presence tests failed (see Python output)" ;;
 esac
 

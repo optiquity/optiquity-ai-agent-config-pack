@@ -394,6 +394,21 @@ _CHECK_54_REQUIRED_TOKENS = (
     "permissions.deny",
 )
 
+# ── Cross-module seam: _CHECK_54_MODE_CONTRACT_TOKENS (Check 54) ────────────
+# The isolated-agent mode-contract presence token, consumed by the Check 54
+# mode-contract leg (`scripts/lib/validate_checks/discipline_parity.py`
+# `check_optional_features_presence`, over its
+# `_CHECK_54_MODE_CONTRACT_SURFACES` tuple). Designed in
+# `maintenance-docs/v11-implementation/ARCHITECTURE-BD-290.md` §6 (Guard 2).
+# Matched as a literal substring — lowercase, exactly these bytes: the phrase
+# every authored `full`-mode contract surface carries VERBATIM ("runs git
+# only in its own worktree or the ... commit workspace"). Sized to exactly
+# this 1 token; the surface tuple + measure-then-bound record live at the
+# consuming leg in discipline_parity.
+_CHECK_54_MODE_CONTRACT_TOKENS = (
+    "only in its own worktree",
+)
+
 # ── Cross-module seam: _CHECK_56_CANONICAL_VERBS (Check 56) ─────────────────
 # The CANONICAL §5.1 verb set — the FULL §5.1 destructive-git-verb denylist,
 # the complete 29-verb set with NO exceptions, measured present in ALL 10
@@ -480,9 +495,10 @@ def _parse_manifest_records(text: str) -> list:
 # `from validate_checks.core import *` skips underscore names UNLESS they are
 # listed in `__all__`; the underscore seams (`_session_state_load`,
 # `_SESSION_STATE_*`, `_PACK_CHAT_ONLY_PERMITTED_*`, `_TRACKER_BACKENDS`,
-# `_CHECK_54_REQUIRED_TOKENS`, `_CHECK_56_CANONICAL_VERBS`) MUST therefore be
-# enumerated here so the facade re-exports them and the still-inline check
-# bodies + the later category modules resolve them.
+# `_CHECK_54_REQUIRED_TOKENS`, `_CHECK_54_MODE_CONTRACT_TOKENS`,
+# `_CHECK_56_CANONICAL_VERBS`) MUST therefore be enumerated here so the facade
+# re-exports them and the still-inline check bodies + the later category
+# modules resolve them.
 __all__ = [
     # ── spine ──
     "REPO_ROOT",
@@ -518,6 +534,8 @@ __all__ = [
     "_TRACKER_BACKENDS",
     "_CHECK_54_REQUIRED_TOKENS",
     "_CHECK_56_CANONICAL_VERBS",
+    # ── cross-module seam: _CHECK_54_MODE_CONTRACT_TOKENS (Check 54) ──
+    "_CHECK_54_MODE_CONTRACT_TOKENS",
     # ── cross-module seam (BD-256 W14) ──
     "OPTIQUITY_BUNDLE_AGENTS_DIR",
     # ── cross-MODULE helper (BD-256 W2) ──

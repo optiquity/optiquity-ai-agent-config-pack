@@ -63,6 +63,7 @@ from .core import (
     warn,
     failures,
     _CHECK_54_REQUIRED_TOKENS,
+    _CHECK_54_MODE_CONTRACT_TOKENS,
     _CHECK_56_CANONICAL_VERBS,
 )
 
@@ -690,16 +691,34 @@ def check_pack_rw_ro_two_class() -> None:
 _CHECK_53_PROHIBITION_PATTERNS = (
     re.compile(r"no worktree isolation"),
     re.compile(r"Do not pass .*isolation.*worktree"),
+    # Retired placement-contract flip-block (isolation-subsystem repair): the
+    # "spawn isolated, then cd to the target tree" placement ritual and the
+    # fix-coder `cd-REUSE` convention are RETIRED from active surfaces — an
+    # isolated agent runs git only in its own worktree or the
+    # orchestrator-injected commit workspace, never by cd-ing a spawned agent
+    # into the canonical tree. Patterns + allowlist sizing per
+    # `maintenance-docs/v11-implementation/ARCHITECTURE-BD-290.md` §6
+    # (Guard 1, `_CHECK_53_PROHIBITION_PATTERNS` extension).
+    re.compile(r"then .?cd.?(-s it)? to the target tree"),
+    re.compile(r"cd-REUSE"),
 )
 # Files Guard-A scans: regular files with these suffixes (rule/prose surfaces).
 _CHECK_53_SCAN_SUFFIXES = (".md", ".txt", ".py", ".sh", ".toml")
-# ALLOWLIST — directory prefixes whose prohibition-prose hits are LEGITIMATE
-# (history + BD-197 process docs). Sized to exactly the measured KEEP set's
-# bounding dirs (measure-then-bound; re-measure-stable). Both are process/
-# history surfaces, never active rule surfaces.
+# ALLOWLIST — directory prefixes whose retired-prose hits are LEGITIMATE
+# (history + BD-197 process docs, PLUS the backlog/changelog RECORD STREAMS:
+# entry bodies legitimately QUOTE retired contract text when recording what
+# was removed — the same legitimacy argument as the two `maintenance-docs/`
+# prefixes: history carriers, never operating surfaces). Sized to exactly the
+# measured KEEP set's bounding dirs (measure-then-bound; re-measure-stable).
+# Loosening safety for the ORIGINAL prohibition patterns, measured at
+# extension time: zero original-pattern hits in either record stream —
+# nothing is masked (`maintenance-docs/v11-implementation/
+# ARCHITECTURE-BD-290.md` §6, Guard 1 allowlist sizing).
 _CHECK_53_ALLOWLIST_DIR_PREFIXES = (
     "maintenance-docs/archive/",
     "maintenance-docs/v11-implementation/",
+    "backlog/",
+    "changelog/",
 )
 # ALWAYS-EXCLUDED dirs (not scanned at all): pack-internal git state +
 # synthetic fixtures (the latter can carry arbitrary injected strings).
@@ -755,15 +774,19 @@ def check_worktree_isolation_prohibition_flip_block() -> None:
     """Check 53 — BD-197 worktree-isolation prohibition flip-block (Guard-A).
 
     Asserts the removed worktree-isolation PROHIBITION PROSE
-    (`no worktree isolation` / `Do not pass ...isolation...worktree`) does
-    NOT reappear in any ACTIVE pack surface. The matcher keys on the
-    prohibition SIGNATURE only — NEVER the legitimate setting keys
+    (`no worktree isolation` / `Do not pass ...isolation...worktree`) AND the
+    retired isolated-agent PLACEMENT-CONTRACT prose (the "then cd to the
+    target tree" ritual / the literal `cd-REUSE` convention — Guard 1 per
+    `maintenance-docs/v11-implementation/ARCHITECTURE-BD-290.md` §6) do NOT
+    reappear in any ACTIVE pack surface. The matcher keys on the retired
+    SIGNATURES only — NEVER the legitimate setting keys
     `baseRef`/`bgIsolation`. Measure-then-bound allowlist = the two
     process/history directories that carry the legitimate documentation of
-    the removed rule, PLUS the narrow self-exception (validator self-skip +
-    ONLY the single check-53 test). Candidate set = git-TRACKED files
-    (`git ls-files`), never a raw filesystem walk; lenient SKIP off a git
-    work tree.
+    the removed rules, the two record-stream trees (`backlog/`, `changelog/`
+    — entry bodies quote retired text when recording removals), PLUS the
+    narrow self-exception (validator self-skip + ONLY the single check-53
+    test). Candidate set = git-TRACKED files (`git ls-files`), never a raw
+    filesystem walk; lenient SKIP off a git work tree.
     """
     print("\n── Check 53: BD-197 worktree-isolation prohibition flip-block (Guard-A) ──")
     # Candidate set = git-TRACKED files, NOT a raw filesystem walk (see the
@@ -811,31 +834,36 @@ def check_worktree_isolation_prohibition_flip_block() -> None:
             continue
         for pat in _CHECK_53_PROHIBITION_PATTERNS:
             if pat.search(text):
-                offenders.append(rel_str)
+                offenders.append((rel_str, pat.pattern))
                 break
 
     if offenders:
-        for off in sorted(offenders):
+        for off, pat_src in sorted(offenders):
             fail(
-                f"Check 53 (Guard-A) — worktree-isolation PROHIBITION prose "
-                f"reappeared in an active pack surface: {off}. BD-197 REMOVED "
-                f"the prohibition (`no worktree isolation` / `Do not pass "
-                f"isolation:\"worktree\"`); it must not return. If this is a "
-                f"legitimate process/history doc, it belongs under "
-                f"`maintenance-docs/archive/` or "
-                f"`maintenance-docs/v11-implementation/` (the measured KEEP "
-                f"dirs); an active rule surface must NOT re-state the removed "
-                f"prohibition. The matcher keys on the prohibition signature "
-                f"only — never the legitimate `baseRef`/`bgIsolation` keys."
+                f"Check 53 (Guard-A) — retired worktree-isolation prose "
+                f"(matched pattern: {pat_src}) reappeared in an active pack "
+                f"surface: {off}. The flip-block covers the removed BD-197 "
+                f"prohibition (`no worktree isolation` / `Do not pass "
+                f"isolation:\"worktree\"`) AND the retired placement-contract "
+                f"phrases (the then-cd-to-the-target-tree ritual / the "
+                f"literal cd-REUSE convention); none may return. If this is a "
+                f"legitimate process/history or record-stream doc, it belongs "
+                f"under `maintenance-docs/archive/`, "
+                f"`maintenance-docs/v11-implementation/`, `backlog/`, or "
+                f"`changelog/` (the measured KEEP prefixes); an active rule "
+                f"surface must NOT re-state retired contract prose. The "
+                f"matcher keys on the retired signatures only — never the "
+                f"legitimate `baseRef`/`bgIsolation` keys."
             )
         return
 
     ok(
         "Check 53 (Guard-A) — worktree-isolation prohibition stays removed: "
-        "zero prohibition-prose hits in active surfaces (allowlist = the two "
-        "process/history doc dirs + the narrow validator/check-53-test "
-        "self-exception; matcher keys on the prohibition signature, never the "
-        "`baseRef`/`bgIsolation` setting keys)."
+        "zero retired-prose hits (prohibition + retired placement-contract "
+        "patterns) in active surfaces (allowlist = the two process/history "
+        "doc dirs + the backlog/changelog record streams + the narrow "
+        "validator/check-53-test self-exception; matcher keys on the retired "
+        "signatures, never the `baseRef`/`bgIsolation` setting keys)."
     )
 
 
@@ -884,14 +912,40 @@ def check_worktree_isolation_prohibition_flip_block() -> None:
 # exactly and is sized no broader than the authored token. No setting-key
 # token false-matches unrelated prose (they are unique identifiers).
 #
-# RUNTIME (ci-check-runtime-compounding): exactly TWO single-file reads (one
-# per OPTIONAL-FEATURES surface), each followed by three bounded `in` substring
-# tests — NO whole-tree walk, NO subprocess, NO subprocess-per-entry. Trivial
-# (well under the per-check WARN budget) across the battery's validate-pack
-# invocations; `run_check` times it.
+# RUNTIME (ci-check-runtime-compounding): 2 + 6 bounded single-file reads —
+# one per OPTIONAL-FEATURES surface (each followed by three bounded `in`
+# substring tests) plus one per mode-contract surface (each followed by one
+# bounded `in` substring test) — NO whole-tree walk, NO subprocess, NO
+# subprocess-per-entry. Trivial (well under the per-check WARN budget) across
+# the battery's validate-pack invocations; `run_check` times it.
 _CHECK_54_OPTIONAL_FEATURES_SURFACES = (
     "pack-ops/OPTIONAL-FEATURES.md",
     "project-template/docs/pack/OPTIONAL-FEATURES.md",
+)
+
+# MODE-CONTRACT presence leg (Guard 2 per
+# `maintenance-docs/v11-implementation/ARCHITECTURE-BD-290.md` §6, realized by
+# the `_CHECK_54_MODE_CONTRACT_TOKENS` seam in core.py): the 6 mode-contract
+# surfaces — the pack + project mode tables and the pack skill triple + the
+# project isolation-mode skill — must each carry the isolated-agent git bound
+# VERBATIM (`only in its own worktree`; the authored `full`-mode contract
+# sentence). Asserted PER FILE (absent file ⇒ FAIL — absence-of-backing), as
+# deliberate defense-in-depth even where Check 71 byte-locks the `.codex`/
+# `.agents` skill mirrors against the `.claude` canonical: the 2 redundant
+# reads are O(file) and keep this leg self-contained if Check 71's canonical
+# choice ever changes. MEASURE-THEN-BOUND, re-verified at extension time
+# against the repaired tree: the token is present on all 6 surfaces (each
+# authored by the contract repair) and the leg is sized to exactly 1 token ×
+# 6 files — no broader; the prose narrative restatements (PACK-CHAT/PM-CHAT)
+# are deliberately NOT asserted (free prose, no delimited region — the same
+# rejected prose-parse the directionality note records).
+_CHECK_54_MODE_CONTRACT_SURFACES = (
+    "pack-ops/OPERATING-MODES.md",
+    ".claude/skills/pack-isolation-mode/SKILL.md",
+    ".codex/skills/pack-isolation-mode/SKILL.md",
+    ".agents/skills/pack-isolation-mode/SKILL.md",
+    "project-template/docs/pack/PM-OPERATING-MODES.md",
+    "project-template/skills/pm-isolation-mode/SKILL.md",
 )
 
 
@@ -908,6 +962,15 @@ def check_optional_features_presence() -> None:
     Measure-then-bound: sized to exactly the 3 authored tokens × 2 files. Two
     single-file reads + bounded substring tests; no subprocess, no whole-tree
     scan.
+
+    MODE-CONTRACT leg (Guard 2 per
+    `maintenance-docs/v11-implementation/ARCHITECTURE-BD-290.md` §6): also
+    asserts each of the 6 `_CHECK_54_MODE_CONTRACT_SURFACES` files carries
+    the isolated-agent git bound VERBATIM (the
+    `_CHECK_54_MODE_CONTRACT_TOKENS` seam in core.py — `only in its own
+    worktree`), per file, absent file ⇒ FAIL (absence-of-backing). Sized to
+    exactly 1 token × 6 files; 6 additional bounded single-file reads, no
+    subprocess.
 
     Directionality (accepted one-way residual): this is a ONE-WAY presence
     floor — each mandated token must appear in each surface; there is no reverse
@@ -951,14 +1014,57 @@ def check_optional_features_presence() -> None:
                 f"the docs (design §13.1a, the positive inverse of Guard-A)."
             )
 
+    # MODE-CONTRACT leg (Guard 2, ARCHITECTURE-BD-290.md §6): each of the 6
+    # mode-contract surfaces must carry the isolated-agent git bound token(s)
+    # VERBATIM; an absent surface FAILs (absence-of-backing).
+    for surface in _CHECK_54_MODE_CONTRACT_SURFACES:
+        path = REPO_ROOT / surface
+        if not path.is_file():
+            any_fail = True
+            fail(
+                f"Check 54 (Guard-A′) — mode-contract surface {surface} not "
+                f"found (the mode-contract presence leg covers exactly "
+                f"{len(_CHECK_54_MODE_CONTRACT_SURFACES)} surfaces: the pack "
+                f"+ project mode tables and the pack/project isolation-mode "
+                f"skills — absence-of-backing)."
+            )
+            continue
+        try:
+            text = path.read_text()
+        except (OSError, UnicodeDecodeError):
+            any_fail = True
+            fail(f"Check 54 (Guard-A′) — could not read {surface}.")
+            continue
+        checked += 1
+        missing = [
+            tok for tok in _CHECK_54_MODE_CONTRACT_TOKENS if tok not in text
+        ]
+        if missing:
+            any_fail = True
+            fail(
+                f"Check 54 (Guard-A′) — {surface} is MISSING the "
+                f"isolated-agent mode-contract token(s): "
+                f"{', '.join(missing)}. Every mode-contract surface MUST "
+                f"state the isolated-agent git bound verbatim (git runs `only "
+                f"in its own worktree` or the orchestrator-injected commit "
+                f"workspace); the minted contract must not silently vanish "
+                f"or drift (Guard 2 mode-contract presence leg, "
+                f"`maintenance-docs/v11-implementation/"
+                f"ARCHITECTURE-BD-290.md` §6)."
+            )
+
     if not any_fail:
         ok(
             f"Check 54 (Guard-A′) — OPTIONAL-FEATURES presence holds across "
             f"{checked} surface(s) (pack + project): all "
             f"{len(_CHECK_54_REQUIRED_TOKENS)} mandated tokens "
             f"(`baseRef`, `bgIsolation`, `permissions.deny` recipe) documented "
-            f"in each. The un-prohibited worktree-isolation feature + its "
-            f"in-session backstop recipe stay documented (BD-197 Note 14)."
+            f"in each OPTIONAL-FEATURES surface, and the isolated-agent "
+            f"mode-contract token present on all "
+            f"{len(_CHECK_54_MODE_CONTRACT_SURFACES)} mode-contract surfaces. "
+            f"The un-prohibited worktree-isolation feature + its in-session "
+            f"backstop recipe + the isolated-agent git bound stay documented "
+            f"(BD-197 Note 14; Guard 2)."
         )
 
 
@@ -2813,8 +2919,9 @@ def check_project_groupings_contract() -> None:
 # validate_checks.discipline_parity import *` re-exports everything the registry
 # + the per-check tests reach. Core-imported seams (`REPO_ROOT`, `README`,
 # `fail`, `ok`, `warn`, `failures`, `_CHECK_54_REQUIRED_TOKENS`,
-# `_CHECK_56_CANONICAL_VERBS`) are NOT listed — they are imported from core and
-# re-exported by core's own `__all__`. Listed in module definition order.
+# `_CHECK_54_MODE_CONTRACT_TOKENS`, `_CHECK_56_CANONICAL_VERBS`) are NOT
+# listed — they are imported from core and re-exported by core's own
+# `__all__`. Listed in module definition order.
 __all__ = [
     "_check_50_strip_quoted_spans",
     "_CHECK_50_FORBIDDEN_CODEC_TOKENS",
@@ -2845,6 +2952,7 @@ __all__ = [
     "_check_53_is_allowlisted",
     "check_worktree_isolation_prohibition_flip_block",
     "_CHECK_54_OPTIONAL_FEATURES_SURFACES",
+    "_CHECK_54_MODE_CONTRACT_SURFACES",
     "check_optional_features_presence",
     "_CHECK_56_VERB_PARITY_SURFACES",
     "_CHECK_56_PRINCIPLE_PHRASE",
