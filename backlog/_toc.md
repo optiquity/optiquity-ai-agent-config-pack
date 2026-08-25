@@ -21,6 +21,7 @@
 - [BD-279](./BD-279.md) — Code-optimization methodology: skill(s) + existing-agent pipeline for intentional net-positive refactors of EXISTING code (pack + project, mirror-but-customize)
 - [BD-289](./BD-289.md) — The three BD-288 waves dropped at close: the bareness gate (Check 95), the operating-doc truthfulness repair, and the non-discriminating test-assertion guard (Check 96)
 - [BD-290](./BD-290.md) — Isolation mode `full` is broken: root-cause investigation + complete repair of the isolation-mode subsystem (pack + project)
+- [BD-291](./BD-291.md) — Per-entry conversion field-fidelity: confirm, root-cause, and fix the missing-field defect; prove the OT migration end-to-end on v11.0 (launch-gating)
 
 ## Deferred
 
