@@ -20,7 +20,6 @@
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
 - [BD-279](./BD-279.md) — Code-optimization methodology: skill(s) + existing-agent pipeline for intentional net-positive refactors of EXISTING code (pack + project, mirror-but-customize)
 - [BD-289](./BD-289.md) — The three BD-288 waves dropped at close: the bareness gate (Check 95), the operating-doc truthfulness repair, and the non-discriminating test-assertion guard (Check 96)
-- [BD-290](./BD-290.md) — Isolation mode `full` is broken: root-cause investigation + complete repair of the isolation-mode subsystem (pack + project)
 - [BD-291](./BD-291.md) — Per-entry conversion field-fidelity: confirm, root-cause, and fix the missing-field defect; prove the OT migration end-to-end on v11.0 (launch-gating)
 
 ## Deferred
@@ -289,6 +288,7 @@
 - [BD-286](./BD-286.md) — Guided pre-reconciliation: a shipped doc the client's AI agent follows to prepare conflict-prone files BEFORE migration so the trinity (dominant) pause class runs pause-free
 - [BD-287](./BD-287.md) — Real auto-merge in the migrator: tool 3-way merge (`git merge-file`) + agent resolution of same-line overlaps → fully-merged, zero-conflict reconciliation (no accept/keep/defer, no hand-fold)
 - [BD-288](./BD-288.md) — CI guards that do not bite: Check 40's bareness coverage gap, Check 68's name-only path resolution, Check 81's matcher decoupled from its data, and raw-rglob candidate sets that walk agent worktrees (pack gates + client twin)
+- [BD-290](./BD-290.md) — Isolation mode `full` is broken: root-cause investigation + complete repair of the isolation-mode subsystem (pack + project)
 
 ## Deprecated
 
