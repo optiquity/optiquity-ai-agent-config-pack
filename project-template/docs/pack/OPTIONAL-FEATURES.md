@@ -103,20 +103,23 @@ file — you add the keys to your OWN settings (see below).
 **What it is.** When the PM chat spawns a read-write agent (your `coder`, or
 `repo-ops` for scripted writes) in the background, it isolates that agent in its
 own git worktree so its edits never touch your main working tree directly. The
-first coder of a commit creates the worktree; the ENTIRE review/fix cycle for
-that commit runs inside it — the read-only reviewer reads the work there and a
-fix-coder REUSES that same worktree (never a new one). The read-write agent does
-NOT emit a patch up front (the work may still be wrong); the patch is produced
-ONLY after the reviewer confirms the work clean, by re-engaging the most-recent
-read-write agent (in Claude Code, via the Agent-team peer-message path; else
-re-spawn a fresh coder against the worktree). The PM chat then applies that
+work itself happens in the commit workspace — an out-of-prefix worktree the PM
+chat creates per commit and injects into every cycle spawn as an absolute path;
+the ENTIRE review/fix cycle for that commit runs inside it — the read-only
+reviewer reads the work there and every fix-coder continues in the same
+workspace (never a new one). The read-write agent does NOT emit a patch up
+front (the work may still be wrong); the patch is produced ONLY after the
+reviewer confirms the work clean, by re-engaging the most-recent read-write
+agent (in Claude Code, via the Agent-team peer-message path; else re-spawn a
+fresh coder against the workspace). The PM chat then applies that
 reviewed-clean patch onto your branch and commits — the agent itself never
 stages or commits. Read-only agents (`architect`, `reviewer`, `planner`, the
 `auditor` family, and the other report-only profiles) run in the tree the work
-lives in — your main tree when the work is committed, the live worktree when it
-is still uncommitted there (they cd in and verify pwd/HEAD at runtime) — and
-emit a report, no patch. The full spawn + merge-back procedure lives in
-`docs/pack/PM-CHAT.md` ("In-session agent spawning").
+lives in — your main tree when the work is committed, the commit's live
+workspace when it is still uncommitted there (they target it per call and
+verify pwd/HEAD in the workspace) — and emit a report, no patch. The full
+spawn + merge-back procedure lives in `docs/pack/PM-CHAT.md` ("In-session
+agent spawning").
 
 **When this matters for your project.** Read-write agents run isolated by class,
 so isolation always applies to your `coder`/`repo-ops` work; it especially
@@ -138,11 +141,11 @@ The feature is governed by two orthogonal knobs. Do not conflate them.
    does NOT isolate by writing settings (that would conflict with the
    no-write-settings posture and could surprise another session sharing the same
    checkout). Do NOT pin `isolation:"worktree"` in any read-write agent's
-   definition frontmatter: because the parameter has only the single value
-   `"worktree"`, a frontmatter pin forces a NEW worktree on EVERY spawn — so a
-   fresh fix-coder could not cd into and REUSE the first coder's worktree, which
-   breaks the reuse / in-worktree-cycle / lifecycle rules. Isolation is the
-   PM chat's per-spawn choice, not a definition-level pin.
+   definition frontmatter. Isolation is the per-spawn caller's choice — the
+   enforce hook keys on the per-spawn `isolation` parameter in the tool payload;
+   a def-frontmatter pin is not a substitute for passing it per-spawn. A
+   def-frontmatter pin is not honored on this spawn path — only the per-spawn
+   `isolation` parameter isolates.
 
 2. **BASE (REQUIRED setting) — `worktree.baseRef`.** Set
    `worktree.baseRef: "head"` in your `settings.json` so an isolated worktree
@@ -249,22 +252,42 @@ comment in `agent-run.sh` for the full caveat.
 **Caveats.**
 - **Version-sensitive.** Worktree isolation behavior has shifted across Claude
   Code releases; confirm your version's behavior before relying on it.
-- **Auto-removal can delete unmerged branches.** When an isolated subagent exits
-  cleanly, Claude Code can auto-remove its worktree and branch — a branch with
-  unmerged commits can be silently deleted. That mechanism is exactly why the PM
-  chat does NOT rely on auto-removal: it HOLDS the commit's worktree through the
-  whole review/fix cycle and removes it explicitly only AFTER the commit lands (a
-  failed commit KEEPS the worktree). The patch is produced post-review-clean and
-  applied at commit time, never captured pre-return, so reviewed-clean work
-  reaches your branch and nothing in-progress is lost to a teardown.
-- **Best-effort isolation / silent fall-to-main.** Isolation can silently fall
-  back to editing the main checkout. Each agent therefore VERIFIES its actual
-  regime from its own runtime pwd/HEAD ground-truth (where it is actually
-  running, what its HEAD actually is), never from an assumed settings value or a
-  patch-handoff signal.
+- **Auto-removal covers only unchanged agent worktrees.** The platform
+  auto-removes an isolated subagent's own worktree only when the subagent
+  finishes without changes; a worktree is locked while its agent runs, and the
+  sweep preserves work. It never removes worktrees the PM chat creates — so the
+  commit workspace REQUIRES an explicit teardown: the PM chat removes it
+  (`git worktree remove <WS>`) only AFTER the commit lands (a failed commit
+  KEEPS the workspace). The patch is produced post-review-clean and applied at
+  commit time, never captured pre-return, so reviewed-clean work reaches your
+  branch and nothing in-progress is lost to a teardown.
+- **Verify the regime at runtime.** The platform actively refuses cross-tree
+  git and main-checkout edits from an isolated agent, so isolation does not
+  silently degrade on Claude Code. Each agent still VERIFIES its actual regime
+  from its own runtime pwd/HEAD ground-truth (where it is actually running,
+  what its HEAD actually is), never from an assumed settings value or a
+  patch-handoff signal — the rule's surviving cases are a CLI without worktree
+  support, a wrong-base worktree, and belt-and-suspenders defense.
+- **The result channel is not platform-documented.** That an isolated spawn
+  returns on the clean async completion channel is measured behavior, not a
+  documented platform contract — re-verify after a CLI upgrade: spawn one
+  isolated and one non-isolated named probe and compare delivery (a completion
+  notification vs a boilerplate-prefixed teammate message).
 - **`baseRef` unset/`fresh` wrong-base.** As above, an unset/`fresh` `baseRef`
   bases isolated work at `origin/main` rather than your branch — a documented
   degradation, surfaced by the PM chat, never silent.
+
+**Platform worktree guard — honest bounds.** For a worktree-isolated agent the
+platform enforces four checks pre-execution: it blocks file edits that target a
+path in the main checkout, refuses commands whose cwd is the main checkout,
+refuses git redirects aimed at it, and rejects command shapes it cannot verify
+as staying inside the agent's worktree. The protected target is the main
+checkout's PATH PREFIX: linked worktrees under the main checkout's path count
+as the protected target, while out-of-prefix worktrees of the same repo (the
+commit-workspace class) are NOT guard-covered — trust there rests on the
+always-on prose deny-list plus the optional `permissions.deny` recipe above.
+Keep workspace commands simple (one action per call): the shape check can
+refuse complex or env-var-shaped command lines even when they are git-free.
 
 **The pack ships NO settings file.** You add `worktree.baseRef`,
 `worktree.bgIsolation` (if you use background sessions), and the
@@ -286,7 +309,10 @@ Which agent classes isolate is also selectable per session through the
 `isolation_mode` config (`read-write-only` default, or `full`; the full mode
 matrix is in `docs/pack/PM-OPERATING-MODES.md`). `read-write-only` isolates
 read-write agents only (the by-class default above); `full` additionally
-isolates read-only spawns (a clean-channel opt-in). A Claude-only
+isolates read-only spawns (a clean-channel opt-in). An isolated agent runs git
+only in its own worktree or the PM-chat-injected commit workspace; target-tree
+files are read by absolute path, and canonical git facts arrive injected in the
+spawn prompt. A Claude-only
 PreToolUse[Agent] hook backstops the active mode by DENYING an under-isolated
 spawn — it fails open (it never blocks on its own error and never exits non-zero),
 so it can only tighten the honor-system posture, never wedge a session. This mode

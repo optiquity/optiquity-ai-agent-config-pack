@@ -40,7 +40,16 @@ by CLI"); the selector still records the preference on every CLI.
 | Value | Behavior |
 |---|---|
 | `read-write-only` (default) | Only read-write agents (`coder`, `repo-ops`) spawn into an isolated worktree; read-only agents (reviewers, architects, planners, the auditor family, and the other report-only agents) spawn in the tree the work lives in. This is current behavior. |
-| `full` | All agents (read-only included) spawn into an isolated worktree, then `cd` to the target tree — a clean-channel opt-in that also isolates read-only spawns (see the `full` isolation note in `docs/pack/PM-CHAT.md`). |
+| `full` | All agents — read-only included — spawn into an isolated worktree. An isolated agent runs git only in its own worktree or the PM-chat-injected commit workspace; the platform refuses git aimed at the main checkout or any tree under its path. Canonical facts (HEAD, dirty summary) arrive injected in the spawn prompt; target-tree files are read by absolute path. Clean-channel opt-in: isolated spawns return on the async completion channel (see the `full` isolation note in `docs/pack/PM-CHAT.md`). |
+
+**How `full` executes.** The PM chat injects the canonical facts (HEAD SHA,
+dirty-state summary) into every spawn prompt. The agent verifies its regime —
+`pwd` shows an agent worktree; its own `git rev-parse HEAD` equals the injected
+SHA; `git worktree list` cross-checks the canonical SHA — then runs all
+committed-state git in its OWN worktree and reads target-tree files by absolute
+path. On a base mismatch (a wrong-base worktree) the agent reports the
+degradation and falls back to Read-tool verification of named canonical files;
+it never attempts cross-tree git.
 
 ## Coupling — `none` ↔ `none`
 

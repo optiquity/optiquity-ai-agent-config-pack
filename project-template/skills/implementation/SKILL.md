@@ -55,10 +55,14 @@ PATCH (only a read-write agent ever does, and only after review-clean).
   (`git diff > <handoff>/changes.patch`). The PM chat then applies that
   reviewed-clean patch (`git apply --check` then `git apply`) and commits
   with developer approval.
-- **A read-ONLY agent (the `reviewer`/`architect`/`planner`) running in a
-  live worktree writes ONLY its report and emits NO patch.** It reads the
-  uncommitted work in the worktree it cd'd into (verifying pwd/HEAD) and
-  reports its findings; it never produces a change set.
+- **A read-ONLY agent (the `reviewer`/`architect`/`planner`) writes ONLY
+  its report and emits NO patch.** When the coder's work is still
+  uncommitted, the calling prompt injects the commit workspace's absolute
+  path — target it per-call (`cd <WS> && …`), verify the workspace HEAD
+  against the injected SHA, and read the in-progress work there, not the
+  main checkout. An isolated agent runs git only in its own worktree or
+  the PM-chat-injected commit workspace and reads target-tree files by
+  absolute path; a read-only agent never produces a change set.
 
 Every agent runs only read-only git verbs (`git diff`, never `git apply`
 or any state-changing verb); applying and committing belong to the PM

@@ -764,18 +764,19 @@ it adds the named adversarial-review spine and the up-front size tier.
 7. **User planner-to-coder gate** — the approval gate before any coder
    prompt.
 8. **Parallel worktree coder waves** — scheduled off the parallel/dependency
-   map: disjoint-file phase tasks run as concurrent `coder` agents, each in
-   its own isolated worktree; same-file tasks serialize. Each commit's
+   map: disjoint-file phase tasks run as concurrent `coder` agents, each
+   commit's cycle in its own per-commit workspace (the PM-chat-created
+   commit workspace); same-file tasks serialize. Each commit's
    bounded review/fix cycle (the Workflow 4 fix cycle above — the Trigger
    A/B architect and Trigger P-A/P-C planner mid-cycle escalations plus the
-   cycle-termination invariant) runs inside its worktree; the patch is
-   produced only after the review is clean; patches apply to the canonical
-   tree sequentially (atomic per patch) with the conflict protocol (STOP and
-   re-spawn fresh, never hand-merge). Superseded design and plan docs are
-   deleted as the pipeline iterates; the audit set is preserved into the
-   implementation-record area. The execution-half mechanics (worktree
-   isolation, merge-back, parallel waves, the conflict protocol, report
-   preservation, the live-worktree ask gate) live single-source in
+   cycle-termination invariant) runs inside its commit workspace; the patch
+   is produced only after the review is clean; patches apply to the
+   canonical tree sequentially (atomic per patch) with the conflict protocol
+   (STOP and re-spawn fresh, never hand-merge). Superseded design and plan
+   docs are deleted as the pipeline iterates; the audit set is preserved
+   into the implementation-record area. The execution-half mechanics
+   (worktree isolation, merge-back, parallel waves, the conflict protocol,
+   report preservation, the live-workspace ask gate) live single-source in
    `docs/pack/PM-CHAT.md` — this stage references them rather than
    restating them.
 9. **Optional post-implementation audit** (large phase, developer-elective)

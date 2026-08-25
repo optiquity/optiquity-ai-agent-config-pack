@@ -24,27 +24,33 @@ report file at the path the calling prompt specifies under
 `REPORT FILE:`.
 
 **Merge-back: report and return; the patch comes only after
-review-clean.** You are a read-write agent, so by class you run in an
-isolated worktree (the PM chat spawns the first read-write agent of a
-commit with worktree isolation and re-engages later read-write agents
-into that same worktree). You never stage, commit, or apply, and you do
-NOT emit a patch up front. Your sequence is: run your scripted writes →
-run the in-scope verification → write your report to the named handoff
-directory (`<handoff>/REPORT.md`) → return. You run zero
-state-changing git verbs. The PM chat then runs the review/fix cycle in
-this worktree; ONLY after a read-only reviewer confirms the work clean
-does the PM chat re-engage you to produce the patch with read-only git
-(`git diff > <handoff>/changes.patch`) — that is the one moment a patch
-is emitted, never before. The PM chat applies that reviewed-clean patch
-and commits. If your task legitimately produces only gitignored
-generated artifacts, an EMPTY patch is the expected handoff (the work
-still ran in the isolated worktree). If the handoff write fails (the
-handoff directory is not writable), fall back to the report path the
-prompt named and note the degradation. (The PM chat passes isolation
-per-spawn; it does NOT pin `isolation:"worktree"` in your definition
-frontmatter — a pin would force a new worktree per spawn and break
-fix-coder reuse. See `docs/pack/PM-CHAT.md` § "Isolation is for
-read-write agents only".)
+review-clean.** You are a read-write agent, so by class you spawn
+worktree-isolated (the PM chat passes `isolation:"worktree"` on every
+read-write spawn), and your work happens in the commit workspace — an
+out-of-prefix worktree the PM chat creates per commit and injects into
+your prompt as an absolute path (`<WS>`). Target it per call
+(`cd <WS> && …`; the shell cwd resets between calls) and run your
+scripted writes via absolute `<WS>/…` paths. You never stage, commit,
+or apply, and you do NOT emit a patch up front. Your sequence is: run
+your scripted writes → run the in-scope verification → write your
+report to the named handoff directory (`<handoff>/REPORT.md`) →
+return. You run zero state-changing git verbs. The PM chat then runs
+the review/fix cycle in the same commit workspace; ONLY after a
+read-only reviewer confirms the work clean does the PM chat re-engage
+you to produce the patch with read-only git
+(`cd <WS> && git diff > <handoff>/changes.patch`) — that is the one
+moment a patch is emitted, never before. The PM chat applies that
+reviewed-clean patch and commits. If your task legitimately produces
+only gitignored generated artifacts, an EMPTY patch is the expected
+handoff (the work still ran in the commit workspace). If the handoff
+write fails (the handoff directory is not writable), fall back to the
+report path the prompt named and note the degradation. (Isolation is
+the per-spawn caller's choice — the enforce hook keys on the per-spawn
+`isolation` parameter in the tool payload; a def-frontmatter pin is not
+a substitute for passing it per-spawn. A def-frontmatter pin is not
+honored on this spawn path — only the per-spawn `isolation` parameter
+isolates. See `docs/pack/PM-CHAT.md` § "Isolation is for read-write
+agents only".)
 
 ## Output policy
 

@@ -21,8 +21,10 @@ choose:
   spawn into an isolated worktree; read-only agents (reviewers, architects,
   planners, the auditor family, and the other report-only agents) spawn in the
   tree the work lives in.
-- **full** — all agents (read-only included) spawn into an isolated worktree,
-  then `cd` to the target tree.
+- **full** — all agents (read-only included) spawn into an isolated worktree;
+  an isolated agent runs git only in its own worktree or the PM-chat-injected
+  commit workspace, reads target-tree files by absolute path, and returns on
+  the async completion channel (clean-channel opt-in).
 
 On Claude, present them through the native **AskUserQuestion** chooser (a `header`
 of ≤12 chars; each option a 1–5-word `label` plus the explanation as its

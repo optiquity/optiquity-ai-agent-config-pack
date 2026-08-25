@@ -512,16 +512,20 @@ permission class above drives which one to use.
 
 **Isolation is for read-write agents only.** Placement is decided by the
 agent's class — read the permission-class table above to classify the
-agent before spawning. **Read-write agents (`coder`, `repo-ops`) run in
-an isolated worktree by class** (not opt-in): the first coder of a commit
-CREATES a fresh isolated worktree, and every subsequent read-write agent
-in that commit's cycle — fix-coders included — REUSES that same worktree
-(never a new worktree for a fix-coder), so the whole review/fix cycle for
-the commit stays in one checkout that cannot collide with concurrent work
-in the main tree. **Read-only agents (the report-only profiles) run in
-the tree the work lives in** — your main checkout when the work is
-committed, the live worktree when the work is still uncommitted (cd into
-that worktree and VERIFY pwd/HEAD at runtime). Read-only agents write
+agent before spawning. **Read-write agents (`coder`, `repo-ops`) spawn
+worktree-isolated by class** (not opt-in). The shared tree a commit's
+cycle works in is the **commit workspace**: an out-of-prefix worktree the
+PM chat creates per commit (`git worktree add --detach <WS> HEAD` under
+`${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pm-workspaces/<task>-<timestamp>/`)
+and injects into every cycle spawn as an absolute path. Every cycle agent
+— the first coder, reviewers, fix-coders — targets `<WS>` per call
+(`cd <WS> && …`; the shell cwd resets between calls) and makes its edits
+via absolute `<WS>/…` paths, so the whole review/fix cycle for the commit
+stays in one checkout that cannot collide with concurrent work in the
+main tree. **Read-only agents (the report-only profiles) run in the tree
+the work lives in** — your main checkout when the work is committed, the
+commit's live workspace when the work is still uncommitted there (target
+it per call; VERIFY pwd/HEAD in the workspace). Read-only agents write
 no tree state and emit one report, so they need no isolated checkout of
 their own.
 
@@ -529,20 +533,24 @@ their own.
 `isolation_mode: read-write-only` posture (read-write agents isolate; read-only
 agents run in the work's tree). Setting `isolation_mode: full` (see
 `docs/pack/PM-OPERATING-MODES.md`) ALSO spawns every read-only agent into its own
-isolated worktree, then cd-s it to the target tree — a clean-channel opt-in for
-when read-only subagent output would otherwise spill into the main session. Under
-`full`, an under-isolated read-only spawn is denied by the same Claude-only
-PreToolUse[Agent] backstop that enforces read-write isolation (see
-`docs/pack/OPTIONAL-FEATURES.md`); the read-write baseline is unchanged. This mode
-governs ONLY in-session Agent-tool spawns, not the agent-run.sh launcher.
+isolated worktree — a clean-channel opt-in for when read-only subagent output
+would otherwise spill into the main session. An isolated agent runs git only in
+its own worktree or the PM-chat-injected commit workspace; the platform refuses
+git aimed at the main checkout or any tree under its path. Canonical facts
+(HEAD, dirty summary) arrive injected in the spawn prompt; target-tree files are
+read by absolute path. Under `full`, an under-isolated read-only spawn is denied
+by the same Claude-only PreToolUse[Agent] backstop that enforces read-write
+isolation (see `docs/pack/OPTIONAL-FEATURES.md`); the read-write baseline is
+unchanged. This mode governs ONLY in-session Agent-tool spawns, not the
+agent-run.sh launcher.
 
 Do **NOT** pin `isolation:"worktree"` in any read-write agent's
-definition frontmatter. The parameter has only the one value
-`"worktree"`, so a frontmatter pin would force a NEW worktree on every
-spawn — and a fresh fix-coder could then not reuse the first coder's
-worktree, breaking the reuse rule above. Pass the isolation parameter
-per-spawn for the FIRST coder of a commit (which creates the worktree);
-re-engage every later read-write agent into that existing worktree.
+definition frontmatter. Isolation is the per-spawn caller's choice — the
+enforce hook keys on the per-spawn `isolation` parameter in the tool
+payload; a def-frontmatter pin is not a substitute for passing it
+per-spawn. A def-frontmatter pin is not honored on this spawn path —
+only the per-spawn `isolation` parameter isolates. Pass the isolation
+parameter per-spawn on every read-write spawn of a commit's cycle.
 
 There is **no platform safety net** that stops a non-isolated read-write
 agent from writing the main working tree, and nothing at the platform
@@ -581,7 +589,7 @@ coder-wave stage of that standard references the rules below.
 **Merge-back — the patch comes only after review-clean.** A read-write
 agent never stages or commits, and it does **not** emit a patch up front
 (its work has not been reviewed yet — it may be wrong). The whole
-review/fix cycle runs INSIDE the commit's worktree; only after a
+review/fix cycle runs INSIDE the commit workspace; only after a
 read-only reviewer confirms the work clean does the PM chat bring the
 edits back:
 
@@ -603,24 +611,27 @@ edits back:
    reports the degradation — it never hard-errors on a failed handoff
    write.)
 3. **The PM chat reads the report and runs the bounded review/fix cycle
-   IN that worktree** — the read-only reviewer reads the work there (cd
-   into the worktree, verify pwd/HEAD), and any fix-coder REUSES the same
-   worktree. Nothing reaches your canonical tree mid-cycle.
+   IN the commit workspace** — the read-only reviewer reads the work
+   there (targeting `<WS>` per call and verifying pwd/HEAD in the
+   workspace), and every fix-coder continues in the same workspace.
+   Nothing reaches your canonical tree mid-cycle.
 4. **Once a read-only reviewer confirms the work clean, the PM chat
    produces the patch by re-engaging the most-recent read-write agent of
-   that cycle** to emit it with read-only git only — `git diff >
-   <handoff>/changes.patch` (`git diff` is read-only; the `> file`
+   that cycle** to emit it with read-only git only — `cd <WS> && git diff
+   > <handoff>/changes.patch` (`git diff` is read-only; the `> file`
    redirect is shell, not a git verb). Re-engage the most-recent
    read-write agent (in Claude Code, via the Agent-team peer-message
    path; if your CLI offers no peer-messaging, re-spawn a fresh `coder`
-   against the worktree to produce the patch). The agent still runs zero
+   against the workspace to produce the patch). The agent still runs zero
    state-changing git verbs.
 5. **The PM chat applies the reviewed-clean patch itself:** `git apply
    --check <handoff>/changes.patch` (dry-run) then `git apply
    <handoff>/changes.patch`, and commits with developer approval. The PM
    chat performs the only git-state change — agents never stage, apply,
    or commit. The canonical tree only ever receives reviewed-clean work,
-   at commit time.
+   at commit time. Only after the commit is confirmed landed does the PM
+   chat remove the commit workspace (`git worktree remove <WS>`); a
+   failed commit KEEPS the workspace (see the teardown rule below).
 
 > **Spawn registry + name→id re-find (Claude-only).** On Claude Code, the
 > orchestrator records each spawn (name, id, purpose, status) in a gitignored
@@ -632,13 +643,14 @@ edits back:
 > (append-only, per-machine, never committed) so the client deletion-boundary
 > hook can authorize deletes within that agent's owned dir.
 
-**Remove the worktree only AFTER the commit lands.** Each commit's first
-coder gets a fresh worktree; once that commit has landed (exit 0),
-explicitly REMOVE every orphaned worktree from that commit's cycle —
-*after* the commit (it may be needed again mid-cycle, so never
-right-after-use), and **never** by relying on auto-removal. A FAILED
-commit KEEPS its worktree (the work is not yet safely captured). Removal
-is the PM chat's deliberate post-commit step, not a side effect.
+**Remove the commit workspace only AFTER the commit lands.** Each commit
+gets a fresh commit workspace the PM chat creates; once that commit has
+landed (exit 0), explicitly REMOVE the workspace (`git worktree remove
+<WS>`) — *after* the commit (it may be needed again mid-cycle, so never
+right-after-use), and **never** by relying on auto-removal (the platform
+sweep never removes worktrees the PM chat creates). A FAILED commit
+KEEPS its workspace (the work is not yet safely captured). Removal is
+the PM chat's deliberate post-commit step, not a side effect.
 
 **Preserve the reports.** After a commit lands, the PM chat MOVES every
 agent report for that commit from its handoff directory into the
@@ -652,16 +664,16 @@ active phase from the project's implementation-plan stream
 `docs/impl-reports/<current-phase>/`. Derive the current target directory
 each time from the active phase; do not hardcode a phase path.
 
-**Ask before reusing a live worktree for off-cycle work.** A commit's own
-reviewer/fix-coder is rule-fixed to that commit's worktree — no judgment,
+**Ask before reusing a live workspace for off-cycle work.** A commit's own
+reviewer/fix-coder is rule-fixed to that commit's workspace — no judgment,
 no ask. But when ANY OTHER agent (an architect, a fix for a surfaced
 cross-cutting issue, a brand-new task) would be spawned WHILE a live
-worktree with uncommitted work exists, the PM chat does NOT self-judge
-whether that agent's target reaches into the uncommitted state. It ASKS
-the developer BOTH (i) PLACEMENT — which tree the agent runs in — and
-(ii) DISPOSITION — reuse vs abandon that worktree — and never self-decides
-either. Reuse and abandon are both legitimate per case; the developer
-decides.
+commit workspace with uncommitted work exists, the PM chat does NOT
+self-judge whether that agent's target reaches into the uncommitted
+state. It ASKS the developer BOTH (i) PLACEMENT — which tree the agent
+runs in — and (ii) DISPOSITION — reuse vs abandon that workspace — and
+never self-decides either. Reuse and abandon are both legitimate per
+case; the developer decides.
 
 **Plan parallel vs serial from the dependency map.** For any multi-commit
 effort, the PM chat consumes the parallelization + dependency map the
