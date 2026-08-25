@@ -1,13 +1,14 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "7d43b01",
+  "boundary_commit": "34e8de7",
   "checkpoint": "2026-08-25T12:55:29Z",
   "active": [
-    "BD-290 @ stage 1 (LARGE deterministic pipeline): docs-researcher census + reproduction probe running in background"
+    "BD-290 @ coder waves: C0 landing; W1 (C1 pack-side, 31 files) || W2 (C2 project-side, 12 files) launching under the workspace ritual (OI-G). Execution authority: reconciled plan ~/.local/state/optiquity-pack-handoff/bd290-planrec-20260825T173350Z/PLAN-BD-290.md + design ~/.local/state/optiquity-pack-handoff/bd290-reconcile-20260825T163255Z/ARCHITECTURE-BD-290.md. Remaining commit chain after C1+C2: C3 guards+tests (+2 preserved docs, after both), C4 W4 dashboard re-render, C5 preservation + Resolved flip."
   ],
   "in_flight_agents": [
-    "docsresearcher-bd290-census (pack-docs-researcher, in-place, background) -- internal isolation-mode surface census + external Agent-tool semantics verification; report: ~/.local/state/optiquity-pack-handoff/bd290-census-20260825T125529Z/IMPL-REPORT.md",
-    "probe-bd290-isofull (general-purpose, isolation:worktree, background) -- controlled reproduction of the full-mode cross-tree git breakage; report: ~/.local/state/optiquity-pack-handoff/bd290-probe-20260825T125529Z/IMPL-REPORT.md"
+    "coder-bd290-w1pack (pack-coder, isolation:worktree, background) -- C1 pack-side wave in workspace WS_C1; report: handoff bd290-c1coder dir",
+    "coder-bd290-w2project (pack-coder, isolation:worktree, background) -- C2 project-side wave in workspace WS_C2; report: handoff bd290-c2coder dir",
+    "GATE DECISIONS (user accept-all at planner-to-coder): plan approved; OI-1(a) C0-first; OI-2(a) C4 docs: prefix; OI-3(a) full 9-artifact preservation, review-chain docs not preserved; OI-4(a) C3 fold-in; OI-6(b) handoff-copy conveyance; per-gate commit/push approvals stand. Prior design decisions in force: OI-B/OI-F/OI-G/OI-H."
   ],
   "queue": [
     "BD-290 stage 2+: architect (needs explicit user spawn approval) -> adversarial -> reconciliation-if-findings -> user design review -> planner chain -> coder waves",
