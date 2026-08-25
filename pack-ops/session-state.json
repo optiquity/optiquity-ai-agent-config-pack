@@ -1,23 +1,25 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "efc975c",
-  "checkpoint": "2026-08-24T18:00:00Z",
-  "active": [],
+  "boundary_commit": "7d43b01",
+  "checkpoint": "2026-08-25T12:55:29Z",
+  "active": [
+    "BD-290 @ stage 1 (LARGE deterministic pipeline): docs-researcher census + reproduction probe running in background"
+  ],
   "in_flight_agents": [
-    "NONE RUNNING. BD-288 is Resolved and its final wave is committed. No agent to re-spawn.",
-    "ON RESUME: the only remaining launch step is USER-owned -- flip the repo public. Pack Chat NEVER force-pushes or rewrites main."
+    "docsresearcher-bd290-census (pack-docs-researcher, in-place, background) -- internal isolation-mode surface census + external Agent-tool semantics verification; report: ~/.local/state/optiquity-pack-handoff/bd290-census-20260825T125529Z/IMPL-REPORT.md",
+    "probe-bd290-isofull (general-purpose, isolation:worktree, background) -- controlled reproduction of the full-mode cross-tree git breakage; report: ~/.local/state/optiquity-pack-handoff/bd290-probe-20260825T125529Z/IMPL-REPORT.md"
   ],
   "queue": [
-    "user: flip the repo public (the launch; never gated on BD-288)",
-    "user: fix the isolation mode -- full breaks cross-tree git; read-write-only loses completion notifications and reproduces the peer-message boilerplate defect"
+    "BD-290 stage 2+: architect (needs explicit user spawn approval) -> adversarial -> reconciliation-if-findings -> user design review -> planner chain -> coder waves",
+    "user: flip the repo public (the launch; BD-290 Target v11.0 lands first per user decision recorded in BD-290 Position)"
   ],
-  "parallelization": "SERIAL. No pack-side work in flight.",
-  "wave": "v11.0 (RC1) tagged and CI-green; main is the sole live branch; repo under the target GH account, still private. BD-288 Resolved. Open BDs 15. BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
+  "parallelization": "PARALLEL within BD-290 stage 1 (two RO background agents, disjoint scopes); serial otherwise.",
+  "wave": "v11.0 (RC1) tagged and CI-green; main is the sole live branch; repo under the target GH account, still private. Open BDs 17 (BD-289 v11.1; BD-290 v11.0 urgent). BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
   "pending_decisions": [
     "LOCKED: main history is PRESERVED intact -- NO squash, NO rewrite, ever.",
     "LOCKED: NO scrub. Target-app initials and generic vocabulary are ACCEPTABLE on internal surfaces; the Check 93 two-tier model is UNCHANGED. ONE repo forever.",
-    "RECORDED (user, BD-288 close): W3, W5 and W6 were DROPPED as optional internal hygiene. Their design and plan survive in the maintenance record; they are not deferred work and no entry tracks them.",
-    "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no narration, under the byte cap); modes review=itemized intervention=full isolation=read-write-only."
+    "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no narration, under the byte cap); modes review=itemized intervention=full isolation=read-write-only.",
+    "PENDING (commit gate): commit of session-state refresh + BD-290 open + _toc regen awaits user approval."
   ],
-  "cycle_position": "No commit cycle open, no worktree live. BD-288 closed."
+  "cycle_position": "No commit cycle open, no worktree live (the probe's worktree is diagnostic, not a commit worktree)."
 }
