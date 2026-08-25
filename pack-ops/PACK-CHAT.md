@@ -297,8 +297,9 @@ procedure. It is keyed off the two-agent-class SSOT — the `Class` column
 in the `## Pack agents` roster of `pack-ops/PACK-AGENTS.md` (RW =
 `pack-coder`; RO = `pack-architect` / `pack-planner` / `pack-reviewer` /
 `pack-docs-researcher`). The placement model is keyed by class: RW agents
-run in an isolated worktree by class; RO agents run in the tree the work
-lives in (main when the work is committed; the commit's live worktree when
+spawn isolated by class and work in the commit workspace; RO agents run in
+the tree the work lives in (main when the work is committed; the commit's
+live workspace when
 the work is still uncommitted). See `pack-ops/OPTIONAL-FEATURES.md` for the
 worktree mechanics (the `isolation:"worktree"` parameter + the
 `worktree.baseRef:"head"` setting) and the documented-optional
@@ -306,37 +307,44 @@ worktree mechanics (the `isolation:"worktree"` parameter + the
 
 ### How Pack Chat spawns
 
-- **RW agent (`pack-coder`) → isolated worktree, always, by class.** Pass the
-  per-spawn Agent-tool `isolation:"worktree"` parameter (the subagent
-  trigger; the only valid value). The **first coder of a commit CREATES**
-  the worktree; **every later RW agent in that commit's cycle (fix-coders)
-  REUSES the same worktree — never a new worktree for a fix-coder** (the
-  fix-coder `cd`s in + verifies pwd/HEAD per rule 8). The isolated worktree
-  gives RW agents their own checkout so parallel RW agents on disjoint
-  scopes never trample one another. If the developer has not set
-  `worktree.baseRef:"head"`, the worktree bases at `origin/main` (a
-  documented wrong-base degradation, surfaced not silent) — see
-  OPTIONAL-FEATURES. Do NOT pin `isolation` in agent-def frontmatter — the
-  parameter has a single value (`"worktree"`), so a pin forces a NEW
-  worktree on every spawn and a fresh fix-coder could not cd-REUSE the
-  first coder's worktree.
+- **RW agent (`pack-coder`) → isolated spawn + the commit workspace.** Pass
+  the per-spawn Agent-tool `isolation:"worktree"` parameter (the subagent
+  trigger; the only valid value). The shared cycle tree is the COMMIT
+  WORKSPACE the orchestrator creates before the first coder spawn —
+  `git worktree add --detach <WS> HEAD` at
+  `${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pack-workspaces/<bd-or-batch>-<ts>/`
+  — and injects as an absolute path into every cycle spawn (first coder,
+  reviewers, fix-coders). Cycle agents fuse `cd <WS> && …` into each Bash
+  call and edit via absolute `<WS>/…` paths, so parallel RW agents on
+  disjoint scopes never trample one another. If the developer has not set
+  `worktree.baseRef:"head"`, the agent's own worktree bases at
+  `origin/main` (a documented wrong-base degradation, surfaced not
+  silent) — see OPTIONAL-FEATURES. Do NOT pin `isolation` in agent-def
+  frontmatter — isolation is the per-spawn caller's choice: the enforce
+  hook keys on the per-spawn `isolation` parameter in the tool payload,
+  and a def-frontmatter pin is not a substitute for passing it per-spawn.
+  A def-frontmatter pin is not honored on the Agent-tool `subagent_type`
+  spawn path — only the per-spawn `isolation` parameter isolates.
 - **RO agents → spawn in the tree the work lives in.** RO agents
   (`pack-architect` / `pack-planner` / `pack-reviewer` /
   `pack-docs-researcher`) run where the target work is: the main checkout
-  when the work is committed; the commit's live worktree when the work is
-  still uncommitted there (the RO agent `cd`s into that worktree and
-  VERIFIES pwd/HEAD at runtime, rule 8). RO agents produce no patch — their
-  one write is their report. The standard cycle's own reviewer/fix-coder is
-  RULE-FIXED to the commit's worktree (no ASK). For ANY OTHER agent spawned
-  while a live uncommitted worktree exists (an architect, a cross-cutting
-  fix, a new task), Pack Chat does NOT self-judge — it ASKS the human BOTH
-  placement (which tree) AND disposition (reuse vs abandon the worktree)
-  per rule 9.
+  when the work is committed; the commit's live workspace when the work is
+  still uncommitted there (the RO agent targets `<WS>` per call and
+  VERIFIES pwd/HEAD in the workspace at runtime, rule 8). RO agents
+  produce no patch — their one write is their report. The standard cycle's
+  own reviewer/fix-coder is RULE-FIXED to the commit workspace (no ASK).
+  For ANY OTHER agent spawned while a live commit workspace with
+  uncommitted work exists (an architect, a cross-cutting fix, a new task),
+  Pack Chat does NOT self-judge — it ASKS the human BOTH placement (which
+  tree) AND disposition (reuse vs abandon the workspace) per rule 9.
 - **Isolation-mode spawn preflight (Claude-only).** Before constructing an
   RO-agent spawn, re-read `isolation_mode` (per `pack-ops/OPERATING-MODES.md`
-  § "Reading the config"): `full` ⇒ pass `isolation:"worktree"` and the RO
-  agent `cd`s to the work's tree; otherwise spawn in the work's tree (the
-  class-keyed default above). RW agents (coders, fix-coders) pass
+  § "Reading the config"): `full` ⇒ pass `isolation:"worktree"` and inject
+  the canonical-facts block — the HEAD SHA, the `git status --porcelain`
+  summary, and the commit-workspace path when a cycle is live (an isolated
+  agent runs git only in its own worktree or the injected workspace and
+  reads target-tree files by absolute path); otherwise spawn in the work's
+  tree (the class-keyed default above). RW agents (coders, fix-coders) pass
   `isolation:"worktree"` unconditionally — isolated in BOTH modes — so this
   read is load-bearing only at RO spawns (plus the intervention / review
   gates). Never use a remembered value.
@@ -395,7 +403,7 @@ worktree mechanics (the `isolation:"worktree"` parameter + the
 ### Merge-back (orchestrator-only; agents never apply or commit)
 
 There is NO up-front patch. The whole review/fix cycle runs IN the
-commit's worktree — the work may be wrong, so nothing reaches the
+commit workspace — the work may be wrong, so nothing reaches the
 canonical tree mid-cycle. The RW agent does its edits, runs in-scope
 verification, Writes its IMPL-REPORT to the handoff dir, and returns —
 it produces no patch on return and runs ZERO git-state changes. (If the
@@ -405,13 +413,13 @@ degradation — it never hard-errors on a failed handoff write.) Then
 Pack Chat:
 
 1. Reads `<handoff>/IMPL-REPORT.md` and runs the bounded review/fix cycle
-   INSIDE the worktree (the reviewer reads the work in the worktree; the
-   fix-coder REUSES that same worktree) per trinity `## Pack memory`
-   `[rationale: bounded-review-fix-cycle]`.
+   INSIDE the commit workspace (the reviewer reads the work in the
+   workspace; the fix-coder continues in that same workspace) per trinity
+   `## Pack memory` `[rationale: bounded-review-fix-cycle]`.
 2. **Patch only after review-clean.** ONLY after a review pass confirms
    the work CLEAN, Pack Chat re-engages (SendMessage) the most-recent RW
    agent in that cycle to produce the patch
-   (`git diff > <handoff>/changes.patch`) — the deliberate
+   (`cd <WS> && git diff > <handoff>/changes.patch`) — the deliberate
    re-engage-an-existing-agent exception (rule 4/6). The patch is the
    reviewed-clean artifact, never a pre-return one.
 3. Applies the reviewed-clean patch — dry-run first, then for real:
@@ -421,11 +429,13 @@ Pack Chat:
    performs the only git-state change — agents never stage, apply, or
    commit. → the canonical tree only ever receives reviewed-clean work,
    at commit time.
-5. **Worktree teardown (rule 7 + Constraint 1).** Remove the commit's
-   worktree ONLY after that commit is CONFIRMED landed (commit exit 0) —
-   not right-after-use (it may be needed again mid-cycle), and NEVER by
-   relying on auto-removal. A FAILED/aborted commit KEEPS the worktree as
-   the recovery fallback; never tear down on a failed/attempted commit.
+5. **Workspace teardown (rule 7 + Constraint 1).** Run `git worktree
+   remove <WS>` ONLY after that commit is CONFIRMED landed (commit exit
+   0) — not right-after-use (it may be needed again mid-cycle). The
+   platform sweep never removes orchestrator-created workspaces —
+   explicit teardown is the only cleanup. A FAILED/aborted commit KEEPS
+   the workspace as the recovery fallback; never tear down on a
+   failed/attempted commit.
 
 All agents (RW and every RO) land their reports back via the named
 handoff path; Pack Chat reads them from there after each returns.

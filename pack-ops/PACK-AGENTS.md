@@ -175,8 +175,11 @@ enforceable. RO agents run in the tree the work lives in.
   `pack-docs-researcher`.** Write ONLY their single caller-specified
   report; read-only on the codebase otherwise. RO agents run in the tree
   the work lives in — the main checkout when the work is committed; the
-  commit's live worktree when the work is still uncommitted there (cd in
-  + verify pwd/HEAD); RO is NOT "always in-place". (Each RO agent carries
+  commit's live workspace when the work is still uncommitted there
+  (target it per-call; verify pwd/HEAD in the workspace); RO is NOT
+  "always in-place". Under `isolation_mode: full` RO agents spawn
+  isolated and follow `pack-ops/OPERATING-MODES.md` § Isolation mode.
+  (Each RO agent carries
   the capability to emit that one report — `Write, Edit` in the Claude
   `tools:` line, `workspace-write` in the Codex `sandbox_mode`, no
   capability field in the Antigravity bundle — and is still RO; the class

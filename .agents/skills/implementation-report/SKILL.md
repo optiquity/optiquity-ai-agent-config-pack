@@ -8,11 +8,12 @@ allowed-tools: Read, Write, Edit, Bash
 
 Every pack-coder run produces one report markdown file at the path the
 caller's prompt specifies. The report is the agent's primary deliverable on
-return — Pack Chat reads it, runs the review/fix cycle in the worktree, and
+return — Pack Chat reads it, runs the review/fix cycle in the commit
+workspace, and
 (after review-clean) applies the patch and commits. Treat the report as a
 self-contained artifact: Pack Chat must be able to re-derive every change
-from the report alone, independent of the worktree's eventual teardown. The
-agent's edits live in its worktree, which is HELD through the whole
+from the report alone, independent of the workspace's eventual teardown. The
+agent's edits live in the commit workspace, which is HELD through the whole
 review/fix cycle and removed only after the commit lands; the `git diff`
 patch is the post-review-clean artifact (produced when Pack Chat re-engages
 the most-recent read-write agent to emit it), NOT something the agent leaves
@@ -22,13 +23,14 @@ on return.
 
 ### 1. Branch + final HEAD SHA (and regime)
 
-State the branch name, the HEAD SHA from `git rev-parse HEAD`, and which
+State the branch name, the HEAD SHA from `git rev-parse HEAD` (run in the
+tree your changes live in), and which
 regime you ran in (IN-PLACE or ISOLATED — see the `commit-discipline`
 skill §1). Pack-coder does not commit, so the SHA is unchanged from the
 base it started at — that's the point. In the in-place regime the base is
-the parent branch HEAD; in the isolated regime it is the
-`worktree-agent-*` checkout's HEAD (the isolated worktree branched at the
-parent HEAD when `worktree.baseRef:"head"` is set). Documents which base
+the parent branch HEAD; in the isolated regime it is the injected commit
+workspace's HEAD (the workspace is a worktree detached at the parent
+HEAD). Documents which base
 the changes apply to.
 
 ### 2. Pre-flight check output
@@ -52,10 +54,10 @@ section 4.
 - **New files:** paste full contents verbatim inside a fenced block.
 - **Modified files:** paste a unified diff against the base recorded in
   section 1, produced via `diff -u <(git show <base-SHA>:<path>) <path>`.
-  This is the diff of your in-worktree edits against the worktree's base.
+  This is the diff of your in-workspace edits against the workspace's base.
   Paste it in the report itself — the report must carry the full change set
   so Pack Chat can re-derive it from the report alone, independent of the
-  worktree. (You do NOT emit a `git diff` patch on return; that patch is the
+  workspace. (You do NOT emit a `git diff` patch on return; that patch is the
   post-review-clean artifact Pack Chat re-engages you to produce after the
   reviewer confirms the work clean.)
 

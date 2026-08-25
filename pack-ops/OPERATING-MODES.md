@@ -39,7 +39,16 @@ isolation is a Claude-only capability, so this family is Claude-only.
 | Value | Behavior |
 |---|---|
 | `read-write-only` (default) | Only read-write agents (coders, fix-coders) spawn into an isolated worktree; read-only agents (reviewers, architects, planners, docs-researchers) spawn in the tree the work lives in. This is current behavior. |
-| `full` | All agents (read-only included) spawn into an isolated worktree, then `cd` to the target tree. |
+| `full` | All agents — read-only included — spawn `isolation:"worktree"`. An isolated agent runs git only in its own worktree or the orchestrator-injected commit workspace; the platform refuses git aimed at the main checkout or any tree under its path. Canonical facts (HEAD, dirty summary) arrive orchestrator-injected; target-tree files are read by absolute path. Clean-channel opt-in: isolated spawns return on the async completion channel. |
+
+How `full` executes: the orchestrator injects the canonical facts — HEAD SHA,
+dirty-state summary, and any live commit-workspace path — into each spawn
+prompt. The agent runs all committed-state git (log / grep / ls-files / diff
+between committed refs) in its own worktree, which bases at canonical HEAD;
+`git worktree list` is the sanctioned cross-check of that base. On a base
+mismatch (wrong-base degradation) the agent reports it and falls back to
+Read-tool verification of named canonical files — never cross-tree git.
+Target-tree file content is always read by absolute path.
 
 ## Coupling — `none` ↔ `none`
 

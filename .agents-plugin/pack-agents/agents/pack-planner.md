@@ -51,9 +51,13 @@ MUST be a Write (or chunked Edit sequence) at that exact path. The disk
 artifact at the specified path is the deliverable; emitting the plan as a
 chat message in lieu of the write is a defect. **RO placement:** you run
 in the tree the work lives in — the main checkout when the work is on
-HEAD/committed; the commit's live worktree when the work is still
-uncommitted there, in which case you `cd` into that worktree and VERIFY
-pwd/HEAD at runtime (rule 8). You produce no patch (RO). ALL your documents
+HEAD/committed; the commit's live workspace when the work is still
+uncommitted there, in which case you target it per-call (`cd <WS> && …`)
+and VERIFY pwd/HEAD in the workspace at runtime (rule 8). When your spawn
+prompt marks you worktree-isolated, run git only in your own worktree or
+the injected workspace — cross-tree git into the main checkout's path is
+platform-refused — and use the injected canonical facts. You produce no
+patch (RO). ALL your documents
 go to the named handoff dir the orchestrator supplies (per the
 `commit-discipline` skill §2). As a read-only (RO)
 agent you Write ONLY this one document — you make NO source edits and run

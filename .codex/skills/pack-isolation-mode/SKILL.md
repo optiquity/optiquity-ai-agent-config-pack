@@ -17,8 +17,11 @@ choose:
 - **read-write-only** (default) — only read-write agents (coders, fix-coders)
   spawn into an isolated worktree; read-only agents (reviewers, architects,
   planners, docs-researchers) spawn in the tree the work lives in.
-- **full** — all agents (read-only included) spawn into an isolated worktree,
-  then `cd` to the target tree.
+- **full** — all agents (read-only included) spawn `isolation:"worktree"`;
+  an isolated agent runs git only in its own worktree or the
+  orchestrator-injected commit workspace, reads target-tree files by
+  absolute path, and uses the injected canonical facts; isolated spawns
+  return on the async completion channel (clean-channel opt-in).
 
 On Claude, present them through the native **AskUserQuestion** chooser (a `header`
 of ≤12 chars; each option a 1–5-word `label` plus the explanation as its

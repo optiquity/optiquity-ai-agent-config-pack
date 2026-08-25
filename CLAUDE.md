@@ -470,19 +470,26 @@ PACK-AGENTS.md current".
 - **Sub-agent isolation is keyed by agent class (RW → isolated worktree;
   RO → the work's tree).**
   - **RW class.** Read-WRITE sub-agents (coders, fix-coders — anything that
-    mutates) run in an ISOLATED worktree. The FIRST coder of a commit CREATES
-    it (per-spawn Agent-tool `isolation:"worktree"` — the TRIGGER, the only
-    valid value); every subsequent RW agent in that cycle — fix-coders
-    included — REUSES that worktree, NEVER a new one.
+    mutates) spawn ISOLATED (per-spawn Agent-tool `isolation:"worktree"` —
+    the TRIGGER, the only valid value), in BOTH modes. The shared cycle
+    tree is the COMMIT WORKSPACE: the ORCHESTRATOR creates it out-of-prefix
+    (`git worktree add --detach <WS> HEAD` under the workspaces root) and
+    injects its absolute path into every cycle spawn; every cycle agent —
+    first coder, reviewers, fix-coders — targets `<WS>` per call, fusing
+    `cd <WS> && …` into each Bash call and editing via absolute `<WS>/…`
+    paths.
   - **RO class.** Read-ONLY sub-agents (reviewers, architects, planners,
     auditors, docs-researchers) run in the tree the work lives in: the main
-    checkout when committed/on HEAD; the commit's live worktree when still
-    uncommitted there (cd in + verify pwd/HEAD). RO is NOT "always in-place" —
-    it goes where the work is.
+    checkout when committed/on HEAD; the commit's live workspace when the
+    work is still uncommitted there (target it per-call; verify pwd/HEAD in
+    the workspace). RO is NOT "always in-place" — it goes where the work is.
   - **Isolation mode (read-at-spawn).** The class-keyed placement above is
     the `read-write-only` DEFAULT. Under `full` isolation mode ALL agents —
-    RO included — spawn isolated (`isolation:"worktree"`) then `cd` to the
-    target tree; RW agents isolate in BOTH modes (mode-independent). Read the
+    RO included — spawn isolated (`isolation:"worktree"`); an isolated agent
+    runs git only in its own worktree or the orchestrator-injected commit
+    workspace, reads target-tree files by absolute path, and uses the
+    orchestrator-injected canonical facts (HEAD, dirty summary); RW agents
+    isolate in BOTH modes (mode-independent). Read the
     active `isolation_mode` from `pack-ops/session-config.json` in the
     current worktree (the checkout Pack Chat runs in) at EACH spawn (per
     `pack-ops/OPERATING-MODES.md` § "Reading the config") — never a
@@ -493,23 +500,25 @@ PACK-AGENTS.md current".
     worktree bases at local HEAD (unset/`fresh` bases at origin/main — a
     documented wrong-base degradation); see OPTIONAL-FEATURES.
   - **No up-front patch.** RW agents produce NO patch on return; the ENTIRE
-    review/fix cycle runs INSIDE that one worktree, nothing reaching the
+    review/fix cycle runs INSIDE the commit workspace, nothing reaching the
     canonical tree mid-cycle. The patch is produced ONLY after a RO reviewer
     confirms the work CLEAN — Pack Chat SendMessage-s the most-recent RW agent
-    (`git diff > <handoff>/changes.patch`), then applies + commits (user
-    approval); agents never commit.
+    (`cd <WS> && git diff > <handoff>/changes.patch`), then applies + commits
+    (user approval); agents never commit.
   - **Runtime regime.** The agent VERIFIES its actual regime at runtime
     (pwd/HEAD ground-truth), never trusting settings.
-  - **Lifecycle (teardown gate).** Fresh worktree per commit's first coder;
-    remove ONLY after the commit is CONFIRMED landed (exit 0) — NOT
-    right-after-use (it may be needed mid-cycle); a FAILED/aborted commit
-    KEEPS the worktree as recovery fallback; NEVER tear down on a failed
-    commit, NEVER rely on auto-removal.
-  - **Live-worktree ASK gate (rule 9).** A commit's own reviewer/fix-coder is
-    RULE-FIXED to that worktree (no ask). Any OTHER agent spawned while a live
-    worktree with uncommitted work exists ⇒ Pack Chat ASKS the user BOTH
-    placement (which tree) AND disposition (reuse vs abandon); it NEVER
-    self-decides either.
+  - **Lifecycle (teardown gate).** Fresh commit workspace per commit; the
+    orchestrator runs `git worktree remove <WS>` ONLY after the commit is
+    CONFIRMED landed (exit 0) — NOT right-after-use (it may be needed
+    mid-cycle); a FAILED/aborted commit KEEPS the workspace as recovery
+    fallback; NEVER tear down on a failed commit. The platform's worktree
+    sweep never removes orchestrator-created workspaces — explicit teardown
+    is the only cleanup.
+  - **Live-workspace ASK gate (rule 9).** A commit's own reviewer/fix-coder is
+    RULE-FIXED to that workspace (no ask). Any OTHER agent spawned while a
+    live commit workspace with uncommitted work exists ⇒ Pack Chat ASKS the
+    user BOTH placement (which tree) AND disposition (reuse vs abandon); it
+    NEVER self-decides either.
   - **Parallelization map (rule 10).** For any multi-commit effort the
     architect + planner produce a parallel-vs-dependent map in its OWN
     section; Pack Chat schedules parallel worktree waves vs serial commits

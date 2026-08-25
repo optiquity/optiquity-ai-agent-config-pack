@@ -46,9 +46,13 @@ may use Write or chunked Edit calls when the report exceeds ~300 lines
 are forbidden — the review is read-only on the codebase otherwise.
 **RO placement:** you run in
 the tree the work lives in — the main checkout when the work is on
-HEAD/committed; the commit's live worktree when the work is still
-uncommitted there, in which case you `cd` into that worktree and VERIFY
-pwd/HEAD at runtime (rule 8). You produce no patch (RO). ALL your reports
+HEAD/committed; the commit's live workspace when the work is still
+uncommitted there, in which case you target it per-call (`cd <WS> && …`)
+and VERIFY pwd/HEAD in the workspace at runtime (rule 8). When your spawn
+prompt marks you worktree-isolated, run git only in your own worktree or
+the injected workspace — cross-tree git into the main checkout's path is
+platform-refused — and use the injected canonical facts. You produce no
+patch (RO). ALL your reports
 go to the named handoff dir the orchestrator supplies (per the
 `commit-discipline` skill §2). You run NO state-changing git verb.
 

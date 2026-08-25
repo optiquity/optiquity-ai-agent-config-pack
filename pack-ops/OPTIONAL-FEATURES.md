@@ -115,36 +115,42 @@ sets manually. The pack ships NO settings file — you add the keys to your OWN
 settings (see below).
 
 **What it is.** When Pack Chat spawns a read-write agent (a coder) in the
-background to make edits, it isolates that agent in its own git worktree so
+background to make edits, it spawns that agent isolated (its own git
+worktree) and directs its work into the COMMIT WORKSPACE — an
+orchestrator-created out-of-prefix worktree (`git worktree add --detach
+<WS> HEAD`) whose absolute path is injected into every cycle spawn — so
 the agent's edits never touch the parent working tree directly. The agent
-edits in the worktree, runs its verification, writes its report, and
-returns — it does NOT emit a patch up front. The ENTIRE review/fix cycle for
-that commit runs inside that one worktree (the reviewer reads the work
-there; the fix-coder REUSES the same worktree). The patch is produced ONLY
-after the reviewer confirms the work clean: Pack Chat SendMessage-s the
-most-recent read-write agent to emit it, then `git apply`s the
-reviewed-clean patch onto the parent branch and commits — the agent itself
-never stages or commits. Read-only agents (reviewers, architects, planners, researchers)
+edits in the workspace (fusing `cd <WS> && …` into each Bash call, editing
+via absolute `<WS>/…` paths), runs its verification, writes its report,
+and returns — it does NOT emit a patch up front. The ENTIRE review/fix
+cycle for that commit runs inside that one workspace (the reviewer reads
+the work there; the fix-coder continues in the same workspace). The patch
+is produced ONLY after the reviewer confirms the work clean: Pack Chat
+SendMessage-s the most-recent read-write agent to emit it (`cd <WS> &&
+git diff > <handoff>/changes.patch`), then `git apply`s the reviewed-clean
+patch onto the parent branch and commits — the agent itself never stages
+or commits. Read-only agents (reviewers, architects, planners, researchers)
 run in the tree the work lives in — the main checkout when the work is
-committed, the commit's live worktree when the work is still uncommitted
-there (they cd in + verify pwd/HEAD); they emit a report and no patch.
+committed, the commit's live workspace when the work is still uncommitted
+there (they target it per-call and verify pwd/HEAD in the workspace); they
+emit a report and no patch.
 
 This isolation is the **default by agent class**, not an opt-in accelerator:
 read-WRITE agents are isolated by class, read-ONLY agents run in the work's
 tree. A read-write subagent must NOT pin `isolation:"worktree"` in its
-definition frontmatter — the `isolation` parameter has only the value
-`"worktree"` (there is no `"off"`; see below), so a frontmatter pin would
-force a NEW worktree on EVERY spawn, and a fresh fix-coder could then not
-cd-REUSE the first coder's worktree (breaking the per-commit-worktree reuse
-that keeps the whole review/fix cycle in one tree). Isolation is decided
-per-spawn by the orchestrator, never pinned in a definition.
+definition frontmatter — isolation is decided per-spawn by the
+orchestrator, never pinned in a definition: the enforce hook keys on the
+per-spawn `isolation` parameter in the tool payload, and a def-frontmatter
+pin is not a substitute for passing it per-spawn. A def-frontmatter pin is
+not honored on the Agent-tool `subagent_type` spawn path — only the
+per-spawn `isolation` parameter isolates.
 
 **When this matters for the Config Pack.** Class-keyed isolation lets
 several read-write agents run in parallel without their edits colliding in
 one shared working tree. The in-place (non-isolated) regime is NOT the
 default: it is the DEGRADED fallback the agent self-detects at runtime
 (pwd/HEAD ground-truth) when, despite the class default, isolation did not
-actually take effect (a platform fall-to-main, or a CLI without worktree
+actually take effect (a non-Claude CLI without worktree
 support). When in-place is in force, the agent keeps work out of the
 canonical tree only through the prose deny-list + behavioral contract, not
 the worktree boundary — which is why class-keyed isolation, not in-place, is
@@ -247,23 +253,45 @@ Without it, the in-session protection degrades to the always-on prose
 deny-list plus the behavioral contract (still load-bearing, just not
 mechanically enforced).
 
+**Platform worktree guard — honest bounds.** Claude Code enforces worktree
+isolation with four live checks: it blocks file edits that target a path
+in the main checkout, refuses commands whose working directory resolves to
+the main checkout, refuses git redirects aimed at it, and refuses command
+shapes it cannot verify as staying inside the worktree (keep workspace
+commands simple — one action per call). Two measured bounds: linked
+worktrees under the main checkout's path prefix count as the protected
+target (in-prefix worktrees are git-unreachable from any isolated agent),
+and out-of-prefix linked worktrees — including the commit workspace — are
+NOT guard-covered: workspace trust rests on the prose verb ban plus the
+documented-optional `permissions.deny` recipe above.
+
 **Caveats.**
 - **Version-sensitive.** Worktree isolation behavior has shifted across
   Claude Code releases; confirm your version's behavior before relying on it.
-- **Auto-removal can delete unmerged branches.** When an isolated subagent
-  exits cleanly, Claude Code auto-removes its worktree and branch. A branch
-  with unmerged commits can be silently deleted — which is why the worktree
-  is HELD through the whole review/fix cycle and explicitly removed only
-  AFTER the commit lands (the lifecycle rule: tear down a worktree only once
-  its commit is confirmed landed; a failed commit KEEPS it), and the patch
-  is produced post-review-clean, never pre-return. Pack Chat never relies on
-  auto-removal, and agents never commit.
-- **Best-effort isolation / silent fall-to-main.** Isolation can silently
-  fall back to editing the main checkout. The agent therefore detects its
-  ACTUAL regime from its own runtime pwd/HEAD ground-truth (a
-  `worktree-agent-*` pwd/HEAD ⇒ isolated; otherwise the degraded in-place
-  fallback), never from an assumed settings value — settings can lie, so the
-  runtime self-detect is the only deterministic signal.
+- **Auto-removal is bounded; explicit teardown is REQUIRED.** The platform
+  auto-removes a subagent's worktree only when the subagent finishes
+  WITHOUT changes; a worktree is locked while its subagent runs, and the
+  sweep preserves work. The sweep never removes orchestrator-created
+  commit workspaces — the workspace is HELD through the whole review/fix
+  cycle and explicitly removed (`git worktree remove <WS>`) only AFTER the
+  commit lands (the lifecycle rule: tear down a workspace only once its
+  commit is confirmed landed; a failed commit KEEPS it), and the patch is
+  produced post-review-clean, never pre-return. Agents never commit.
+- **Runtime regime self-detect (belt-and-suspenders).** The platform
+  actively refuses cross-tree git from isolated agents — including
+  read-only verbs — so cross-tree work does not silently land in the main
+  checkout. The runtime pwd/HEAD self-detect RULE stays regardless: the
+  agent detects its ACTUAL regime from its own runtime pwd/HEAD
+  ground-truth (a `worktree-agent-*` pwd/HEAD ⇒ isolated; otherwise the
+  degraded in-place fallback), never from an assumed settings value — it
+  is what catches a non-Claude CLI without worktree support, a wrong-base
+  worktree, and any future platform drift.
+- **Result-channel effect is not platform-documented.** Isolated spawns
+  currently return on the async completion channel (the clean-channel
+  opt-in); official docs do not key the result channel on the `isolation`
+  parameter, so re-verify after a CLI upgrade: spawn one isolated and one
+  non-isolated named probe and compare delivery (completion notification
+  vs boilerplate-prefixed teammate message).
 - **`baseRef` unset/`fresh` wrong-base.** As above, an unset/`fresh`
   `baseRef` bases isolated work at `origin/main` rather than your branch —
   documented degradation, surfaced by the orchestrator, never silent.
@@ -307,8 +335,10 @@ read-write spawn under either mode; a read-only spawn under `full`). It never
 denies an over-isolated spawn, so it stays compatible with an all-isolated
 posture. It enforces INTENT (the correct spawn parameter) — NOT OUTCOME (whether
 isolation actually took effect, which remains the agent's runtime pwd/HEAD
-self-detect). Any uncertainty (config absent / malformed / unreadable; an unknown
-class) fails OPEN — the spawn is allowed; the body never blocks on its own
+self-detect). An absent / malformed / unreadable config is NOT a blanket
+allow — it FOLDS to the default mode (`read-write-only`) and is enforced as
+such; only an unparseable payload, an unknown class, or an internal error
+fails OPEN — the spawn is allowed; the body never blocks on its own
 failure.
 
 **Hook 2 — commit-gate (`PreToolUse[Bash]` → `scripts/hooks/modes-commit-gate.py`).**

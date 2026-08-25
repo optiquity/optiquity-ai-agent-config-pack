@@ -30,20 +30,25 @@ grep -c "<marker>" <authoritative-doc> # Optional: confirm authoritative content
 **The DEFAULT is set by your agent class, but you VERIFY the regime you
 actually got from ground truth (see section 2). The default:**
 
-- **Read-WRITE agents (coders, fix-coders) default to an ISOLATED
-  worktree** — a `worktree-agent-*` checkout the orchestrator created (the
-  first coder of a commit) or you are reusing (a fix-coder; never a new
-  worktree). Your code Writes go under `pwd`; the report goes to the named
-  handoff dir.
+- **Read-WRITE agents (coders, fix-coders) spawn ISOLATED** — your `pwd`
+  is your OWN `worktree-agent-*` platform worktree, but your WORK TARGET
+  is the injected commit workspace: the orchestrator creates it and
+  injects its absolute `<WS>` path in the prompt. Fuse `cd <WS> && …`
+  into every Bash call (cwd resets between calls) and verify the
+  workspace HEAD against the injected SHA; code Writes/Edits target
+  `<WS>/…` absolute paths. The report goes to the named handoff dir.
 - **Read-ONLY agents (reviewers, architects, planners, auditors,
   researchers) run in the tree the work lives in** — the main checkout when
-  the work is committed, the commit's live worktree when the work is still
-  uncommitted there (you cd into it and verify pwd/HEAD). You write only
+  the work is committed, the commit's live workspace when the work is still
+  uncommitted there (target it per-call and verify pwd/HEAD in the
+  workspace). In the isolated regime you run git only in your own worktree
+  or the injected workspace, use the orchestrator-injected canonical facts,
+  and read other trees' files by absolute path (Read tool). You write only
   your report (to the named handoff dir) and emit NO patch.
 
 **IN-PLACE is the DEGRADED fallback, not the default.** If you are a
 read-write agent but `pwd` / HEAD show you are NOT in a `worktree-agent-*`
-checkout, isolation did not take effect (a platform fall-to-main, or a CLI
+checkout, isolation did not take effect (a non-Claude CLI
 without worktree support) — you self-detect that degraded in-place regime
 and write under the parent working tree, reporting the degradation.
 
@@ -70,15 +75,16 @@ Common failure modes the pre-flight catches:
 Two questions, NOT one. The regime answers "which TREE do I write code in";
 your class answers "do I EMIT a patch at all". Do not collapse them — the
 old binary ("isolated ⇒ patch + report; in-place ⇒ report") cannot express
-a read-only agent in a live worktree.
+a read-only agent in a live commit workspace.
 
 **Question A — which tree do my code Writes/Edits go to (the regime)?**
 
 - **ISOLATED (the class default for a read-write agent):** code
-  Writes/Edits go to paths under `pwd` (your `worktree-agent-*` checkout) —
-  parent-tree writes are rejected by the sandbox, and `/tmp` ("Additional
-  working directories") is the reliable cross-boundary writable set the
-  handoff dir lives in.
+  Writes/Edits go to `<WS>/…` absolute paths (the injected commit
+  workspace), with each Bash call fused as `cd <WS> && …` — git aimed at
+  the main checkout or any tree under its path is platform-refused, and
+  the named handoff dir is the out-of-tree writable set your report lives
+  in.
 - **IN-PLACE (the degraded fallback):** code Writes/Edits go to paths under
   the parent working tree (the caller-scoped file set), and you report the
   degradation.
@@ -88,33 +94,36 @@ a read-only agent in a live worktree.
 - **Read-WRITE agent:** you DO produce a patch — but NOT up front. You do
   your edits + verification, write your report, and return. The patch is
   produced ONLY after a read-only reviewer confirms the work clean, when the
-  orchestrator re-engages you (SendMessage) to emit it (`git diff >
-  <handoff>/changes.patch` at THAT point). Never emit a patch on return.
+  orchestrator re-engages you (SendMessage) to emit it (`cd <WS> &&
+  git diff > <handoff>/changes.patch` at THAT point). Never emit a patch on
+  return.
 - **Read-ONLY agent:** you emit NO patch — ever. Your single write is your
   report. This is the THIRD state the old binary could not express: a
-  read-only agent operating IN a live worktree (because the work it reviews
-  is uncommitted there) still writes only its report and produces no patch.
+  read-only agent operating IN a live commit workspace (because the work it
+  reviews is uncommitted there) still writes only its report and produces
+  no patch.
 
 **Report location (both classes):** the report goes to the named handoff
 dir the orchestrator supplies. If a handoff Write FAILS (the handoff dir is
 not writable), fall back to the named parent-tree report path and report the
 degradation — never hard-error on a failed handoff Write.
 
-**Absolute prohibition (both regimes): NEVER retarget another agent's
-main checkout.** When `pwd` is a `worktree-agent-*` checkout, writing to
+**Absolute prohibition (both regimes): NEVER retarget the user's
+main checkout.** In the isolated regime, writing to
 the user's main checkout path (e.g.
 `/Users/<user>/Developer/<repo>/<file>`) is FORBIDDEN even when the file
 path "looks right" — the main checkout belongs to the user's interactive
 shell and the orchestrator, not to the agent. The failure mode this guards
-against: a Write rejected under the worktree path is
+against: a Write rejected under a wrong path is
 retried against the main checkout, which silently bypasses the workspace
 boundary. If a `Write` returns "permission denied" or "file outside
 workspace," the path is wrong for your regime — re-issue under the
-correct target (parent tree IN-PLACE; `pwd` for code + the named handoff
-dir for the report ISOLATED), never against another agent's main checkout.
-This is a
-cautionary guard, NOT a blanket "every Write must be under `pwd`" — in
-the IN-PLACE regime the correct target IS the parent tree.
+correct target (parent tree IN-PLACE; the injected `<WS>/…` path for code +
+the named handoff dir for the report ISOLATED), never against the
+user's main checkout. This is a
+cautionary guard, NOT a blanket "every Write must be under the
+workspace" — in the IN-PLACE regime the correct target IS the parent
+tree.
 
 The "Additional working directories" note in the harness environment
 (e.g., `/tmp/...`, `/private/tmp/...`) lists paths the agent may also write
@@ -181,10 +190,11 @@ and you are unsure, treat it as forbidden. This principle closes the
 "the list never told me" gap for any unlisted verb.
 
 The agent's deliverable on return is the report file (its edits live in the
-worktree). A read-write agent does NOT emit a patch on return; the patch is
+commit workspace). A read-write agent does NOT emit a patch on return; the
+patch is
 produced ONLY after a read-only reviewer confirms the work clean, when Pack
 Chat re-engages the most-recent read-write agent (SendMessage) to emit it.
-Pack Chat reads the report, runs the review/fix cycle in the worktree,
+Pack Chat reads the report, runs the review/fix cycle in the workspace,
 applies the reviewed-clean patch, runs tests if needed, and ONLY THEN stages
 and commits with explicit user approval. An agent that stages or commits
 has bypassed the user-approval gate — that is the entire reason the ban
@@ -253,12 +263,13 @@ frontmatter) but identical prose.
 
 - Running `git add` to "tidy up" before reporting → forbidden by
   section 3.
-- Targeting the wrong write-path for your regime → isolated writes go under
-  `pwd` (code); the degraded in-place fallback writes under the parent tree;
+- Targeting the wrong write-path for your regime → isolated code writes go
+  to the injected `<WS>/…` paths; the degraded in-place fallback writes
+  under the parent tree;
   the report always goes to the named handoff dir. Writing the report there
   is CORRECT when the prompt named a handoff dir — it is
   NOT a "wrong path." The defect is mismatching the code-write target to the
-  regime, or (in any regime) retargeting another agent's main checkout
+  regime, or (in any regime) retargeting the user's main checkout
   (section 2).
 - Emitting a patch on return → a read-write agent never emits a patch up
   front; the patch is the post-review-clean step (section 2, Question B). A
