@@ -152,7 +152,7 @@ migrator_post_dispatch_hook() {
     # invariant (single-shot only) made this gate unnecessary; with
     # BD-095 the gate is required.
     if _migrator_is_dryrun; then
-        info "[dry-run] would run rename + relocation + v11 artifact install (incl. Antigravity agent bundle, replace-if-different) + lift Gemini x- customs into the Antigravity bundle + Gemini→Antigravity retirement + python-architecture skill rename + capability-token translation + per-entry decompose"
+        info "[dry-run] would run rename (IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md at target root and docs/project/) + relocation + v11 artifact install (incl. Antigravity agent bundle, replace-if-different) + lift Gemini x- customs into the Antigravity bundle + Gemini→Antigravity retirement + python-architecture skill rename + capability-token translation + accounting-gated per-entry decompose (writes docs/project/MIGRATION-TRIAGE.md alongside the per-entry trees)"
         return 0
     fi
     _v10_to_v11_rename_implementation_plan
@@ -190,15 +190,22 @@ migrator_post_dispatch_hook() {
 # (underscore form) to IMPLEMENTATION-PLAN.md (hyphenated form). v11
 # adopts the hyphenated all-caps convention for project state docs; the
 # rename happens once, history-preserving, on every v10→v11 migration.
+# The rename iterates TWO locations a v10 project may carry the
+# underscore-form plan — the target root and docs/project/ — applying
+# identical per-location logic. The per-entry decompose sub-op (S5d)
+# reads the hyphenated docs/project/ form as its stream input, so the
+# docs/project/ leg is load-bearing for the decomposition pipeline.
 #
-# Behavior:
-#   - No-op if the source file does not exist (project never had one,
-#     or the project-side adoption already happened out-of-band).
-#   - Collision case (both old and new names present at the target root):
-#     surface the typed error `migration-rename-collision` per BD-070 /
-#     ARCHITECTURE.md §2.5 contract format (ERROR/MESSAGE/→ Run lines
-#     to stderr) and fail the stage. The user resolves by inspecting
-#     both files and deleting / merging before re-running.
+# Behavior (per location):
+#   - No-op if the source file does not exist at that location (project
+#     never had one, or the project-side adoption already happened
+#     out-of-band).
+#   - Collision case (both old and new names present at the same
+#     location): surface the typed error `migration-rename-collision`
+#     per BD-070 / ARCHITECTURE.md §2.5 contract format (ERROR/MESSAGE/
+#     → Run lines to stderr), naming the directory, and fail the stage.
+#     The user resolves by inspecting both files and deleting / merging
+#     before re-running.
 #   - Tracked source: `git mv` (history-preserving). Untracked source
 #     fallback: plain `mv` (matches the BD-042 _v10_to_v11_relocate_legacy_docs
 #     pattern at lines 142–147 above).
@@ -211,49 +218,62 @@ _v10_to_v11_rename_implementation_plan() {
     # ("S4a-rename: ...") so operators can tell rename vs. relocate apart
     # in a fail_stage report.
     say "── S4a (rename) — rename IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md ──"
-    local src="$_MIGRATOR_TARGET/IMPLEMENTATION_PLAN.md"
-    local dst="$_MIGRATOR_TARGET/IMPLEMENTATION-PLAN.md"
-    if [[ ! -f "$src" ]]; then
-        info "no IMPLEMENTATION_PLAN.md at target root — nothing to rename"
-        return 0
-    fi
-    if [[ -f "$dst" ]]; then
-        # Typed-error block per BD-070 / tracker-errors.sh format. Emitted
-        # directly here rather than via tracker_error_emit because the
-        # `migration-rename-collision` code is migrator-scoped, not part
-        # of the tracker provider's V1 §2.5 ten-code surface.
-        {
-            printf 'ERROR: %s\n' "migration-rename-collision"
-            printf 'MESSAGE: %s\n' \
-                "both IMPLEMENTATION_PLAN.md and IMPLEMENTATION-PLAN.md exist at $_MIGRATOR_TARGET"
-            printf '%s\n' \
-                "  source: $src" \
-                "  target: $dst" \
-                "v11 expects only IMPLEMENTATION-PLAN.md (hyphenated). Inspect both" \
-                "files; delete or merge whichever is stale; then re-run the migration."
-            printf '→ Run: %s\n' "inspect both files, resolve, then re-run migrate-v10-to-v11.sh"
-        } >&2
-        fail_stage S4 "S4a-rename: collision: $dst already exists"
-    fi
-    local mv_stderr
-    mv_stderr=$(git -C "$_MIGRATOR_TARGET" mv "IMPLEMENTATION_PLAN.md" "IMPLEMENTATION-PLAN.md" 2>&1) || {
-        if [[ "$mv_stderr" == *"not under version control"* \
-           || "$mv_stderr" == *"did not match"* ]]; then
-            # BD-139 F-4: surface the captured git-mv stderr so operators
-            # can distinguish the two fallback-trigger sentinels (and any
-            # third-class git-mv message that happens to match either
-            # substring) when diagnosing why the fallback fired.
-            info "git mv hint (taking untracked-fallback branch): $mv_stderr"
-            mv "$src" "$dst"
-            info "renamed (untracked): IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md"
-            return 0
+    local loc label src_rel dst_rel src dst mv_stderr
+    for loc in "" "docs/project"; do
+        if [[ -z "$loc" ]]; then
+            src_rel="IMPLEMENTATION_PLAN.md"
+            dst_rel="IMPLEMENTATION-PLAN.md"
+            label="target root"
         else
-            fail_stage S4 "S4a-rename: git mv IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md failed: $mv_stderr"
+            src_rel="$loc/IMPLEMENTATION_PLAN.md"
+            dst_rel="$loc/IMPLEMENTATION-PLAN.md"
+            label="$loc/"
         fi
-    }
-    [[ -f "$dst" ]] \
-        || fail_stage S4 "S4a-rename: post-rename verification failed: IMPLEMENTATION-PLAN.md missing"
-    info "renamed: IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md"
+        src="$_MIGRATOR_TARGET/$src_rel"
+        dst="$_MIGRATOR_TARGET/$dst_rel"
+        if [[ ! -f "$src" ]]; then
+            info "no IMPLEMENTATION_PLAN.md at $label — nothing to rename"
+            continue
+        fi
+        if [[ -f "$dst" ]]; then
+            # Typed-error block per BD-070 / tracker-errors.sh format. Emitted
+            # directly here rather than via tracker_error_emit because the
+            # `migration-rename-collision` code is migrator-scoped, not part
+            # of the tracker provider's V1 §2.5 ten-code surface. The
+            # MESSAGE names the colliding DIRECTORY (target root vs
+            # docs/project/) so the user resolves the right pair.
+            {
+                printf 'ERROR: %s\n' "migration-rename-collision"
+                printf 'MESSAGE: %s\n' \
+                    "both IMPLEMENTATION_PLAN.md and IMPLEMENTATION-PLAN.md exist at $label in $_MIGRATOR_TARGET"
+                printf '%s\n' \
+                    "  source: $src" \
+                    "  target: $dst" \
+                    "v11 expects only IMPLEMENTATION-PLAN.md (hyphenated). Inspect both" \
+                    "files; delete or merge whichever is stale; then re-run the migration."
+                printf '→ Run: %s\n' "inspect both files, resolve, then re-run migrate-v10-to-v11.sh"
+            } >&2
+            fail_stage S4 "S4a-rename: collision: $dst already exists"
+        fi
+        mv_stderr=$(git -C "$_MIGRATOR_TARGET" mv "$src_rel" "$dst_rel" 2>&1) || {
+            if [[ "$mv_stderr" == *"not under version control"* \
+               || "$mv_stderr" == *"did not match"* ]]; then
+                # BD-139 F-4: surface the captured git-mv stderr so operators
+                # can distinguish the two fallback-trigger sentinels (and any
+                # third-class git-mv message that happens to match either
+                # substring) when diagnosing why the fallback fired.
+                info "git mv hint (taking untracked-fallback branch): $mv_stderr"
+                mv "$src" "$dst"
+                info "renamed (untracked): $src_rel → $dst_rel"
+                continue
+            else
+                fail_stage S4 "S4a-rename: git mv $src_rel → $dst_rel failed: $mv_stderr"
+            fi
+        }
+        [[ -f "$dst" ]] \
+            || fail_stage S4 "S4a-rename: post-rename verification failed: $dst_rel missing"
+        info "renamed: $src_rel → $dst_rel"
+    done
 }
 
 # Internal: BD-042 relocation of legacy v9-era root docs to docs/pack/.

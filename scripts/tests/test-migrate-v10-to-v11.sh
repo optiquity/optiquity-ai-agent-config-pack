@@ -570,6 +570,11 @@ rm -rf "$T"
 #       emits ERROR/MESSAGE/→ Run lines per
 #       scripts/lib/tracker-errors.sh:25-31 and exits non-zero via
 #       fail_stage S4 (rc=24)
+#   5.5 collision at the SECOND rename location (docs/project/) — same
+#       typed-error contract, MESSAGE names the directory, rc=24
+#   5.6 untracked-source `mv` fallback at docs/project/ — sentinel
+#       substrings emitted; the renamed plan flows through the
+#       decompose pipeline (content preserved via the triage capture)
 
 printf "\n=== Group 5: BD-104 rename (BD-139 fix-follow) ===\n"
 
@@ -665,6 +670,66 @@ collision_ok=1
     && t_pass "5.4 BD-104 migration-rename-collision: typed-error contract + fail_stage S4 (rc=24)" \
     || t_fail "5.4 BD-104 collision contract failed (rc=$rc)"
 rm -f "$co_out" "$co_err"
+rm -rf "$T"
+
+# 5.5 collision at the SECOND rename location (docs/project/): both
+# spellings seeded there → same typed-error contract, with the MESSAGE
+# naming the docs/project/ directory, and fail_stage S4 (rc=24).
+T=$(make_v10_target)
+mkdir -p "$T/docs/project"
+echo "# old docs-project plan" > "$T/docs/project/IMPLEMENTATION_PLAN.md"
+echo "# new docs-project plan" > "$T/docs/project/IMPLEMENTATION-PLAN.md"
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "both plan spellings at docs/project" 2>/dev/null
+co_out=$(mktemp "${TMPDIR:-/tmp}/mig-co2-out.XXXXXX")
+co_err=$(mktemp "${TMPDIR:-/tmp}/mig-co2-err.XXXXXX")
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$T" >"$co_out" 2>"$co_err" ; rc=$?
+err_content=$(cat "$co_err")
+collision2_ok=1
+[[ "$rc" -ne 24 ]] && collision2_ok=0
+[[ "$err_content" == *"ERROR: migration-rename-collision"* ]] || collision2_ok=0
+[[ "$err_content" == *"MESSAGE:"* ]]                          || collision2_ok=0
+[[ "$err_content" == *"→ Run:"* ]]                            || collision2_ok=0
+# The typed error names the colliding DIRECTORY.
+[[ "$err_content" == *"docs/project"* ]] || collision2_ok=0
+[[ "$err_content" == *"stage S4 failed"* ]] || collision2_ok=0
+# Both files still present (migrator did not destructively touch either).
+[[ -f "$T/docs/project/IMPLEMENTATION_PLAN.md" ]] || collision2_ok=0
+[[ -f "$T/docs/project/IMPLEMENTATION-PLAN.md" ]] || collision2_ok=0
+[[ "$collision2_ok" -eq 1 ]] \
+    && t_pass "5.5 docs/project collision: typed error names the directory + fail_stage S4 (rc=24)" \
+    || t_fail "5.5 docs/project collision contract failed (rc=$rc)"
+rm -f "$co_out" "$co_err"
+rm -rf "$T"
+
+# 5.6 untracked-source mv fallback at docs/project/: the gitignored
+# underscore plan there → `git mv` errors with the sentinel substring →
+# plain-`mv` fallback fires with both info substrings; the renamed
+# hyphenated plan then flows through the decompose pipeline (its
+# preamble content lands verbatim in MIGRATION-TRIAGE.md and the
+# monolith is deleted post-gate).
+T=$(make_v10_target)
+mkdir -p "$T/docs/project"
+echo "docs/project/IMPLEMENTATION_PLAN.md" > "$T/.gitignore"
+git -C "$T" add .gitignore >/dev/null
+git -C "$T" commit -q -m "ignore docs/project plan" 2>/dev/null
+echo "# untracked docs-project plan content" > "$T/docs/project/IMPLEMENTATION_PLAN.md"
+[[ -z "$(git -C "$T" status --porcelain)" ]] || t_fail "5.6 setup: gitignore not effective"
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$T" 2>&1) ; rc=$?
+fallback2_ok=1
+[[ "$rc" -ne 0 ]] && fallback2_ok=0
+[[ -f "$T/docs/project/IMPLEMENTATION_PLAN.md" ]] && fallback2_ok=0
+[[ "$out" == *"renamed (untracked)"* ]] || fallback2_ok=0
+[[ "$out" == *"git mv hint"* ]] || fallback2_ok=0
+# The renamed plan was consumed by the decompose sub-op (deleted after
+# the accounting gate + delete-gate) and its content preserved into the
+# triage capture — nothing lost, nothing left behind.
+[[ -f "$T/docs/project/IMPLEMENTATION-PLAN.md" ]] && fallback2_ok=0
+grep -q "untracked docs-project plan content" \
+    "$T/docs/project/MIGRATION-TRIAGE.md" 2>/dev/null || fallback2_ok=0
+[[ "$fallback2_ok" -eq 1 ]] \
+    && t_pass "5.6 docs/project untracked fallback: both substrings + content preserved via triage capture" \
+    || t_fail "5.6 docs/project untracked fallback failed (rc=$rc)"
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────

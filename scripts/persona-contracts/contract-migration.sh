@@ -453,17 +453,17 @@ fi
 #                                   is regenerated (BD-206 no-mirror model);
 #                                   the per-entry tree + generated _toc.md is
 #                                   the sole source of truth + readable form.
-#                                   NOT asserted in the migration v11_artifacts
-#                                   array because the BD-165 decompose sub-op
-#                                   skips streams whose v10 monolithic INPUT
-#                                   is absent (the v10-realistic-ot fixture
-#                                   case). See the v11_artifacts comment
-#                                   block below for the full asymmetry
-#                                   rationale. Sub-stage 7 surface IS
-#                                   asserted by (a) the greenfield contract
-#                                   above (always-empty case) and (b)
-#                                   scripts/tests/test-migrate-v10-to-v11-
-#                                   decompose.sh Group 2 (with-content case).
+#                                   The v10-realistic-ot fixture ships the
+#                                   three docs/project monolith INPUTs
+#                                   (BACKLOG.md, underscore-spelled
+#                                   IMPLEMENTATION_PLAN.md, CHANGELOG.md),
+#                                   so the migrator's decompose sub-op runs
+#                                   on all three streams inside this
+#                                   contract; the dedicated decompose-output
+#                                   assert block after the v11_artifacts
+#                                   loop is the sub-stage-7 surface on THIS
+#                                   fixture. The greenfield contract covers
+#                                   the always-empty case.
 
 v11_artifacts=(
     "docs/pack/HELP-FRAGMENT.md"
@@ -496,27 +496,42 @@ v11_artifacts=(
     "docs/project/implementation-plan/_intro.md"
     "docs/project/changelog/_rules.md"
     "docs/project/changelog/_intro.md"
-    # Sub-stage 7 (_toc.md) is NOT in this list because the BD-165
-    # decompose sub-op SKIPS streams when the v10 monolithic INPUT is
-    # absent (scripts/lib/migrate-v10-to-v11/decompose.sh: "no monolithic
-    # mirror at <path> — skip"). NO monolithic mirror is regenerated
-    # (BD-206 no-mirror model) — the per-entry tree + generated _toc.md
-    # is the sole source of truth. The current v10-realistic-ot fixture
-    # has no docs/project/{BACKLOG,IMPLEMENTATION-PLAN,CHANGELOG}.md input
-    # files, so the migrator legitimately produces no _toc.md files for
-    # that fixture. Adding the _toc.md surface here would force the
-    # contract to fail on the canonical fixture even though the migrator
-    # behavior is correct. The greenfield contract (which always starts
-    # empty + always regenerates) is the canonical CI gate for sub-stage
-    # 7 surface; the BD-165 decompose-with-content path is covered by
-    # scripts/tests/test-migrate-v10-to-v11-decompose.sh Group 2 (which
-    # synthesizes a fixture with monolithic input content).
+    # Sub-stage 7 (_toc.md) is NOT in this list because the five
+    # decompose-output paths are MIGRATION OUTPUTS — produced by the
+    # decompose sub-op from the fixture's docs/project monolith INPUTs —
+    # not installed templates, and the v11_artifacts array derives from
+    # the install rules. The dedicated decompose-output assert block
+    # after this loop covers them.
 )
 for f in "${v11_artifacts[@]}"; do
     if [[ -f "$SANDBOX/$f" ]]; then
         t_pass "v11 artifact ${f} installed by migrator"
     else
         t_fail "v11 artifact ${f} MISSING post-migrate"
+    fi
+done
+
+# ── Decompose-output asserts ───────────────────────────────────────────────
+#
+# The v10-realistic-ot fixture ships docs/project/{BACKLOG.md,
+# IMPLEMENTATION_PLAN.md,CHANGELOG.md} monolith INPUTs; the migrator
+# renames the underscore plan at the docs/project/ location (S4a),
+# decomposes all three streams behind the line-accounting gate (S5d),
+# generates the implementation-plan ordering index, and assembles the
+# MIGRATION-TRIAGE.md triage file. Presence-only [[ -f ]] asserts
+# (O(1) stat calls) over the five migration-output paths.
+decompose_outputs=(
+    "docs/project/backlog/_toc.md"
+    "docs/project/implementation-plan/_toc.md"
+    "docs/project/changelog/_toc.md"
+    "docs/project/implementation-plan/_index.md"
+    "docs/project/MIGRATION-TRIAGE.md"
+)
+for f in "${decompose_outputs[@]}"; do
+    if [[ -f "$SANDBOX/$f" ]]; then
+        t_pass "decompose output ${f} present post-migrate"
+    else
+        t_fail "decompose output ${f} MISSING post-migrate"
     fi
 done
 # BD-243 NUCLEAR: the deferred-tracker help fragment must NOT be installed

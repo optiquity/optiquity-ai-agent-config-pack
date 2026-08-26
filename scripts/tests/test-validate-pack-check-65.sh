@@ -229,7 +229,7 @@ body = (
     "# SYNTH-OPERATING.md\n"
     "\n"
     "See ARCHITECTURE-BD-119.md for the migrator framework.\n"
-    "Changelog files are named like 2026-04-20-phase-35.md.\n"
+    "Changelog files are named like 2026-04-20-phase-35-live-preview-sandbox.md.\n"
 )
 fc, pm, cap = run_check_with_synthetic(body, ALLOWLIST_KEEP)
 if fc != 0:

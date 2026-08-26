@@ -473,6 +473,211 @@ EOF
             ;;
     esac
 
+    # Customization 5 (v10 only): docs/project monolith trio — the
+    # real-layout migration INPUT set the v10→v11 migrator's per-entry
+    # decompose sub-op reads. Models the hazard classes the walker +
+    # accounting gate must handle: an UNDERSCORE-spelled plan filename
+    # (renamed by the migrator's S4a docs/project/ location), non-entry
+    # `## <section>` blocks with content, a mid-file `# Milestone` H1
+    # divider between phases, a fenced code block containing a `## `
+    # line inside a TD body, a same-date same-phase changelog pair with
+    # distinct suffixes, one TD whose `Type:` payload value is outside
+    # the shipped scope/severity enums, phases authored WITHOUT
+    # `Status:` (one also WITHOUT `Goal:`), a completion-checklist
+    # table in a non-entry section (the Status suggestion source), and
+    # `Context:` lines on every TD. Content is synthetic FakeOT
+    # vocabulary only.
+    if [[ "$ver" == "v10" ]]; then
+        mkdir -p "$target/docs/project"
+        cat > "$target/docs/project/BACKLOG.md" <<'EOF'
+# FakeOT Project Backlog
+
+Task backlog for the FakeOT client project. Entries use the TD-NNN
+convention; sections group entries by working state.
+Formatting: one bold header per entry, `---` between entries.
+
+---
+
+## Active
+
+Entries in flight for the current milestone.
+
+**TD-101 — Order book snapshot cache**
+Type: TODO(feature)
+Status: Open
+Blockers: None
+Unblocks: TD-102
+File/Symbol: app/Sources/Market/SnapshotCache.swift
+Description: Cache the latest order book snapshot per instrument.
+Context: Cold starts refetch the full book; a cache removes the
+  refetch on every foreground transition.
+Pending developer decisions: eviction policy (LRU vs TTL).
+
+---
+
+**TD-102 — Snapshot cache metrics**
+Type: TODO(perf)
+Status: Open
+Blockers: TD-101
+Unblocks: None
+File/Symbol: app/Sources/Market/SnapshotCacheMetrics.swift
+Description: Emit hit/miss counters for the snapshot cache.
+Context: Needed to size the cache before the beta cut.
+
+---
+
+**TD-103 — Reconnect banner copy**
+Type: TODO(feature)
+Status: Open
+Blockers: None
+Unblocks: None
+File/Symbol: app/Sources/UI/ReconnectBanner.swift
+Description: Replace the placeholder reconnect banner copy.
+Context: Current copy is developer shorthand, not user-facing text.
+
+---
+
+**TD-104 — Broker paperwork export**
+Type: KNOWN GAP(paperwork)
+Status: Open
+Blockers: None
+Unblocks: None
+File/Symbol: app/Sources/Export/BrokerExport.swift
+Description: The broker export omits the account-summary page.
+Context: Export ships without the page; the gap is documented in the
+  export screen's footnote.
+
+---
+
+## Deferred
+
+Entries parked until after the beta cut.
+
+**TD-105 — Settings sync conflict prompt**
+Type: VERIFY(design review)
+Status: Deferred
+Blockers: None
+Unblocks: None
+File/Symbol: app/Sources/Settings/SyncConflict.swift
+Description: Confirm the conflict prompt matches the design spec.
+Context: The spec changed twice during the alpha; re-verify before
+  building.
+
+---
+
+**TD-106 — Fence sample in build notes**
+Type: TODO(version)
+Status: Deferred
+Blockers: None
+Unblocks: None
+File/Symbol: app/scripts/build-notes.md
+Description: The build-notes doc embeds a heading-like line inside a
+  fenced example that must survive conversion verbatim.
+Context: Example block below is part of this entry's body.
+
+```markdown
+## Not a section — fenced example heading
+make build
+```
+EOF
+
+        cat > "$target/docs/project/IMPLEMENTATION_PLAN.md" <<'EOF'
+# FakeOT Implementation Plan
+
+Phase-based delivery plan for the FakeOT client project. Phases are
+H2 entries; milestones group phases with a `# Milestone` divider.
+Formatting: fields as `Field: value` lines directly under each phase
+heading.
+
+---
+
+## Sequencing notes
+
+Build order tracks the completion checklist below; the checklist is
+updated at each milestone review.
+
+| Phase | Deliverable | Build | Tests |
+|---|---|---|---|
+| Phase 1 | Repo + CI scaffold | ✓ | ✓ |
+| Phase 2 | Market data feed | ✓ | — |
+
+---
+
+## Phase 1 — Repo and CI scaffold
+
+Goal: Stand up the repo layout and the CI pipeline.
+Prerequisite: none
+Unblocks: phase-2
+
+- Phase 1.1 — Repo layout
+- Phase 1.2 — CI pipeline
+
+---
+
+## Phase 2 — Market data feed
+
+Goal: Stream market data into the app's feed layer.
+Blockers: phase-1
+Unblocks: phase-3
+
+- Phase 2.1 — Feed client
+- Phase 2.2 — Feed cache
+
+---
+
+# Milestone 1 — Trading foundations
+
+Phases below this divider ship the first tradable build.
+
+---
+
+## Phase 3 — Order entry
+
+Goal: Submit and cancel orders end to end.
+Prerequisite: phase-2
+Unblocks: phase-4
+
+- Phase 3.1 — Order form
+- Phase 3.2 — Order status
+
+---
+
+## Phase 4 — Portfolio view
+
+Blockers: phase-3
+Unblocks: none
+
+- Phase 4.1 — Positions list
+- Phase 4.2 — Profit summary
+EOF
+
+        cat > "$target/docs/project/CHANGELOG.md" <<'EOF'
+# FakeOT Project Changelog
+
+Dated entries record shipped work, newest first. Format rules: one
+dated H3 heading per entry (`date — kind — detail`); entries are
+separated by `---`.
+
+---
+
+### 2026-05-09 — Release boundary — v0.2 shipped
+
+First tradable build cut. Order entry and portfolio view included.
+
+---
+
+### 2026-05-01 — Phase 1 — Alpha scaffold
+
+Repo layout and CI pipeline landed.
+
+---
+
+### 2026-05-01 — Phase 1 — Beta scaffold
+
+CI pipeline hardened; scaffold ready for feature work.
+EOF
+    fi
+
     _fixture_commit_all "$target" \
         "FakeOT customizations: project-name, ollama removed, x-agent, BACKLOG"
 
