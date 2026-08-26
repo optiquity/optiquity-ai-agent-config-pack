@@ -1,22 +1,25 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "52ff596",
-  "checkpoint": "2026-08-25T20:37:27Z",
+  "boundary_commit": "7ea4d33",
+  "checkpoint": "2026-08-26T14:00:00Z",
   "active": [
-    "BD-291 @ pre-start (precondition MET: BD-290 Resolved at the C5 flip -- all waves landed review-clean, W0/W-V1/W-V2 gates PASS incl. the clean-channel S9 record, full battery + CI green, evidence preserved under maintenance-docs/v11-implementation/). NEXT STEP: spawn the BD-291 docs-researcher (LARGE deterministic pipeline stage 1) -- census scope: per-entry decompose code + fixtures + the pack's own converted trees vs git-history monoliths + the target-app monolith field grammar via a READ-ONLY scratch clone."
+    "No BD in flight. BD-291 Resolved (acceptance measured on a read-only target scratch clone: accounting PASS x3 streams, set-equality GREEN 72==72). BD-290 Resolved earlier. Launch gate now belongs to the user."
   ],
-  "in_flight_agents": [],
+  "in_flight_agents": [
+    "NONE RUNNING. All BD-291 waves landed, review-clean, CI-green; workspaces torn down."
+  ],
   "queue": [
-    "BD-291 pipeline: researcher -> architect (user spawn approval) -> adversarial -> reconciliation-if-findings -> user design review -> planner chain -> coder waves; deliverables incl. manual-fill instructions for the target-app PM chat + user; final migration run is user-side, never pack agents; target-app checkout READ-ONLY (scratch clones only); BD-171 stays SEPARATE (may be Deprecated later)",
-    "user: flip the repo public (the launch) -- GATED on OT working correctly on v11.0 (BD-291); BD-290 gate is cleared"
+    "user: relay the migration fidelity guarantee + verify command (supporting-docs/MIGRATION-v10-to-v11.md Step 3) to the target-app PM chat + the second pack chat",
+    "user + target-app PM chat: run the REAL v10->v11 migration on the target app using the shipped instructions (never pack agents)",
+    "user: flip the repo public (the launch) -- opens once the real target-app migration succeeds on v11.0"
   ],
-  "parallelization": "SERIAL. No agents in flight; BD-291 stage 1 spawns next.",
-  "wave": "v11.0 (RC1) CI-green through the BD-290 close-out; main is the sole live branch; repo still private. Open BDs 16 (BD-291 v11.0 launch-gating; BD-289 v11.1). BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
+  "parallelization": "SERIAL. Nothing in flight.",
+  "wave": "v11.0 (RC1) CI-green; main sole live branch; repo still private. Open BDs 15 + BD-292 (harness evidence-retention + Gate-2 coupling). BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
   "pending_decisions": [
     "LOCKED: main history is PRESERVED intact -- NO squash, NO rewrite, ever.",
     "LOCKED: NO scrub. Target-app initials and generic vocabulary are ACCEPTABLE on internal surfaces; the Check 93 two-tier model is UNCHANGED. ONE repo forever.",
-    "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no narration, under the byte cap); modes review=itemized intervention=full isolation=read-write-only; manifest-sync screen runs before EVERY push whose range touches fixture inputs.",
+    "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no narration, under the byte cap); modes review=itemized intervention=full isolation=full (user-selected post-BD-290; the repaired contract); manifest-sync screen runs before EVERY push whose range touches fixture inputs.",
     "Standing (BD-291, user): launch gated on the target app working correctly on v11.0; issues found in the target-app v11.0 install are fixed pack-side before GA; synthetic/manual field fill acceptable only as shipped instructions executed by the target-app PM chat + user."
   ],
-  "cycle_position": "No commit cycle open, no worktree live. C4 (dashboard re-render) + C5 (preservation + Resolved flip) staged for user approval as the BD-290 closing commits."
+  "cycle_position": "No commit cycle open, no worktree live. d1 close-out staged for approval."
 }
