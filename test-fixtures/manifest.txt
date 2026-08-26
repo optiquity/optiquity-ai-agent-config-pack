@@ -3,7 +3,7 @@
 # Format: <fixture-name>  <sha>
 #
 v10-minimal  19558cbac58ed3e47642a6bbe64418a38c60bc16
-v10-realistic-ot  4c62945f72b037908b38967d5d8f019745263258
+v10-realistic-ot  ccd8280c097f534843fb38e20ccf693793419fe4
 v11-realistic-ot  20eb8a8e9529d909adbe3135d530a7ebc72fff57
 v11-flat-file  9ef492b3e22d72f672f2c82cdfe486d7bab87e75
 v11-tracker-on  ae7d5265748e5bc7bc0cdc8ab4c030c0b5d997e8
