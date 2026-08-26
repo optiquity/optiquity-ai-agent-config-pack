@@ -14,7 +14,7 @@
     "user: flip the repo public (the launch) -- opens once the real target-app migration succeeds on v11.0"
   ],
   "parallelization": "SERIAL. Nothing in flight.",
-  "wave": "v11.0 (RC1) CI-green; main sole live branch; repo still private. Open BDs 15 + BD-292 (harness evidence-retention + Gate-2 coupling). BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
+  "wave": "v11.0 (RC1) CI-green; main sole live branch; repo still private. Open BDs 16 incl. BD-292 (harness evidence-retention + Gate-2 coupling, v11.0 default). BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
   "pending_decisions": [
     "LOCKED: main history is PRESERVED intact -- NO squash, NO rewrite, ever.",
     "LOCKED: NO scrub. Target-app initials and generic vocabulary are ACCEPTABLE on internal surfaces; the Check 93 two-tier model is UNCHANGED. ONE repo forever.",
