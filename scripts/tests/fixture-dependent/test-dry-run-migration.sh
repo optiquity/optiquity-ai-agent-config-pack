@@ -11,6 +11,17 @@
 #                    acquisition code (4).
 #   T4 tmp-refused — invoked with `--tmp-dir` outside /tmp / $TMPDIR,
 #                    exits with read-only-refused code (5).
+#   T5 apply-sandbox (BD-291) — fixture-mode acceptance + mutation bites:
+#     T5.a  --apply-sandbox against the fixture exits 0; report carries
+#           per-stream accounting PASS verdicts and a set-equality-GREEN
+#           validate-docs delta (declared == measured, nonzero).
+#     T5.b  (m4) a post-hook mutates ONE recorded synthesis line in a
+#           migrated entry → exit 8; RECORDED-BUT-ABSENT and FABRICATED
+#           both named (the §5.1(b) reduced-mode leg bites both ways).
+#     T5.c  (m5) a post-hook introduces an UNDECLARED validator failure
+#           AND satisfies a DECLARED manual-fill item → exit 8; the
+#           validate-docs delta names the UNDECLARED and UNDELIVERED
+#           members (the §5.1(d) set-equality bites both ways).
 #
 # Usage:
 #     bash scripts/test-dry-run-migration.sh
@@ -124,6 +135,114 @@ else
 fi
 rm -rf "$t4_bad_tmp"
 rm -f "$t4_log"
+
+# ── T5: --apply-sandbox fixture-mode acceptance + mutation bites (BD-291) ──
+#
+# Each case runs the FULL pipeline (dry-run + apply + auto-resume +
+# verification battery) against the built fixture — 3 migrator runs
+# total, bounded by the fixture's size, confined to the fixture-owning
+# shard.
+
+printf 'T5 — --apply-sandbox against %s\n' "$FIXTURE"
+if [[ ! -d "$FIXTURE" ]]; then
+    t_fail "T5 fixture missing: $FIXTURE (run test-fixtures/build.sh --name v10-realistic-ot --clean)"
+else
+    # ── T5.a: fixture-mode acceptance ──
+    t5a_report="$(mktemp "${TMPDIR:-/tmp}/bd291-t5a-report.XXXXXX")"
+    t5a_log="$(mktemp "${TMPDIR:-/tmp}/bd291-t5a-log.XXXXXX")"
+    rc=0
+    bash "$HARNESS" "$FIXTURE" --apply-sandbox --report-out "$t5a_report" \
+        > "$t5a_log" 2>&1 || rc=$?
+    if [[ "$rc" -eq 0 ]]; then
+        t_pass "T5.a exit code = 0"
+    else
+        t_fail "T5.a exit code = $rc (expected 0); log: $t5a_log"
+    fi
+    if [[ "$(grep -c '	PASS	per-entry accounting: PASS' "$t5a_report" 2>/dev/null)" -eq 3 ]]; then
+        t_pass "T5.a report: 3 per-stream accounting PASS verdicts"
+    else
+        t_fail "T5.a report: expected 3 accounting PASS verdicts; see $t5a_report"
+    fi
+    if grep -q '^set-equality: GREEN$' "$t5a_report" 2>/dev/null; then
+        t_pass "T5.a report: validate-docs set-equality GREEN"
+    else
+        t_fail "T5.a report: set-equality not GREEN; see $t5a_report"
+    fi
+    t5a_declared="$(sed -n 's/^declared manual-fill rows: //p' "$t5a_report" 2>/dev/null | head -1)"
+    t5a_measured="$(sed -n 's/^measured conformance rows: //p' "$t5a_report" 2>/dev/null | head -1)"
+    if [[ -n "$t5a_declared" && "$t5a_declared" -gt 0 \
+          && "$t5a_declared" -eq "${t5a_measured:-0}" ]]; then
+        t_pass "T5.a declared == measured, nonzero ($t5a_declared)"
+    else
+        t_fail "T5.a declared/measured mismatch or zero (declared=$t5a_declared measured=$t5a_measured); see $t5a_report"
+    fi
+    rm -f "$t5a_report" "$t5a_log"
+
+    # ── T5.b (m4): mutated recorded-synthesis line → both-direction (b) bite ──
+    t5b_hook="$(mktemp "${TMPDIR:-/tmp}/bd291-t5b-hook.XXXXXX")"
+    cat > "$t5b_hook" <<'HOOK'
+#!/usr/bin/env bash
+set -u
+clone="$1"
+f="$clone/docs/project/backlog/TD-101.md"
+sed -i.bak 's/^- \*\*Entry-Type\*\*: td$/- **Entry-Type**: td-mutated/' "$f"
+rm -f "$f.bak"
+HOOK
+    chmod +x "$t5b_hook"
+    t5b_report="$(mktemp "${TMPDIR:-/tmp}/bd291-t5b-report.XXXXXX")"
+    t5b_log="$(mktemp "${TMPDIR:-/tmp}/bd291-t5b-log.XXXXXX")"
+    rc=0
+    DRY_APPLY_SANDBOX_POST_HOOK="$t5b_hook" \
+        bash "$HARNESS" "$FIXTURE" --apply-sandbox --report-out "$t5b_report" \
+        > "$t5b_log" 2>&1 || rc=$?
+    if [[ "$rc" -eq 8 ]]; then
+        t_pass "T5.b exit code = 8 (DRY_EXIT_SANDBOX_VERIFY)"
+    else
+        t_fail "T5.b exit code = $rc (expected 8); log: $t5b_log"
+    fi
+    if grep -q 'RECORDED-BUT-ABSENT: TD-101.md' "$t5b_report" 2>/dev/null \
+       && grep -q 'FABRICATED: TD-101.md' "$t5b_report" 2>/dev/null; then
+        t_pass "T5.b RECORDED-BUT-ABSENT + FABRICATED both named (both-direction bite)"
+    else
+        t_fail "T5.b both-direction accounting failure not named; see $t5b_report"
+    fi
+    rm -f "$t5b_hook" "$t5b_report" "$t5b_log"
+
+    # ── T5.c (m5): UNDECLARED + UNDELIVERED → both-direction (d) bite ──
+    t5c_hook="$(mktemp "${TMPDIR:-/tmp}/bd291-t5c-hook.XXXXXX")"
+    cat > "$t5c_hook" <<'HOOK'
+#!/usr/bin/env bash
+set -u
+clone="$1"
+# UNDECLARED: remove a Context: line (a validator failure TRIAGE did not
+# declare). UNDELIVERED: satisfy a declared manual-fill item (valid
+# Status: on phase-1) so its declared row has no measured failure.
+f="$clone/docs/project/backlog/TD-102.md"
+sed -i.bak '/^Context:/d' "$f"
+rm -f "$f.bak"
+printf 'Status: not-started\n' >> "$clone/docs/project/implementation-plan/phase-1.md"
+HOOK
+    chmod +x "$t5c_hook"
+    t5c_report="$(mktemp "${TMPDIR:-/tmp}/bd291-t5c-report.XXXXXX")"
+    t5c_log="$(mktemp "${TMPDIR:-/tmp}/bd291-t5c-log.XXXXXX")"
+    rc=0
+    DRY_APPLY_SANDBOX_POST_HOOK="$t5c_hook" \
+        bash "$HARNESS" "$FIXTURE" --apply-sandbox --report-out "$t5c_report" \
+        > "$t5c_log" 2>&1 || rc=$?
+    if [[ "$rc" -eq 8 ]]; then
+        t_pass "T5.c exit code = 8 (DRY_EXIT_SANDBOX_VERIFY)"
+    else
+        t_fail "T5.c exit code = $rc (expected 8); log: $t5c_log"
+    fi
+    if grep -q '^set-equality: RED$' "$t5c_report" 2>/dev/null \
+       && grep -q 'UNDECLARED: backlog/TD-102.md' "$t5c_report" 2>/dev/null \
+       && grep -q 'UNDELIVERED: implementation-plan/phase-1.md	missing-status' "$t5c_report" 2>/dev/null; then
+        t_pass "T5.c delta names UNDECLARED + UNDELIVERED members (both-direction bite)"
+    else
+        t_fail "T5.c asymmetric members not named in delta; see $t5c_report"
+    fi
+    rm -f "$t5c_hook" "$t5c_report" "$t5c_log"
+fi
 
 # ── Summary ────────────────────────────────────────────────────────────────
 

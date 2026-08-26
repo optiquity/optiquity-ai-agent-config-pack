@@ -79,6 +79,22 @@ scripts/dry-run-migration.sh "$TARGET_URL" --report-out "$CI_ARTIFACTS/dry-run.m
 `$TARGET_URL` is supplied at invocation time from your CI's secret
 store. See § 4.
 
+**`--apply-sandbox` — full apply + verification battery (any mode):**
+
+```sh
+scripts/dry-run-migration.sh test-fixtures/v10-realistic-ot --apply-sandbox --report-out ./sandbox.md
+```
+
+After the dry-run preview, the REAL migration is applied to the same
+disposable `/tmp` copy (reconciliation sidecars auto-accepted as-is),
+then a battery verifies the migrated copy: per-stream line accounting
+against pre-migration monolith snapshots, reduced by the
+`docs/project/MIGRATION-TRIAGE.md` synthesized-field record;
+`_toc.md` / `_index.md` presence; and SET EQUALITY between the
+installed `scripts/validate-docs.sh` conformance failures and the
+TRIAGE declared manual-fill set. The original target is still never
+modified; exit `8` = migration applied, battery found a defect.
+
 ---
 
 ## 3. Reading the output
@@ -87,6 +103,16 @@ The report (Markdown) has: target input, detected version, selected
 adapter, adapter exit code, diff file-list, adapter stdout tail,
 adapter stderr tail. The diff section is load-bearing — it reflects
 what the real migration would write.
+
+In `--apply-sandbox` mode the report gains `## Accounting verdicts`
+(per stream: `PASS` with multiset counts, or `FAIL` plus the
+`UNACCOUNTED` / `FABRICATED` / `RECORDED-BUT-ABSENT` lines naming each
+unexplained line) and `## validate-docs delta` (validator exit code,
+declared vs measured row counts, non-conformance context count,
+`set-equality: GREEN|RED`, and each asymmetric member — `UNDECLARED:`
+measured-not-declared, `UNDELIVERED:` declared-not-measured). Green =
+exit `0`, all verdicts `PASS`, `set-equality: GREEN`; the declared
+manual-fill remainder is work-with-instructions, not a defect.
 
 A **safe** dry-run:
 
@@ -139,6 +165,7 @@ version:
      lacks the adapter). Release blocker until resolved.
    - `7` — adapter ran and would fail. Hard release blocker; read
      the stderr tail.
+   - `8` — `--apply-sandbox` battery found a defect in the migrated copy. Hard release blocker; read the report's verdict sections (§ 3).
 4. **Diff-noise tolerance.** A non-empty diff with exit `0` is the
    expected case — the migration *should* change files. Treat as
    acceptable unless your governance requires per-diff review.
@@ -157,9 +184,12 @@ The harness does NOT verify:
   integrations, or local tooling work against the v11 file layout.
 - **Customization semantics.** It will say a sidecar *would* be
   written; it cannot say whether the three-way merge result is
-  semantically what you want.
+  semantically what you want (`--apply-sandbox` auto-accepts every
+  sidecar as-is — decompose fidelity, not your reconciliation choices).
 - **Anything outside the file-tree diff.** Permissions, symlinks,
-  submodule state, encoding edge cases.
+  submodule state, encoding edge cases. (`--apply-sandbox` narrows
+  this: it verifies accounting, generated-surface presence, and the
+  declared-manual-fill set equality — still not runtime behavior.)
 
 For full pre-migration confidence: dry-run + sidecar review + a test
 commit on a branch + your project's own CI green.

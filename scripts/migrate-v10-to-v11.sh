@@ -478,7 +478,9 @@ _v10_to_v11_install_v11_artifacts() {
     # (scripts/lib/migrate-v10-to-v11/decompose.sh, type-guarded).
     local groupings_dir="$_MIGRATOR_TARGET/docs/project/groupings"
     if [[ -d "$groupings_dir" && ! -f "$groupings_dir/_toc.md" ]]; then
-        per_entry_regenerate_toc "project-groupings" "$groupings_dir" \
+        # Subshell: the helper manages a private EXIT trap for its temp
+        # file; the subshell keeps the migrator's own EXIT trap armed.
+        ( per_entry_regenerate_toc "project-groupings" "$groupings_dir" ) \
             || fail_stage S5 "per_entry_regenerate_toc failed for project-groupings (groupings _toc.md seed)"
     fi
 

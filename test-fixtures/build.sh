@@ -486,7 +486,13 @@ EOF
     # `Status:` (one also WITHOUT `Goal:`), a completion-checklist
     # table in a non-entry section (the Status suggestion source), and
     # `Context:` lines on every TD. Content is synthetic FakeOT
-    # vocabulary only.
+    # vocabulary only. Outside the declared manual-fill classes
+    # (missing-Status / missing-Goal / out-of-enum payload) the entries
+    # model schema-conformant authoring — TDs carry every core field,
+    # phases carry `Prerequisite:`, changelog entries carry a
+    # `Summary:` narrative — so the post-migration validate-docs
+    # conformance set equals the MIGRATION-TRIAGE declared set (the
+    # --apply-sandbox set-equality acceptance instrument).
     if [[ "$ver" == "v10" ]]; then
         mkdir -p "$target/docs/project"
         cat > "$target/docs/project/BACKLOG.md" <<'EOF'
@@ -617,6 +623,7 @@ Unblocks: phase-2
 ## Phase 2 — Market data feed
 
 Goal: Stream market data into the app's feed layer.
+Prerequisite: none
 Blockers: phase-1
 Unblocks: phase-3
 
@@ -644,6 +651,7 @@ Unblocks: phase-4
 
 ## Phase 4 — Portfolio view
 
+Prerequisite: none
 Blockers: phase-3
 Unblocks: none
 
@@ -662,19 +670,19 @@ separated by `---`.
 
 ### 2026-05-09 — Release boundary — v0.2 shipped
 
-First tradable build cut. Order entry and portfolio view included.
+Summary: First tradable build cut; order entry and portfolio view included.
 
 ---
 
 ### 2026-05-01 — Phase 1 — Alpha scaffold
 
-Repo layout and CI pipeline landed.
+Summary: Repo layout and CI pipeline landed.
 
 ---
 
 ### 2026-05-01 — Phase 1 — Beta scaffold
 
-CI pipeline hardened; scaffold ready for feature work.
+Summary: CI pipeline hardened; scaffold ready for feature work.
 EOF
     fi
 
@@ -738,7 +746,11 @@ EOF
             [[ -d "$_pe_dir" ]] \
                 || die "BD-206: per-entry stream dir missing at $_pe_dir_rel (init S11 regression?)" 4
 
-            per_entry_regenerate_toc "$_pe_key" "$_pe_dir" \
+            # Subshell: the helper manages a private EXIT trap for its
+            # temp file (trap … EXIT, then trap - EXIT), which would
+            # clobber this script's own EXIT trap (the v10-pack-src
+            # cleanup) if run in the current shell.
+            ( per_entry_regenerate_toc "$_pe_key" "$_pe_dir" ) \
                 || die "BD-206: per_entry_regenerate_toc failed for $_pe_key" 4
 
             [[ -f "$_pe_dir/_toc.md" ]] \

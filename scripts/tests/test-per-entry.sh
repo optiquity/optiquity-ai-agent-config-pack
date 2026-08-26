@@ -286,7 +286,12 @@ fixture_pack_backlog_intro "$PB_DIR/_intro.md"
 fixture_pack_backlog_rules "$PB_DIR/_rules.md"
 per_entry_decompose pack-backlog "$PB_ROOT/BACKLOG.md" "$PB_DIR" 2>/dev/null
 
-per_entry_regenerate_toc pack-backlog "$PB_DIR" 2>/dev/null
+# Subshell wraps (this and every per_entry_regenerate_toc call below):
+# the helper manages a private EXIT trap for its temp file (trap … EXIT,
+# then trap - EXIT), which would clobber this script's SCRATCH_ROOT
+# cleanup trap if run in the current shell — leaking the scratch tree
+# on every normal exit.
+( per_entry_regenerate_toc pack-backlog "$PB_DIR" 2>/dev/null )
 [[ -f "$PB_DIR/_toc.md" ]] && t_pass "9.1 _toc.md created" || t_fail "9.1 _toc.md created"
 
 TOC_OUT=$(cat "$PB_DIR/_toc.md")
@@ -299,7 +304,7 @@ assert_contains "9.7 _toc.md links BD-101 entry" "$TOC_OUT" "[BD-101](./BD-101.m
 
 # Determinism + idempotency: regenerate twice → byte-identical TOC.
 cp "$PB_DIR/_toc.md" "$PB_ROOT/_toc.md.snap1"
-per_entry_regenerate_toc pack-backlog "$PB_DIR" 2>/dev/null
+( per_entry_regenerate_toc pack-backlog "$PB_DIR" 2>/dev/null )
 assert_byte_identical "9.8 TOC regeneration is byte-deterministic" "$PB_ROOT/_toc.md.snap1" "$PB_DIR/_toc.md"
 
 # ─────────────────────────────────────────────────────────────────
@@ -355,7 +360,7 @@ assert_contains "10.3a v11.md preserves nested '### v11.0' subsection" "$V11_BOD
 assert_contains "10.3b v11.md preserves nested '### New' subsection" "$V11_BODY" "### New"
 
 # TOC regeneration coverage for changelog (groups by major version).
-per_entry_regenerate_toc pack-changelog "$PC_DIR" 2>/dev/null
+( per_entry_regenerate_toc pack-changelog "$PC_DIR" 2>/dev/null )
 PC_TOC=$(cat "$PC_DIR/_toc.md")
 assert_contains "10.4 changelog _toc.md groups by major version v11" "$PC_TOC" "## v11"
 assert_contains "10.5 changelog _toc.md links v11 release entry" "$PC_TOC" "[v11](./v11.md)"
@@ -441,7 +446,7 @@ assert_eq "12.7 pe_list_entry_files kills GRP-0000.md (tightened regex)" \
 # TOC axis: Kind-grouped (alphabetical by slug), IDs ascending within
 # each group; the pinned row grammar `- GRP-NNN — <Title> (phases: N)`;
 # byte-exact golden; determinism ×2.
-per_entry_regenerate_toc project-groupings "$GRP_DIR" 2>/dev/null
+( per_entry_regenerate_toc project-groupings "$GRP_DIR" 2>/dev/null )
 [[ -f "$GRP_DIR/_toc.md" ]] && t_pass "12.8 groupings _toc.md created" || t_fail "12.8 groupings _toc.md created"
 cat >"$SCRATCH_ROOT/grp-toc-expected.md" <<'EOF'
 # Table of contents — project-groupings
@@ -465,19 +470,19 @@ EOF
 assert_byte_identical "12.9 groupings _toc.md byte-exact golden (Kind groups alphabetical; IDs ascending; pinned row grammar; GRP-0000 absent)" \
     "$SCRATCH_ROOT/grp-toc-expected.md" "$GRP_DIR/_toc.md"
 cp "$GRP_DIR/_toc.md" "$SCRATCH_ROOT/grp-toc.snap1"
-per_entry_regenerate_toc project-groupings "$GRP_DIR" 2>/dev/null
+( per_entry_regenerate_toc project-groupings "$GRP_DIR" 2>/dev/null )
 assert_byte_identical "12.10 groupings TOC regeneration is byte-deterministic" \
     "$SCRATCH_ROOT/grp-toc.snap1" "$GRP_DIR/_toc.md"
 # Mangle the derived index; regeneration restores the canonical bytes.
 printf 'HAND-EDITED JUNK\n' >"$GRP_DIR/_toc.md"
-per_entry_regenerate_toc project-groupings "$GRP_DIR" 2>/dev/null
+( per_entry_regenerate_toc project-groupings "$GRP_DIR" 2>/dev/null )
 assert_byte_identical "12.10b mangled _toc.md is restored to canonical bytes on regen" \
     "$SCRATCH_ROOT/grp-toc-expected.md" "$GRP_DIR/_toc.md"
 
 # Empty tree seeds the BD-164 empty form.
 GRP_EMPTY="$SCRATCH_ROOT/groupings-empty"
 mkdir -p "$GRP_EMPTY"
-per_entry_regenerate_toc project-groupings "$GRP_EMPTY" 2>/dev/null
+( per_entry_regenerate_toc project-groupings "$GRP_EMPTY" 2>/dev/null )
 cat >"$SCRATCH_ROOT/grp-toc-empty-expected.md" <<'EOF'
 # Table of contents — project-groupings
 
