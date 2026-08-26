@@ -322,6 +322,17 @@ files are DELETED; the per-entry tree plus its generated `_toc.md` is
 the sole source of truth and readable form — there is no regenerated
 mirror.
 
+Decomposition is line-accounted. Every content line of a v10 monolith
+routes to exactly one of: an entry file, the preserved-content capture
+(surfaced in `docs/project/MIGRATION-TRIAGE.md`), or the sanctioned
+structural trim (blank lines and `---` separator lines only). An
+independent line-accounting gate verifies that equation per stream and
+must PASS before the migrator deletes the monolith; on gate failure the
+monolith, the partial per-entry tree, and the capture are all retained
+for diagnosis. The gate proves no-loss only — it does not by itself
+guarantee which destination (entry file vs. triage capture) a given
+line landed in; that routing is covered by the pack's own test suite.
+
 ### What changes
 
 - **New directories.** `docs/project/backlog/`,
@@ -333,11 +344,22 @@ mirror.
     of truth.
   - `_rules.md` — the per-stream contract (what an entry contains,
     how it's named). Read this before any per-entry edit.
-  - `_intro.md` — the preamble extracted from the v10 monolithic
-    file (lines 1–20 of the source on first migration); human
-    orientation for the stream.
+  - `_intro.md` — an installed template: human-only orientation for
+    the stream (no rules; edit it freely). v10 preamble and other
+    non-entry content is NOT placed here — it is preserved verbatim
+    in `docs/project/MIGRATION-TRIAGE.md` for triage.
   - `_toc.md` — the generated readable index of the stream (the
     monolith-replacement readable form).
+  - `_index.md` (implementation-plan stream only) — the generated
+    dependency-derived ordering index of the phase entries (never
+    hand-edited).
+- **One migration triage file.** `docs/project/MIGRATION-TRIAGE.md` —
+  written by the migrator when anything needs triage. It carries the
+  v10 content preserved verbatim from outside entry spans, the derived
+  section- and milestone-membership maps, the record of every
+  synthesized field line, and the manual-fill list. Migration-transient
+  and client-owned: work through it per § "What the user does" below,
+  then delete it.
 - **Monolithic files are deleted.** `docs/project/BACKLOG.md`,
   `docs/project/IMPLEMENTATION-PLAN.md`, and `docs/project/CHANGELOG.md`
   no longer exist after migration. The per-entry tree is the sole
@@ -358,14 +380,95 @@ sources are a v10-era pattern; v11 retires it.
 
 ### What the user does
 
-Nothing. The v10 → v11 migrator handles decomposition automatically.
-A new sub-operation (`_v10_to_v11_decompose_streams`) inside the
-migrator's post-dispatch hook reads each v11-shape monolithic file
-and emits the per-entry tree plus its generated `_toc.md`, then
-deletes the source monolith. The sub-operation runs after all
-monolithic-content mutations have settled (rename, relocation, install,
-capability-token translation) so the source content is final before
-decomposition.
+**During the migration run: nothing.** The v10 → v11 migrator handles
+decomposition automatically. A sub-operation
+(`_v10_to_v11_decompose_streams`) inside the migrator's post-dispatch
+hook reads each monolithic file and, per stream: decomposes it into
+the per-entry tree (capturing all non-entry content), runs the
+line-accounting gate, synthesizes the mechanically derivable v11 entry
+fields, regenerates `_toc.md` (and `_index.md` for the implementation
+plan), and only then deletes the source monolith. After the per-stream
+loop it assembles `docs/project/MIGRATION-TRIAGE.md`. The sub-operation
+runs after all monolithic-content mutations have settled (rename,
+relocation, install, capability-token translation) so the source
+content is final before decomposition.
+
+**After the migration: work through `docs/project/MIGRATION-TRIAGE.md`**
+(when it exists — the migrator writes it only when something needs
+triage).
+
+The migrator synthesizes only what is mechanically derivable from your
+v10 content (entry types, IDs, markers with their payload values,
+dependency fields). It never invents content: a field with no
+mechanical source is left absent, and a payload value outside the
+schema's enum is carried verbatim rather than replaced with a guess.
+Every such gap is declared in MIGRATION-TRIAGE.md § "Manual fill
+required", in three classes: phases missing `Status:` (with a
+suggestion table derived from completion-checklist rows found in the
+preserved content — review each suggestion before applying), phases
+missing `Goal:` (narrative — you author it), and entries whose payload
+value is out of enum (you correct it by judgment).
+
+Because the gaps are declared rather than papered over, the FIRST
+`bash scripts/validate-docs.sh` run after migration is EXPECTED to
+fail, and healthy is precisely defined: the validator's conformance
+failures must match the § "Manual fill required" list exactly — every
+listed entry fails, and nothing outside the list fails. Either
+asymmetry — a failure beyond the declared list, or a listed entry that
+does not fail — is a defect to report, not a fill item. After the
+manual fills, the validator runs to zero.
+
+The triage procedure:
+
+1. Work through the `## From BACKLOG.md` /
+   `## From IMPLEMENTATION-PLAN.md` / `## From CHANGELOG.md` sections —
+   relocate content you keep to its proper home
+   (`docs/project/ARCHITECTURE.md`, `docs/reference/`, or an entry's
+   `Context:` lines) and delete superseded v10 boilerplate (the old
+   Format-Rules / how-to-use blocks are superseded by each stream's
+   `_rules.md`).
+2. Apply the `## Derived: section membership` and
+   `## Derived: milestone membership` maps if the section / milestone
+   structure should live on: fold the association into the affected
+   entries' `Context:` lines, or adopt groupings
+   (`docs/project/groupings/`).
+3. Review and apply the `Status:` suggestion table. Each value is your
+   decision — suggestions are derived, not authoritative; the
+   migration backup and git history remain available for
+   cross-checking.
+4. Author the missing `Goal:` line for each listed Goal-less phase —
+   from project knowledge; it is never auto-filled.
+5. Correct each listed out-of-enum payload value to a valid enum
+   member (`scripts/validate-docs.sh` names each offending field and
+   value; the enums live in `docs/project/backlog/_rules.md`).
+6. Regenerate `_toc.md` (and the implementation-plan `_index.md`) per
+   each stream's `_rules.md` write procedure, then run
+   `bash scripts/validate-docs.sh` to zero failures. If your tree
+   carried dangling references or deferred items before the migration,
+   the validator reports those too — they are ordinary findings to fix
+   in your normal flow, not migration losses; the healthy-state
+   comparison above is scoped to conformance findings.
+7. Delete `docs/project/MIGRATION-TRIAGE.md`.
+8. Commit.
+
+**If the migrator halts at the accounting gate** (a stage-S5 failure
+whose message carries `S5d-accounting`): the failing stream's monolith,
+partial per-entry tree, and capture file are all retained — that
+stream has lost nothing. (Streams that already passed their gate are
+fully migrated, so their monoliths are already deleted; the
+pre-migration backup holds every stream either way.) Inspect the
+`UNACCOUNTED` / `FABRICATED` lines in the gate output to see which
+monolith lines went missing or which tree lines have no source. A
+plain re-run refuses on the leftover state: the
+migrator exits as already-migrated while
+`.pack-migrate-v10-to-v11/dispositions.tsv` exists, and stage S1
+refuses while `.pack-migrate-v10-to-v11-backup/` exists. Recovery: run
+the § Rollback recipe through its `rsync` step (this also clears the
+`.pack-migrate-v10-to-v11/` state directory), but keep the backup —
+move it aside instead of deleting it
+(`mv .pack-migrate-v10-to-v11-backup
+.pack-migrate-v10-to-v11-backup.prev`), as the stage-1 message directs
+— then re-run the migrator.
 
 ### Backup and rollback
 
@@ -374,8 +477,9 @@ The pre-migration backup at `.pack-migrate-v10-to-v11-backup/`
 rollback recipe in § Rollback below restores both the v10
 monolithic files and any pre-migration state by rsyncing the backup
 back over the working tree — exactly as it did before per-entry
-decomposition. The per-entry tree directories are removed by the
-rsync `--delete` step since they are not present in the v10 backup.
+decomposition. The per-entry tree directories (and
+`docs/project/MIGRATION-TRIAGE.md`) are removed by the rsync
+`--delete` step since they are not present in the v10 backup.
 
 If the migration was committed and you want to revert without
 losing post-migration work, `git revert HEAD` reverts the
@@ -489,7 +593,7 @@ framework exit code (`24` for S4; `25` for S5).
 | S1 | Backup — full working tree (excludes `.git/` + state dirs) into `.pack-migrate-v10-to-v11-backup/` |
 | S2 | Initialize customization-preserve state |
 | S3 | Dispatch v10 → v11 changes via the customization-preserve engine (trinity / configs / scripts / agents / docs) |
-| S4a | rename `IMPLEMENTATION_PLAN.md` → `IMPLEMENTATION-PLAN.md` at project root. History-preserving via `git mv` for tracked source; plain `mv` fallback for untracked. No-op if the source is absent. Halts with the typed error `migration-rename-collision` if both names already exist (the user inspects, resolves, re-runs). |
+| S4a | rename `IMPLEMENTATION_PLAN.md` → `IMPLEMENTATION-PLAN.md` at both locations: project root and `docs/project/`. History-preserving via `git mv` for tracked source; plain `mv` fallback for untracked. No-op per location if the source is absent there. Halts with the typed error `migration-rename-collision` naming the directory if both names exist at the same location (the user inspects, resolves, re-runs). |
 | S4b | relocation tail (legacy root docs → `docs/pack/`) |
 | S5 | Install v11 client artifacts (HELP-FRAGMENT*.md, issue forms, the per-CLI `pm-help` help skill to `.claude`/`.codex`/`.agents`, the Antigravity agent plugin bundle at `.agents-plugin/optiquity-agents/` installed replace-if-different). The client help runner `scripts/pm-help.sh` ships as an ordinary `project-template/scripts/` file via the scripts directory sweep — NO pack-side file (pack-help.sh / lib/detect.sh) is copied into the project (no dual-use; empty ship-allowlist per BD-257). `tracker.toml.example` is NO LONGER installed — tracker integration is deferred; the dormant config record stays committed pack-side at `project-template/tracker.toml.project-example`. |
 | S5a | Lift each departing Gemini custom (`x-`) agent into the Antigravity bundle (`.agents-plugin/optiquity-agents/agents/`) so it becomes a live Antigravity agent — never overwriting a same-named bundle custom. |
@@ -644,6 +748,32 @@ Open a PM Chat session in your client project: `/pm-startup` should
 now report v11 as the active pack version and read in the new
 `## Quick reference` blocks.
 
+**Per-entry content fidelity.** Decomposition is span-faithful and
+accounting-gated: every content line of each v10 monolith routed to an
+entry file, to `docs/project/MIGRATION-TRIAGE.md`, or to the sanctioned
+structural trim (blank lines and `---` separator lines only), and the
+migrator refuses to delete a monolith while any of its content lines is
+unaccounted for. A field that is absent from a migrated entry was
+therefore absent from the v10 monolith — authoring variance, not
+migration loss. On the current data MIGRATION-TRIAGE.md § "Manual fill
+required" declares exactly the 61 phases missing `Status:`, the 7
+missing `Goal:`, and the 4 payload values carried verbatim because
+they fall outside the schema's enum — and nothing else.
+
+To spot-check any entry against its v10 source, compare both sides
+with one command (example: a backlog entry):
+
+```sh
+grep -n "^Type:" \
+    .pack-migrate-v10-to-v11-backup/docs/project/BACKLOG.md \
+    docs/project/backlog/TD-042.md
+# The entry file carries its monolith span verbatim; every line it
+# carries beyond that span is either the line-1 back-pointer comment
+# (every migrated entry file opens with a fixed provenance comment,
+# `<!-- per-entry source: …; contract: … -->`) or a synthesized field
+# recorded in MIGRATION-TRIAGE.md § "Synthesized fields".
+```
+
 ---
 
 ## Step 4 — Commit
@@ -652,6 +782,13 @@ now report v11 as the active pack version and read in the new
 git add -A
 git diff --staged | less
 # Sanity-check the diff. Highlights:
+#   - docs/project/BACKLOG.md, docs/project/IMPLEMENTATION-PLAN.md,
+#     and docs/project/CHANGELOG.md are deleted — the per-entry trees
+#     (docs/project/backlog/, docs/project/implementation-plan/,
+#     docs/project/changelog/) with their generated _toc.md (and the
+#     implementation-plan _index.md) replace them.
+#   - docs/project/MIGRATION-TRIAGE.md may be new — work through it
+#     per § "What the user does" above.
 #   - CLAUDE.md / AGENTS.md / GEMINI.md gained a "## Quick reference"
 #     block (or a fresh template if you had no customizations).
 #   - .gitignore may have been merged with new pack additions.
@@ -843,15 +980,17 @@ loss defects can re-emerge.
 1. **Read the `## Quick reference` block** at the top of each trinity
    file. The pack-startup / pm-startup recommendation is the documented
    first action for new sessions.
-2. **Phase B is deferred.** Tracker integration is deferred
+2. **Work through `docs/project/MIGRATION-TRIAGE.md`** (if it exists)
+   per § "What the user does" above, then delete it.
+3. **Phase B is deferred.** Tracker integration is deferred
    indefinitely; flat-file per-entry is the sole supported mode and there is
    no opt-in to decide on. Continue with flat-file per-entry tracking
    (the per-entry trees under `docs/project/`) — startup surfaces no
    tracker recommendation.
-3. **Commit early after each reconciliation.** Don't accumulate a
+4. **Commit early after each reconciliation.** Don't accumulate a
    100-line reconciliation diff. Commit each `<file>.v10-customized`
    resolution as a separate small commit.
-4. **Re-run validate-pack** locally before pushing if you're a pack
+5. **Re-run validate-pack** locally before pushing if you're a pack
    maintainer. CI will catch you, but local-first is faster.
 
 ---
