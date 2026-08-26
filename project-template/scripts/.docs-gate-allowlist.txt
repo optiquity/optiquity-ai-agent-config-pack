@@ -97,7 +97,7 @@ reason: format example — the changelog entry-heading date grammar (folded into
 
 doc: docs/project/changelog/_rules.md
 pattern: date
-snippet: 2026-04-20-phase-35.md
+snippet: 2026-04-20-phase-35-live-preview-sandbox.md
 reason: format example — the changelog per-entry filename date grammar (folded into _rules.md); not an audit-trail date.
 
 doc: docs/project/changelog/_rules.md
@@ -107,7 +107,7 @@ reason: format example — a second changelog entry-heading date grammar example
 
 doc: docs/project/changelog/_rules.md
 pattern: date
-snippet: 2026-03-20-architecture-iteration.md
+snippet: 2026-03-20-architecture-iteration-notification-event-model.md
 reason: format example — the changelog per-entry filename date grammar (folded into _rules.md); not an audit-trail date.
 
 doc: docs/project/changelog/_rules.md
@@ -117,7 +117,7 @@ reason: format example — the release-boundary changelog entry-heading date gra
 
 doc: docs/project/changelog/_rules.md
 pattern: date
-snippet: 2026-07-04-release-boundary.md
+snippet: 2026-07-04-release-boundary-v2-3-shipped.md
 reason: format example — the release-boundary per-entry filename date grammar (folded into _rules.md); not an audit-trail date.
 
 # ===========================================================================

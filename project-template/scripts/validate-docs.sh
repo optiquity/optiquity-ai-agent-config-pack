@@ -643,6 +643,53 @@ def _conf_check_backlog_entry(rel, body, schema):
             fails.append(
                 f"{rel} [conformance] Status=Resolved but '{req_field}' "
                 f"field missing (resolved-requires)")
+    # payload-by-marker: the Marker-keyed payload field must be present.
+    # (Verify-Source is presence-only / open-string per the schema — this
+    # presence leg is its whole enforcement; Scope/Severity additionally
+    # get the enum legs below.)
+    payload_pairs = []
+    for tok in _conf_schema_tokens(schema, "payload-by-marker"):
+        # `"KNOWN GAP"=Severity` tokenizes as `"KNOWN GAP"` + `=Severity`;
+        # re-join the `=`-leading continuation so each pair is
+        # `<marker>=<field>`.
+        if tok.startswith("=") and payload_pairs:
+            payload_pairs[-1] += tok
+        else:
+            payload_pairs.append(tok)
+    payload_by_marker = {}
+    for pair in payload_pairs:
+        mk, _, pf = pair.partition("=")
+        mk, pf = _conf_clean_token(mk), _conf_clean_token(pf)
+        if mk and pf:
+            payload_by_marker[mk] = pf
+    if marker_val and marker_val in marker_enum:
+        pay_field = payload_by_marker.get(marker_val, "")
+        if pay_field and not _conf_entry_field_present(body, pay_field):
+            fails.append(
+                f"{rel} [conformance] missing the '{pay_field}' payload "
+                f"field required by Marker '{marker_val}' "
+                f"(payload-by-marker)")
+    # Scope ∈ scope-enum; the `phase-N` member matches literally OR as
+    # the templated pattern `phase-\d+`.
+    scope_enum = [_conf_clean_token(t)
+                  for t in _conf_schema_tokens(schema, "scope-enum")]
+    scope_val = _conf_field_value(body, "Scope")
+    if scope_enum and scope_val and scope_val not in scope_enum:
+        templated = ("phase-N" in scope_enum
+                     and re.fullmatch(r"phase-\d+", scope_val) is not None)
+        if not templated:
+            fails.append(
+                f"{rel} [conformance] Scope '{scope_val}' not in "
+                f"scope-enum {scope_enum} (the phase-N member admits "
+                f"phase-<number>)")
+    # Severity ∈ severity-enum.
+    severity_enum = [_conf_clean_token(t)
+                     for t in _conf_schema_tokens(schema, "severity-enum")]
+    severity_val = _conf_field_value(body, "Severity")
+    if severity_enum and severity_val and severity_val not in severity_enum:
+        fails.append(
+            f"{rel} [conformance] Severity '{severity_val}' not in "
+            f"severity-enum {severity_enum}")
     return fails
 
 
@@ -1536,6 +1583,43 @@ def _conf_check_groupings_stream(rel_dir, stream_dir, names, schema, base):
     return fails
 
 
+# A date-prefixed .md filename in the changelog stream — the trigger set
+# for the mis-named-entry leg below (broader than the entry regex by
+# design: it catches bare-date and malformed-slug names).
+_CONF_CL_DATE_FILE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}.*\.md$")
+
+
+def _conf_check_changelog_stream(rel_dir, names, support):
+    """Stream-level changelog leg: a date-prefixed `.md` file that FAILS
+    the entry regex is a MIS-NAMED ENTRY, not an out-of-scope file — FAIL,
+    not SKIP (mirror of the groupings mis-named-GRP leg). The stream's
+    filename contract (docs/project/changelog/_rules.md § Filename
+    convention) makes the lowercase-kebab slug mandatory; without this leg
+    a bare-date or malformed-slug file falls through the per-entry walk's
+    silent SKIP arm and is never validated.
+
+    Cheap (ci-check-runtime-compounding): rides the file list already
+    scanned; no read, no subprocess, no tree walk.
+    """
+    fails = []
+    entry_rx = _CONF_ENTRY_REGEX["changelog"]
+    for name in sorted(names):
+        if _CONF_SIDECAR_RX.match(name):
+            continue
+        if name in support:
+            continue
+        if entry_rx.match(name):
+            continue
+        if _CONF_CL_DATE_FILE_RE.match(name):
+            fails.append(
+                rel_dir + "/" + name + " [conformance] mis-named "
+                "changelog entry — the filename contract is date-first "
+                "plus a MANDATORY lowercase-kebab slug "
+                "(^\\d{4}-\\d{2}-\\d{2}-[a-z0-9-]+\\.md$)"
+                "\n    " + REMEDIATION_CONFORMANCE)
+    return fails
+
+
 def run_conformance(root):
     """Validate the POPULATED per-entry streams against their _rules.md schema.
 
@@ -1650,6 +1734,13 @@ def run_conformance(root):
         if subdir == "groupings":
             fails.extend(_conf_check_groupings_stream(
                 rel_dir, stream_dir, names, schema, base))
+
+        # (6) Changelog stream-level leg (mis-named date-prefixed entry
+        #     files under the mandatory-slug filename contract) —
+        #     changelog only.
+        if subdir == "changelog":
+            fails.extend(_conf_check_changelog_stream(rel_dir, names,
+                                                      support))
     return fails
 
 
@@ -2132,27 +2223,33 @@ def run_selftest():
         "- [phase-1](./phase-1.md) — Middle\n"
     )
 
+    def _conf_seed(td, files):
+        """Seed a synthetic docs/project tree: each stream's shipped
+        _rules.md (the SSOT schema) + _intro.md, then the case's files
+        ({relpath_under_docs_project: content})."""
+        for sub, rules in (("backlog", bl_rules),
+                           ("implementation-plan", ip_rules),
+                           ("changelog", cl_rules),
+                           ("groupings", gr_rules)):
+            d = os.path.join(td, "docs", "project", sub)
+            os.makedirs(d, exist_ok=True)
+            with open(os.path.join(d, "_rules.md"), "w",
+                      encoding="utf-8") as fh:
+                fh.write(rules)
+            with open(os.path.join(d, "_intro.md"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("# intro\n")
+        for relp, content in files.items():
+            p = os.path.join(td, "docs", "project", relp)
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8") as fh:
+                fh.write(content)
+
     def conf_gate(files, expect_fail, label):
         """files: {relpath_under_docs_project: content}. Always seeds each
         stream's shipped _rules.md so the parser has the SSOT schema."""
         with tempfile.TemporaryDirectory() as td:
-            for sub, rules in (("backlog", bl_rules),
-                               ("implementation-plan", ip_rules),
-                               ("changelog", cl_rules),
-                               ("groupings", gr_rules)):
-                d = os.path.join(td, "docs", "project", sub)
-                os.makedirs(d, exist_ok=True)
-                with open(os.path.join(d, "_rules.md"), "w",
-                          encoding="utf-8") as fh:
-                    fh.write(rules)
-                with open(os.path.join(d, "_intro.md"), "w",
-                          encoding="utf-8") as fh:
-                    fh.write("# intro\n")
-            for relp, content in files.items():
-                p = os.path.join(td, "docs", "project", relp)
-                os.makedirs(os.path.dirname(p), exist_ok=True)
-                with open(p, "w", encoding="utf-8") as fh:
-                    fh.write(content)
+            _conf_seed(td, files)
             fails = run_conformance(td)
             got_fail = bool(fails)
             if got_fail != expect_fail:
@@ -2161,13 +2258,28 @@ def run_selftest():
                     f"{'FAIL' if expect_fail else 'PASS'}, got "
                     f"{'FAIL' if got_fail else 'PASS'} ({len(fails)} hit(s))")
 
+    def conf_gate_expect(files, substr, label):
+        """Reached-assertion variant of conf_gate: the tree must FAIL AND
+        at least one failure line must contain `substr` — pinning the
+        failure to the leg under test (a FAIL for an unrelated reason does
+        not satisfy it, so a silently-unreached leg cannot hide behind a
+        coincidental failure)."""
+        with tempfile.TemporaryDirectory() as td:
+            _conf_seed(td, files)
+            fails = run_conformance(td)
+            if not any(substr in f for f in fails):
+                heads = [f.splitlines()[0] for f in fails][:4]
+                failures.append(
+                    f"{label}: expected a failure naming {substr!r}; got "
+                    f"{len(fails)} hit(s): {heads}")
+
     if conformance_self_test:
         # Conforming populated tree → PASS (impl-plan carries a conforming
         # `_index.md` listing its single phase).
         conf_gate({"backlog/TD-001.md": good_td,
                    "implementation-plan/phase-0.md": good_phase,
                    "implementation-plan/_index.md": good_index_single,
-                   "changelog/2026-04-20-phase-35.md": good_cl},
+                   "changelog/2026-04-20-phase-35-sample.md": good_cl},
                   False, "conformance-clean")
         # Empty (sidecar-only) tree → PASS (greenfield).
         conf_gate({}, False, "conformance-empty")
@@ -2288,12 +2400,59 @@ def run_selftest():
                    "### 2026-03-27 — Phase 14 — Audit\n\n"
                    "**Scope**: " + ("word " * 260) + "\n"},
                   True, "conformance-changelog-scope-too-long")
-        # NIT-1: strict filename (mandatory kebab slug). A bare-date file
-        # no longer matches the entry regex → SKIPped (not an entry), so a
-        # tree with only a bare-date file + a conforming kebab entry PASSes.
-        conf_gate({"changelog/2026-04-20.md": good_cl_code,
-                   "changelog/2026-04-20-phase-9.md": good_cl_code},
-                  False, "conformance-changelog-strict-filename")
+        # Strict filename (mandatory kebab slug): a bare-date file beside a
+        # conforming kebab entry is a MIS-NAMED ENTRY → FAIL (the stream-
+        # level misname leg fires; the conforming entry stays clean).
+        conf_gate_expect({"changelog/2026-04-20.md": good_cl_code,
+                          "changelog/2026-04-20-phase-9.md": good_cl_code},
+                         "mis-named changelog entry",
+                         "conformance-changelog-strict-filename")
+
+        # --- Changelog misname leg + backlog payload legs bites ---
+        # s1: a bare-date changelog file alone → FAIL, with the reached-
+        # assertion pinning the failure to the misname leg for the
+        # changelog subdir (a walk regression that stops invoking the leg
+        # cannot hide behind an unrelated failure).
+        conf_gate_expect({"changelog/2026-01-01.md": good_cl},
+                         "mis-named changelog entry",
+                         "conformance-changelog-misname-reached")
+        # s2: out-of-enum Severity (KNOWN GAP payload) → FAIL (enum leg).
+        conf_gate_expect({"backlog/TD-004.md": good_td
+                          .replace("- **Marker**: TODO\n",
+                                   "- **Marker**: KNOWN GAP\n")
+                          .replace("- **Scope**: feature\n",
+                                   "- **Severity**: dependency\n")},
+                         "not in severity-enum",
+                         "conformance-bad-severity-enum")
+        # s3: Marker present with NO payload field → FAIL (presence leg
+        # names the missing marker-keyed field).
+        conf_gate_expect({"backlog/TD-005.md": good_td.replace(
+                              "- **Scope**: feature\n", "")},
+                         "missing the 'Scope' payload field",
+                         "conformance-missing-marker-payload")
+        # s4: templated Scope phase-12 matches the scope-enum phase-N
+        # member as phase-\d+ → PASS (template direction).
+        conf_gate({"backlog/TD-006.md": good_td.replace(
+                       "- **Scope**: feature\n", "- **Scope**: phase-12\n")},
+                  False, "conformance-scope-phase-template")
+        # s5: reached-for-backlog — an out-of-enum Scope FAILs via the
+        # payload legs, proving they execute against the backlog subdir
+        # (mirror of s1's direction).
+        conf_gate_expect({"backlog/TD-007.md": good_td.replace(
+                              "- **Scope**: feature\n",
+                              "- **Scope**: architecture\n")},
+                         "not in scope-enum",
+                         "conformance-payload-leg-reached")
+        # s6: Marker KNOWN GAP with NO payload field → FAIL (presence leg,
+        # reached through the quoted-marker re-join: the schema pair
+        # `"KNOWN GAP"=Severity` must survive tokenization for this branch
+        # to fire, so a re-join regression cannot pass silently).
+        conf_gate_expect({"backlog/TD-008.md": good_td
+                          .replace("- **Marker**: TODO\n",
+                                   "- **Marker**: KNOWN GAP\n")
+                          .replace("- **Scope**: feature\n", "")},
+                         "missing the 'Severity' payload field",
+                         "conformance-missing-knowngap-payload")
 
         # --- _index.md MANDATORY validation (BD-206 O11) two-property leg ---
         # Two conforming phases + a valid topological `_index.md` → PASS.

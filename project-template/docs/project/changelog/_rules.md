@@ -26,8 +26,8 @@ mirror; do not recreate one. Validation runs against the tree.
 ## Filename convention
 
 Per-entry files match `^\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md$` (e.g.,
-`2026-04-20-phase-35.md`). Date-first for lexical sorting; the
-lowercase-kebab slug is mandatory.
+`2026-04-20-phase-35-live-preview-sandbox.md`). Date-first for lexical
+sorting; the lowercase-kebab slug is mandatory.
 
 ## Entry contract
 
@@ -61,13 +61,16 @@ word counts; the word cap measures whichever narrative field is present.
 ## Filename mapping
 
 The per-entry filename is `YYYY-MM-DD-<slug>.md` where `<slug>` mirrors
-the heading suffix (e.g. `### 2026-04-20 — Phase 35 — Live Preview Sandbox`
-→ `2026-04-20-phase-35.md`;
+the entire heading suffix, slugified (e.g.
+`### 2026-04-20 — Phase 35 — Live Preview Sandbox`
+→ `2026-04-20-phase-35-live-preview-sandbox.md`;
 `### 2026-03-20 — Architecture Iteration — Notification Event Model`
-→ `2026-03-20-architecture-iteration.md`;
+→ `2026-03-20-architecture-iteration-notification-event-model.md`;
 `### 2026-07-04 — Release boundary — v2.3 shipped`
-→ `2026-07-04-release-boundary.md`). Entries read in
-date-descending order (newest first).
+→ `2026-07-04-release-boundary-v2-3-shipped.md`). Filenames are unique
+by construction — two identical full headings are an authoring error
+(extend the newer heading). Entries read in date-descending order
+(newest first).
 
 ## Lifecycle states admitted
 
