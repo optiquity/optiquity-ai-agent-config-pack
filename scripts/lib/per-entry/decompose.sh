@@ -9,6 +9,18 @@
 #       running twice on the same input is a no-op the second time
 #       (the output tree is byte-identical).
 #
+#   Optional env PE_DECOMPOSE_DROPPED=<absolute path> — dropped-content
+#       capture sink. When set, the walker TRUNCATES the capture file at
+#       decompose start (re-entry never double-appends), then appends
+#       every line the walk ignores (pre-first-anchor preamble;
+#       section-break line + following non-anchor lines; H1-break line +
+#       following non-anchor lines) VERBATIM, in input order. Each
+#       contiguous ignored block is preceded by exactly one delimiter
+#       line `<!-- v10 monolith lines A–B -->` (A/B = 1-based inclusive
+#       monolith line numbers of the block; en-dash). When unset:
+#       ignored lines are discarded (legacy behavior; existing callers
+#       unaffected).
+#
 # Architecture:
 #   maintenance-docs/v11-research/ARCHITECTURE-PER-ENTRY-SPLIT.md
 #     §3 (per-entry directory shape, 5 streams)
@@ -54,11 +66,14 @@ per_entry_decompose() {
     [[ -f "$mono_path" ]] || pe_die "per_entry_decompose: monolithic input not found: $mono_path"
     [[ -d "$stream_dir" ]] || pe_die "per_entry_decompose: stream dir not found: $stream_dir"
 
-    # Dispatch to the python helper for parsing + writing.
+    # Dispatch to the python helper for parsing + writing. The optional
+    # PE_DECOMPOSE_DROPPED capture path passes through only when the
+    # caller set it (empty = unset = legacy ignore semantics).
     PE_DECOMPOSE_KEY="$key" \
     PE_DECOMPOSE_MONO="$mono_path" \
     PE_DECOMPOSE_DIR="$stream_dir" \
     PE_DECOMPOSE_REGEX="$entry_regex" \
+    PE_DECOMPOSE_DROPPED="${PE_DECOMPOSE_DROPPED:-}" \
         python3 - <<'PYEOF' || pe_die "per_entry_decompose: python parser failed"
 import os
 import re
@@ -72,6 +87,9 @@ try:
 except KeyError as e:
     sys.stderr.write(f"per-entry decompose: missing env var {e.args[0]}\n")
     sys.exit(2)
+
+# Optional dropped-content capture sink (empty = unset = legacy).
+dropped_path = os.environ.get("PE_DECOMPOSE_DROPPED", "")
 
 # ─── Read input ──────────────────────────────────────────────
 with open(mono_path, "r", encoding="utf-8", newline="") as f:
@@ -104,14 +122,24 @@ if not text.endswith("\n"):
 #                                  per Addendum #1 §6.4 BD-167 spec
 #                                  decision: tasks-inline, no
 #                                  per-task files)
-#   project-changelog             ### YYYY-MM-DD — Phase N — Title
-#                                 OR ### YYYY-MM-DD — <slug>
+#   project-changelog             ### YYYY-MM-DD — <suffix>
+#                                  (the ` — <suffix>` is MANDATORY; the
+#                                   id is the date + the ENTIRE suffix
+#                                   slugified — see the stream branch
+#                                   below)
 #
 # We anchor on the line that begins the entry; the entry continues
 # until the next anchor line OR an `## ` H2 boundary that is NOT
 # part of the entry (e.g., `## How to use this file`,
 # `## Active — v11 Scope`, `## Resolved — v8 (March 2026)`,
 # `## Deferred`).
+#
+# Every `id_extract` takes (line, lineno) — the monolith line number
+# feeds the fail-loud guards' diagnostics.
+
+# Set by the project-changelog branch only; drives the walk-loop
+# bare-date fail-loud guard.
+date_prefix_re = None
 
 if key == "pack-backlog":
     # BD-211 — canonical backlog anchor: `**BD-NNN — <Title>**`. NO
@@ -123,7 +151,7 @@ if key == "pack-backlog":
     # re-decompose. See
     # maintenance-docs/v11-implementation/ARCHITECTURE-BD-211.md §3.2.
     anchor_re = re.compile(r"^\*\*(BD-\d+)\s+— ")
-    id_extract = lambda line: anchor_re.match(line).group(1)
+    id_extract = lambda line, lineno: anchor_re.match(line).group(1)
     # Section H2 boundaries that close an entry: any new `## ` heading.
     section_break_re = re.compile(r"^## ")
 elif key == "pack-changelog":
@@ -135,7 +163,7 @@ elif key == "pack-changelog":
     # all releases including v1–v7 (H2-only, no `### vN.M` child). See
     # ARCHITECTURE-BD-203-V3.md §2.3.
     anchor_re = re.compile(r"^## (v\d+)\b")
-    id_extract = lambda line: re.match(r"^## (v\d+)\b", line).group(1)
+    id_extract = lambda line, lineno: re.match(r"^## (v\d+)\b", line).group(1)
     # Under per-release granularity the H2 IS the anchor; a nested
     # `### vN.M` does NOT close the entry (it is part of the H2 block).
     # An entry closes only at the next `## ` heading — which is always
@@ -149,30 +177,41 @@ elif key == "project-backlog":
     # CROSS-SURFACE: serves the project stream; agrees with the already-
     # canonical project-template `_rules.md` (`^TD-\d+\.md$`).
     anchor_re = re.compile(r"^\*\*(TD-\d+)\s+— ")
-    id_extract = lambda line: anchor_re.match(line).group(1)
+    id_extract = lambda line, lineno: anchor_re.match(line).group(1)
     section_break_re = re.compile(r"^## ")
 elif key == "project-implementation-plan":
     # phase-N.md per Addendum #1 §6.4 (tasks inline, no per-task files).
     anchor_re = re.compile(r"^## Phase (\d+) — ")
-    id_extract = lambda line: "phase-" + re.match(r"^## Phase (\d+) — ", line).group(1)
+    id_extract = lambda line, lineno: "phase-" + re.match(r"^## Phase (\d+) — ", line).group(1)
     # Phase entries are bounded by the next `## Phase N+1 — ` OR a
     # different non-phase H2 (rare; treat any `## ` as boundary).
     section_break_re = re.compile(r"^## ")
 elif key == "project-changelog":
-    anchor_re = re.compile(r"^### (\d{4}-\d{2}-\d{2})(?: — Phase (\d+))?(?: — (.+?))?$")
-    def id_extract(line):
+    # Anchor: `### YYYY-MM-DD — <suffix>` — the ` — ` separator and a
+    # non-empty suffix are MANDATORY (stream contract:
+    # docs/project/changelog/_rules.md § Filename convention). The id
+    # mirrors the ENTIRE heading suffix after the FIRST ` — `, slugified
+    # (lowercase; runs of non-[a-z0-9] chars become `-`; edge dashes
+    # trimmed) — a second ` — ` inside the suffix is not special-cased
+    # (the em-dash slugifies to `-`). Filenames are unique by
+    # construction; identical full headings are an authoring error
+    # (duplicate-id guard in the walk loop). A `### YYYY-MM-DD`-prefixed
+    # line that fails the full anchor shape is fail-loud (bare-date
+    # guard in the walk loop), never silently glued in-span or dropped.
+    anchor_re = re.compile(r"^### (\d{4}-\d{2}-\d{2}) — (.+)$")
+    date_prefix_re = re.compile(r"^### \d{4}-\d{2}-\d{2}")
+    def _slugify(s):
+        return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
+    def id_extract(line, lineno):
         m = anchor_re.match(line)
-        date = m.group(1)
-        phase = m.group(2)
-        slug = m.group(3) or ""
-        if phase:
-            return f"{date}-phase-{phase}"
-        # Slug-form: best-effort slugification — lowercase, spaces→dashes,
-        # strip non-[a-z0-9-] chars.
-        s = re.sub(r"[^a-z0-9-]+", "-", slug.lower()).strip("-")
-        if not s:
-            return date
-        return f"{date}-{s}"
+        slug = _slugify(m.group(2))
+        if not slug:
+            sys.stderr.write(
+                f"per-entry decompose: monolith line {lineno}: "
+                "bare-date/empty-slug heading; the stream contract "
+                "requires a mandatory slug: " + line.rstrip("\n") + "\n")
+            sys.exit(2)
+        return m.group(1) + "-" + slug
     section_break_re = re.compile(r"^## ")
 else:
     sys.stderr.write(f"per-entry decompose: unsupported stream key: {key}\n")
@@ -180,13 +219,25 @@ else:
 
 # ─── Walk the monolithic file ───────────────────────────────
 #
-# Algorithm:
-#   1. Iterate lines, tracking the current entry start (or None).
-#   2. On anchor match: close prior entry (write to disk); open new entry.
-#   3. On section-break that is NOT an anchor: close prior entry; do
-#      not open a new one (lines until next anchor are ignored — they
-#      are non-entry preamble / scaffolding, NOT per-entry content).
-#   4. EOF: close prior entry if open.
+# Algorithm (fence state is evaluated BEFORE any other line
+# classification):
+#   0. A line starting with ``` toggles fenced-code state; the toggle
+#      line itself is routed by the PRE-toggle state's entry/ignore
+#      disposition. While inside a fence NO line is an anchor, a
+#      section break, or an H1 break.
+#   1. Iterate lines (1-based line numbers), tracking the current
+#      entry start (or None).
+#   2. On anchor match: duplicate-id guard (fail-loud naming both
+#      monolith lines, BEFORE any write); close prior entry (write to
+#      disk); open new entry.
+#   3. On a section break (`## ` non-anchor) OR an H1 break (`# `
+#      non-anchor outside a fence, seen after the first anchor): close
+#      prior entry; do not open a new one. The break line + following
+#      non-anchor lines are ignore/capture-routed (appended verbatim to
+#      the PE_DECOMPOSE_DROPPED capture when set; discarded when unset).
+#   4. Pre-first-anchor preamble lines take the same ignore/capture
+#      route.
+#   5. EOF: close prior entry if open; flush any pending capture block.
 #
 # An entry's CONTENT is ALL lines from the anchor line through the
 # line BEFORE the boundary (exclusive of the boundary line itself).
@@ -267,11 +318,85 @@ def write_entry(stream_dir, key, entry_id, body_lines):
     os.replace(tmp_path, out_path)
 
 written = 0
-for line in lines:
-    is_anchor = bool(anchor_re.match(line))
-    is_section_break = bool(section_break_re.match(line)) and not is_anchor
+seen_ids = {}  # id -> monolith line number of its anchor (duplicate guard)
+in_fence = False
+
+# Dropped-content capture sink (PE_DECOMPOSE_DROPPED). Truncated at
+# decompose start; each contiguous ignored block is written as one
+# provenance delimiter line `<!-- v10 monolith lines A–B -->` followed
+# by the block's lines verbatim.
+capture = None
+if dropped_path:
+    capture = open(dropped_path, "w", encoding="utf-8", newline="")
+drop_buf = []
+drop_start = 0
+drop_end = 0
+
+def drop_line(line, lineno):
+    """Route an ignored line to the capture sink (verbatim) when set."""
+    global drop_start, drop_end
+    if capture is None:
+        return
+    if not drop_buf:
+        drop_start = lineno
+    drop_buf.append(line)
+    drop_end = lineno
+
+def flush_dropped():
+    """Write the pending contiguous ignored block (delimiter + lines)."""
+    global drop_buf
+    if capture is not None and drop_buf:
+        capture.write(f"<!-- v10 monolith lines {drop_start}–{drop_end} -->\n")
+        for dropped in drop_buf:
+            capture.write(dropped)
+    drop_buf = []
+
+for lineno, line in enumerate(lines, start=1):
+    # Fence state FIRST: inside a fence no line is an anchor, a section
+    # break, or an H1 break. The toggle line itself is routed by the
+    # PRE-toggle state's disposition (the opening fence line belongs to
+    # whatever span it opens within).
+    fence_toggle = line.startswith("```")
+    if in_fence:
+        is_anchor = False
+        is_section_break = False
+        is_h1_break = False
+    else:
+        is_anchor = bool(anchor_re.match(line))
+        is_section_break = bool(section_break_re.match(line)) and not is_anchor
+        # An H1 after the first anchor closes the current entry exactly
+        # as a section break does (a pre-first-anchor H1 is preamble;
+        # the close below is then a no-op and the line routes to the
+        # same ignore/capture arm).
+        is_h1_break = line.startswith("# ") and not is_anchor
+        # Fail-loud bare-date guard (project-changelog only). Evaluated
+        # independently of the strict anchor regex: a bare
+        # `### YYYY-MM-DD` line matches neither the anchor nor the
+        # section-break regex and would otherwise silently glue in-span
+        # or fall to the ignore arm.
+        if (date_prefix_re is not None and not is_anchor
+                and date_prefix_re.match(line)):
+            sys.stderr.write(
+                f"per-entry decompose: monolith line {lineno}: "
+                "bare-date/empty-slug heading; the stream contract "
+                "requires a mandatory slug: " + line.rstrip("\n") + "\n")
+            sys.exit(2)
+    if fence_toggle:
+        in_fence = not in_fence
 
     if is_anchor:
+        new_id = id_extract(line, lineno)
+        # Duplicate-id guard — fires BEFORE any write of either
+        # colliding entry, so `written` counts files on disk and no
+        # earlier file is silently overwritten.
+        if new_id in seen_ids:
+            sys.stderr.write(
+                f"per-entry decompose: duplicate entry id '{new_id}' "
+                f"(monolith lines {seen_ids[new_id]} and {lineno}): "
+                "identical full headings; extend the newer heading\n")
+            sys.exit(2)
+        seen_ids[new_id] = lineno
+        flush_dropped()
         # Close prior entry.
         if current_id is not None:
             body = normalize_entry(current_buf)
@@ -279,9 +404,9 @@ for line in lines:
                 write_entry(stream_dir, key, current_id, body)
                 written += 1
         # Open new entry.
-        current_id = id_extract(line)
+        current_id = new_id
         current_buf = [line]
-    elif is_section_break:
+    elif is_section_break or is_h1_break:
         # Close prior entry (without opening a new one).
         if current_id is not None:
             body = normalize_entry(current_buf)
@@ -290,20 +415,26 @@ for line in lines:
                 written += 1
             current_id = None
             current_buf = []
-        # The section-break line itself + any following non-anchor
-        # lines are NOT entry content; ignore until the next anchor.
+        # The break line itself + any following non-anchor lines are
+        # NOT entry content; ignore/capture until the next anchor.
+        drop_line(line, lineno)
     elif current_id is not None:
         current_buf.append(line)
-    # else: pre-first-anchor preamble; ignore (BD-203: the human-only
-    # orientation preamble lives in `_intro.md`; there is no mirror to
-    # re-inject it into for the pack).
+    else:
+        # Pre-first-anchor preamble: ignore/capture. (BD-203: the
+        # human-only orientation preamble lives in `_intro.md`; there
+        # is no mirror to re-inject it into for the pack).
+        drop_line(line, lineno)
 
-# EOF: close any open entry.
+# EOF: close any open entry + flush any pending capture block.
 if current_id is not None:
     body = normalize_entry(current_buf)
     if body:
         write_entry(stream_dir, key, current_id, body)
         written += 1
+flush_dropped()
+if capture is not None:
+    capture.close()
 
 sys.stderr.write(f"per-entry decompose: wrote {written} entry file(s) to {stream_dir}\n")
 PYEOF

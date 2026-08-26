@@ -14,6 +14,12 @@
 #      per-RELEASE granularity, nested subsections preserved.
 #  11. Bash 3.2 compatibility smoke: helpers source cleanly under
 #      `bash --norc -c`.
+#  13. Walker total-routing repairs (BD-291): fence-first classification,
+#      PE_DECOMPOSE_DROPPED capture sink (truncate-at-start, provenance
+#      delimiters), H1-break class.
+#  14. project-changelog whole-suffix naming + fail-loud guards (BD-291):
+#      mandatory-slug id model, duplicate-id guard, bare-date guard,
+#      written-count integrity.
 #
 # Usage: bash scripts/tests/test-per-entry.sh
 # Exit:  0 if all PASS; 1 on any FAIL.
@@ -481,6 +487,212 @@ cat >"$SCRATCH_ROOT/grp-toc-empty-expected.md" <<'EOF'
 EOF
 assert_byte_identical "12.11 empty groupings tree seeds '(empty — no entries)' _toc.md" \
     "$SCRATCH_ROOT/grp-toc-empty-expected.md" "$GRP_EMPTY/_toc.md"
+
+# ─────────────────────────────────────────────────────────────────
+# Group 13: walker total-routing repairs (BD-291) — fence state,
+# dropped-content capture, H1-break
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 13: walker fence / capture / H1-break (BD-291) ===\n"
+
+# Hazard fixture: fence carrying `## ` + `# ` lines inside an entry
+# body; a mid-file `# Milestone`-style H1 divider; a trailing non-entry
+# `## ` section; a pre-first-anchor preamble.
+W13_ROOT="$SCRATCH_ROOT/walker-hazards"
+W13_DIR="$W13_ROOT/backlog"
+mkdir -p "$W13_DIR"
+cat >"$W13_ROOT/BACKLOG.md" <<'EOF'
+# Backlog
+
+Preamble line one.
+
+**BD-201 — Fence carrier**
+Type: TODO(version)
+Status: Open
+Description: carries a fence.
+```
+## fenced H2 stays in-span
+# fenced comment stays too
+```
+Tail line after fence.
+
+**BD-202 — Second entry**
+Type: TODO(version)
+Status: Open
+
+# Milestone divider
+Milestone context line.
+
+**BD-203 — Third entry**
+Type: TODO(version)
+Status: Open
+
+## Deferred section
+Deferred context line.
+EOF
+
+W13_CAP="$W13_ROOT/dropped.md"
+PE_DECOMPOSE_DROPPED="$W13_CAP" per_entry_decompose pack-backlog "$W13_ROOT/BACKLOG.md" "$W13_DIR" 2>/dev/null
+
+# Case 1: fenced `## ` inside an entry body stays in-span.
+BD201_BODY=$(cat "$W13_DIR/BD-201.md")
+assert_contains "13.1 fenced '## ' line stays in-span" "$BD201_BODY" "## fenced H2 stays in-span"
+
+# Case 2: fenced `# ` (shell-comment shape) stays in-span — never an
+# H1 break; the entry continues past the fence.
+assert_contains "13.2a fenced '# ' line stays in-span" "$BD201_BODY" "# fenced comment stays too"
+assert_contains "13.2b entry continues past the closing fence" "$BD201_BODY" "Tail line after fence."
+
+# Case 3: capture receives preamble + H1 block + section-break block,
+# verbatim, with exact `<!-- v10 monolith lines A–B -->` delimiters.
+cat >"$SCRATCH_ROOT/w13-capture-expected.md" <<'EOF'
+<!-- v10 monolith lines 1–4 -->
+# Backlog
+
+Preamble line one.
+
+<!-- v10 monolith lines 19–21 -->
+# Milestone divider
+Milestone context line.
+
+<!-- v10 monolith lines 26–27 -->
+## Deferred section
+Deferred context line.
+EOF
+assert_byte_identical "13.3 capture content + delimiters byte-exact" \
+    "$SCRATCH_ROOT/w13-capture-expected.md" "$W13_CAP"
+
+# Case 4: re-running decompose truncates-then-rewrites the capture
+# (byte-identical after 2 runs — no double-append).
+cp "$W13_CAP" "$SCRATCH_ROOT/w13-capture.snap1"
+PE_DECOMPOSE_DROPPED="$W13_CAP" per_entry_decompose pack-backlog "$W13_ROOT/BACKLOG.md" "$W13_DIR" 2>/dev/null
+assert_byte_identical "13.4 re-run truncates-then-rewrites the capture (no double-append)" \
+    "$SCRATCH_ROOT/w13-capture.snap1" "$W13_CAP"
+
+# Case 5: PE_DECOMPOSE_DROPPED unset — legacy ignore semantics; the
+# entry tree is byte-identical to the env-set run's (the capture sink
+# never perturbs routing) and no capture file is created. (Groups 9/10
+# pin the legacy fixtures' unset-env behavior.)
+W13_UNSET_DIR="$W13_ROOT/backlog-unset"
+mkdir -p "$W13_UNSET_DIR"
+per_entry_decompose pack-backlog "$W13_ROOT/BACKLOG.md" "$W13_UNSET_DIR" 2>/dev/null
+assert_byte_identical "13.5a unset-env BD-201.md byte-identical" "$W13_DIR/BD-201.md" "$W13_UNSET_DIR/BD-201.md"
+assert_byte_identical "13.5b unset-env BD-202.md byte-identical" "$W13_DIR/BD-202.md" "$W13_UNSET_DIR/BD-202.md"
+assert_byte_identical "13.5c unset-env BD-203.md byte-identical" "$W13_DIR/BD-203.md" "$W13_UNSET_DIR/BD-203.md"
+UNSET_COUNT=$(ls "$W13_UNSET_DIR" | wc -l | tr -d ' ')
+assert_eq "13.5d unset-env run creates no capture file (3 entry files only)" "3" "$UNSET_COUNT"
+
+# Case 6: H1-break — the mid-file H1 closes the open entry; the entry
+# file excludes it; the capture includes it.
+BD202_BODY=$(cat "$W13_DIR/BD-202.md")
+assert_eq "13.6a BD-202.md excludes the H1 divider" \
+    "no" "$(printf '%s' "$BD202_BODY" | grep -q '# Milestone divider' && echo yes || echo no)"
+assert_eq "13.6b BD-202.md excludes the post-H1 context line" \
+    "no" "$(printf '%s' "$BD202_BODY" | grep -q 'Milestone context line.' && echo yes || echo no)"
+W13_CAP_BODY=$(cat "$W13_CAP")
+assert_contains "13.6c capture includes the H1 divider" "$W13_CAP_BODY" "# Milestone divider"
+
+# ─────────────────────────────────────────────────────────────────
+# Group 14: project-changelog whole-suffix naming + fail-loud guards
+# (BD-291)
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 14: project-changelog whole-suffix naming + fail-louds (BD-291) ===\n"
+
+# Case 7: whole-suffix naming — a same-date same-phase pair with
+# distinct suffixes yields TWO files (the collision shape), and a
+# one-em-dash suffix slugifies whole.
+W14_ROOT="$SCRATCH_ROOT/changelog-naming"
+W14_DIR="$W14_ROOT/docs/project/changelog"
+mkdir -p "$W14_DIR"
+cat >"$W14_ROOT/CHANGELOG.md" <<'EOF'
+# Changelog
+
+### 2026-05-01 — Phase 1 — Alpha
+- alpha bullet.
+
+### 2026-05-01 — Phase 1 — Beta
+- beta bullet.
+
+### 2026-06-15 — Phase 1 milestone
+- milestone bullet.
+EOF
+W14_ERR=$(per_entry_decompose project-changelog "$W14_ROOT/CHANGELOG.md" "$W14_DIR" 2>&1 >/dev/null)
+[[ -f "$W14_DIR/2026-05-01-phase-1-alpha.md" ]] \
+    && t_pass "14.1a same-date pair file 1 (2026-05-01-phase-1-alpha.md)" \
+    || t_fail "14.1a same-date pair file 1 (2026-05-01-phase-1-alpha.md)"
+[[ -f "$W14_DIR/2026-05-01-phase-1-beta.md" ]] \
+    && t_pass "14.1b same-date pair file 2 (2026-05-01-phase-1-beta.md)" \
+    || t_fail "14.1b same-date pair file 2 (2026-05-01-phase-1-beta.md)"
+assert_contains "14.1c alpha entry carries its own body" "$(cat "$W14_DIR/2026-05-01-phase-1-alpha.md" 2>/dev/null)" "- alpha bullet."
+assert_contains "14.1d beta entry carries its own body" "$(cat "$W14_DIR/2026-05-01-phase-1-beta.md" 2>/dev/null)" "- beta bullet."
+[[ -f "$W14_DIR/2026-06-15-phase-1-milestone.md" ]] \
+    && t_pass "14.2 one-em-dash suffix slugifies whole (2026-06-15-phase-1-milestone.md)" \
+    || t_fail "14.2 one-em-dash suffix slugifies whole (2026-06-15-phase-1-milestone.md)"
+
+# Case 10: written-count integrity — the summary's "wrote N" equals the
+# number of entry files on disk.
+WROTE_N=$(printf '%s\n' "$W14_ERR" | sed -n 's/^per-entry decompose: wrote \([0-9]*\) entry file(s).*/\1/p')
+DISK_N=$(ls "$W14_DIR" | wc -l | tr -d ' ')
+assert_eq "14.3 'wrote N' summary equals files on disk" "$DISK_N" "$WROTE_N"
+
+# Case 8: identical-heading pair → fail-loud naming BOTH monolith
+# lines; no partial write of the colliding entry.
+W14_DUP_ROOT="$SCRATCH_ROOT/changelog-dup"
+W14_DUP_DIR="$W14_DUP_ROOT/docs/project/changelog"
+mkdir -p "$W14_DUP_DIR"
+cat >"$W14_DUP_ROOT/CHANGELOG.md" <<'EOF'
+### 2026-07-01 — Phase 2 — Gamma
+- gamma one.
+### 2026-07-01 — Phase 2 — Gamma
+- gamma two.
+EOF
+DUP_RC=0
+DUP_OUT=$(per_entry_decompose project-changelog "$W14_DUP_ROOT/CHANGELOG.md" "$W14_DUP_DIR" 2>&1) || DUP_RC=$?
+assert_eq "14.4a duplicate full heading fails loud (non-zero rc)" "no" \
+    "$([[ "$DUP_RC" -eq 0 ]] && echo yes || echo no)"
+assert_contains "14.4b failure names both monolith lines" "$DUP_OUT" "monolith lines 1 and 3"
+assert_contains "14.4c failure carries the authoring instruction" "$DUP_OUT" "extend the newer heading"
+[[ -f "$W14_DUP_DIR/2026-07-01-phase-2-gamma.md" ]] \
+    && t_fail "14.4d no partial write of the colliding entry" "file exists" \
+    || t_pass "14.4d no partial write of the colliding entry"
+
+# Case 9: bare-date anchor (no ` — <suffix>`) → fail-loud naming the
+# line. Bites the guard WIRING: the strict anchor regex cannot see a
+# bare `### YYYY-MM-DD` line (and `^## ` cannot either), so only the
+# independent date-prefix classification can catch it.
+W14_BARE_ROOT="$SCRATCH_ROOT/changelog-bare"
+W14_BARE_DIR="$W14_BARE_ROOT/docs/project/changelog"
+mkdir -p "$W14_BARE_DIR"
+cat >"$W14_BARE_ROOT/CHANGELOG.md" <<'EOF'
+### 2026-08-01 — Phase 3 — Delta
+- delta bullet.
+### 2026-08-09
+- orphan bullet.
+EOF
+BARE_RC=0
+BARE_OUT=$(per_entry_decompose project-changelog "$W14_BARE_ROOT/CHANGELOG.md" "$W14_BARE_DIR" 2>&1) || BARE_RC=$?
+assert_eq "14.5a bare-date heading fails loud (non-zero rc)" "no" \
+    "$([[ "$BARE_RC" -eq 0 ]] && echo yes || echo no)"
+assert_contains "14.5b failure names the monolith line" "$BARE_OUT" "monolith line 3"
+assert_contains "14.5c failure states the mandatory-slug contract" "$BARE_OUT" "mandatory slug"
+
+# Empty-slug variant of the same guard: a suffix that slugifies to
+# nothing is as fail-loud as a bare date.
+W14_EMPTY_ROOT="$SCRATCH_ROOT/changelog-emptyslug"
+W14_EMPTY_DIR="$W14_EMPTY_ROOT/docs/project/changelog"
+mkdir -p "$W14_EMPTY_DIR"
+cat >"$W14_EMPTY_ROOT/CHANGELOG.md" <<'EOF'
+### 2026-08-01 — Phase 3 — Delta
+- delta bullet.
+### 2026-08-09 — !!!
+- orphan bullet.
+EOF
+EMPTY_RC=0
+EMPTY_OUT=$(per_entry_decompose project-changelog "$W14_EMPTY_ROOT/CHANGELOG.md" "$W14_EMPTY_DIR" 2>&1) || EMPTY_RC=$?
+assert_eq "14.6a empty-slug suffix fails loud (non-zero rc)" "no" \
+    "$([[ "$EMPTY_RC" -eq 0 ]] && echo yes || echo no)"
+assert_contains "14.6b failure names the monolith line" "$EMPTY_OUT" "monolith line 3"
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

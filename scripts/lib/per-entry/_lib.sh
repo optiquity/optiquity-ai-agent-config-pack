@@ -113,12 +113,8 @@ pe__stream_attr() {
             ;;
         project-changelog)
             case "$2" in
-                # Slug is OPTIONAL per sidecar §3.5 (OT convention typically
-                # carries a slug, but the design does not lock it). The
-                # decompose `id_extract` bare-date fall-back returns
-                # `YYYY-MM-DD.md` for unannotated H3 anchors; this regex
-                # admits both shapes. Mirrored in toc-regenerate.sh:88.
-                entry-regex) printf '^[0-9]{4}-[0-9]{2}-[0-9]{2}(-.+)?\.md$' ;;
+                # Mandatory slug — the stream contract (docs/project/changelog/_rules.md § Filename convention) is the rule's source.
+                entry-regex) printf '^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+\.md$' ;;
                 support) printf '_rules.md _intro.md _toc.md' ;;
                 dir-suffix) printf 'docs/project/changelog' ;;
             esac

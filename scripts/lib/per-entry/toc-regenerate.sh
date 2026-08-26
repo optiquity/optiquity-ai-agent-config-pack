@@ -94,8 +94,10 @@ entry_regex_for_stream = {
     "pack-changelog":              re.compile(r"^v\d+\.md$"),
     "project-backlog":             re.compile(r"^TD-\d+\.md$"),
     "project-implementation-plan": re.compile(r"^phase-\d+\.md$"),
-    # Slug is optional per sidecar §3.5; mirrors _lib.sh:101.
-    "project-changelog":           re.compile(r"^\d{4}-\d{2}-\d{2}(-.+)?\.md$"),
+    # Mandatory slug (mirrors the _lib.sh project-changelog entry-regex;
+    # the stream contract docs/project/changelog/_rules.md § Filename
+    # convention is the rule's source).
+    "project-changelog":           re.compile(r"^\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md$"),
     # BD-262: TIGHTENED — exactly 3 digits zero-padded through GRP-999,
     # unpadded 4+ digits from GRP-1000 (kills GRP-0000; mirrors _lib.sh).
     "project-groupings":           re.compile(r"^GRP-(\d{3}|[1-9]\d{3,})\.md$"),
