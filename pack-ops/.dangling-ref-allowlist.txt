@@ -138,6 +138,9 @@ reason: G2 — runtime-GENERATED per-entry index (regenerated after every entry 
 token: docs/project/groupings/_toc.md
 reason: G2 — runtime-GENERATED per-entry index (regenerated after every entry edit per this stream's _rules.md); absent from the shipped template by design.
 
+token: docs/project/MIGRATION-TRIAGE.md
+reason: G2 — migrator-GENERATED migration-transient client file (the v10→v11 per-entry decompose sub-op, scripts/lib/migrate-v10-to-v11/decompose.sh, writes it on the client tree at migration run time; the client deletes it when triage completes); never a repo or template file, cited by the migration instructions.
+
 # ─────────────────────────────────────────────────────────────────
 # G3 — self-flagged RETIRED / DECLINED / ORPHAN / HISTORICAL references
 # ─────────────────────────────────────────────────────────────────
