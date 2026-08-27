@@ -23,6 +23,7 @@
 - [BD-292](./BD-292.md) — Migration harness diagnostics: a failed sandbox run destroys its own evidence, and Gate 2's validate-pack leg couples the client's migration outcome to the pack tree's state
 - [BD-293](./BD-293.md) — A correct v11 install fails the pack's own client doc-gate: fix the 25 pack-owned findings + the install-map/migrator divergence at source, and prove the update path remediates an already-migrated client with no re-migration
 - [BD-294](./BD-294.md) — The shipped trinity instructs an edit the graft engine cannot accept, and the graft's documented order-independence does not hold: fix the contract collision + ship a one-time in-place remediation for already-migrated clients
+- [BD-295](./BD-295.md) — `init-project.sh --update` has no baseline: it classifies every file `project-shadows-new-pack` without comparing, is not idempotent, and never reaches the prompts or skills trees — so no client can safely take any pack release
 
 ## Deferred
 
