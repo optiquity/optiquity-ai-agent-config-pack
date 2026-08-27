@@ -1,25 +1,25 @@
 {
   "schema": "pack-session-state/1",
   "boundary_commit": "7ea4d33",
-  "checkpoint": "2026-08-26T14:00:00Z",
+  "checkpoint": "2026-08-27T17:27:33Z",
   "active": [
-    "No BD in flight. BD-291 Resolved (acceptance measured on a read-only target scratch clone: accounting PASS x3 streams, set-equality GREEN 72==72). BD-290 Resolved earlier. Launch gate now belongs to the user."
+    "BD-293 (install fidelity + update-path remediation) + BD-294 (trinity graft contract collision) OPEN, both v11.0 launch-gating, from the client v11 defect report. Stage 1 researcher running: update-path-from-migrated-baseline is the priority measurement -- every remediation claim depends on it."
   ],
   "in_flight_agents": [
-    "NONE RUNNING. All BD-291 waves landed, review-clean, CI-green; workspaces torn down."
+    "docsresearcher-bd293-census (pack-docs-researcher, isolation:worktree, background) -- 4-pass census; report: ~/.local/state/optiquity-pack-handoff/bd293-census-20260827T172733Z/IMPL-REPORT.md"
   ],
   "queue": [
-    "user: relay the migration fidelity guarantee + verify command (supporting-docs/MIGRATION-v10-to-v11.md Step 3) to the target-app PM chat + the second pack chat",
-    "user + target-app PM chat: run the REAL v10->v11 migration on the target app using the shipped instructions (never pack agents)",
-    "user: flip the repo public (the launch) -- opens once the real target-app migration succeeds on v11.0"
+    "BD-293 pipeline: researcher -> architect (needs user spawn approval) -> adversarial -> reconciliation-if-findings -> user design review -> planner chain -> coder waves",
+    "BD-294 pipeline: same, sequenced after BD-293's source fixes; D3 DIRECTION is a user decision at its design review after the architect measures each option's effect on existing installs",
+    "user: flip the repo public (the launch) -- now gated on BD-293 + BD-294 (a fresh install must pass its own shipped gate; the trinity must be graftable)"
   ],
   "parallelization": "SERIAL. Nothing in flight.",
-  "wave": "v11.0 (RC1) CI-green; main sole live branch; repo still private. Open BDs 16 incl. BD-292 (harness evidence-retention + Gate-2 coupling, v11.0 default). BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
+  "wave": "v11.0 (RC1) CI-green; main sole live branch; repo still private. Client v11 migration SUCCEEDED (data fidelity proven, BD-291) but a correct install fails the shipped client doc-gate 25x on pack-owned files -> BD-293/294. Open BDs 18. BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
   "pending_decisions": [
     "LOCKED: main history is PRESERVED intact -- NO squash, NO rewrite, ever.",
     "LOCKED: NO scrub. Target-app initials and generic vocabulary are ACCEPTABLE on internal surfaces; the Check 93 two-tier model is UNCHANGED. ONE repo forever.",
     "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no narration, under the byte cap); modes review=itemized intervention=full isolation=full (user-selected post-BD-290; the repaired contract); manifest-sync screen runs before EVERY push whose range touches fixture inputs.",
     "Standing (BD-291, user): launch gated on the target app working correctly on v11.0; issues found in the target-app v11.0 install are fixed pack-side before GA; synthetic/manual field fill acceptable only as shipped instructions executed by the target-app PM chat + user."
   ],
-  "cycle_position": "No commit cycle open, no worktree live. d1 close-out staged for approval."
+  "cycle_position": "No commit cycle open, no worktree live. BD-293 + BD-294 opens staged for approval."
 }
