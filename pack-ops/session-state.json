@@ -1,14 +1,14 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "0bd90c0",
-  "checkpoint": "2026-08-29T17:05:00Z",
+  "boundary_commit": "3b56d83",
+  "checkpoint": "2026-08-29T20:05:00Z",
   "active": [
-    "BD-293+BD-295 Wave A at fix-pass stage. Criterion amendment LANDED + pushed (bounded cycle closed CLEAN). USER DECISIONS in force: requirements.toml fix -> C6; Check-67 pack-side mirror -> folded into C4's fix pass, inside BD-293, NO new entry; C4-03 stale citations -> fixed now, no new entry; Wave-A triage approved fix-all."
+    "BD-293+BD-295 Wave A COMPLETE and pushed: C1, C3, C2 one commit each; C4 as two (client half first). All four closed CLEAN on their final reviewer; none escalated. Next: C5 (needs C4), then Wave B C6->C7 || C8."
   ],
-  "in_flight_agents": [
-    "fixcoder-bd293-c2b + fixcoder-bd293-c4b (2 isolated, each its wave's SECOND AND FINAL fix pass, reusing the live commit workspaces)"
-  ],
+  "in_flight_agents": [],
   "queue": [
+    "SCHEDULED into C6 (from Wave-A closing reviews, inside BD-293, no new entry): install-map.sh header claims a runtime source neither init-project.sh nor the migrator performs -- correct the tense in the commit that adds the source line; add a non-empty floor INSIDE install-map.sh so a grammar-broken map cannot return rc=0 with zero rows; the .codex/requirements.toml comment-loss fix.",
+    "SCHEDULED into BD-293's remaining commits (C5..C15): tether validate-docs.sh IN_GLOBS/EXCLUDE_BASENAMES to the hand-copied mirror in test-validate-docs-template-fullscan.sh and delete the hand-copy; reword the Check 65 + Check 67 dead-record message together ('cleared no marker-carrying line'); strengthen that test's L3 predicate to the load-bearing form (strip_blocks then axis-match) -- L3 called 4 deny-list-region records live while they cleared nothing.",
     "BD-293 pipeline: researcher -> architect (needs user spawn approval) -> adversarial -> reconciliation-if-findings -> user design review -> planner chain -> coder waves",
     "BD-294 pipeline: same, sequenced after BD-293's source fixes; D3 DIRECTION is a user decision at its design review after the architect measures each option's effect on existing installs",
     "user: flip the repo public (the launch) -- now gated on BD-293 + BD-294 (a fresh install must pass its own shipped gate; the trinity must be graftable)"
@@ -21,5 +21,5 @@
     "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no narration, under the byte cap); modes review=itemized intervention=full isolation=full (user-selected post-BD-290; the repaired contract); manifest-sync screen runs before EVERY push whose range touches fixture inputs.",
     "Standing (BD-291, user): launch gated on the target app working correctly on v11.0; issues found in the target-app v11.0 install are fixed pack-side before GA; synthetic/manual field fill acceptable only as shipped instructions executed by the target-app PM chat + user."
   ],
-  "cycle_position": "Wave A: C1 + C3 reviewed CLEAN and landing now (C1 carries the user-approved merge-trinity.py deletion); C2 + C4 each in their final fix pass, then one final reviewer each. C4 lands as TWO commits, client half first (its set spans pack+client, so no single scope keyword holds)."
+  "cycle_position": "No commit cycle open. Wave A landed + pushed; awaiting C5 spawn."
 }
