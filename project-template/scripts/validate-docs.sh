@@ -104,12 +104,26 @@ ARG_FILE = os.environ.get("ARG_FILE", "")
 # ---------------------------------------------------------------------------
 # The operating-doc IN families (globbed relative to the project root). New
 # x-<name> skills / agents are auto-discovered by the globs.
+#
+# The skill globs are a UNION over both addresses a SKILL.md is ever found at,
+# never a choice between them: an installed project carries each skill at
+# `.{claude,codex,agents}/skills/<name>/SKILL.md`, while an uninstalled
+# template checkout carries the same file once at `skills/<name>/SKILL.md`.
+# One glob list therefore covers both tree shapes with no per-shape branch.
+# The four skill globs are mutually exclusive by leading path segment, so no
+# single file matches two of them; a tree that happens to carry BOTH addresses
+# scans both copies of the same content — redundant, never wrong. Dropping the
+# pool address would silently stop scanning the whole skill family in a
+# template checkout.
 # ---------------------------------------------------------------------------
 IN_GLOBS = [
     "CLAUDE.md", "AGENTS.md", "GEMINI.md",
     "docs/pack/*.md",
     "docs/pack/prompts/*.md",
     "skills/*/SKILL.md",
+    ".claude/skills/*/SKILL.md",
+    ".codex/skills/*/SKILL.md",
+    ".agents/skills/*/SKILL.md",
     ".claude/agents/*.md",
     ".codex/agents/*.toml",
     ".agents-plugin/optiquity-agents/agents/*.md",
@@ -191,6 +205,31 @@ def _commit_record(rec, by_doc, dangling_targets):
         by_doc.setdefault(doc, []).append(snippet)
 
 
+# A skill has ONE identity and ONE allowlist record, whichever address the
+# tree happens to carry it at. An installed project holds three copies of each
+# skill (.claude / .codex / .agents), fanned out from a single source file, so
+# a `doc:` key written against the canonical pool path
+# `skills/<name>/SKILL.md` resolves for every installed copy. Requiring three
+# near-duplicate records per skill instead would quietly break this file's own
+# promise that "the developer may add x-<concept> records the same way".
+_POOL_SKILL_RX = re.compile(
+    r"^\.(?:claude|codex|agents)/skills/(?P<name>[^/]+)/SKILL\.md$")
+
+
+def snippets_for(rel, by_doc):
+    """Allowlist snippets covering one scanned doc: the records keyed on its
+    own relpath, UNIONED with — for an installed skill copy — the records
+    keyed on the canonical pool path it was fanned out from. A union, so a
+    record written against either address keeps working."""
+    out = list(by_doc.get(rel, []))
+    m = _POOL_SKILL_RX.match(rel)
+    if m:
+        for snip in by_doc.get("skills/%s/SKILL.md" % m.group("name"), []):
+            if snip not in out:
+                out.append(snip)
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Code-block + deny-list-fence stripping. Fenced ``` blocks and
 # <!-- DENY-LIST-CONTENT-START/END --> regions (deliberate
@@ -216,6 +255,44 @@ def strip_blocks(text):
             continue
         out.append("" if (in_fence or in_deny) else line)
     return out
+
+
+# ---------------------------------------------------------------------------
+# DEFERRED-axis span masking (this masker feeds ONE matcher — see below).
+#
+# A deferral word inside an inline code span or a Markdown link target is a
+# NAME, not prose: `Deferred` is a status value the contract defines,
+# `deferred` is a phase-status token a rollup counts, and
+# docs/pack/roadmap.md is a path. None of them advertises a deferred feature,
+# which is the only thing the DEFERRED axis is for. The link TEXT is left
+# intact — that IS prose and is still scanned.
+#
+# SCOPE — this masker is wired to DEFERRED_PATTERN.search() and to nothing
+# else, deliberately:
+#   * covered() keeps the UNMASKED line. Allowlist snippets are raw
+#     substrings of the real text and several of them quote a code span, so a
+#     masked line would stop matching its own record and the gate would fail
+#     on lines it has already cleared.
+#   * the failure message keeps the UNMASKED line. The operator has to see
+#     what the file actually says, and it has to be the text an allowlist
+#     record would quote.
+#   * no other axis is masked. The DANGLING axis READS code spans and link
+#     targets — they are its entire input — so masking them any wider than
+#     one matcher would leave it scanning blanks while still reporting clean.
+# ---------------------------------------------------------------------------
+_MASK_CODE_SPAN = re.compile(r"`[^`\n]*`")
+_MASK_LINK_TARGET = re.compile(r"\]\([^)\n]*\)")
+
+
+def mask_spans(line):
+    """Blank inline code spans and Markdown link targets in one line.
+
+    Line length is NOT preserved — the only consumer is a position-independent
+    regex search. A code span is replaced by a space rather than deleted so
+    the words on either side of it stay separate tokens; the word-boundary
+    anchors in DEFERRED_PATTERN depend on that separation.
+    """
+    return _MASK_LINK_TARGET.sub("]()", _MASK_CODE_SPAN.sub(" ", line))
 
 
 # ---------------------------------------------------------------------------
@@ -390,7 +467,7 @@ def scan_doc(rel, root, by_doc, dangling_targets, relpaths):
         raw = open(path, encoding="utf-8").read()
     except OSError as e:
         return [f"{rel}: cannot read ({e})"]
-    snippets = by_doc.get(rel, [])
+    snippets = snippets_for(rel, by_doc)
     stripped = strip_blocks(raw)
 
     # AXIS: history
@@ -405,8 +482,11 @@ def scan_doc(rel, root, by_doc, dangling_targets, relpaths):
             f"    {REMEDIATION_HISTORY}")
 
     # AXIS: deferred
+    # The MATCHER sees the masked line (a deferral word inside a code span or
+    # a link target is a name, not an advert). covered() and the failure
+    # message below both keep the UNMASKED line — see mask_spans.
     for lineno, line in enumerate(stripped, 1):
-        if not DEFERRED_PATTERN.search(line):
+        if not DEFERRED_PATTERN.search(mask_spans(line)):
             continue
         if covered(line, snippets):
             continue
@@ -2033,13 +2113,19 @@ def run_selftest():
     failures = []
 
     def gate(text, expect_fail, label, fname="CLAUDE.md",
-             extra_files=None, targets=None):
+             extra_files=None, targets=None, by_doc=None,
+             expect_contains=None):
         """Write `text` as `fname` into a temp tree, optionally seed
         `extra_files` (relpath -> content) alongside it, index the tree, and
-        scan. `targets` is passed as the dangling-axis `target:` allowlist."""
+        scan. `targets` is passed as the dangling-axis `target:` allowlist,
+        `by_doc` as the snippet allowlist. `expect_contains` pins WHICH axis
+        reported — without it a leg only knows that something failed, which
+        cannot tell a correctly-firing axis from a different one firing in
+        its place."""
         with tempfile.TemporaryDirectory() as td:
             # mirror the trinity location so bloat + IN membership apply
             p = os.path.join(td, fname)
+            os.makedirs(os.path.dirname(p), exist_ok=True)
             with open(p, "w", encoding="utf-8") as fh:
                 fh.write(text)
             for extra_rel, extra_text in (extra_files or {}).items():
@@ -2048,13 +2134,19 @@ def run_selftest():
                 with open(extra_path, "w", encoding="utf-8") as fh:
                     fh.write(extra_text)
             relpaths = build_index(td)
-            fails = scan_doc(fname, td, {}, targets or set(), relpaths)
+            fails = scan_doc(fname, td, by_doc or {}, targets or set(),
+                             relpaths)
             got_fail = bool(fails)
             if got_fail != expect_fail:
                 failures.append(
                     f"{label}: expected {'FAIL' if expect_fail else 'PASS'}, "
                     f"got {'FAIL' if got_fail else 'PASS'} "
                     f"({len(fails)} hit(s))")
+            elif expect_contains and expect_contains not in "\n".join(fails):
+                heads = "; ".join(f.splitlines()[0] for f in fails) or "(none)"
+                failures.append(
+                    f"{label}: expected a failure containing "
+                    f"{expect_contains!r}, got: {heads}")
 
     gate(clean, False, "clean-doc")
     gate(dirty_history, True, "history")
@@ -2102,6 +2194,81 @@ def run_selftest():
     gate("Configure `.agents/mcp_config.json` before the first run.\n",
          False, "dangling-dot-dir-allowlisted",
          targets=dot_dir_targets)
+
+    # --- DEFERRED SPAN-MASK legs: mask_spans hides a deferral word that is a
+    #     NAME (inside an inline code span or a Markdown link target) from the
+    #     DEFERRED matcher — and from NOTHING else. Both halves need pinning:
+    #     a mask that stops working narrows nothing but re-fails clean docs,
+    #     while a mask applied too widely silences axes that read spans as
+    #     their input and the gate goes green by seeing less. ---
+
+    # (1) A deferral word inside a code span is a status value, not an advert.
+    gate("A phase `Status:` newly set to `deferred` is scheduled next.\n",
+         False, "deferred-mask-code-span")
+
+    # (2) Same for a link TARGET — a path is not prose.
+    gate("See the [planning notes](docs/pack/roadmap.md) before starting.\n",
+         False, "deferred-mask-link-target",
+         extra_files={"docs/pack/roadmap.md": "notes\n"})
+
+    # (3) BITE: a REAL prose deferral still fires when the same line carries a
+    #     code span. The mask removes the span, never the sentence around it.
+    gate("The `retry` helper is deferred until the client is ready.\n",
+         True, "deferred-mask-prose-bite", expect_contains="[deferred]")
+
+    # (4) BITE: link TEXT is prose and stays scanned — only the target is
+    #     masked, so a deferral advert cannot hide behind a link.
+    gate("See the [roadmap](docs/pack/PM-CHAT.md) for what is planned.\n",
+         True, "deferred-mask-link-text-bite", expect_contains="[deferred]",
+         extra_files={"docs/pack/PM-CHAT.md": "the real file\n"})
+
+    # (5) BITE: the mask must not reach the DANGLING axis, whose entire input
+    #     IS code spans and link targets. Here the dead path sits inside a
+    #     code span AND carries a deferral word: correctly scoped, DEFERRED
+    #     stays quiet and DANGLING fires. A mask applied to the whole line
+    #     would silence BOTH and report a dead pointer as clean, so this leg
+    #     pins the axis by name rather than settling for "something failed".
+    gate("Consult `docs/pack/deferred-queue.md` when planning.\n",
+         True, "deferred-mask-does-not-blind-dangling",
+         expect_contains="[dangling]")
+
+    # (6) The mask must not reach covered() either. Allowlist snippets are RAW
+    #     substrings and several of them quote a code span, so a record whose
+    #     snippet carries backticks stops matching the moment covered() is
+    #     handed a masked line — and a doc the allowlist has already cleared
+    #     starts failing. The line below keeps its deferral word OUTSIDE the
+    #     span so the matcher still fires and the allowlist is what clears it.
+    span_snippet = {"CLAUDE.md": [
+        "`Unblocked` — a pending-decision state between Open and Deferred."]}
+    gate("- `Unblocked` — a pending-decision state between Open and "
+         "Deferred.\n",
+         False, "deferred-mask-not-applied-to-covered",
+         by_doc=span_snippet)
+
+    # (7) BITE: a code span is replaced by a SPACE, not deleted. Deleting it
+    #     would fuse the words on either side into one token and DEFERRED's
+    #     word-boundary anchors would stop matching a real advert. Here the
+    #     span splits a word: masked with a space the line reads "un deferred"
+    #     and fires; deleted it reads "undeferred" and goes silent.
+    gate("Work is un`X`deferred right now.\n",
+         True, "deferred-mask-span-is-a-separator",
+         expect_contains="[deferred]")
+
+    # --- POOL-IDENTITY leg: an installed project holds three copies of each
+    #     skill, fanned out from one source file, so ONE allowlist record
+    #     written against the canonical `skills/<name>/SKILL.md` pool path
+    #     must cover every installed copy (see snippets_for). ---
+    pool_record = {"skills/x-demo/SKILL.md": ["deferred by the pool record"]}
+    gate("A rule that is deferred by the pool record.\n",
+         False, "allowlist-pool-identity",
+         fname=".claude/skills/x-demo/SKILL.md", by_doc=pool_record)
+
+    # BITE: the same line with NO record must still fail, so the leg above
+    # proves the pool address resolved and not merely that nothing matched.
+    gate("A rule that is deferred by the pool record.\n",
+         True, "allowlist-pool-identity-bite",
+         fname=".claude/skills/x-demo/SKILL.md",
+         expect_contains="[deferred]")
 
     # --- BLOAT-HEADING BIJECTION leg: assert the bloat matcher's heading and
     #     the synthetic self-test docs' heading are the SAME literal. Both

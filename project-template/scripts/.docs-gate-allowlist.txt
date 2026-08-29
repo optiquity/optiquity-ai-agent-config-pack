@@ -74,22 +74,8 @@ pattern: incident
 snippet: incident or commit-SHA refs
 reason: rule self-reference — the no-history rule names "incident or commit-SHA refs" as a forbidden shape; not an audit-trail record.
 
-# --- Methodology rationale: the boundary-investigation skill names the
-#     regression CLASS (an "audit incident") it prevents — conceptual
-#     framing, not a dated audit-trail entry. ---
-doc: skills/boundary-investigation/SKILL.md
-pattern: incident
-snippet: The audit incident (P-missed-7) documented the regression mechanism
-reason: methodology rationale — the skill names the regression class it prevents (the P-missed-7 audit incident), not an audit-trail record.
-
-# --- Format / status-example dates: a doc that SHOWS the entry date grammar
-#     (the changelog format example + the Status-line date example) must
-#     carry an illustrative date. ---
-doc: docs/pack/PACK-FEEDBACK.md
-pattern: date
-snippet: Status: Ready (2026-06-15)
-reason: format example — illustrates the Status-line date grammar; not an audit-trail date.
-
+# --- Format-example dates: a doc that SHOWS the changelog entry date grammar
+#     must carry an illustrative date. ---
 doc: docs/project/changelog/_rules.md
 pattern: date
 snippet: 2026-04-20 — Phase 35
@@ -335,23 +321,11 @@ pattern: deferred
 snippet: are deferred
 reason: generic product advice — Swift concurrency guidance about the client's own code, not a deferred pack feature.
 
-# --- Workflow examples / status vocabulary that legitimately use the word. ---
-doc: docs/pack/PACK-FEEDBACK.md
-pattern: deferred
-snippet: is deferred until the JWT library ships
-reason: routing example — illustrates where a deferred-work note belongs (BACKLOG), not an operating-doc feature advert.
-
-doc: docs/pack/PACK-FEEDBACK.md
-pattern: deferred
-snippet: deferred because the pack repo has no real application code
-reason: routing rationale example — explains why a feedback item is routed, not a feature advert.
-
-# --- Pack-shipped operating docs installed into docs/pack/ (METHODOLOGY.md +
-#     INSTALL-PROCEDURES.md). The pack re-classified these REFERENCE→OPERATING,
-#     so the client gate now scans their installed copies on the DEFERRED axis.
-#     Every hit is the live TD-deferral workflow (the coder/PM "Deferred items"
-#     report flow, the TODO-scope vocabulary, the backlog-entry template), not a
-#     deferred feature. Sized to EXACTLY the 11 fence-stripped KEEP (9 + 2). ---
+# --- METHODOLOGY.md + INSTALL-PROCEDURES.md install into docs/pack/, so the
+#     gate scans them on the DEFERRED axis. Every hit is the live TD-deferral
+#     workflow (the coder/PM "Deferred items" report flow, the TODO-scope
+#     vocabulary, the backlog-entry template), not a deferred feature. Sized to
+#     EXACTLY the 13 fence-stripped KEEP (11 + 2). ---
 doc: docs/pack/METHODOLOGY.md
 pattern: deferred
 snippet: deferred items report. See Part 7
@@ -407,11 +381,6 @@ pattern: deferred
 snippet: b / d / s / u = blocked / deferred / superseded / unreadable
 reason: the rollup counter legend naming the live phase-status families — `deferred` is one status token, not a deferred feature.
 
-doc: docs/pack/METHODOLOGY.md
-pattern: deferred
-snippet: newly set to `deferred`
-reason: the Workflow-7 deferral-flip scheduling rule — `deferred` is a live phase-status transition, not a deferred feature.
-
 doc: docs/pack/INSTALL-PROCEDURES.md
 pattern: deferred
 snippet: no deferred items remain
@@ -434,11 +403,6 @@ doc: docs/project/backlog/_rules.md
 pattern: deferred
 snippet: `Unblocked` — a pending-decision state between Open and Deferred.
 reason: rule self-reference — the status-vocabulary definition of the Unblocked state; names Deferred as an adjacent state, not a feature advert.
-
-doc: docs/project/backlog/_rules.md
-pattern: deferred
-snippet: `Deferred` — deliberately postponed (user-authorized).
-reason: rule self-reference — the status-vocabulary definition of the Deferred state itself.
 
 doc: docs/project/implementation-plan/_rules.md
 pattern: deferred

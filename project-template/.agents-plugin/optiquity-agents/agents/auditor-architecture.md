@@ -38,7 +38,7 @@ Per `audit-methodology` rule 15:
   the wiring *exists*. For the full ownership boundary (auditor-architecture
   vs auditor-ops vs auditor-security on observability findings, including
   the named-test rubric distinguishing structural vs deployment-target
-  fixes), see `skills/audit-methodology/SKILL.md` rule 21
+  fixes), see `audit-methodology` rule 21
   (auditor-ops scope and boundary clarification). The skill is canonical;
   this bullet does not restate it.
 
