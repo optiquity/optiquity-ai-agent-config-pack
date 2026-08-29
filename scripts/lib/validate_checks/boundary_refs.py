@@ -1133,10 +1133,16 @@ def check_pack_only_file_siting() -> None:
 # outside repo HEAD (reverse). Surface-over-silently-exempt: when in
 # doubt, leave OUT and let Check 39 FAIL — Pack Chat triage decides
 # per-file. Each entry MUST include a one-line rationale comment.
+#
+# BOTH dicts are keyed by REPO-RELATIVE PATH, never by basename. The forward
+# direction now spans two directories (`docs/pack/*.md` and
+# `docs/pack/prompts/*.md`), so a basename key would be ambiguous across
+# them — one key would silently exempt a same-named file in the other
+# directory.
 _CHECK_39_EXEMPTIONS: dict[str, str] = {
-    # Intentionally empty at HEAD per BD-175 F2a IMPL-REPORT §6: all six
-    # files under `project-template/docs/pack/*.md` currently have explicit
-    # mappings. Add entries here only with a rationale comment.
+    # Intentionally empty at HEAD: every file under the two forward
+    # directories has cmd_update coverage. Add entries here only with a
+    # rationale comment, keyed by full repo-relative path.
 }
 
 
@@ -1233,61 +1239,29 @@ def _parse_migrator_manifest_sources() -> tuple:
 
 
 
-def _parse_cmd_update_entries() -> set[str]:
-    """Parse `scripts/init-project.sh` `cmd_update` `entries=()` array.
-
-    Returns the set of `pack_relpath` strings (the first colon-separated
-    field of each entry). Parses via regex against the entries array
-    delimited by `local entries=(` ... `)` — does not source the shell
-    file. Returns an empty set if the file or array cannot be found.
-    """
-    init_sh = REPO_ROOT / "scripts" / "init-project.sh"
-    if not init_sh.is_file():
-        return set()
-    text = init_sh.read_text()
-    # Match the entries array literal. Non-greedy across newlines.
-    m = re.search(
-        r"local\s+entries=\(\s*\n(.+?)\n\s*\)\s*\n",
-        text,
-        re.DOTALL,
-    )
-    if not m:
-        return set()
-    body = m.group(1)
-    paths: set[str] = set()
-    for line in body.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        # Strip surrounding quotes; entries are of the form
-        # "pack_relpath:proj_relpath:class".
-        if line.startswith('"') and '"' in line[1:]:
-            content = line[1:line.index('"', 1)]
-        else:
-            continue
-        pack_rel = content.split(":", 1)[0]
-        if pack_rel:
-            paths.add(pack_rel)
-    return paths
-
-
-
-
 def check_cmd_update_symmetry() -> None:
     """Check 39 — cmd_update mapping/glob coverage symmetry (BD-175 F2a + BD-180 E).
 
-    Bidirectional symmetry between `scripts/init-project.sh`
-    `cmd_update` `entries=()` array and project-template surface.
+    Bidirectional symmetry between the install map's `cmd_update` axis and
+    the project-template surface. The `cmd_update` set is DERIVED from the
+    install map in `scripts/init-project.sh` — the explicit rows tagged
+    `cmd_update` UNION the GLOB-block family patterns tagged `cmd_update`.
+    The map is the one declaration; this check never re-declares it.
 
     Forward direction (BD-175 F2a): every file under
     `project-template/docs/pack/*.md` (the S6 fresh-install glob target)
-    must have a corresponding explicit `cmd_update` mapping. Catches the
-    BD-175 Commit 10 OPTIONAL-FEATURES.md fresh-init-only gap.
+    must be covered by a map row. Catches the BD-175 Commit 10
+    OPTIONAL-FEATURES.md fresh-init-only gap. A SECOND forward leg covers
+    `project-template/docs/pack/prompts/*.md`, which the non-recursive
+    `docs/pack/*.md` glob never descends into; a prompts file is covered by
+    the GLOB-block family row, not by an explicit row.
 
-    Reverse direction (BD-180 observation E): every `cmd_update` entry's
-    `pack_relpath` must resolve to a file at HEAD. Catches stale mappings
-    whose source file was retired (pre-BD-180 example: PROMPT-TEMPLATES.md
-    retired in v10.0 but mapping persisted at scripts/init-project.sh:1122).
+    Reverse direction (BD-180 observation E): every explicit `cmd_update`
+    row's `pack_relpath` must resolve to a file at HEAD, and every
+    `cmd_update` GLOB row's pattern must match at least one real file.
+    Catches stale mappings whose source file was retired (pre-BD-180
+    example: PROMPT-TEMPLATES.md retired in v10.0 but the mapping
+    persisted).
 
     Exemption allowlists:
     - `_CHECK_39_EXEMPTIONS` — forward (file-on-disk lacks mapping;
@@ -1308,15 +1282,29 @@ def check_cmd_update_symmetry() -> None:
         ok("project-template/docs/pack absent — skipping (lenient)")
         return
 
-    entries = _parse_cmd_update_entries()
-    if not entries:
+    # The `cmd_update` axis, DERIVED from the install map's two blocks.
+    stage_map = _parse_client_installed_file_stages()
+    entries = {p for p, st in stage_map.items() if "cmd_update" in st}
+    glob_rows = _parse_client_installed_globs()
+    glob_patterns = [
+        pat for pat, _dest, st, _cls in glob_rows if "cmd_update" in st
+    ]
+    if not entries and not glob_patterns:
         fail(
-            "could not parse `cmd_update` entries=() array from "
-            "scripts/init-project.sh — check that the array literal is "
-            "still wrapped by `local entries=(` ... `)` per BD-175 F2a "
-            "parsing contract"
+            "could not derive the `cmd_update` axis from the install map in "
+            "scripts/init-project.sh — neither the explicit FILES block nor "
+            "the GLOB block yielded a row tagged `cmd_update`. Check that "
+            "both blocks' START/END markers appear exactly once and that "
+            "each row carries a `[stage:...]` operand naming its copy sites."
         )
         return
+
+    def _covered(pack_rel: str) -> bool:
+        """True iff the map covers `pack_rel` on the `cmd_update` axis —
+        by an explicit row or by a GLOB-block family pattern."""
+        if pack_rel in entries:
+            return True
+        return any(_install_glob_matches(p, pack_rel) for p in glob_patterns)
 
     any_failed = False
 
@@ -1326,27 +1314,64 @@ def check_cmd_update_symmetry() -> None:
     for md in sorted(pack_docs_dir.glob("*.md")):
         files_checked += 1
         pack_rel = f"project-template/docs/pack/{md.name}"
-        if pack_rel in entries:
+        if _covered(pack_rel):
             continue
-        if md.name in _CHECK_39_EXEMPTIONS:
+        if pack_rel in _CHECK_39_EXEMPTIONS:
             exempted += 1
             ok(
-                f"{md.name} — exempt per _CHECK_39_EXEMPTIONS: "
-                f"{_CHECK_39_EXEMPTIONS[md.name]}"
+                f"{pack_rel} — exempt per _CHECK_39_EXEMPTIONS: "
+                f"{_CHECK_39_EXEMPTIONS[pack_rel]}"
             )
             continue
         fail(
-            f"{pack_rel} — installs at fresh init (stage S6 glob loop at "
-            f"scripts/init-project.sh:544) but has no explicit `cmd_update` "
-            f"mapping; existing clients running `pack update` will silently "
-            f"skip this file. Add an entry to the `entries=()` array in "
-            f"`cmd_update` (scripts/init-project.sh ~L1108-L1133) of the "
-            f"form: \"{pack_rel}:docs/pack/{md.name}:generic\". If the file "
+            f"{pack_rel} — installs at fresh init (stage S6 glob loop) but "
+            f"the install map has no `cmd_update` coverage for it; existing "
+            f"clients running `pack update` will silently skip this file. "
+            f"Add a row to the EXPLICIT block of the install map in "
+            f"scripts/init-project.sh of the form: "
+            f"`#   {pack_rel}  ->  docs/pack/{md.name}  "
+            f"[stage:S6,cmd_update,migrate]  [class:generic]`. If the file "
             f"is intentionally pre-install-only or otherwise not for "
             f"client install, add it to `_CHECK_39_EXEMPTIONS` in "
-            f"scripts/validate-pack.py with a one-line rationale."
+            f"scripts/validate-pack.py — keyed by the repo-relative path "
+            f"`{pack_rel}`, not the basename — with a one-line rationale."
         )
         any_failed = True
+
+    # ── Forward leg 2: docs/pack/prompts/ ────────────────────────────────
+    # The `docs/pack/*.md` glob above is NON-recursive and never descends
+    # into prompts/. A prompts file is covered by the GLOB-block family row,
+    # so the remediation here names the GLOB block, not the explicit block.
+    prompts_dir = pack_docs_dir / "prompts"
+    prompts_checked = 0
+    if prompts_dir.is_dir():
+        for md in sorted(prompts_dir.glob("*.md")):
+            prompts_checked += 1
+            pack_rel = f"project-template/docs/pack/prompts/{md.name}"
+            if _covered(pack_rel):
+                continue
+            if pack_rel in _CHECK_39_EXEMPTIONS:
+                exempted += 1
+                ok(
+                    f"{pack_rel} — exempt per _CHECK_39_EXEMPTIONS: "
+                    f"{_CHECK_39_EXEMPTIONS[pack_rel]}"
+                )
+                continue
+            fail(
+                f"{pack_rel} — installs at fresh init (stage S6 prompts "
+                f"loop) but the install map has no `cmd_update` coverage "
+                f"for it; existing clients running `pack update` will "
+                f"silently skip this file. The prompts family ships as a "
+                f"family: add or restore the GLOB-block row "
+                f"`#   project-template/docs/pack/prompts/*.md  ->  "
+                f"docs/pack/prompts/*.md  [stage:S6,cmd_update,migrate]  "
+                f"[class:generic]` in scripts/init-project.sh. If the file "
+                f"is intentionally not for client install, add it to "
+                f"`_CHECK_39_EXEMPTIONS` in scripts/validate-pack.py — keyed "
+                f"by the repo-relative path `{pack_rel}`, not the basename — "
+                f"with a one-line rationale."
+            )
+            any_failed = True
 
     # ── Reverse direction (BD-180 observation E) ─────────────────────────
     reverse_checked = 0
@@ -1364,16 +1389,79 @@ def check_cmd_update_symmetry() -> None:
             )
             continue
         fail(
-            f"{pack_rel} — `cmd_update` entry references a source file "
-            f"that does not exist at HEAD; the mapping is stale (likely "
-            f"the source file was retired or moved without removing the "
-            f"entry). Either remove the entry from the `entries=()` array "
-            f"in `cmd_update` (scripts/init-project.sh ~L1108-L1190), or "
-            f"if the source intentionally lives outside repo HEAD, add it "
-            f"to `_CHECK_39_REVERSE_EXEMPTIONS` in scripts/validate-pack.py "
+            f"{pack_rel} — install-map row references a source file that "
+            f"does not exist at HEAD; the mapping is stale (likely the "
+            f"source file was retired or moved without removing the row). "
+            f"Either remove the row from the install map in "
+            f"scripts/init-project.sh, or if the source intentionally "
+            f"lives outside repo HEAD, add it to "
+            f"`_CHECK_39_REVERSE_EXEMPTIONS` in scripts/validate-pack.py "
             f"with a one-line rationale. Empirical precedent: BD-180 "
             f"observation E removed the stale `project-template/docs/pack/"
             f"PROMPT-TEMPLATES.md` mapping (file retired in v10.0)."
+        )
+        any_failed = True
+
+    # ── Reverse leg 2: every cmd_update GLOB pattern has real backing ────
+    # `declare-verify-backing`: a family row that matches ZERO files is a
+    # dead declaration, exactly the stale-mapping class the explicit
+    # reverse leg catches one file at a time.
+    #
+    # Backing is measured against git-TRACKED HEAD, not the filesystem: a
+    # filesystem glob is satisfied by a gitignored build artifact (a
+    # `__pycache__/` directory sits inside `project-template/scripts/`
+    # whenever the suite has run), which ships nothing and would make this
+    # leg's own "backed at HEAD" wording false. Leg 3 already draws from
+    # git-tracked HEAD; this matches it, with the pathspec DERIVED from the
+    # declared patterns so the whole leg costs ONE subprocess.
+    glob_tracked = None
+    if glob_patterns:
+        try:
+            glob_pathspecs = sorted({
+                p.split("/", 1)[0] for p in glob_patterns if p
+            })
+            res_g = subprocess.run(
+                ["git", "ls-files", "--"] + glob_pathspecs,
+                cwd=REPO_ROOT, capture_output=True, text=True,
+            )
+            if res_g.returncode == 0:
+                glob_tracked = [
+                    ln.strip() for ln in res_g.stdout.splitlines() if ln.strip()
+                ]
+        except (FileNotFoundError, OSError):
+            glob_tracked = None
+    if glob_patterns and glob_tracked is None:
+        ok(
+            "Check 39 reverse leg 2 — git unavailable (not a git work tree) — "
+            "falling back to a filesystem match for GLOB-row backing (lenient)"
+        )
+
+    glob_reverse_checked = 0
+    for pat in sorted(glob_patterns):
+        glob_reverse_checked += 1
+        if pat in _CHECK_39_REVERSE_EXEMPTIONS:
+            reverse_exempted += 1
+            ok(
+                f"{pat} — exempt per _CHECK_39_REVERSE_EXEMPTIONS: "
+                f"{_CHECK_39_REVERSE_EXEMPTIONS[pat]}"
+            )
+            continue
+        if glob_tracked is not None:
+            matched = any(_install_glob_matches(pat, c) for c in glob_tracked)
+        else:
+            try:
+                matched = any(REPO_ROOT.glob(pat))
+            except (ValueError, OSError):
+                matched = False
+        if matched:
+            continue
+        fail(
+            f"{pat} — install-map GLOB-block row matches NO file at HEAD; "
+            f"the family declaration has no backing (the source directory "
+            f"was emptied, renamed, or the pattern is misspelled). Either "
+            f"remove the row from the GLOB block in scripts/init-project.sh "
+            f"or correct the pattern. A family row that matches nothing "
+            f"silently drops its whole family from every derived consumer."
         )
         any_failed = True
 
@@ -1476,17 +1564,21 @@ def check_cmd_update_symmetry() -> None:
     if not any_failed:
         ok(
             f"Check 39 — {files_checked} `project-template/docs/pack/*.md` "
-            f"file(s) forward-checked; {files_checked - exempted} have "
-            f"explicit `cmd_update` mappings, {exempted} on forward "
-            f"exemption allowlist. {reverse_checked} `cmd_update` "
-            f"entries reverse-checked; {reverse_checked - reverse_exempted} "
-            f"resolve to existing files at HEAD, {reverse_exempted} on "
-            f"reverse exemption allowlist. {mig_checked} v10→v11 adapter "
+            f"+ {prompts_checked} `docs/pack/prompts/*.md` file(s) "
+            f"forward-checked against the install map; "
+            f"{files_checked + prompts_checked - exempted} are covered by a "
+            f"map row on the `cmd_update` axis, {exempted} on the forward "
+            f"exemption allowlist. {reverse_checked} explicit `cmd_update` "
+            f"row(s) + {glob_reverse_checked} `cmd_update` GLOB row(s) "
+            f"reverse-checked; "
+            f"{reverse_checked + glob_reverse_checked - reverse_exempted} "
+            f"are backed at HEAD, {reverse_exempted} on the reverse "
+            f"exemption allowlist. {mig_checked} v10→v11 adapter "
             f"manifest/sweep row(s) reverse-checked against git-tracked "
             f"HEAD; {mig_checked - mig_exempted} are backed by a shipped "
             f"source, {mig_exempted} on the migrator exemption allowlist. "
-            f"No asymmetric coverage between S6 fresh-install glob and "
-            f"`cmd_update` explicit mappings; no stale mappings."
+            f"No asymmetric coverage between the S6 fresh-install globs and "
+            f"the install map's `cmd_update` axis; no stale mappings."
         )
 
 
@@ -3092,6 +3184,77 @@ def _parse_client_installed_file_stages() -> dict[str, set[str]]:
 
 
 
+def _install_glob_matches(pattern: str, candidate: str) -> bool:
+    """True iff `candidate` (a repo-relative posix path) matches an install-map
+    GLOB-block source `pattern`.
+
+    `*` matches within ONE path segment only — it never crosses `/`. That is
+    the shell-glob semantics the copy sites use, and it is deliberately
+    stricter than `fnmatch`, whose `*` DOES cross `/` and would silently widen
+    every family row to its whole subtree.
+    """
+    rx = "".join(
+        "[^/]*" if ch == "*" else re.escape(ch) for ch in pattern
+    )
+    return re.fullmatch(rx, candidate) is not None
+
+
+def _parse_client_installed_globs() -> list[tuple[str, str, set[str], str]]:
+    """Parse the install map's GLOB block from `scripts/init-project.sh`.
+
+    Returns a list of `(source_pattern, dest_pattern, stages, cls)` tuples,
+    one per row, in declaration order. `dest_pattern` keeps its `{a,b,c}`
+    fan-out group UNEXPANDED — expansion is the consumer's job.
+
+    A SEPARATE parser from `_parse_client_installed_files()`, whose 5-tuple
+    arity and unpack sites are untouched. The glob block is deliberately NOT
+    fed to `_iter_client_installed_files()`: a pattern is not a file, and
+    admitting one there would put a non-existent path into the walked set.
+
+    Returns [] if init-project.sh is absent or the GLOB markers are not
+    exactly-once (lenient — the caller then sees no family rows).
+    """
+    init_sh = REPO_ROOT / "scripts" / "init-project.sh"
+    if not init_sh.is_file():
+        return []
+    text = init_sh.read_text()
+    start_marker = "_CLIENT_INSTALLED_GLOBS_START"
+    end_marker = "_CLIENT_INSTALLED_GLOBS_END"
+    if text.count(start_marker) != 1 or text.count(end_marker) != 1:
+        return []
+    m = re.search(
+        rf"{re.escape(start_marker)}\s*\n(.+?)\n[^\n]*{re.escape(end_marker)}",
+        text, re.DOTALL,
+    )
+    if not m:
+        return []
+    rows: list[tuple[str, str, set[str], str]] = []
+    for line in m.group(1).splitlines():
+        s = line.strip()
+        if not s.startswith("#"):
+            continue
+        content = s.lstrip("#").strip()
+        if "->" not in content:
+            continue
+        src, rest = content.split("->", 1)
+        src = src.strip()
+        if not src:
+            continue
+        sm = re.search(r"\[stage:([^\]]*)\]", rest)
+        stages = (
+            {t.strip() for t in sm.group(1).split(",") if t.strip()}
+            if sm else set()
+        )
+        cm = re.search(r"\[class:([^\]]*)\]", rest)
+        cls = cm.group(1).strip() if cm else ""
+        # Same all-operand strip as the explicit-row reverse map: a
+        # stage-only strip would leave `[class:...]` glued to the DEST.
+        dest = re.sub(r"\[[^\]]*\]", "", rest).strip()
+        if dest:
+            rows.append((src, dest, stages, cls))
+    return rows
+
+
 def _client_install_dest_to_source() -> dict[str, str]:
     """Reverse the `_CLIENT_INSTALLED_FILES` inventory: project_relpath ->
     pack_relpath.
@@ -3104,6 +3267,9 @@ def _client_install_dest_to_source() -> dict[str, str]:
     reference written in the CLIENT's post-install path form against the
     pack-storage path it is copied FROM — a reference that resolves at a
     client install but has no pack-repo file at its literal path.
+    ALL bracketed operands (`[stage:...]`, `[class:...]`, any future operand)
+    are stripped from the DEST column; a stage-only strip would leave a
+    trailing operand glued to the path and silently void leg B.
     Returns {} if init-project.sh is absent or the markers are not
     exactly-once (lenient — leg B then resolves nothing and the ref falls
     through to the anchor window / allowlist / FAIL).
@@ -3132,7 +3298,11 @@ def _client_install_dest_to_source() -> dict[str, str]:
             continue
         pack_rel, rest = content.split("->", 1)
         pack_rel = pack_rel.strip()
-        proj_rel = re.sub(r"\[stage:[^\]]*\]", "", rest).strip()
+        # Strip ALL bracketed operands, not only `[stage:...]`. A row carries
+        # `[stage:...]` AND `[class:...]`; a stage-only strip leaves the class
+        # operand glued to the DEST, and the reverse lookup then never matches
+        # a real client path.
+        proj_rel = re.sub(r"\[[^\]]*\]", "", rest).strip()
         if pack_rel and proj_rel:
             out[proj_rel] = pack_rel
     return out
@@ -3143,10 +3313,14 @@ def _client_install_dest_to_source() -> dict[str, str]:
 def check_client_installed_files() -> None:
     """Check 41 — _CLIENT_INSTALLED_FILES self-doc list integrity (BD-180 G).
 
-    Verifies the `_CLIENT_INSTALLED_FILES_START`/`_END` block in
-    `scripts/init-project.sh` is well-formed AND every entry maps to a
-    real file at HEAD AND every cmd_update entry is named in the block
-    (drift-prevention contract).
+    Verifies the install map's explicit block in `scripts/init-project.sh`
+    is well-formed, every row maps to a real file at HEAD, and every
+    hand-enumerated row has a fresh-install copy site.
+
+    There is no `cmd_update`-is-named-in-the-inventory clause. With ONE
+    declaration, the `cmd_update` axis IS a subset of the map, so such a
+    clause would test `map ⊆ map` — a tautology with no load-bearing
+    backing. Coverage of the `cmd_update` axis is Check 39's job.
 
     Allowlist: `_CHECK_41_EXEMPTIONS` (default: empty) admits inventory
     entries whose source intentionally lives outside repo HEAD.
@@ -3312,28 +3486,6 @@ def check_client_installed_files() -> None:
         )
         any_failed = True
 
-    # (d) Every cmd_update pack_relpath is listed in the inventory block.
-    cmd_update_paths = _parse_cmd_update_entries()
-    inventory_set = set(entries)
-    missing_in_inventory = sorted(cmd_update_paths - inventory_set)
-    inventory_drift = 0
-    for pack_rel in missing_in_inventory:
-        # Allow `_CHECK_41_EXEMPTIONS` to silence individual drifts (rare).
-        if pack_rel in _CHECK_41_EXEMPTIONS:
-            continue
-        fail(
-            f"{pack_rel} — `cmd_update` mapping exists but the path is "
-            f"NOT listed in the `_CLIENT_INSTALLED_FILES_START`/`_END` "
-            f"self-documenting inventory in scripts/init-project.sh. Add "
-            f"an entry to the inventory block of the form "
-            f"`#   {pack_rel}  ->  <project_relpath>  [stage:...]` so "
-            f"the discoverability contract holds. Per ARCHITECTURE-BD-176.md "
-            f"§5.3, the inventory must be the authoritative shipped-to-"
-            f"clients reference."
-        )
-        inventory_drift += 1
-        any_failed = True
-
     # (e) Every HAND-ENUMERATED per-file inventory row has a fresh-install copy
     #     site: its source basename appears on a copy-verb line in the body of a
     #     stage named by its [stage:] tag. Glob/list-loop rows are exempt
@@ -3429,8 +3581,6 @@ def check_client_installed_files() -> None:
             f"Check 41 — {files_checked} `_CLIENT_INSTALLED_FILES` entry "
             f"(entries) checked; {files_checked - exempted} resolve to "
             f"existing files at HEAD, {exempted} on exemption allowlist. "
-            f"{len(cmd_update_paths)} cmd_update path(s) cross-checked "
-            f"against inventory; {inventory_drift} drift(s) (must be 0). "
             f"{copy_sites_checked} hand-enumerated row(s) verified to have a "
             f"fresh-install copy site. "
             f"Self-documenting list is consistent with copy-site state."
@@ -5100,12 +5250,18 @@ def check_sanctioned_pack_side_shipped() -> None:
         )
         return
 
-    map_pack_side = {
-        e
-        for e in entries
-        if not e.startswith("project-template/")
-        and not e.startswith("supporting-docs/")
-    }
+    # The ship-source set is the UNION of both install-map blocks: explicit
+    # row sources AND GLOB-block source patterns. A pack-side source is
+    # unsanctioned whether it is declared one file at a time or as a family —
+    # checking only the explicit block would leave a family row (e.g.
+    # `scripts/lib/*.sh -> scripts/lib/*.sh`) free to ship pack-side files.
+    # Partitioned, not merged: the remediation must send the maintainer to the
+    # block the offending row actually lives in. A union-only set would name a
+    # family pattern while pointing at the EXPLICIT block, where it is not.
+    glob_sources = [pat for pat, _dest, _st, _cls in _parse_client_installed_globs()]
+    explicit_pack_side = {e for e in entries if _is_pack_side_ship_source(e)}
+    glob_pack_side = {e for e in glob_sources if _is_pack_side_ship_source(e)}
+    map_pack_side = explicit_pack_side | glob_pack_side
     frozen = set(_SANCTIONED_PACK_SIDE_SHIPPED)
 
     membership_test = (
@@ -5127,9 +5283,23 @@ def check_sanctioned_pack_side_shipped() -> None:
     unsanctioned = sorted(map_pack_side - frozen)
     missing = sorted(frozen - map_pack_side)
     if unsanctioned:
+        offenders = set(unsanctioned)
+        blocks = []
+        exp_off = sorted(offenders & explicit_pack_side)
+        glob_off = sorted(offenders & glob_pack_side)
+        if exp_off:
+            blocks.append(
+                f"the EXPLICIT block (_CLIENT_INSTALLED_FILES): {exp_off}"
+            )
+        if glob_off:
+            blocks.append(
+                f"the GLOB block (_CLIENT_INSTALLED_GLOBS): {glob_off}"
+            )
         fail(
-            f"_CLIENT_INSTALLED_FILES ships pack-side file(s) NOT in "
-            f"_SANCTIONED_PACK_SIDE_SHIPPED: {unsanctioned}. {membership_test}"
+            f"the install map ships pack-side file(s) NOT in "
+            f"_SANCTIONED_PACK_SIDE_SHIPPED: {unsanctioned}. Offending row(s) "
+            f"live in {'; and '.join(blocks)} — delete the row from THAT block "
+            f"in scripts/init-project.sh. {membership_test}"
         )
     if missing:
         fail(
@@ -5186,7 +5356,6 @@ __all__ = [
     "_CHECK_39_EXEMPTIONS",
     "_CHECK_39_REVERSE_EXEMPTIONS",
     "_CHECK_39_MIGRATOR_EXEMPTIONS",
-    "_parse_cmd_update_entries",
     "_parse_migrator_manifest_sources",
     "check_cmd_update_symmetry",
     "_CHECK_40_ALLOWLIST",
@@ -5225,6 +5394,8 @@ __all__ = [
     "_CHECK_41_COPY_VERB",
     "_parse_client_installed_files",
     "_parse_client_installed_file_stages",
+    "_parse_client_installed_globs",
+    "_install_glob_matches",
     "_client_install_dest_to_source",
     "check_client_installed_files",
     "_CHECK_OPERATING_DOC_FAMILIES",

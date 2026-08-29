@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
 # Synthetic init-project.sh fragment — FAIL-path fixture for Check 39.
 #
-# The cmd_update function below has an entries=() array that omits
-# BAZ.md (compared to the PASS fixture). _parse_cmd_update_entries()
-# must yield only {FOO, BAR}; Check 39 must surface a FAIL with
-# BAZ.md named and a cmd_update reference in the recommendation.
+# Models an install map that OMITS BAZ.md (compared to the PASS fixture): the
+# file installs at fresh init but no map row covers it on the `cmd_update`
+# axis, so existing clients running `pack update` would silently skip it.
+# Check 39 must FAIL with BAZ.md named and a `cmd_update` reference in the
+# remediation.
 
-cmd_update() {
-    local entries=(
-        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
-        "project-template/docs/pack/BAR.md:docs/pack/BAR.md:generic"
-    )
-    echo "stub"
-}
+# _CLIENT_INSTALLED_FILES_START
+#   project-template/docs/pack/FOO.md  ->  docs/pack/FOO.md  [stage:S6,cmd_update,migrate]  [class:generic]
+#   project-template/docs/pack/BAR.md  ->  docs/pack/BAR.md  [stage:S6,cmd_update,migrate]  [class:generic]
+# _CLIENT_INSTALLED_FILES_END
+#
+# _CLIENT_INSTALLED_GLOBS_START
+#   project-template/docs/pack/prompts/*.md  ->  docs/pack/prompts/*.md  [stage:S6,cmd_update,migrate]  [class:generic]
+# _CLIENT_INSTALLED_GLOBS_END
+
+main() { :; }

@@ -494,6 +494,78 @@ if fc < 1:
 if "docs/pack/LEGB-UNTRACKED.md" not in cap:
     failures.append("T16 (leg B: untracked install-map source) expected the token in output: %s" % cap)
 
+# ── T17/T18: leg B must survive a row carrying a [class:...] operand ──
+#
+# An install-map row now carries TWO bracketed operands. The dest->source
+# reverse map strips ALL of them; a stage-only strip leaves \`[class:generic]\`
+# glued to the DEST, no client path ever matches, and leg B silently stops
+# resolving — turning every leg-B-resolved reference into a dangling FAIL.
+import re
+
+INV_CLASS = [
+    "#!/usr/bin/env bash",
+    "# _CLIENT_INSTALLED_FILES_START",
+    "#   supporting-docs/OPERAND.md  ->  docs/pack/OPERAND.md  [stage:S6,cmd_update,migrate]  [class:generic]",
+    "# _CLIENT_INSTALLED_FILES_END",
+]
+
+
+def _operand_tree(root):
+    (root / "docs").mkdir()
+    (root / "supporting-docs").mkdir()
+    (root / "supporting-docs" / "OPERAND.md").write_text("pack-stored source\n")
+    (root / "docs" / "citer.md").write_text("see \`docs/pack/OPERAND.md\`\n")
+    (root / "scripts").mkdir()
+    (root / "scripts" / "init-project.sh").write_text("\n".join(INV_CLASS) + "\n")
+
+
+# T17: with the all-operand strip, leg B resolves the reference.
+fc, cap = run_check_in_tree(_operand_tree, "")
+if fc != 0:
+    failures.append("T17 (leg B with a [class:] row) expected 0 failures, got %d: %s" % (fc, cap))
+
+# T18: MUTATION BITE — revert the strip to stage-only. The SAME tree must
+# now FAIL, which is what proves the generalised strip is load-bearing
+# rather than incidentally equivalent.
+_saved_d2s = mod._client_install_dest_to_source
+
+
+def _stage_only_dest_to_source():
+    init_sh = mod.REPO_ROOT / "scripts" / "init-project.sh"
+    if not init_sh.is_file():
+        return {}
+    text = init_sh.read_text()
+    m = re.search(
+        r"_CLIENT_INSTALLED_FILES_START\s*\n(.+?)\n[^\n]*_CLIENT_INSTALLED_FILES_END",
+        text, re.DOTALL)
+    if not m:
+        return {}
+    out = {}
+    for line in m.group(1).splitlines():
+        s = line.strip()
+        if not s.startswith("#") or "->" not in s:
+            continue
+        content = s.lstrip("#").strip()
+        pack_rel, rest = content.split("->", 1)
+        # The PRE-FIX strip: \`[stage:...]\` only.
+        proj_rel = re.sub(r"\[stage:[^\]]*\]", "", rest).strip()
+        if pack_rel.strip() and proj_rel:
+            out[proj_rel] = pack_rel.strip()
+    return out
+
+
+_patch_attr(mod, "_client_install_dest_to_source", _stage_only_dest_to_source)
+try:
+    fc_bite, cap_bite = run_check_in_tree(_operand_tree, "")
+finally:
+    _patch_attr(mod, "_client_install_dest_to_source", _saved_d2s)
+if fc_bite < 1:
+    failures.append(
+        "T18 (stage-only strip bite) expected >=1 failure — the leg does not "
+        "discriminate, so the all-operand strip is not load-bearing: %s" % cap_bite)
+if "docs/pack/OPERAND.md" not in cap_bite:
+    failures.append("T18 bite must name the now-dangling reference: %s" % cap_bite)
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -502,7 +574,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "Synthetic-tree body tests T1-T16 (resolving / anchor-cleared / allowlisted / dangling-bare-FAIL / dangling-qualified-FAIL / moved-file-FAIL / leg-A / leg-B / leg-B-load-bearing / untracked-excluded / entry-shaped-EXCLUDE x3 / untracked-unresolvable x3)" ;;
+    0) t_pass "Synthetic-tree body tests T1-T18 (resolving / anchor-cleared / allowlisted / dangling-bare-FAIL / dangling-qualified-FAIL / moved-file-FAIL / leg-A / leg-B / leg-B-load-bearing / untracked-excluded / entry-shaped-EXCLUDE x3 / untracked-unresolvable x3 / [class:]-operand strip + its mutation bite)" ;;
     *) t_fail "Synthetic-tree check_dangling_file_refs tests failed (see Python output)" ;;
 esac
 

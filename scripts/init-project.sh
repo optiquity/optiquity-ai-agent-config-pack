@@ -1712,48 +1712,48 @@ cmd_update() {
     fi
 }
 
-# ── _CLIENT_INSTALLED_FILES (BD-180 observation G per ARCHITECTURE-BD-176.md §5.3) ──
+# ── _CLIENT_INSTALLED_FILES — the client install map ──
 #
-# Self-documenting authoritative inventory of files this script installs to
-# clients. `validate-pack.py` Check 41 (BD-180) verifies (a) each named
-# `pack_relpath` below exists on disk at HEAD and (b) the inventory has
-# coverage for the BD-088 update path (`cmd_update` entries above) and the
-# fresh-install stages below. Adding a new explicit client-installed file
-# requires updating BOTH this list AND the relevant copy-site (cmd_update
-# entries OR a stage loop) — Check 41 enforces the discoverability anchor;
-# Check 39 enforces the cmd_update mapping/glob symmetry.
+# THE single machine-readable declaration of what this script installs to
+# clients. Every consumer DERIVES from it; no consumer re-declares it.
+# Two blocks share one row grammar:
 #
-# Format: one entry per line between START/END markers; each entry is
-#   #   <pack_relpath>  ->  <project_relpath>  [stage:<copy-site ids>]
-# where copy-site ids name the install paths (S3..S11 for fresh-install
-# stages; `cmd_update` for the BD-088 explicit-mapping update path).
+#   * the FILES block — explicit, one row per installed file;
+#   * the GLOBS block — bulk families, one row per source pattern.
 #
-# Bulk-copied directories (mass-installed by stage loops; not enumerated
-# file-by-file in the START/END block below):
-#   * project-template/skills/*/SKILL.md
-#       -> .{claude,codex,agents}/skills/*/SKILL.md   [S4 canonical-pool loop]
-#   * project-template/.{claude,codex}/agents/*.md
-#       -> .{claude,codex}/agents/*.md                (loose per-CLI agents)
-#       [S2 per-CLI agent install + _cmd_update_iter_dir]
-#   * project-template/.agents-plugin/optiquity-agents/   (Antigravity plugin BUNDLE)
-#       -> .agents-plugin/optiquity-agents/          [S2 bundle stage + _cmd_update_iter_dir]
-#       (recursive-walk-covered by the project-template/ inventory; no
-#        per-file START/END rows)
-#   * project-template/scripts/*
-#       -> scripts/*                                  [S5 + _cmd_update_iter_dir]
+# Row grammar (a comment line between a block's START/END markers):
+#   #   <pack_relpath>  ->  <project_relpath>  [stage:<ids>]  [class:<token>]
+#
+# Operands:
+#   [stage:<ids>]   comma-separated copy-site ids. Token vocabulary:
+#                     S<N>         a fresh-install stage (S2..S11)
+#                     cmd_update   the explicit-mapping update path
+#                     migrate      the vN->vN+1 migration install path
+#   [class:<token>] the customization-preservation class the copy site hands
+#                   to `customization_preserve`. The reserved value `self`
+#                   means SELF-CLASSIFY: no class argument is passed and the
+#                   copy site derives the class per file.
+#
+# In the GLOBS block ONLY, a `{a,b,c}` group in the DEST is a FAN-OUT
+# operand — the row expands to one destination per brace member. Only the
+# DEST may carry a brace group.
+#
+# Adding a client-installed file means adding its row here AND wiring the
+# copy site named by its `[stage:]` operand. Shell consumers read the blocks
+# through `scripts/lib/install-map.sh`; `validate-pack.py` Checks 39/41/43/
+# 47/68 parse them directly.
+#
+# Fresh-install-only, so declared as prose rather than as a machine row (it
+# is on neither the update nor the migration axis):
 #   * <conditional masters: project-template/{pyproject.toml,pyrightconfig.json,
 #       server/,proto/} + project-template/scripts/{bootstrap,format,validate,
 #       test}-{python,swift}.sh + proto-gen.sh + validate-proto.sh>
 #       -> pack-capability-pool/*                     [stage:S5b]
-#       (BD-200: the TRACKED client capability pool. Sources are all
-#       project-template/ conditional masters — already on the inventory via
-#       the project-template/ recursive walk; NOT a _SANCTIONED_PACK_SIDE_SHIPPED
-#       entry, so Check 47's frozen 2-tuple is UNMOVED. Roster derived from
-#       capability_files() in project-template/scripts/capability-tables.sh.)
-#   * project-template/docs/pack/prompts/*.md
-#       -> docs/pack/prompts/*.md                     [S6 loop]
-#   * project-template/.github/ISSUE_TEMPLATE/*.yml
-#       -> .github/ISSUE_TEMPLATE/*.yml               [S11 step 3 + cmd_update]
+#       The TRACKED client capability pool. Its sources are all
+#       project-template/ conditional masters — already covered by the
+#       project-template/ recursive walk; NOT a _SANCTIONED_PACK_SIDE_SHIPPED
+#       entry, so Check 47's frozen EMPTY set is UNMOVED. Roster derived from
+#       capability_files() in project-template/scripts/capability-tables.sh.
 #
 # Intentionally NOT installed to clients (rationale per BD-180 observation):
 #   * project-template/.claude/settings.local.example.json
@@ -1764,40 +1764,45 @@ cmd_update() {
 #       exist if it never installs?"
 #
 # _CLIENT_INSTALLED_FILES_START
-#   project-template/CLAUDE.md  ->  CLAUDE.md  [stage:S7,cmd_update]
-#   project-template/AGENTS.md  ->  AGENTS.md  [stage:S7,cmd_update]
-#   project-template/GEMINI.md  ->  GEMINI.md  [stage:S7,cmd_update]
-#   project-template/.claude/settings.json  ->  .claude/settings.json  [stage:S3,cmd_update]
-#   project-template/.codex/config.toml  ->  .codex/config.toml  [stage:S3,cmd_update]
-#   project-template/.codex/config.toml.example  ->  .codex/config.toml.example  [stage:S3,cmd_update]
-#   project-template/.codex/requirements.toml  ->  .codex/requirements.toml  [stage:S3,cmd_update]
-#   project-template/.mcp.json.example  ->  .mcp.json  [stage:S3,cmd_update]
-#   project-template/.agents/mcp_config.json.example  ->  .agents/mcp_config.json  [stage:S3,cmd_update]
-#   project-template/.github/ISSUE_TEMPLATE/work-item.yml  ->  .github/ISSUE_TEMPLATE/work-item.yml  [stage:S11,cmd_update]
-#   project-template/.github/ISSUE_TEMPLATE/inbound.yml  ->  .github/ISSUE_TEMPLATE/inbound.yml  [stage:S11,cmd_update]
-#   project-template/.github/ISSUE_TEMPLATE/config.yml  ->  .github/ISSUE_TEMPLATE/config.yml  [stage:S11,cmd_update]
-#   project-template/docs/pack/HELP-FRAGMENT.md  ->  docs/pack/HELP-FRAGMENT.md  [stage:S6,S11,cmd_update]
-#   project-template/docs/pack/OPTIONAL-FEATURES.md  ->  docs/pack/OPTIONAL-FEATURES.md  [stage:S6,cmd_update]
-#   project-template/docs/pack/PACK-FEEDBACK.md  ->  docs/pack/PACK-FEEDBACK.md  [stage:S6,cmd_update]
-#   project-template/docs/pack/PLATFORM-SKILLS.md  ->  docs/pack/PLATFORM-SKILLS.md  [stage:S6,cmd_update]
-#   project-template/docs/pack/PM-CHAT.md  ->  docs/pack/PM-CHAT.md  [stage:S6,cmd_update]
-#   project-template/docs/pack/PM-OPERATING-MODES.md  ->  docs/pack/PM-OPERATING-MODES.md  [stage:S6,cmd_update]
-#   project-template/docs/pack/PM-DASHBOARD-SPEC.md  ->  docs/pack/PM-DASHBOARD-SPEC.md  [stage:S6,cmd_update]
-#   (BD-221: pm-help + pm-startup are pool skills distributed LOOSE to
-#    .{claude,codex,agents}/skills/* by the S4 canonical-pool loop — see the
-#    bulk-copied-directories block above; no per-CLI START/END rows. The
-#    former `.toml` command surfaces are retired.)
-#   project-template/docs/project/backlog/_rules.md  ->  docs/project/backlog/_rules.md  [stage:S11,cmd_update]
-#   project-template/docs/project/backlog/_intro.md  ->  docs/project/backlog/_intro.md  [stage:S11,cmd_update]
-#   project-template/docs/project/implementation-plan/_rules.md  ->  docs/project/implementation-plan/_rules.md  [stage:S11,cmd_update]
-#   project-template/docs/project/implementation-plan/_intro.md  ->  docs/project/implementation-plan/_intro.md  [stage:S11,cmd_update]
-#   project-template/docs/project/changelog/_rules.md  ->  docs/project/changelog/_rules.md  [stage:S11,cmd_update]
-#   project-template/docs/project/changelog/_intro.md  ->  docs/project/changelog/_intro.md  [stage:S11,cmd_update]
-#   project-template/docs/project/groupings/_rules.md  ->  docs/project/groupings/_rules.md  [stage:S11,cmd_update]
-#   project-template/docs/project/groupings/_intro.md  ->  docs/project/groupings/_intro.md  [stage:S11,cmd_update]
-#   supporting-docs/METHODOLOGY.md  ->  docs/pack/METHODOLOGY.md  [stage:S6,cmd_update]
-#   supporting-docs/INSTALL-PROCEDURES.md  ->  docs/pack/INSTALL-PROCEDURES.md  [stage:S6,cmd_update]
+#   project-template/CLAUDE.md  ->  CLAUDE.md  [stage:S7,cmd_update,migrate]  [class:trinity]
+#   project-template/AGENTS.md  ->  AGENTS.md  [stage:S7,cmd_update,migrate]  [class:trinity]
+#   project-template/GEMINI.md  ->  GEMINI.md  [stage:S7,cmd_update,migrate]  [class:trinity]
+#   project-template/.claude/settings.json  ->  .claude/settings.json  [stage:S3,cmd_update,migrate]  [class:claude-settings]
+#   project-template/.codex/config.toml  ->  .codex/config.toml  [stage:S3,cmd_update,migrate]  [class:codex-config]
+#   project-template/.codex/config.toml.example  ->  .codex/config.toml.example  [stage:S3,cmd_update,migrate]  [class:codex-config-example]
+#   project-template/.codex/requirements.toml  ->  .codex/requirements.toml  [stage:S3,cmd_update,migrate]  [class:codex-config]
+#   project-template/.mcp.json.example  ->  .mcp.json  [stage:S3,cmd_update,migrate]  [class:claude-mcp-example]
+#   project-template/.agents/mcp_config.json.example  ->  .agents/mcp_config.json  [stage:S3,cmd_update,migrate]  [class:mcp-config-json]
+#   project-template/.github/ISSUE_TEMPLATE/work-item.yml  ->  .github/ISSUE_TEMPLATE/work-item.yml  [stage:S11,cmd_update,migrate]  [class:generic]
+#   project-template/.github/ISSUE_TEMPLATE/inbound.yml  ->  .github/ISSUE_TEMPLATE/inbound.yml  [stage:S11,cmd_update,migrate]  [class:generic]
+#   project-template/.github/ISSUE_TEMPLATE/config.yml  ->  .github/ISSUE_TEMPLATE/config.yml  [stage:S11,cmd_update,migrate]  [class:generic]
+#   project-template/docs/pack/HELP-FRAGMENT.md  ->  docs/pack/HELP-FRAGMENT.md  [stage:S6,S11,cmd_update,migrate]  [class:generic]
+#   project-template/docs/pack/OPTIONAL-FEATURES.md  ->  docs/pack/OPTIONAL-FEATURES.md  [stage:S6,cmd_update,migrate]  [class:generic]
+#   project-template/docs/pack/PACK-FEEDBACK.md  ->  docs/pack/PACK-FEEDBACK.md  [stage:S6,cmd_update,migrate]  [class:generic]
+#   project-template/docs/pack/PLATFORM-SKILLS.md  ->  docs/pack/PLATFORM-SKILLS.md  [stage:S6,cmd_update,migrate]  [class:generic]
+#   project-template/docs/pack/PM-CHAT.md  ->  docs/pack/PM-CHAT.md  [stage:S6,cmd_update,migrate]  [class:pm-chat]
+#   project-template/docs/pack/PM-OPERATING-MODES.md  ->  docs/pack/PM-OPERATING-MODES.md  [stage:S6,cmd_update,migrate]  [class:generic]
+#   project-template/docs/pack/PM-DASHBOARD-SPEC.md  ->  docs/pack/PM-DASHBOARD-SPEC.md  [stage:S6,cmd_update,migrate]  [class:generic]
+#   project-template/docs/project/backlog/_rules.md  ->  docs/project/backlog/_rules.md  [stage:S11,cmd_update,migrate]  [class:generic]
+#   project-template/docs/project/backlog/_intro.md  ->  docs/project/backlog/_intro.md  [stage:S11,cmd_update,migrate]  [class:generic]
+#   project-template/docs/project/implementation-plan/_rules.md  ->  docs/project/implementation-plan/_rules.md  [stage:S11,cmd_update,migrate]  [class:generic]
+#   project-template/docs/project/implementation-plan/_intro.md  ->  docs/project/implementation-plan/_intro.md  [stage:S11,cmd_update,migrate]  [class:generic]
+#   project-template/docs/project/changelog/_rules.md  ->  docs/project/changelog/_rules.md  [stage:S11,cmd_update,migrate]  [class:generic]
+#   project-template/docs/project/changelog/_intro.md  ->  docs/project/changelog/_intro.md  [stage:S11,cmd_update,migrate]  [class:generic]
+#   project-template/docs/project/groupings/_rules.md  ->  docs/project/groupings/_rules.md  [stage:S11,cmd_update,migrate]  [class:generic]
+#   project-template/docs/project/groupings/_intro.md  ->  docs/project/groupings/_intro.md  [stage:S11,cmd_update,migrate]  [class:generic]
+#   supporting-docs/METHODOLOGY.md  ->  docs/pack/METHODOLOGY.md  [stage:S6,cmd_update,migrate]  [class:generic]
+#   supporting-docs/INSTALL-PROCEDURES.md  ->  docs/pack/INSTALL-PROCEDURES.md  [stage:S6,cmd_update,migrate]  [class:generic]
 # _CLIENT_INSTALLED_FILES_END
+#
+# _CLIENT_INSTALLED_GLOBS_START
+#   project-template/skills/*/SKILL.md  ->  .{claude,codex,agents}/skills/*/SKILL.md  [stage:S4,cmd_update,migrate]  [class:generic]
+#   project-template/docs/pack/prompts/*.md  ->  docs/pack/prompts/*.md  [stage:S6,cmd_update,migrate]  [class:generic]
+#   project-template/.claude/agents/*.md  ->  .claude/agents/*.md  [stage:S2,cmd_update,migrate]  [class:pack-agent]
+#   project-template/.codex/agents/*.toml  ->  .codex/agents/*.toml  [stage:S2,cmd_update,migrate]  [class:pack-agent]
+#   project-template/.agents-plugin/optiquity-agents/agents/*  ->  .agents-plugin/optiquity-agents/agents/*  [stage:S2,cmd_update,migrate]  [class:self]
+#   project-template/scripts/*  ->  scripts/*  [stage:S5,cmd_update,migrate]  [class:pack-script]
+# _CLIENT_INSTALLED_GLOBS_END
 
 # Blast-radius sweep — §7.7
 blast_radius_sweep() {

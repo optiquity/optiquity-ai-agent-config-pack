@@ -136,8 +136,8 @@ required_entries = {
     "phase-N.md",
     "_rules.md",
     "_intro.md",
-    # BD-206: `_format.md` is FORBIDDEN (removed from the allowlist); the
-    # generated `_index.md` ordering sidecar is admitted in its place.
+    # BD-206: \`_format.md\` is FORBIDDEN (removed from the allowlist); the
+    # generated \`_index.md\` ordering sidecar is admitted in its place.
     "_index.md",
     # The 3 project monolith basenames stay allowlisted at A1: they are
     # the v10→v11 conversion-INPUT and the bare-ref subject of
@@ -222,6 +222,41 @@ for gone in ["scripts/pack-help.sh", "scripts/lib/detect.sh"]:
 if len(strs) != len(set(strs)):
     dupes = [s for s in strs if strs.count(s) > 1]
     failures.append(f"T4 _iter_client_installed_files() has duplicates: {sorted(set(dupes))[:5]}")
+
+# T5: the install map's GLOB block is NEVER fed to this walk. A pattern is
+# not a file: admitting one would seed the walked set with a path that does
+# not exist, and every downstream content gate would read it as a miss.
+for s in strs:
+    if "*" in s or "{" in s or "}" in s:
+        failures.append(
+            f"T5 _iter_client_installed_files() admitted a GLOB pattern: {s!r}"
+        )
+
+# T5b: and every member really is a file on disk — the positive form of the
+# same invariant.
+for f in files:
+    if not (mod.REPO_ROOT / f).is_file():
+        failures.append(f"T5b _iter_client_installed_files() member is not a file: {f}")
+
+# T6: the explicit-row parser's 5-tuple arity is UNCHANGED. The glob block
+# got its OWN parser precisely so this contract and its unpack sites stay
+# intact; widening this one would have silently changed five call sites.
+_res = mod._parse_client_installed_files()
+if not isinstance(_res, tuple) or len(_res) != 5:
+    failures.append(f"T6 _parse_client_installed_files() arity changed: {len(_res)} (expected 5)")
+
+# T6b: the glob parser is a SEPARATE symbol returning family rows.
+_globs = mod._parse_client_installed_globs()
+if not _globs:
+    failures.append("T6b _parse_client_installed_globs() returned no family rows")
+for _row in _globs:
+    if len(_row) != 4:
+        failures.append(f"T6b family row arity: {_row!r} (expected 4-tuple)")
+_glob_srcs = {p for p, _d, _s, _c in _globs}
+if _glob_srcs & set(strs):
+    failures.append(
+        f"T6b a family pattern leaked into the walked set: {sorted(_glob_srcs & set(strs))}"
+    )
 
 if failures:
     print("FAILURES")
@@ -346,7 +381,7 @@ def run_check_with_synthetic(project_files: dict, extra_files: dict = None,
     # Create a minimal scripts/init-project.sh with the
     # _CLIENT_INSTALLED_FILES inventory markers so the parser
     # finds at least one entry. Format per _parse_client_installed_files:
-    # `#   <pack_relpath>  ->  <project_relpath>  [stage:<id>]`.
+    # \`#   <pack_relpath>  ->  <project_relpath>  [stage:<id>]\`.
     init_path = root / "scripts" / "init-project.sh"
     init_path.parent.mkdir(parents=True, exist_ok=True)
     inventory_lines = [
@@ -361,6 +396,15 @@ def run_check_with_synthetic(project_files: dict, extra_files: dict = None,
         for entry in installed_inventory_extras:
             inventory_lines.append(f"#   {entry}  ->  {entry}  [stage:S1]")
     inventory_lines.append("# _CLIENT_INSTALLED_FILES_END")
+    # A GLOB block is present in every synthetic map, so these fixtures
+    # exercise the real two-block shape. Check 43's walk must stay driven by
+    # the EXPLICIT block alone — a family pattern is not a file.
+    inventory_lines += [
+        "#",
+        "# _CLIENT_INSTALLED_GLOBS_START",
+        "#   project-template/skills/*/SKILL.md  ->  .{claude,codex,agents}/skills/*/SKILL.md  [stage:S4,cmd_update,migrate]  [class:generic]",
+        "# _CLIENT_INSTALLED_GLOBS_END",
+    ]
     init_path.write_text("\n".join(inventory_lines) + "\n")
 
     # BD-244: _build_basename_index() / _build_pack_only_doc_basenames()
@@ -506,8 +550,8 @@ if fail_count < 1:
         f"got {fail_count}: {captured}"
     )
 
-# T9: PASS same-dir + allowlist — `_intro.md`/`_rules.md` are SANCTIONED
-#     per-entry tree siblings (BD-206: `_format.md` is FORBIDDEN, so the
+# T9: PASS same-dir + allowlist — \`_intro.md\`/\`_rules.md\` are SANCTIONED
+#     per-entry tree siblings (BD-206: \`_format.md\` is FORBIDDEN, so the
 #     PASS fixture references only sanctioned siblings).
 content = (
     "# Per-stream rules\n"
@@ -755,7 +799,7 @@ def _patch_root(mod, root):
 
 
 def _patch_attr(mod, name, value):
-    """Set attribute `name` on the facade alias AND every loaded
+    """Set attribute \`name\` on the facade alias AND every loaded
     validate_checks.* submodule that already binds it (BD-256 W2
     wave-invariant). The check body's intra-cluster constant now lives in
     validate_checks.boundary_refs; a facade-only patch would NOT bite. This
@@ -806,6 +850,15 @@ def run_check_with_synthetic(project_files: dict, extra_files: dict = None,
         for entry in installed_inventory_extras:
             inventory_lines.append(f"#   {entry}  ->  {entry}  [stage:S1]")
     inventory_lines.append("# _CLIENT_INSTALLED_FILES_END")
+    # A GLOB block is present in every synthetic map, so these fixtures
+    # exercise the real two-block shape. Check 43's walk must stay driven by
+    # the EXPLICIT block alone — a family pattern is not a file.
+    inventory_lines += [
+        "#",
+        "# _CLIENT_INSTALLED_GLOBS_START",
+        "#   project-template/skills/*/SKILL.md  ->  .{claude,codex,agents}/skills/*/SKILL.md  [stage:S4,cmd_update,migrate]  [class:generic]",
+        "# _CLIENT_INSTALLED_GLOBS_END",
+    ]
     init_path.write_text("\n".join(inventory_lines) + "\n")
 
     # BD-244: _build_basename_index() / _build_pack_only_doc_basenames()

@@ -44,7 +44,9 @@ mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 required = [
     'check_cmd_update_symmetry',
-    '_parse_cmd_update_entries',
+    '_parse_client_installed_file_stages',
+    '_parse_client_installed_globs',
+    '_install_glob_matches',
     '_CHECK_39_EXEMPTIONS',
     '_CHECK_39_REVERSE_EXEMPTIONS',
     '_parse_migrator_manifest_sources',
@@ -53,6 +55,11 @@ required = [
 missing = [n for n in required if not hasattr(mod, n)]
 if missing:
     print('FAIL_MISSING ' + ' '.join(missing))
+    sys.exit(1)
+# The array parser is RETIRED. The install map is the ONE declaration; a
+# surviving second parser is exactly how the two drifted apart before.
+if hasattr(mod, '_parse_cmd_update_entries'):
+    print('FAIL_RETIRED _parse_cmd_update_entries still reachable')
     sys.exit(1)
 print('OK')
 " > /tmp/vp-check39-import.out 2>&1
@@ -65,10 +72,10 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────
-# Group 1: _parse_cmd_update_entries — parses real init-project.sh
+# Group 1: the cmd_update axis, DERIVED from the real install map
 # ─────────────────────────────────────────────────────────────────
 
-printf "\n=== Group 1: _parse_cmd_update_entries unit tests ===\n"
+printf "\n=== Group 1: map-derived cmd_update axis unit tests ===\n"
 
 python3 <<EOF
 import sys
@@ -80,12 +87,13 @@ spec.loader.exec_module(mod)
 
 failures = []
 
-# Parse real init-project.sh.
-entries = mod._parse_cmd_update_entries()
+# The cmd_update axis is DERIVED from the install map — the explicit rows
+# tagged cmd_update, union the family rows tagged cmd_update.
+stage_map = mod._parse_client_installed_file_stages()
+entries = {p for p, st in stage_map.items() if "cmd_update" in st}
+glob_rows = mod._parse_client_installed_globs()
+glob_patterns = [pat for pat, _d, st, _c in glob_rows if "cmd_update" in st]
 
-# Must find at least the 5 known docs/pack entries (HELP-FRAGMENT,
-# OPTIONAL-FEATURES, PACK-FEEDBACK, PLATFORM-SKILLS, PM-CHAT) plus the
-# trinity and the config files.
 required_subset = {
     "project-template/docs/pack/PM-CHAT.md",
     "project-template/docs/pack/PLATFORM-SKILLS.md",
@@ -98,16 +106,56 @@ required_subset = {
 }
 missing = required_subset - entries
 if missing:
-    failures.append(f"T1 expected entries missing: {sorted(missing)}")
+    failures.append(f"T1 expected map rows missing: {sorted(missing)}")
 
-# Sanity: entries count is in expected range (15-30 today, allowing growth).
+# Sanity: row count is in the expected range (allowing growth).
 if len(entries) < 15 or len(entries) > 50:
-    failures.append(f"T2 entries count {len(entries)} outside expected range 15-50")
+    failures.append(f"T2 explicit cmd_update row count {len(entries)} outside range 15-50")
 
-# No comment lines should be parsed as entries.
+# No comment lines should be parsed as rows.
 for e in entries:
     if e.startswith("#"):
-        failures.append(f"T3 comment line parsed as entry: {e!r}")
+        failures.append(f"T3 comment line parsed as a row: {e!r}")
+
+# T4: every explicit row carries a [class:...] operand — the class is a
+# first-class operand of the declaration, not a copy-site-local secret.
+text = (mod.REPO_ROOT / "scripts" / "init-project.sh").read_text()
+import re as _re
+_m = _re.search(
+    r"_CLIENT_INSTALLED_FILES_START\s*\n(.+?)\n[^\n]*_CLIENT_INSTALLED_FILES_END",
+    text, _re.DOTALL)
+if not _m:
+    failures.append("T4 could not capture the explicit block body")
+else:
+    for line in _m.group(1).splitlines():
+        s = line.strip().lstrip("#").strip()
+        if "->" not in s:
+            continue
+        if "[class:" not in s:
+            failures.append(f"T4 explicit row lacks a [class:] operand: {s!r}")
+
+# T5: the family block is non-empty and every family row is cmd_update-tagged
+# and carries a class operand.
+if not glob_rows:
+    failures.append("T5 the GLOB block yielded no family rows")
+if not glob_patterns:
+    failures.append("T5 no family row is tagged cmd_update")
+for pat, dest, st, cls in glob_rows:
+    if not cls:
+        failures.append(f"T5 family row lacks a [class:] operand: {pat}")
+    if "[" in dest or "]" in dest:
+        failures.append(f"T5 family DEST retains a bracketed operand: {dest!r}")
+
+# T6: the prompts family is declared, and it is declared as a FAMILY (the
+# non-recursive docs/pack/*.md leg can never reach prompts/).
+if not any("docs/pack/prompts/" in p for p in glob_patterns):
+    failures.append(f"T6 no cmd_update family row covers docs/pack/prompts/: {glob_patterns}")
+
+# T7: the glob matcher does not let '*' cross a path separator.
+if mod._install_glob_matches("project-template/scripts/*", "project-template/scripts/sub/deep.sh"):
+    failures.append("T7 '*' must not cross '/' in an install-map family pattern")
+if not mod._install_glob_matches("project-template/scripts/*", "project-template/scripts/test.sh"):
+    failures.append("T7 '*' must match within one path segment")
 
 if failures:
     print("FAILURES")
@@ -117,8 +165,8 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "_parse_cmd_update_entries parses real init-project.sh correctly" ;;
-    *) t_fail "_parse_cmd_update_entries parse tests failed" ;;
+    0) t_pass "cmd_update axis derives correctly from the real install map" ;;
+    *) t_fail "map-derived cmd_update axis tests failed" ;;
 esac
 
 # ─────────────────────────────────────────────────────────────────
@@ -150,11 +198,28 @@ def _patch_root(mod, root):
 
 failures = []
 
-# Helper: build a synthetic REPO_ROOT with custom scripts/init-project.sh
-# (only the entries=() array body matters for the parser) and a custom
+# Helper: build a synthetic REPO_ROOT with a custom scripts/init-project.sh
+# carrying an install map (both blocks) and a custom
 # project-template/docs/pack/ directory. Invoke check_cmd_update_symmetry
 # against the synthetic root by swapping mod.REPO_ROOT in-place.
-def run_check_with_synthetic(entries_body: str, docs_pack_files: list, exemptions: dict = None) -> tuple:
+#
+# \`map_rows\` and \`glob_rows\` are lists of row bodies WITHOUT the leading
+# \`#   \` — the helper writes the markers and the comment prefix.
+def _init_sh_with_map(map_rows: list, glob_rows: list) -> str:
+    out = ["#!/usr/bin/env bash", "# _CLIENT_INSTALLED_FILES_START"]
+    out += ["#   " + r for r in map_rows]
+    out.append("# _CLIENT_INSTALLED_FILES_END")
+    if glob_rows is not None:
+        out.append("#")
+        out.append("# _CLIENT_INSTALLED_GLOBS_START")
+        out += ["#   " + r for r in glob_rows]
+        out.append("# _CLIENT_INSTALLED_GLOBS_END")
+    return "\n".join(out) + "\n"
+
+
+def run_check_with_synthetic(map_rows: list, docs_pack_files: list,
+                             exemptions: dict = None, glob_rows: list = None,
+                             prompts_files: list = None) -> tuple:
     """Return (failures_count, pass_msg_present, captured_output)."""
     tmpdir = tempfile.mkdtemp(prefix="vp-check39-")
     root = pathlib.Path(tmpdir)
@@ -162,15 +227,13 @@ def run_check_with_synthetic(entries_body: str, docs_pack_files: list, exemption
     (root / "project-template" / "docs" / "pack").mkdir(parents=True)
     for name in docs_pack_files:
         (root / "project-template" / "docs" / "pack" / name).write_text("# stub\n")
-    init_sh_content = '''#!/usr/bin/env bash
-cmd_update() {
-    local entries=(
-%s
+    if prompts_files:
+        (root / "project-template" / "docs" / "pack" / "prompts").mkdir()
+        for name in prompts_files:
+            (root / "project-template" / "docs" / "pack" / "prompts" / name).write_text("# stub\n")
+    (root / "scripts" / "init-project.sh").write_text(
+        _init_sh_with_map(map_rows, glob_rows)
     )
-    echo "stub"
-}
-''' % entries_body
-    (root / "scripts" / "init-project.sh").write_text(init_sh_content)
 
     # Capture stdout + mod.failures.
     import io, contextlib
@@ -197,22 +260,22 @@ cmd_update() {
     pass_msg = "no asymmetric coverage" in captured.lower()
     return (len(new_failures), pass_msg, captured)
 
-# T1: PASS path — every docs/pack/*.md has an explicit cmd_update mapping
-entries_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
-        "project-template/docs/pack/BAR.md:docs/pack/BAR.md:generic"'''
+ROW_FOO = "project-template/docs/pack/FOO.md  ->  docs/pack/FOO.md  [stage:S6,cmd_update,migrate]  [class:generic]"
+ROW_BAR = "project-template/docs/pack/BAR.md  ->  docs/pack/BAR.md  [stage:S6,cmd_update,migrate]  [class:generic]"
+GLOB_PROMPTS = "project-template/docs/pack/prompts/*.md  ->  docs/pack/prompts/*.md  [stage:S6,cmd_update,migrate]  [class:generic]"
+
+# T1: PASS path — every docs/pack/*.md is covered by a map row
 fail_count, pass_msg, captured = run_check_with_synthetic(
-    entries_body, ["FOO.md", "BAR.md"]
+    [ROW_FOO, ROW_BAR], ["FOO.md", "BAR.md"]
 )
 if fail_count != 0:
     failures.append(f"T1 (PASS path) expected 0 failures, got {fail_count}: {captured}")
 if not pass_msg:
     failures.append(f"T1 (PASS path) missing pass message in output: {captured}")
 
-# T2: FAIL path — a docs/pack/*.md file lacks an explicit cmd_update mapping
-entries_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"'''
-# BAZ.md added on disk but missing from cmd_update entries:
+# T2: FAIL path — a docs/pack/*.md file has no map row
 fail_count, pass_msg, captured = run_check_with_synthetic(
-    entries_body, ["FOO.md", "BAZ.md"]
+    [ROW_FOO], ["FOO.md", "BAZ.md"]
 )
 if fail_count != 1:
     failures.append(f"T2 (FAIL path) expected 1 failure, got {fail_count}: {captured}")
@@ -221,42 +284,99 @@ if "BAZ.md" not in captured:
 if "cmd_update" not in captured:
     failures.append(f"T2 (FAIL path) FAIL message must reference cmd_update: {captured}")
 
-# T3: PASS-with-exemption path — file is on the allowlist
-entries_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"'''
+# T2b: MUTATION BITE — the SAME row with the cmd_update token REMOVED must
+# make the forward leg FAIL. This is what proves the leg reads the operand
+# and not merely the row's presence.
+ROW_FOO_NO_CU = "project-template/docs/pack/FOO.md  ->  docs/pack/FOO.md  [stage:S6,migrate]  [class:generic]"
 fail_count, pass_msg, captured = run_check_with_synthetic(
-    entries_body,
+    [ROW_FOO_NO_CU, ROW_BAR], ["FOO.md", "BAR.md"]
+)
+if fail_count != 1:
+    failures.append(f"T2b (drop cmd_update token) expected 1 failure, got {fail_count}: {captured}")
+if "FOO.md" not in captured:
+    failures.append(f"T2b FAIL message must name FOO.md: {captured}")
+
+# T3: PASS-with-exemption path — file is on the allowlist. The key is the
+#     REPO-RELATIVE PATH: the forward direction spans two directories, so a
+#     basename key would be ambiguous across them.
+EXEMPT_KEY = "project-template/docs/pack/MIGRATION-INSTRUCTIONS.md"
+fail_count, pass_msg, captured = run_check_with_synthetic(
+    [ROW_FOO],
     ["FOO.md", "MIGRATION-INSTRUCTIONS.md"],
-    exemptions={"MIGRATION-INSTRUCTIONS.md": "pre-install reference; does not install to clients"}
+    exemptions={EXEMPT_KEY: "pre-install reference; does not install to clients"}
 )
 if fail_count != 0:
     failures.append(f"T3 (exempt path) expected 0 failures, got {fail_count}: {captured}")
 if "exempt per _CHECK_39_EXEMPTIONS" not in captured:
     failures.append(f"T3 (exempt path) must show exemption notice: {captured}")
 
-# T4: empty docs/pack/ directory — forward direction passes vacuously.
-# To satisfy reverse direction we must also create the source file that
-# the entry references. The synthetic helper creates docs_pack_files in
-# docs/pack/, so reusing STUB.md as both the entry source and an on-disk
-# file under docs/pack/ satisfies both directions.
+# T3b: discrimination — the BASENAME of that same file does NOT exempt it.
+#      T3 and T3b differ only in the key form, so T3's pass is attributable
+#      to path-keying rather than to the file being covered some other way.
 fail_count, pass_msg, captured = run_check_with_synthetic(
-    '''        "project-template/docs/pack/STUB.md:docs/pack/STUB.md:generic"''',
+    [ROW_FOO],
+    ["FOO.md", "MIGRATION-INSTRUCTIONS.md"],
+    exemptions={"MIGRATION-INSTRUCTIONS.md": "basename key — must NOT exempt"}
+)
+if fail_count != 1:
+    failures.append(
+        f"T3b (basename key) expected 1 failure — a basename key must not "
+        f"exempt, got {fail_count}: {captured}")
+if "exempt per _CHECK_39_EXEMPTIONS" in captured:
+    failures.append(f"T3b a basename key must not produce an exemption notice: {captured}")
+
+# T4: single-row map — forward and reverse both satisfied by one stub.
+fail_count, pass_msg, captured = run_check_with_synthetic(
+    ["project-template/docs/pack/STUB.md  ->  docs/pack/STUB.md  [stage:S6,cmd_update,migrate]  [class:generic]"],
     ["STUB.md"]
 )
 if fail_count != 0:
-    failures.append(f"T4 (vacuous-pass-with-stub) expected 0 failures, got {fail_count}: {captured}")
+    failures.append(f"T4 (single-row pass) expected 0 failures, got {fail_count}: {captured}")
 
-# T5: comment-only entries body — array exists but no real entries.
-#     Parser should return empty set; check should FAIL (cannot prove symmetry).
-# NOTE: parser regex requires at least one non-blank, non-comment quoted line.
-# Use a degenerate case: entries=() with only comments.
+# T5: a map whose blocks yield NO cmd_update row at all. The check must
+# FAIL defensively rather than PASS by vacuity — the empty-derivation path
+# is the one that silently voids the whole guard.
 fail_count_t5, pass_msg_t5, captured_t5 = run_check_with_synthetic(
-    '''        # only a comment, no real entries''',
+    ["# only a comment, no parseable row"],
     ["FOO.md"]
 )
-# Either we get a parse-failure FAIL, or we get a missing-mapping FAIL for FOO.md.
-# Both are acceptable defensive behavior — we just require fail_count >= 1.
 if fail_count_t5 < 1:
-    failures.append(f"T5 (comment-only entries) expected ≥1 failure, got {fail_count_t5}: {captured_t5}")
+    failures.append(f"T5 (no derivable rows) expected >=1 failure, got {fail_count_t5}: {captured_t5}")
+if "install map" not in captured_t5:
+    failures.append(f"T5 diagnostic must name the install map, not an array literal: {captured_t5}")
+
+# ── Prompts leg (the non-recursive docs/pack/*.md glob never reaches it) ──
+
+# T10: PASS — a prompts file covered by the family row.
+fail_count, pass_msg, captured = run_check_with_synthetic(
+    [ROW_FOO], ["FOO.md"],
+    glob_rows=[GLOB_PROMPTS], prompts_files=["architect.md", "coder.md"]
+)
+if fail_count != 0:
+    failures.append(f"T10 (prompts covered by family row) expected 0 failures, got {fail_count}: {captured}")
+
+# T11: MUTATION BITE — delete the prompts family row and EVERY prompts file
+# must FAIL. Without this leg the whole prompts/ family was invisible.
+fail_count, pass_msg, captured = run_check_with_synthetic(
+    [ROW_FOO], ["FOO.md"],
+    glob_rows=[], prompts_files=["architect.md", "coder.md"]
+)
+if fail_count != 2:
+    failures.append(f"T11 (drop prompts family row) expected 2 failures, got {fail_count}: {captured}")
+if "prompts/architect.md" not in captured or "prompts/coder.md" not in captured:
+    failures.append(f"T11 FAIL must name each uncovered prompts file: {captured}")
+if "GLOB-block row" not in captured:
+    failures.append(f"T11 remediation must name the GLOB block for a prompts miss: {captured}")
+
+# T12: a cmd_update family row matching ZERO files FAILs (declare-verify-backing).
+fail_count, pass_msg, captured = run_check_with_synthetic(
+    [ROW_FOO], ["FOO.md"],
+    glob_rows=[GLOB_PROMPTS], prompts_files=None
+)
+if fail_count < 1:
+    failures.append(f"T12 (zero-match family row) expected >=1 failure, got {fail_count}: {captured}")
+if "matches NO file" not in captured:
+    failures.append(f"T12 diagnostic must say the family row matches no file: {captured}")
 
 if failures:
     print("FAILURES")
@@ -299,11 +419,24 @@ def _patch_root(mod, root):
 
 failures = []
 
-# Reverse-direction helper. Like run_check_with_synthetic but pack_relpaths
-# in the entries body can point at arbitrary paths; the test controls
-# which of those paths exist on disk via extant_paths.
-def run_reverse(entries_body: str, docs_pack_files: list, extant_paths: list,
-                forward_exemptions: dict = None, reverse_exemptions: dict = None) -> tuple:
+# Reverse-direction helper. Like run_check_with_synthetic but the map rows'
+# pack_relpaths can point at arbitrary paths; the test controls which of
+# those paths exist on disk via extant_paths.
+def _init_sh_with_map(map_rows: list, glob_rows: list) -> str:
+    out = ["#!/usr/bin/env bash", "# _CLIENT_INSTALLED_FILES_START"]
+    out += ["#   " + r for r in map_rows]
+    out.append("# _CLIENT_INSTALLED_FILES_END")
+    if glob_rows is not None:
+        out.append("#")
+        out.append("# _CLIENT_INSTALLED_GLOBS_START")
+        out += ["#   " + r for r in glob_rows]
+        out.append("# _CLIENT_INSTALLED_GLOBS_END")
+    return "\n".join(out) + "\n"
+
+
+def run_reverse(map_rows: list, docs_pack_files: list, extant_paths: list,
+                forward_exemptions: dict = None, reverse_exemptions: dict = None,
+                glob_rows: list = None) -> tuple:
     """Return (failures_count, captured_output)."""
     tmpdir = tempfile.mkdtemp(prefix="vp-check39-rev-")
     root = pathlib.Path(tmpdir)
@@ -316,15 +449,9 @@ def run_reverse(entries_body: str, docs_pack_files: list, extant_paths: list,
         target = root / ep
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text("# stub\n")
-    init_sh_content = '''#!/usr/bin/env bash
-cmd_update() {
-    local entries=(
-%s
+    (root / "scripts" / "init-project.sh").write_text(
+        _init_sh_with_map(map_rows, glob_rows)
     )
-    echo "stub"
-}
-''' % entries_body
-    (root / "scripts" / "init-project.sh").write_text(init_sh_content)
 
     import io, contextlib
     saved_root = mod.REPO_ROOT
@@ -355,22 +482,23 @@ cmd_update() {
         mod._CHECK_39_REVERSE_EXEMPTIONS.update(saved_rev)
     return (len(new_failures), captured)
 
-# T6: reverse-PASS path — every cmd_update entry's pack_relpath exists on disk.
-entries_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"'''
+R_FOO = "project-template/docs/pack/FOO.md  ->  docs/pack/FOO.md  [stage:S6,cmd_update,migrate]  [class:generic]"
+R_STALE = "project-template/docs/pack/STALE.md  ->  docs/pack/STALE.md  [stage:S6,cmd_update,migrate]  [class:generic]"
+R_EXTERN = "extern/IMAGINARY.md  ->  docs/pack/IMAGINARY.md  [stage:S6,cmd_update,migrate]  [class:generic]"
+
+# T6: reverse-PASS path — every cmd_update row's pack_relpath exists on disk.
 fail_count, captured = run_reverse(
-    entries_body,
+    [R_FOO],
     docs_pack_files=["FOO.md"],
     extant_paths=["project-template/docs/pack/FOO.md"],
 )
 if fail_count != 0:
     failures.append(f"T6 (reverse PASS) expected 0 failures, got {fail_count}: {captured}")
 
-# T7: reverse-FAIL path — cmd_update entry's pack_relpath does NOT exist
+# T7: reverse-FAIL path — a cmd_update row's pack_relpath does NOT exist
 # on disk (BD-180 E PROMPT-TEMPLATES-style stale mapping).
-entries_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
-        "project-template/docs/pack/STALE.md:docs/pack/STALE.md:generic"'''
 fail_count, captured = run_reverse(
-    entries_body,
+    [R_FOO, R_STALE],
     docs_pack_files=["FOO.md"],     # STALE.md NOT on disk
     extant_paths=["project-template/docs/pack/FOO.md"],
 )
@@ -381,11 +509,9 @@ if "STALE.md" not in captured:
 if "stale" not in captured.lower():
     failures.append(f"T7 (reverse FAIL stale) FAIL message must contain word 'stale': {captured}")
 
-# T8: reverse-PASS-with-exemption — stale entry but on reverse exemption allowlist.
-entries_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
-        "extern/IMAGINARY.md:docs/pack/IMAGINARY.md:generic"'''
+# T8: reverse-PASS-with-exemption — stale row but on reverse exemption allowlist.
 fail_count, captured = run_reverse(
-    entries_body,
+    [R_FOO, R_EXTERN],
     docs_pack_files=["FOO.md"],
     extant_paths=["project-template/docs/pack/FOO.md"],
     reverse_exemptions={"extern/IMAGINARY.md": "intentional extern-resolved (test stub)"},
@@ -396,11 +522,9 @@ if "exempt per _CHECK_39_REVERSE_EXEMPTIONS" not in captured:
     failures.append(f"T8 (reverse exempt) must show reverse exemption notice: {captured}")
 
 # T9: combined forward+reverse failures — one of each.
-entries_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
-        "project-template/docs/pack/STALE.md:docs/pack/STALE.md:generic"'''
 fail_count, captured = run_reverse(
-    entries_body,
-    docs_pack_files=["FOO.md", "BAZ.md"],  # BAZ.md on disk but not in entries
+    [R_FOO, R_STALE],
+    docs_pack_files=["FOO.md", "BAZ.md"],  # BAZ.md on disk but has no map row
     extant_paths=["project-template/docs/pack/FOO.md"],  # STALE.md not extant
 )
 # Expect 2 failures: forward (BAZ.md missing mapping) + reverse (STALE.md absent source).
@@ -545,16 +669,18 @@ def run_leg3(manifest_rows, sweep_rows, tracked, git_rc=0, exemptions=None,
     """Run Check 39 with a synthetic adapter + stubbed git ls-files.
 
     Legs 1+2 are made trivially clean (one docs/pack file with a matching,
-    resolvable cmd_update entry) so any failure counted here is leg 3's."""
+    resolvable install-map row) so any failure counted here is leg 3's."""
     tmpdir = tempfile.mkdtemp(prefix="vp-check39-leg3-")
     root = pathlib.Path(tmpdir)
     (root / "scripts").mkdir()
     (root / "project-template" / "docs" / "pack").mkdir(parents=True)
     (root / "project-template" / "docs" / "pack" / "FOO.md").write_text("# stub\n")
     (root / "scripts" / "init-project.sh").write_text(
-        '#!/usr/bin/env bash\ncmd_update() {\n    local entries=(\n'
-        '        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"\n'
-        '    )\n    echo stub\n}\n')
+        "#!/usr/bin/env bash\n"
+        "# _CLIENT_INSTALLED_FILES_START\n"
+        "#   project-template/docs/pack/FOO.md  ->  docs/pack/FOO.md"
+        "  [stage:S6,cmd_update,migrate]  [class:generic]\n"
+        "# _CLIENT_INSTALLED_FILES_END\n")
     (root / "scripts" / "migrate-v10-to-v11.sh").write_text(
         (tmpl or ADAPTER_TMPL)
         % ("\n".join(manifest_rows), "\n".join(sweep_rows)))
@@ -811,44 +937,74 @@ if not fixtures_dir.is_dir():
 # anchor for what cases the check covers).
 expected_fixtures = {
     "README.md": "fixture set documentation",
-    "init-fragment-pass.sh": "synthetic init-project.sh with all entries present",
-    "init-fragment-fail-missing.sh": "synthetic init-project.sh with one entry missing",
-    "init-fragment-fail-malformed.sh": "synthetic init-project.sh with malformed entries array",
+    "init-fragment-pass.sh": "synthetic install map covering every docs/pack file",
+    "init-fragment-fail-missing.sh": "synthetic install map missing one file's cmd_update coverage",
+    "init-fragment-fail-malformed.sh": "synthetic install map with a broken operand",
 }
 for name, why in expected_fixtures.items():
     if not (fixtures_dir / name).is_file():
         failures.append(f"missing fixture: {name} ({why})")
 
-# Parse the PASS fragment — must yield a non-empty entries set.
+import re
+BLOCK_RE = re.compile(
+    r"_CLIENT_INSTALLED_FILES_START\s*\n(.+?)\n[^\n]*_CLIENT_INSTALLED_FILES_END",
+    re.DOTALL,
+)
+
+
+def _rows(path):
+    """Rows in a fixture's explicit block that carry a cmd_update tag."""
+    m = BLOCK_RE.search(path.read_text())
+    if not m:
+        return None
+    out = []
+    for line in m.group(1).splitlines():
+        s = line.strip().lstrip("#").strip()
+        if "->" in s and "cmd_update" in s:
+            out.append(s)
+    return out
+
+
+# The fixtures model the MAP, not the retired array literal. A fixture still
+# carrying \`local entries=(\` would be documenting a shape no parser reads.
+# (Backticks are escaped: this heredoc is unquoted so \$REPO_ROOT expands,
+# which also makes a bare backtick a command substitution.)
+for name in ("init-fragment-pass.sh", "init-fragment-fail-missing.sh",
+             "init-fragment-fail-malformed.sh"):
+    f = fixtures_dir / name
+    if f.is_file() and "local entries=(" in f.read_text():
+        failures.append(f"{name}: still encodes the retired entries=() array shape")
+
 pass_frag = fixtures_dir / "init-fragment-pass.sh"
 if pass_frag.is_file():
-    import re
-    text = pass_frag.read_text()
-    m = re.search(r"local\s+entries=\(\s*\n(.+?)\n\s*\)", text, re.DOTALL)
-    if not m:
-        failures.append(f"init-fragment-pass.sh: entries array not parseable")
-    else:
-        body = m.group(1)
-        ec = body.count('"project-template/')
-        if ec < 3:
-            failures.append(f"init-fragment-pass.sh: expected ≥3 entries, got {ec}")
+    pr = _rows(pass_frag)
+    if pr is None:
+        failures.append("init-fragment-pass.sh: install-map block not parseable")
+    elif len(pr) < 3:
+        failures.append(f"init-fragment-pass.sh: expected >=3 cmd_update rows, got {len(pr)}")
+    elif not all("[class:" in r for r in pr):
+        failures.append("init-fragment-pass.sh: every row must carry a [class:] operand")
 
-# Parse the MISSING fragment — must yield a smaller entries set than PASS.
+# The MISSING fragment must cover strictly fewer files than PASS.
 miss_frag = fixtures_dir / "init-fragment-fail-missing.sh"
 if miss_frag.is_file() and pass_frag.is_file():
-    import re
-    pass_text = pass_frag.read_text()
-    miss_text = miss_frag.read_text()
-    pm = re.search(r"local\s+entries=\(\s*\n(.+?)\n\s*\)", pass_text, re.DOTALL)
-    mm = re.search(r"local\s+entries=\(\s*\n(.+?)\n\s*\)", miss_text, re.DOTALL)
-    if pm and mm:
-        pec = pm.group(1).count('"project-template/')
-        mec = mm.group(1).count('"project-template/')
-        if mec >= pec:
-            failures.append(
-                f"init-fragment-fail-missing.sh: expected fewer entries than "
-                f"pass fragment ({mec} vs {pec})"
-            )
+    pr, mr = _rows(pass_frag), _rows(miss_frag)
+    if pr is not None and mr is not None and len(mr) >= len(pr):
+        failures.append(
+            f"init-fragment-fail-missing.sh: expected fewer cmd_update rows than "
+            f"the pass fragment ({len(mr)} vs {len(pr)})"
+        )
+
+# The MALFORMED fragment must carry a broken operand — otherwise it models
+# nothing the parser can degrade on.
+mal_frag = fixtures_dir / "init-fragment-fail-malformed.sh"
+if mal_frag.is_file():
+    mtext = mal_frag.read_text()
+    if "[class:]" not in mtext and "[stage:]" not in mtext:
+        failures.append(
+            "init-fragment-fail-malformed.sh: must carry an empty/broken "
+            "operand (e.g. \`[class:]\`) to model parser degradation"
+        )
 
 if failures:
     print("FAILURES")
@@ -870,8 +1026,8 @@ printf "\n=== Group 4: End-to-end validate-pack.py exit-status on HEAD ===\n"
 
 if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 39 > /tmp/vp-check39-e2e.out 2>&1; then
     if grep -q "Check 39: cmd_update mapping/glob symmetry" /tmp/vp-check39-e2e.out \
-       && grep -qE "Check 39 — .* file\(s\) forward-checked" /tmp/vp-check39-e2e.out \
-       && grep -qE "[0-9]+ \`cmd_update\` entries reverse-checked" /tmp/vp-check39-e2e.out; then
+       && grep -qE "Check 39 — .* file\(s\) forward-checked against the install map" /tmp/vp-check39-e2e.out \
+       && grep -qE "[0-9]+ explicit \`cmd_update\` row\(s\) \+ [0-9]+ \`cmd_update\` GLOB row\(s\) reverse-checked" /tmp/vp-check39-e2e.out; then
         t_pass "validate-pack.py exits 0; Check 39 runs and reports clean"
     else
         t_fail "validate-pack.py exits 0 but Check 39 output not detected" \
@@ -880,6 +1036,19 @@ if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 39 > /tmp/vp-check
 else
     t_fail "validate-pack.py exits non-zero on HEAD" \
         "Tail: $(tail -40 /tmp/vp-check39-e2e.out)"
+fi
+
+# Reverse leg 2 measures GLOB-row backing against git-TRACKED HEAD, falling
+# back to a filesystem match only when git is unavailable. In this repo git
+# IS available, so the fallback must NOT have fired — otherwise the leg is
+# silently accepting gitignored build artifacts as "backed at HEAD".
+if [ -f /tmp/vp-check39-e2e.out ]; then
+    if grep -q "reverse leg 2 — git unavailable" /tmp/vp-check39-e2e.out; then
+        t_fail "reverse leg 2 fell back to a filesystem match in a git work tree" \
+            "$(grep 'reverse leg 2' /tmp/vp-check39-e2e.out)"
+    else
+        t_pass "reverse leg 2 measured GLOB-row backing against git-tracked HEAD"
+    fi
 fi
 
 # ─────────────────────────────────────────────────────────────────

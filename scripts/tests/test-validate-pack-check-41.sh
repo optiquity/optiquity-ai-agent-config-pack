@@ -164,17 +164,19 @@ def _patch_root(mod, root):
 
 failures = []
 
-# Helper: build a synthetic REPO_ROOT with custom scripts/init-project.sh
-# containing both a cmd_update entries=() array AND a
-# _CLIENT_INSTALLED_FILES_START/_END block. Stage arbitrary extant paths
+# Helper: build a synthetic REPO_ROOT with a custom scripts/init-project.sh
+# carrying the install map's explicit block. Stage arbitrary extant paths
 # under the synthetic root.
+#
+# Check 41 reads the MAP and nothing else — there is no second declaration
+# to cross-check against, so the scaffold carries no copy-site array.
 #
 # `raw_init_sh`: when non-None, overrides the canonical scaffold entirely
 # and writes the provided text verbatim to scripts/init-project.sh.
 # Used for marker-uniqueness and regex-shape-mismatch tests (T8-T13)
 # where the standard scaffold's exactly-one-START/exactly-one-END
 # assumption is precisely what's under test.
-def run_check(cmd_update_body: str, inventory_lines: list,
+def run_check(inventory_lines: list,
               extant_paths: list,
               include_markers: tuple = (True, True),
               exemptions: dict = None,
@@ -194,18 +196,13 @@ def run_check(cmd_update_body: str, inventory_lines: list,
         end_marker = "# _CLIENT_INSTALLED_FILES_END" if include_markers[1] else "# (end marker omitted)"
         inventory_body = "\n".join(inventory_lines)
         init_sh_content = '''#!/usr/bin/env bash
-cmd_update() {
-    local entries=(
-%s
-    )
-    echo "stub"
-}
+main() { :; }
 
 # Self-documenting inventory:
 %s
 %s
 %s
-''' % (cmd_update_body, start_marker, inventory_body, end_marker)
+''' % (start_marker, inventory_body, end_marker)
     (root / "scripts" / "init-project.sh").write_text(init_sh_content)
 
     import io, contextlib
@@ -231,15 +228,12 @@ cmd_update() {
         mod._CHECK_41_EXEMPTIONS.update(saved_ex)
     return (len(new_failures), captured)
 
-# T1: PASS path — inventory matches cmd_update; all sources exist.
-cmd_update_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
-        "project-template/AGENTS.md:AGENTS.md:trinity"'''
+# T1: PASS path — every map row's source exists at HEAD.
 inventory_lines = [
     "#   project-template/docs/pack/FOO.md  ->  docs/pack/FOO.md  [stage:S6,cmd_update]",
     "#   project-template/AGENTS.md  ->  AGENTS.md  [stage:S7,cmd_update]",
 ]
 fail_count, captured = run_check(
-    cmd_update_body,
     inventory_lines,
     extant_paths=[
         "project-template/docs/pack/FOO.md",
@@ -252,13 +246,11 @@ if "consistent with copy-site state" not in captured:
     failures.append(f"T1 (PASS) missing PASS-message: {captured}")
 
 # T2: FAIL path — inventory entry's source does not exist on disk.
-cmd_update_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"'''
 inventory_lines = [
     "#   project-template/docs/pack/FOO.md  ->  docs/pack/FOO.md  [stage:S6,cmd_update]",
     "#   project-template/docs/pack/STALE.md  ->  docs/pack/STALE.md  [stage:S6,cmd_update]",
 ]
 fail_count, captured = run_check(
-    cmd_update_body,
     inventory_lines,
     extant_paths=["project-template/docs/pack/FOO.md"],  # STALE.md missing
 )
@@ -269,36 +261,39 @@ if "STALE.md" not in captured:
 if "does not exist at HEAD" not in captured:
     failures.append(f"T2 FAIL message must say 'does not exist at HEAD': {captured}")
 
-# T3: FAIL path — cmd_update entry NOT listed in inventory (drift).
-cmd_update_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
-        "project-template/docs/pack/EXTRA.md:docs/pack/EXTRA.md:generic"'''
+# T3: rows carrying a [class:...] operand parse cleanly, and the operand
+# never leaks into the parsed DEST. The tautological
+# "every cmd_update path is listed in the inventory" clause is GONE: with
+# one declaration that test was `map ⊆ map`, and a leg that cannot fail is
+# not a guard. Coverage of the cmd_update axis is Check 39's job.
 inventory_lines = [
-    "#   project-template/docs/pack/FOO.md  ->  docs/pack/FOO.md  [stage:S6,cmd_update]",
-    # EXTRA.md cmd_update entry present but inventory omits it
+    "#   project-template/docs/pack/FOO.md  ->  docs/pack/FOO.md  [stage:S6,cmd_update,migrate]  [class:generic]",
+    "#   project-template/AGENTS.md  ->  AGENTS.md  [stage:S7,cmd_update,migrate]  [class:trinity]",
 ]
 fail_count, captured = run_check(
-    cmd_update_body,
     inventory_lines,
     extant_paths=[
         "project-template/docs/pack/FOO.md",
-        "project-template/docs/pack/EXTRA.md",
+        "project-template/AGENTS.md",
     ],
 )
-if fail_count != 1:
-    failures.append(f"T3 (FAIL inventory-drift) expected 1 failure, got {fail_count}: {captured}")
-if "EXTRA.md" not in captured:
-    failures.append(f"T3 FAIL message must name EXTRA.md: {captured}")
-if "NOT listed in the" not in captured:
-    failures.append(f"T3 FAIL message must say 'NOT listed in the ...': {captured}")
+if fail_count != 0:
+    failures.append(f"T3 ([class:] operand rows) expected 0 failures, got {fail_count}: {captured}")
+
+# T3b: the class operand must not bleed into the DEST column. Read against
+# the REAL map (REPO_ROOT is restored by now), so this asserts on shipped
+# rows: a stage-only operand strip would leave `[class:trinity]` glued to
+# `AGENTS.md` and the reverse map would silently stop resolving.
+d2s = mod._client_install_dest_to_source()
+if d2s.get("AGENTS.md") != "project-template/AGENTS.md":
+    failures.append(f"T3b [class:] operand leaked into the parsed DEST: {sorted(d2s.items())[:5]}")
 
 # T4: PASS-with-exemption — inventory entry on _CHECK_41_EXEMPTIONS allowlist.
-cmd_update_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"'''
 inventory_lines = [
     "#   project-template/docs/pack/FOO.md  ->  docs/pack/FOO.md  [stage:S6,cmd_update]",
     "#   extern/IMAGINARY.md  ->  docs/pack/IMAGINARY.md  [stage:extern]",
 ]
 fail_count, captured = run_check(
-    cmd_update_body,
     inventory_lines,
     extant_paths=["project-template/docs/pack/FOO.md"],
     exemptions={"extern/IMAGINARY.md": "intentional extern-resolved (test stub)"},
@@ -310,10 +305,8 @@ if "exempt per _CHECK_41_EXEMPTIONS" not in captured:
 
 # T5: FAIL — START marker missing (count 0). BD-180 SHOULD-1: must
 # surface the specific "found 0; expected exactly 1" diagnostic.
-cmd_update_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"'''
 inventory_lines = ["#   project-template/docs/pack/FOO.md  ->  docs/pack/FOO.md  [stage:S6]"]
 fail_count, captured = run_check(
-    cmd_update_body,
     inventory_lines,
     extant_paths=["project-template/docs/pack/FOO.md"],
     include_markers=(False, True),
@@ -327,7 +320,6 @@ if "found 0" not in captured or "expected exactly 1" not in captured:
 
 # T6: FAIL — END marker missing (count 0). Same SHOULD-1 contract.
 fail_count, captured = run_check(
-    cmd_update_body,
     inventory_lines,
     extant_paths=["project-template/docs/pack/FOO.md"],
     include_markers=(True, False),
@@ -350,19 +342,13 @@ if "found 0" not in captured or "expected exactly 1" not in captured:
 # (covered by T7b).
 raw_whitespace_only = (
     "#!/usr/bin/env bash\n"
-    "cmd_update() {\n"
-    '    local entries=(\n'
-    '        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"\n'
-    "    )\n"
-    "    echo \"stub\"\n"
-    "}\n"
+    "main() { :; }\n"
     "\n"
     "# _CLIENT_INSTALLED_FILES_START\n"
     "   \n"  # body = three whitespace chars (no comment, no `->`)
     "# _CLIENT_INSTALLED_FILES_END\n"
 )
 fail_count, captured = run_check(
-    "",
     [],
     extant_paths=["project-template/docs/pack/FOO.md"],
     raw_init_sh=raw_whitespace_only,
@@ -387,12 +373,7 @@ if "could not be parsed into inventory entries" in captured:
 # diagnostic surfaces (rather than silently passing) for the truly-
 # empty shape.
 raw_truly_empty = '''#!/usr/bin/env bash
-cmd_update() {
-    local entries=(
-        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
-    )
-    echo "stub"
-}
+main() { :; }
 
 # Self-documenting inventory:
 # _CLIENT_INSTALLED_FILES_START
@@ -400,7 +381,6 @@ cmd_update() {
 # _CLIENT_INSTALLED_FILES_END
 '''
 fail_count, captured = run_check(
-    "",
     [],
     extant_paths=["project-template/docs/pack/FOO.md"],
     raw_init_sh=raw_truly_empty,
@@ -415,12 +395,7 @@ if "no body between adjacent marker lines" not in captured:
 # T8: FAIL — duplicate START marker (count 2). BD-180 SHOULD-1: must
 # surface the "duplicate ... found 2; expected exactly 1" diagnostic.
 raw_dup_start = '''#!/usr/bin/env bash
-cmd_update() {
-    local entries=(
-        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
-    )
-    echo "stub"
-}
+main() { :; }
 
 # First (intended) marker block:
 # _CLIENT_INSTALLED_FILES_START
@@ -431,7 +406,6 @@ cmd_update() {
 # _CLIENT_INSTALLED_FILES_START
 '''
 fail_count, captured = run_check(
-    "",
     [],
     extant_paths=["project-template/docs/pack/FOO.md"],
     raw_init_sh=raw_dup_start,
@@ -445,12 +419,7 @@ if "found 2" not in captured or "expected exactly 1" not in captured:
 
 # T9: FAIL — duplicate END marker (count 2). Same SHOULD-1 contract.
 raw_dup_end = '''#!/usr/bin/env bash
-cmd_update() {
-    local entries=(
-        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
-    )
-    echo "stub"
-}
+main() { :; }
 
 # Intended marker block:
 # _CLIENT_INSTALLED_FILES_START
@@ -461,7 +430,6 @@ cmd_update() {
 # _CLIENT_INSTALLED_FILES_END
 '''
 fail_count, captured = run_check(
-    "",
     [],
     extant_paths=["project-template/docs/pack/FOO.md"],
     raw_init_sh=raw_dup_end,
@@ -476,12 +444,7 @@ if "found 2" not in captured or "expected exactly 1" not in captured:
 # T10: FAIL — both START and END duplicated (count 2 each). Must
 # surface BOTH diagnostics.
 raw_dup_both = '''#!/usr/bin/env bash
-cmd_update() {
-    local entries=(
-        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
-    )
-    echo "stub"
-}
+main() { :; }
 
 # _CLIENT_INSTALLED_FILES_START
 #   project-template/docs/pack/FOO.md  ->  docs/pack/FOO.md  [stage:S6,cmd_update]
@@ -491,7 +454,6 @@ cmd_update() {
 # _CLIENT_INSTALLED_FILES_END
 '''
 fail_count, captured = run_check(
-    "",
     [],
     extant_paths=["project-template/docs/pack/FOO.md"],
     raw_init_sh=raw_dup_both,
@@ -509,12 +471,7 @@ if "duplicate `_CLIENT_INSTALLED_FILES_END` marker" not in captured:
 # surface the "block body could not be parsed into inventory entries"
 # diagnostic, NOT the legacy "no parseable entries" diagnostic.
 raw_garbage = '''#!/usr/bin/env bash
-cmd_update() {
-    local entries=(
-        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
-    )
-    echo "stub"
-}
+main() { :; }
 
 # _CLIENT_INSTALLED_FILES_START
 echo "this is shell, not a comment"
@@ -523,7 +480,6 @@ some other content here
 # _CLIENT_INSTALLED_FILES_END
 '''
 fail_count, captured = run_check(
-    "",
     [],
     extant_paths=["project-template/docs/pack/FOO.md"],
     raw_init_sh=raw_garbage,
@@ -541,17 +497,11 @@ if "block contains no parseable entries" in captured:
 # diagnostic with the START-precedes-END / same-line / whitespace
 # guidance, NOT the legacy diagnostic.
 raw_same_line = '''#!/usr/bin/env bash
-cmd_update() {
-    local entries=(
-        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
-    )
-    echo "stub"
-}
+main() { :; }
 
 # _CLIENT_INSTALLED_FILES_START _CLIENT_INSTALLED_FILES_END
 '''
 fail_count, captured = run_check(
-    "",
     [],
     extant_paths=["project-template/docs/pack/FOO.md"],
     raw_init_sh=raw_same_line,
@@ -570,19 +520,13 @@ if "block contains no parseable entries" in captured:
 # SHOULD-2: same regex-non-match diagnostic with the END-before-START
 # cause surfaced.
 raw_out_of_order = '''#!/usr/bin/env bash
-cmd_update() {
-    local entries=(
-        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
-    )
-    echo "stub"
-}
+main() { :; }
 
 # _CLIENT_INSTALLED_FILES_END
 #   project-template/docs/pack/FOO.md  ->  docs/pack/FOO.md  [stage:S6,cmd_update]
 # _CLIENT_INSTALLED_FILES_START
 '''
 fail_count, captured = run_check(
-    "",
     [],
     extant_paths=["project-template/docs/pack/FOO.md"],
     raw_init_sh=raw_out_of_order,
@@ -610,19 +554,13 @@ if "block contains no parseable entries" in captured:
 # producing `body_has_content=False`, which this test would force the
 # author to also test).
 raw_placeholder_loop = '''#!/usr/bin/env bash
-cmd_update() {
-    local entries=(
-        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
-    )
-    echo "stub"
-}
+main() { :; }
 
 # _CLIENT_INSTALLED_FILES_START
 # (no entries)
 # _CLIENT_INSTALLED_FILES_END
 '''
 fail_count, captured = run_check(
-    "",
     [],
     extant_paths=["project-template/docs/pack/FOO.md"],
     raw_init_sh=raw_placeholder_loop,
@@ -721,12 +659,7 @@ def run_raw(raw_init_sh: str, extant_paths: list) -> tuple:
 # AFTER the copy lines, plus a single [stage:S11] inventory row for foo.txt.
 def s11_scaffold(s11_copy_lines: str) -> str:
     return '''#!/usr/bin/env bash
-cmd_update() {
-    local entries=(
-        "project-template/x/foo.txt:docs/x/foo.txt:generic"
-    )
-    echo "stub"
-}
+main() { :; }
 
 stage_s11_v11_artifacts() {
     local copy_fn="cp"
@@ -776,12 +709,7 @@ if "consistent with copy-site state" not in cap:
 # [stage:S6] inventory row for supporting-docs/BAR.md.
 def s6_scaffold(s6_copy_lines: str) -> str:
     return '''#!/usr/bin/env bash
-cmd_update() {
-    local entries=(
-        "supporting-docs/BAR.md:docs/pack/BAR.md:generic"
-    )
-    echo "stub"
-}
+main() { :; }
 
 stage_s6_docs_pack() {
 %s
@@ -812,12 +740,7 @@ if n != 0:
 # Sentinel-truncation diagnostic: S11 function present but MISSING the
 # per_entry_regenerate_toc sentinel → clause (e) emits the truncation FAIL.
 raw_no_sentinel = '''#!/usr/bin/env bash
-cmd_update() {
-    local entries=(
-        "project-template/x/foo.txt:docs/x/foo.txt:generic"
-    )
-    echo "stub"
-}
+main() { :; }
 
 stage_s11_v11_artifacts() {
     cp -f "$pe_src/foo.txt" "$pe_dst/foo.txt"
