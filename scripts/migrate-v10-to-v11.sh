@@ -381,15 +381,16 @@ _v10_to_v11_install_v11_artifacts() {
     # _v10_to_v11_lift_gemini_customs_to_bundle step (runs after this, before
     # the .gemini/ retire). Re-run disposition: on a second pass `ours` is now
     # present (installed on the first pass) while base stays "", so
-    # three_way_classify yields project-shadows-new-pack (NOT unchanged-pack —
-    # that branch needs all three inputs present; with base="" the classifier
-    # is presence-based and never reaches the cmp-driven no-op). That routes
-    # through the conservative sidecar gate (needs-reconciliation). This is the
-    # benign, never-reached case on a real single-shot net-new v10→v11
-    # migration (which only ever sees the first pass = new-file-in-pack); it
-    # belongs to the --update path's pre-existing-accepted domain. Runs before
-    # _v10_to_v11_retire_gemini (the departing .gemini/ tree and this
-    # .agents-plugin/ surface are disjoint).
+    # three_way_classify compares the two sides directly. A bundle file the
+    # first pass installed and nobody edited is byte-identical to the pack
+    # template, so the identity rule yields unchanged-pack and the second pass
+    # is a no-op; only a bundle file that actually diverges from the pack
+    # yields project-shadows-new-pack and routes through the conservative
+    # sidecar gate (needs-reconciliation). Either way this is the benign case
+    # on a real single-shot net-new v10→v11 migration (which only ever sees
+    # the first pass = new-file-in-pack); it belongs to the --update path's
+    # pre-existing-accepted domain. Runs before _v10_to_v11_retire_gemini (the
+    # departing .gemini/ tree and this .agents-plugin/ surface are disjoint).
     local bundle_src="$PACK/project-template/.agents-plugin/optiquity-agents"
     if [[ -d "$bundle_src" ]]; then
         local bundle_file rel proj_rel bundle_dest bundle_ours

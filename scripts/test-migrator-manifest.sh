@@ -249,8 +249,12 @@ out=$(bash -c '
 rc=$?
 # Any valid disposition token proves customization_preserve was called.
 # The exact token depends on three-way's classification of the
-# absent-base / present-ours / present-theirs case (project-shadows-new-pack
-# branch in three-way.sh, which maps to needs-reconciliation).
+# absent-base / present-ours / present-theirs case: `project-shadows-new-pack`
+# (mapping to needs-reconciliation) when the two sides differ, which is what
+# this fixture produces, and `unchanged-pack` when they are byte-identical.
+# `unchanged-pack` is deliberately NOT in the allowed set below: if this
+# fixture ever converged on the pack's content, that is a change of test
+# meaning and should fail loudly here rather than pass silently.
 known_disp_re='(merged-with-customization|pack-update-applied|project-only-file|customization-detected-needs-reconciliation|project-shadows-new-pack)'
 if [[ $rc -eq 0 && "$out" =~ $known_disp_re ]]; then
     pass "transform: customization_preserve invoked, disposition recorded"

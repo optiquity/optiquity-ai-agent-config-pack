@@ -104,11 +104,26 @@ echo "proj" > "$TW/proj-ours"
 assert_eq "only ours -> project-only-file" "project-only-file" \
     "$(three_way_classify "" "$TW/proj-ours" "")"
 
-# project-shadows-new-pack: ours and theirs but no base.
+# project-shadows-new-pack: ours and theirs but no base, and they DIFFER.
 echo "proj" > "$TW/shadow-ours"
 echo "pack" > "$TW/shadow-theirs"
 assert_eq "ours+theirs no base -> project-shadows-new-pack" "project-shadows-new-pack" \
     "$(three_way_classify "" "$TW/shadow-ours" "$TW/shadow-theirs")"
+
+# Identity rule: ours and theirs but no base, BYTE-IDENTICAL. The project file
+# already holds the pack's content, so there is nothing to reconcile.
+echo "same" > "$TW/ident-ours"
+echo "same" > "$TW/ident-theirs"
+assert_eq "ours==theirs no base -> unchanged-pack" "unchanged-pack" \
+    "$(three_way_classify "" "$TW/ident-ours" "$TW/ident-theirs")"
+
+# Identity rule with a REAL base that differs from both sides: still nothing to
+# merge, because the two sides already agree.
+echo "old baseline" > "$TW/ident2-base"
+echo "converged"    > "$TW/ident2-ours"
+echo "converged"    > "$TW/ident2-theirs"
+assert_eq "base!=ours, base!=theirs, ours==theirs -> unchanged-pack" "unchanged-pack" \
+    "$(three_way_classify "$TW/ident2-base" "$TW/ident2-ours" "$TW/ident2-theirs")"
 
 # removed-by-pack-clean: base+ours match, theirs absent.
 echo "x" > "$TW/rmclean-base"

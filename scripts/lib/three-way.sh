@@ -31,15 +31,22 @@
 #   merged-with-customization   base != ours and base == theirs (keep project)
 #   real-merge-required         base != ours and base != theirs (sidecar)
 #
+# Identity rule (evaluated BEFORE the four-case set): when OURS and THEIRS are
+# both present and byte-identical, the verdict is unchanged-pack regardless of
+# BASE — the project file already carries the pack's content, so there is
+# nothing to adopt, merge, or sidecar.
+#
 # Auxiliary tokens for non-canonical cases (one or more inputs absent):
 #   new-file-in-pack            base absent, ours absent, theirs present
 #                               (copy v10 file to project)
 #   project-only-file           base absent, ours present, theirs absent
 #                               (preserve project file, never touch)
-#   project-shadows-new-pack    base absent, ours present, theirs present
-#                               (improperly-added pre-existing file; classify
-#                               by ours-vs-theirs and let caller route to
-#                               Procedure 5.4 if they differ)
+#   project-shadows-new-pack    base absent, ours present, theirs present,
+#                               ours != theirs (pre-existing or improperly-
+#                               added file whose content diverges from the
+#                               pack; caller routes to Procedure 5.4). An
+#                               ours == theirs pair is unchanged-pack per the
+#                               identity rule, not project-shadows-new-pack.
 #   removed-by-pack-clean       base present, ours == base, theirs absent
 #                               (pack retired the file; project never edited;
 #                               safe to remove)
@@ -63,6 +70,23 @@ three_way_classify() {
     [[ -n "$base"   && -e "$base"   ]] && has_base=1
     [[ -n "$ours"   && -e "$ours"   ]] && has_ours=1
     [[ -n "$theirs" && -e "$theirs" ]] && has_theirs=1
+
+    # Identity rule: OURS and THEIRS are byte-identical, so the project file
+    # already holds the pack's content and no action is warranted — whether or
+    # not a BASE is available. Evaluated before every other arm.
+    #
+    # Monotone by construction: the only arms this can pre-empt are the two
+    # that require ours != theirs to be meaningful — `real-merge-required`
+    # (base present and differing from both sides) and `project-shadows-new-pack`
+    # (base absent) — and both of those write a sidecar and overwrite DEST with
+    # THEIRS. It therefore only ever moves a file from a sidecar-writing arm to
+    # the no-write `unchanged-pack` arm, never the reverse, and it cannot reach
+    # any arm that would discard a project edit: a file whose content differs
+    # from the pack fails the cmp and is classified exactly as before.
+    if [[ $has_ours -eq 1 && $has_theirs -eq 1 ]] && cmp -s "$ours" "$theirs"; then
+        echo "unchanged-pack"
+        return 0
+    fi
 
     # All three present: canonical four-case.
     if [[ $has_base -eq 1 && $has_ours -eq 1 && $has_theirs -eq 1 ]]; then

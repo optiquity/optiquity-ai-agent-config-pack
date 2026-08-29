@@ -258,6 +258,65 @@ assert_eq "2.4d F8 demote: sidecar KEPT (not dropped)" \
     && t_pass "2.4d F8 demote: sidecar file present on disk" \
     || t_fail "2.4d F8 demote: sidecar missing"
 
+# 2.4e IDENTITY RULE (BD-295 T-P0-bite). OURS and THEIRS byte-identical with an
+# ABSENT base is `unchanged-pack`, not `project-shadows-new-pack`: the project
+# file already carries the pack's content, so there is nothing to reconcile.
+# This is the property that makes `--update` idempotent — an unmodified
+# installed file must be distinguishable from a customized one. The end-to-end
+# leg pins the consequence that matters: a no-op action and ZERO sidecar bytes
+# written to disk.
+setup_state "$state"
+printf '%s\n' "identical pack line" > "$T2/ours.md"
+printf '%s\n' "identical pack line" > "$T2/theirs.md"
+rm -f "$T2/dest.md" "$T2/dest.md.pre-update"
+cp "$T2/ours.md" "$T2/dest.md"
+assert_eq "2.4e classify: base absent + ours==theirs -> unchanged-pack" \
+    "unchanged-pack" \
+    "$(three_way_classify "" "$T2/ours.md" "$T2/theirs.md")"
+customization_preserve "" "$T2/ours.md" "$T2/theirs.md" \
+    "doc.md" "$T2/dest.md" generic >/dev/null
+last=$(tail -1 "$state/dispositions.tsv")
+assert_eq "2.4e disposition" "unchanged-pack" "$(tsv_col 1 "$last")"
+assert_eq "2.4e action = none" "none" "$(tsv_col 4 "$last")"
+assert_eq "2.4e sidecar column dash" "-" "$(tsv_col 5 "$last")"
+[[ ! -e "$T2/dest.md.pre-update" ]] \
+    && t_pass "2.4e ZERO sidecar on disk for a byte-identical file" \
+    || t_fail "2.4e unexpected sidecar written for a byte-identical file"
+
+# 2.4f IDENTITY RULE, OPPOSITE DIRECTION (BD-295 T-P0-opposite). The identity
+# rule must NOT swallow genuine client work: a generic-class file whose OURS
+# DIVERGES from THEIRS with an absent base still records
+# `customization-detected-needs-reconciliation` AND still produces both
+# preservation artifacts. All three columns are asserted — the token alone
+# would not catch a regression that recorded the right disposition while
+# dropping the sidecar or the diff.
+setup_state "$state"
+printf '%s\n' "my hand-written customization" > "$T2/ours.md"
+printf '%s\n' "pack v11 line"                 > "$T2/theirs.md"
+rm -f "$T2/dest.md" "$T2/dest.md.pre-update"
+cp "$T2/ours.md" "$T2/dest.md"
+customization_preserve "" "$T2/ours.md" "$T2/theirs.md" \
+    "doc.md" "$T2/dest.md" generic >/dev/null
+last=$(tail -1 "$state/dispositions.tsv")
+assert_eq "2.4f disposition (divergent ours is still reconciled)" \
+    "customization-detected-needs-reconciliation" "$(tsv_col 1 "$last")"
+sidecar_col_24f=$(tsv_col 5 "$last")
+diff_col_24f=$(tsv_col 6 "$last")
+[[ "$sidecar_col_24f" != "-" && -n "$sidecar_col_24f" ]] \
+    && t_pass "2.4f sidecar column is a real path (not '-')" \
+    || t_fail "2.4f sidecar column is '-'" "got='$sidecar_col_24f'"
+[[ "$diff_col_24f" != "-" && -n "$diff_col_24f" ]] \
+    && t_pass "2.4f diff column is a real path (not '-')" \
+    || t_fail "2.4f diff column is '-'" "got='$diff_col_24f'"
+[[ -f "$sidecar_col_24f" ]] \
+    && t_pass "2.4f sidecar file exists on disk" \
+    || t_fail "2.4f sidecar file missing" "path='$sidecar_col_24f'"
+[[ -f "$diff_col_24f" ]] \
+    && t_pass "2.4f diff file exists on disk" \
+    || t_fail "2.4f diff file missing" "path='$diff_col_24f'"
+assert_eq "2.4f sidecar preserves the client customization" \
+    "my hand-written customization" "$(cat "$sidecar_col_24f")"
+
 # 2.5 new-file-in-pack: base + ours absent, theirs present → copy.
 setup_state "$state"
 echo "new" > "$T2/theirs.md"
@@ -662,9 +721,10 @@ fi
 
 # 6.4 BD-221: a bundle PACK agent SELF-CLASSIFIES to pack-agent. Base "" +
 # ours present + theirs differs → project-shadows-new-pack on the net-new
-# bundle surface (the classifier is presence-based when base="" — ours is
-# present, so NOT new-file-in-pack, which requires ours absent). The
-# project-shadows-new-pack leg routes through the conservative sidecar gate:
+# bundle surface (ours is present, so NOT new-file-in-pack, which requires
+# ours absent; and ours differs from theirs, so NOT the identity rule's
+# unchanged-pack). The project-shadows-new-pack leg routes through the
+# conservative sidecar gate:
 # dest receives theirs (the v11 pack content) and ours is preserved in a
 # .pre-update sidecar; the recorded canonical disposition is
 # customization-detected-needs-reconciliation.

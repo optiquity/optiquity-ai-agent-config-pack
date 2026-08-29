@@ -563,16 +563,15 @@ git -C "$T6" commit -q -m "user-authored entries" 2>/dev/null
 # (e) idempotency: snapshot the groupings surface + user files, re-run
 # --update, assert a byte-level no-op (SC16.12).
 #
-# Reconcile-first: run 1 wrote *.pre-update sidecars (the base-less
-# BD-088 classifier is conservative — ours+theirs present without a
-# baseline classifies project-shadows-new-pack even when byte-identical,
-# so every pre-existing installed file gets a sidecar). The single-slot
-# sidecar contract refuses a re-run while sidecars exist (pinned by test
-# 2.7 above); the user's reconcile step for an unchanged tree is
-# removal. Remove them so run 2 actually executes (a refusal would make
-# the byte-compare below pass vacuously).
-find "$T6" -type f -name "*.pre-update" \
-    -not -path "*/.pack-update/*" -not -path "*/.git/*" -delete
+# No reconcile step is needed between the two runs. An installed file that
+# is byte-identical to the pack template classifies `unchanged-pack` (the
+# identity rule in three-way.sh applies regardless of an absent baseline),
+# so run 1 writes NO sidecars for an unchanged tree. That matters here
+# beyond tidiness: the single-slot sidecar contract REFUSES a re-run while
+# any *.pre-update sidecar survives (pinned by test 2.7 above), so a run
+# that left sidecars behind would make run 2 a refusal and the byte-compare
+# below would pass vacuously. Leg 6.6b asserts the zero-sidecar property
+# directly rather than trusting it.
 snap6=$(mktemp -d "${TMPDIR:-/tmp}/bd263-snap.XXXXXX")
 for rel in \
     "docs/project/groupings/_rules.md" \
@@ -585,7 +584,27 @@ for rel in \
     cp "$T6/$rel" "$snap6/$safe_name"
 done
 out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T6" 2>&1) ; rc=$?
-assert_eq "6.6 second --update rc=0 (after sidecar reconcile)" "0" "$rc"
+assert_eq "6.6 second --update rc=0 (no reconcile step between runs)" "0" "$rc"
+
+# 6.6b IDEMPOTENCE (BD-295 T-IDEM). A second --update against an UNCHANGED
+# pack must be a true no-op: zero sidecars on disk and zero reconciliation
+# findings in the report. rc=0 above already proves run 1 left no sidecars
+# (the stale-sidecar pre-check would have refused to start); these two
+# assertions pin the property for run 2 as well. --update wipes and rewrites
+# $TARGET/.pack-update on entry, so the TSV read here is run 2's own report.
+sidecars6=$(find "$T6" -type f -name "*.pre-update" \
+    -not -path "*/.pack-update/*" -not -path "*/.git/*" | wc -l | tr -d ' ')
+assert_eq "6.6b zero *.pre-update sidecars after the unchanged-pack re-run" \
+    "0" "$sidecars6"
+disp_tsv6="$T6/.pack-update/dispositions.tsv"
+if [[ -f "$disp_tsv6" ]]; then
+    needs6=$(grep -c "needs-reconciliation" "$disp_tsv6" || true)
+    assert_eq "6.6b zero needs-reconciliation rows in run-2 dispositions.tsv" \
+        "0" "$needs6"
+else
+    t_fail "6.6b run-2 dispositions.tsv missing" "expected $disp_tsv6"
+fi
+
 for rel in \
     "docs/project/groupings/_rules.md" \
     "docs/project/groupings/_intro.md" \

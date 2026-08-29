@@ -1,20 +1,19 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "7ea4d33",
-  "checkpoint": "2026-08-27T18:02:41Z",
+  "boundary_commit": "0bd90c0",
+  "checkpoint": "2026-08-29T17:05:00Z",
   "active": [
-    "BD-293 (install fidelity) + BD-295 (update-path baseline/idempotence) in JOINT architecture; BD-294 (trinity graft) sequenced after. Census reframed the defect: 19/25 client findings are STALE installed copies, not source bugs; --update has no BASE, cannot tell unmodified from customized, is not idempotent (105/110 sidecars on an unchanged 2nd run), and reaches 0 prompts/skills files."
+    "BD-293+BD-295 Wave A at fix-pass stage. Criterion amendment LANDED + pushed (bounded cycle closed CLEAN). USER DECISIONS in force: requirements.toml fix -> C6; Check-67 pack-side mirror -> folded into C4's fix pass, inside BD-293, NO new entry; C4-03 stale citations -> fixed now, no new entry; Wave-A triage approved fix-all."
   ],
   "in_flight_agents": [
-    "coder-bd293-acamend (WS bd293-ac-20260827T180241Z) -- BD-293 AC clause: installed -> installed AND current",
-    "architect-bd293-installfix (isolated) -- joint BD-293+295 design; report: ~/.local/state/optiquity-pack-handoff/bd293-architect-20260827T180241Z/ARCHITECTURE-BD-293-295.md"
+    "fixcoder-bd293-c2b + fixcoder-bd293-c4b (2 isolated, each its wave's SECOND AND FINAL fix pass, reusing the live commit workspaces)"
   ],
   "queue": [
     "BD-293 pipeline: researcher -> architect (needs user spawn approval) -> adversarial -> reconciliation-if-findings -> user design review -> planner chain -> coder waves",
     "BD-294 pipeline: same, sequenced after BD-293's source fixes; D3 DIRECTION is a user decision at its design review after the architect measures each option's effect on existing installs",
     "user: flip the repo public (the launch) -- now gated on BD-293 + BD-294 (a fresh install must pass its own shipped gate; the trinity must be graftable)"
   ],
-  "parallelization": "SERIAL. Nothing in flight.",
+  "parallelization": "PARALLEL: Wave A = C1||C2||C3||C4 (no shared file); then C5 (needs C4); Wave B C6->C7 || C8; Wave C C9 || C10->C11; then C12..C15 serial.",
   "wave": "v11.0 (RC1) CI-green; main sole live branch; repo still private. Launch now gated on BD-293 + BD-294 + BD-295. Open BDs 19. BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
   "pending_decisions": [
     "LOCKED: main history is PRESERVED intact -- NO squash, NO rewrite, ever.",
@@ -22,5 +21,5 @@
     "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no narration, under the byte cap); modes review=itemized intervention=full isolation=full (user-selected post-BD-290; the repaired contract); manifest-sync screen runs before EVERY push whose range touches fixture inputs.",
     "Standing (BD-291, user): launch gated on the target app working correctly on v11.0; issues found in the target-app v11.0 install are fixed pack-side before GA; synthetic/manual field fill acceptable only as shipped instructions executed by the target-app PM chat + user."
   ],
-  "cycle_position": "No commit cycle open. BD-295 open + AC amendment staged for approval."
+  "cycle_position": "Wave A: C1 + C3 reviewed CLEAN and landing now (C1 carries the user-approved merge-trinity.py deletion); C2 + C4 each in their final fix pass, then one final reviewer each. C4 lands as TWO commits, client half first (its set spans pack+client, so no single scope keyword holds)."
 }
