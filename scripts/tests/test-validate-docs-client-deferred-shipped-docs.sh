@@ -83,13 +83,13 @@ deferred_hits() {
 echo "== client DEFERRED-axis parity over the shipped operating docs =="
 
 # ── PASS leg: the REAL shipped content has 0 DEFERRED-axis hit outside the
-#    allowlist (the client allowlist exactly covers the 11 shipped KEEPs) ─────
+#    allowlist (the client allowlist exactly covers the 13 shipped KEEPs) ─────
 PASS_ROOT="$FIXTURE_BASE/pass"
 stage_tree "$PASS_ROOT"
 pass_out="$(bash "$PASS_ROOT/scripts/validate-docs.sh" 2>&1)"
 pass_def="$(deferred_hits "$pass_out")"
 if [[ "$pass_def" -eq 0 ]]; then
-    pass "shipped METHODOLOGY + INSTALL-PROCEDURES: 0 deferred-axis violation outside the client allowlist (the 11 KEEPs are exactly covered)"
+    pass "shipped METHODOLOGY + INSTALL-PROCEDURES: 0 deferred-axis violation outside the client allowlist (the 13 KEEPs are exactly covered)"
 else
     fail "shipped docs should have 0 deferred-axis violation outside the allowlist" \
         "got $pass_def deferred hit(s): $(printf '%s' "$pass_out" | grep '\[deferred\]' | head -5)"

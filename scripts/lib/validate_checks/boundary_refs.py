@@ -4059,9 +4059,32 @@ def check_operating_doc_no_history() -> None:
 # cleaned its deferred-skills catalog) — any future PLATFORM-SKILLS hit is a
 # regression caught loudly.
 #
-# RUNTIME COST (ci-check-runtime-compounding): one compiled-alternation scan
-# per IN line (shares the IN-set read shape with Check 65), plus one small
-# allowlist parse. No subprocess, no whole-tree scan. Bounded to the IN set.
+# SPAN MASK (twin of mask_spans() in the client gate,
+# project-template/scripts/validate-docs.sh — the two change in LOCK-STEP): a
+# deferral word inside an inline code span or a Markdown link target is a NAME
+# — a status token, a rationale slug, a path — not an advertisement, so the
+# marker scan reads a MASKED copy of the line. The mask is bound to the marker
+# scan ALONE and must never reach:
+#   * covered() — allowlist snippets are RAW substrings and some quote a code
+#     span, so a masked line would stop matching its own record and a doc the
+#     allowlist has already cleared would start FAILing;
+#   * the fail() message — a reviewer adjudicates the line as written;
+#   * Check 68 (dangling), whose entire input IS code spans and link targets.
+#     Masking there would leave it scanning blanks while still reporting clean.
+# A code span becomes a SPACE, not nothing, so the words on either side stay
+# separate tokens for the \b anchors below.
+#
+# RUNTIME COST (ci-check-runtime-compounding), per IN line: ONE
+# _check_67_mask_spans call (2 compiled substitutions), then one compiled-
+# pattern search per entry of _CHECK_67_DEFERRED_PATTERNS over that masked
+# copy — the tuple below is separate patterns, NOT one alternation, and a
+# list comprehension evaluates every element, so there is no short-circuit.
+# The mask is HOISTED out of that comprehension: called inside it, a pure
+# function would be re-derived once per pattern for a byte-identical result.
+# Plus one allowlist parse, an O(snippets) covered() scan only on a line that
+# already matched, and an O(records) backing set-difference at the end. No
+# subprocess, no whole-tree scan. Bounded to the IN set, whose read shape it
+# shares with Check 65.
 
 _CHECK_67_DEFERRED_PATTERNS = (
     ("deferred",        re.compile(r"\bdeferred\b", re.I)),
@@ -4076,6 +4099,26 @@ _CHECK_67_DEFERRED_PATTERNS = (
     ("slated",          re.compile(r"\bslated\b", re.I)),
     ("expected-offer",  re.compile(r"\bexpected to offer\b", re.I)),
 )
+
+
+# The span/link mask (see SPAN MASK above). _check_67_mask_spans has exactly
+# ONE call site — the marker search inside
+# check_operating_doc_no_deferred_feature — and that scoping is load-bearing.
+_CHECK_67_MASK_CODE_SPAN = re.compile(r"`[^`\n]*`")
+_CHECK_67_MASK_LINK_TARGET = re.compile(r"\]\([^)\n]*\)")
+
+
+def _check_67_mask_spans(line: str) -> str:
+    """Blank inline code spans and Markdown link targets in one line.
+
+    Line length is NOT preserved — the only consumer is a position-independent
+    regex search. A code span is replaced by a SPACE rather than deleted so the
+    words on either side stay separate tokens; the word-boundary anchors in
+    _CHECK_67_DEFERRED_PATTERNS depend on that separation.
+    """
+    return _CHECK_67_MASK_LINK_TARGET.sub(
+        "]()", _CHECK_67_MASK_CODE_SPAN.sub(" ", line)
+    )
 
 
 
@@ -4116,6 +4159,12 @@ def check_operating_doc_no_deferred_feature() -> None:
     AND an allowlisted snippet is a substring of the line) FAILs — deferred-
     feature marker count must be 0 OUTSIDE the allowlist.
 
+    The marker scan reads a span/link-MASKED copy of each line
+    (_check_67_mask_spans), so a deferral word that is a NAME inside a code
+    span or a link target is not an advert. covered() and the failure message
+    read the RAW line — see the SPAN MASK block above for why that scoping is
+    load-bearing.
+
     A RECALL gate, not precision (no regex decides "is this feature shipped?").
     The human adjudicates each hit: STRIP it (it advertises a deferred pack
     feature) OR add an allowlist record (a live workflow / generic advice / the
@@ -4138,23 +4187,54 @@ def check_operating_doc_no_deferred_feature() -> None:
     total_outside = 0
     total_allowlisted = 0
 
+    # DEAD-RECORD TRACKING (declare-verify-backing), the twin of Check 65's
+    # leg. This allowlist also declares itself "sized to the KEEP set
+    # EXACTLY", and nothing verified a record still matches anything. The
+    # span mask makes that worse, not better: wrapping an exempted word in
+    # backticks now hides the line from the marker scan, so the record that
+    # cleared it silently stops firing and sits here as dead weight.
+    # Recording which records actually FIRE makes the sizing claim
+    # load-bearing.
+    #
+    # ADVISORY ONLY, never a gate: a record can be legitimately un-triggered
+    # (its doc absent at HEAD, or momentarily outside the IN set), so a hard
+    # FAIL here would red CI on a false positive.
+    scanned_doc_set: set = set()
+    used_records: set = set()
+
     for doc_rel in _iter_operating_docs():
         doc_path = REPO_ROOT / doc_rel
         if not doc_path.is_file():
             ok(f"{doc_rel} absent — skipping that doc (lenient)")
             continue
         scanned_docs += 1
+        scanned_doc_set.add(doc_rel)
         snippets = allowlist.get(doc_rel, [])
         lines = doc_path.read_text().splitlines()
 
         for lineno, line in enumerate(lines, start=1):
+            # MASKED — a deferral word inside a code span / link target is a
+            # name, not an advert. The mask stops here: covered() and the
+            # fail() message below both read the RAW line (see SPAN MASK).
+            # Hoisted OUT of the comprehension deliberately: the mask is pure,
+            # so calling it inside would re-derive the same string once per
+            # pattern (ci-check-runtime-compounding).
+            masked = _check_67_mask_spans(line)
             matched = [
                 name for name, rx in _CHECK_67_DEFERRED_PATTERNS
-                if rx.search(line)
+                if rx.search(masked)
             ]
             if not matched:
                 continue
-            covered = any(snip in line for snip in snippets)
+            # UNMASKED on purpose (see SPAN MASK). Iterate rather than
+            # `any(...)`: the short-circuit would hide a second snippet that
+            # also covers this line and mis-report its record as dead below.
+            # Cost is O(snippets), and only on a line that already matched.
+            covered = False
+            for snip in snippets:
+                if snip in line:
+                    covered = True
+                    used_records.add((doc_rel, snip))
             if covered:
                 total_allowlisted += 1
                 continue
@@ -4175,12 +4255,41 @@ def check_operating_doc_no_deferred_feature() -> None:
                 f"admit this hit."
             )
 
+    # O(records) set difference — no extra file read, no subprocess, no
+    # tree walk (ci-check-runtime-compounding).
+    declared = {(d, s) for d, snips in allowlist.items() for s in snips}
+    dead = sorted(
+        r for r in declared if r[0] in scanned_doc_set and r not in used_records
+    )
+    unscanned = sorted(r for r in declared if r[0] not in scanned_doc_set)
+
+    for doc_rel, snip in dead:
+        warn(
+            f"Check 67 allowlist — record `doc: {doc_rel}` / "
+            f"`snippet: {snip}` matched NO line in that doc. The allowlist "
+            f"is declared 'sized to the KEEP set EXACTLY', so a record that "
+            f"never fires is dead weight: either the line it exempted was "
+            f"edited/removed (drop the record), the snippet drifted "
+            f"(re-anchor it), or the marker now sits inside a code span / "
+            f"link target and the span mask exempts the line without it. "
+            f"Advisory only — exit code unaffected."
+        )
+    for doc_rel, snip in unscanned:
+        warn(
+            f"Check 67 allowlist — record `doc: {doc_rel}` / "
+            f"`snippet: {snip}` names a doc outside the scanned operating-doc "
+            f"IN set (absent at HEAD, or not an IN doc), so the record can "
+            f"never fire. Advisory only — exit code unaffected."
+        )
+
     if not any_fail:
         ok(
             f"Check 67 — {scanned_docs} operating doc(s) scanned; "
             f"{total_outside} deferred-feature marker(s) outside the allowlist "
             f"(0 = clean); {total_allowlisted} allowlisted KEEP occurrence(s) "
-            f"admitted."
+            f"admitted. Allowlist backing: {len(declared)} record(s) declared, "
+            f"{len(used_records)} live, {len(dead)} dead, {len(unscanned)} on "
+            f"unscanned docs."
         )
 
 
@@ -5131,6 +5240,9 @@ __all__ = [
     "_check_65_load_allowlist",
     "check_operating_doc_no_history",
     "_CHECK_67_DEFERRED_PATTERNS",
+    "_CHECK_67_MASK_CODE_SPAN",
+    "_CHECK_67_MASK_LINK_TARGET",
+    "_check_67_mask_spans",
     "_check_67_load_allowlist",
     "check_operating_doc_no_deferred_feature",
     "_CHECK_68_QUALIFIED_PATH_PATTERN",

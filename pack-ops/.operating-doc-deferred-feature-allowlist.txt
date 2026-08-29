@@ -73,10 +73,6 @@ snippet: NITs that are deferred
 reason: C1 — the triage-all-findings rule describing deferred-nit handling.
 
 doc: CLAUDE.md
-snippet: feedback-deferred-work-tracking
-reason: C1 — a memory-cache pointer the rule references.
-
-doc: CLAUDE.md
 snippet: Operating docs carry NO history, NO deferred-feature mentions
 reason: C1 — the operating-docs-no-history-no-bloat RULE naming what it forbids.
 
@@ -113,10 +109,6 @@ snippet: NITs that are deferred
 reason: C1 — triage-all-findings rule (AGENTS).
 
 doc: AGENTS.md
-snippet: feedback-deferred-work-tracking
-reason: C1 — memory-cache pointer (AGENTS).
-
-doc: AGENTS.md
 snippet: Operating docs carry NO history, NO deferred-feature mentions
 reason: C1 — operating-docs-no-history-no-bloat rule (AGENTS).
 
@@ -151,10 +143,6 @@ reason: C1 — no-deferral-without-user-direction rule (GEMINI).
 doc: GEMINI.md
 snippet: NITs that are deferred
 reason: C1 — triage-all-findings rule (GEMINI).
-
-doc: GEMINI.md
-snippet: feedback-deferred-work-tracking
-reason: C1 — memory-cache pointer (GEMINI).
 
 doc: GEMINI.md
 snippet: Operating docs carry NO history, NO deferred-feature mentions
@@ -432,10 +420,6 @@ doc: project-template/docs/project/backlog/_rules.md
 snippet: a pending-decision state between Open and Deferred
 reason: C4 — the backlog `Unblocked` status definition (names the `Deferred` state — live workflow vocabulary).
 
-doc: project-template/docs/project/backlog/_rules.md
-snippet: deliberately postponed (user-authorized)
-reason: C4 — the backlog `Deferred` status definition (live workflow vocabulary).
-
 doc: project-template/skills/audit-methodology/SKILL.md
 snippet: one BACKLOG entry per Critical finding
 reason: C4 — the audit workflow describing deferral-to-BACKLOG (live workflow); marker is "deferred" in adjacent prose.
@@ -444,16 +428,12 @@ doc: backlog/_rules.md
 snippet: pending-decision state between Open and Deferred
 reason: C4 — the BACKLOG `Unblocked` status definition (names the `Deferred` status — live workflow vocabulary).
 
-doc: backlog/_rules.md
-snippet: deliberately postponed (user-authorized)
-reason: C4 — the BACKLOG `Deferred` status definition (live workflow vocabulary).
-
 # ─────────────────────────────────────────────────────────────────
 # C4 — the 2 newly-operating supporting-docs (BD-250). METHODOLOGY.md +
 # INSTALL-PROCEDURES.md were re-classified REFERENCE→OPERATING; every hit
 # below is the LIVE TD-deferral WORKFLOW (the coder/PM "Deferred items"
 # report flow, the TODO-scope vocabulary, the backlog-entry template), NOT a
-# deferred pack feature. Sized to EXACTLY the 14 measured KEEP (12 + 2); the
+# deferred pack feature. Sized to EXACTLY the 16 measured KEEP (14 + 2); the
 # 3 STRIP hits were removed (no record for them).
 # ─────────────────────────────────────────────────────────────────
 
@@ -512,10 +492,6 @@ reason: C4 — the Workflow-7 grouping derived-status ROLLUP row (`deferred` is 
 doc: supporting-docs/METHODOLOGY.md
 snippet: b / d / s / u = blocked / deferred / superseded / unreadable
 reason: C4 — the rollup counter legend naming the live phase-status families (`deferred` is one status token), not a deferred pack feature.
-
-doc: supporting-docs/METHODOLOGY.md
-snippet: newly set to `deferred`
-reason: C4 — the Workflow-7 deferral-flip scheduling rule (`deferred` is a live phase-status transition), not a deferred pack feature.
 
 doc: supporting-docs/INSTALL-PROCEDURES.md
 snippet: no deferred items remain

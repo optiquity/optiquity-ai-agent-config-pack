@@ -113,7 +113,7 @@ def _patch_root(mod, root):
 
 
 def _patch_attr(mod, name, value):
-    """Set attribute `name` on the facade alias AND every loaded
+    """Set attribute \`name\` on the facade alias AND every loaded
     validate_checks.* submodule that already binds it (BD-256 W2
     wave-invariant). The check body's intra-cluster constant now lives in
     validate_checks.boundary_refs; a facade-only patch would NOT bite. This
@@ -189,6 +189,62 @@ fc, cap = run_check_in_tree(body, "")
 if fc != 0:
     failures.append("T4 (bounded-marker no-false-positive) expected 0 failures on 'not yet committed'/'as planned', got %d: %s" % (fc, cap))
 
+# ── SPAN-MASK legs (T5-T10). _check_67_mask_spans hides a deferral word that
+#    is a NAME (inside an inline code span or a Markdown link target) from the
+#    marker scan — and from NOTHING else. Both halves need pinning: a mask that
+#    stops working re-fails clean docs, while a mask applied too widely
+#    silences the gate by making it see less. Twin of the client gate's
+#    deferred-mask legs (project-template/scripts/validate-docs.sh
+#    --self-test); the two sets change in LOCK-STEP.
+
+# T5: PASS — a deferral word inside a code span is a status token, not an
+#     advert. No allowlist record needed once the span is masked.
+body = "# SYNTH\n\nA phase \`Status:\` newly set to \`deferred\` is scheduled next.\n"
+fc, cap = run_check_in_tree(body, "")
+if fc != 0:
+    failures.append("T5 (mask code-span) expected 0 failures, got %d: %s" % (fc, cap))
+
+# T6: PASS — same for a link TARGET; a path is not prose.
+body = "# SYNTH\n\nSee the [planning notes](docs/pack/roadmap.md) before starting.\n"
+fc, cap = run_check_in_tree(body, "")
+if fc != 0:
+    failures.append("T6 (mask link-target) expected 0 failures, got %d: %s" % (fc, cap))
+
+# T7: BITE — a REAL prose deferral still fires when the same line carries a
+#     code span. The mask removes the span, never the sentence around it.
+body = "# SYNTH\n\nThe \`retry\` helper is deferred until the client is ready.\n"
+fc, cap = run_check_in_tree(body, "")
+if fc < 1:
+    failures.append("T7 (prose-deferral-beside-a-span BITE) expected >=1 failure, got %d: %s" % (fc, cap))
+
+# T8: BITE — link TEXT is prose and stays scanned; only the target is masked,
+#     so a deferred-feature advert cannot hide behind a link.
+body = "# SYNTH\n\nSee the [roadmap](docs/pack/PM-CHAT.md) for what is next.\n"
+fc, cap = run_check_in_tree(body, "")
+if fc < 1:
+    failures.append("T8 (link-TEXT still scanned BITE) expected >=1 failure, got %d: %s" % (fc, cap))
+
+# T9: PASS — the mask must NOT reach covered(). Allowlist snippets are RAW
+#     substrings and some quote a code span, so a record whose snippet carries
+#     backticks stops matching the moment covered() is handed a masked line,
+#     and a doc the allowlist already cleared starts failing. The marker here
+#     sits OUTSIDE the span so the scan fires and the allowlist is what clears
+#     it. (Live twin: supporting-docs/METHODOLOGY.md's \`phase-N\` record.)
+body = "# SYNTH\n\n- \`Unblocked\` — a pending-decision state between Open and Deferred.\n"
+ALLOW9 = "doc: %s\nsnippet: \`Unblocked\` — a pending-decision state between Open and Deferred.\nreason: live status vocabulary (synthetic).\n" % SYNTH_DOC
+fc, cap = run_check_in_tree(body, ALLOW9)
+if fc != 0:
+    failures.append("T9 (covered() stays UNMASKED) expected 0 failures, got %d: %s" % (fc, cap))
+
+# T10: BITE — a code span becomes a SPACE, not nothing. Deleting it would fuse
+#      the words on either side and the \b anchors would stop matching a real
+#      advert: masked with a space this reads "un deferred" and fires; deleted
+#      it reads "undeferred" and goes silent.
+body = "# SYNTH\n\nWork is un\`X\`deferred right now.\n"
+fc, cap = run_check_in_tree(body, "")
+if fc < 1:
+    failures.append("T10 (mask-span-is-a-separator BITE) expected >=1 failure, got %d: %s" % (fc, cap))
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -197,7 +253,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "Synthetic-tree body tests T1-T4 (no-marker / allowlisted / marker-FAIL / bounded-no-false-positive)" ;;
+    0) t_pass "Synthetic-tree body tests T1-T10 (no-marker / allowlisted / marker-FAIL / bounded-no-false-positive / span-mask: code-span, link-target, prose-bite, link-TEXT-bite, covered-UNMASKED, separator)" ;;
     *) t_fail "Synthetic-tree check_operating_doc_no_deferred_feature tests failed (see Python output)" ;;
 esac
 

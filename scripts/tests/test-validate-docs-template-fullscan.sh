@@ -138,10 +138,10 @@ PACK_ROOT = sys.argv[1]
 ROOT = os.path.join(PACK_ROOT, "project-template")
 ALLOWLIST = os.path.join(ROOT, "scripts", ".docs-gate-allowlist.txt")
 
-# Corpus mirror of the gate's IN set: validate-docs.sh IN_GLOBS (:108-123)
-# minus EXCLUDE_BASENAMES (:124), rooted at project-template/ — plus the two
-# install-overlay SOURCES (the L3 corpus amendment; kept honest against S6
-# drift by L7).
+# Corpus mirror of the gate's IN set: validate-docs.sh IN_GLOBS minus
+# EXCLUDE_BASENAMES (cited by SYMBOL — line numbers drift), rooted at
+# project-template/ — plus the two install-overlay SOURCES (the L3 corpus
+# amendment; kept honest against S6 drift by L7).
 IN_GLOBS = [
     "CLAUDE.md", "AGENTS.md", "GEMINI.md",
     "docs/pack/*.md",
