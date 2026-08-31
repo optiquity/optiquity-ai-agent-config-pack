@@ -430,6 +430,305 @@ unset INSTALL_MAP_PACK
 unset _INSTALL_MAP_LOADED_ROOT
 
 # ─────────────────────────────────────────────────────────────────
+printf "\n=== Group 12: MUTATION — a block parsing to ZERO rows ⇒ rc≠0 ===\n"
+
+# The NON-EMPTY FLOOR. Markers exactly-once — so Group 6/7's contract is
+# satisfied — but the block yields nothing. That is a broken GRAMMAR, not an
+# empty install set, and without the floor it returns rc 0 with zero rows and
+# every derived consumer silently sees "the pack installs nothing".
+# Each mutation is paired with the restore that must make the SAME leg pass.
+
+# (a) FILES block: every row loses its `->`.
+NOARROW_MAP='#!/usr/bin/env bash
+# _CLIENT_INSTALLED_FILES_START
+#   project-template/docs/GUIDE.md      docs/GUIDE.md  [stage:S6,cmd_update]  [class:generic]
+# _CLIENT_INSTALLED_FILES_END
+#
+# _CLIENT_INSTALLED_GLOBS_START
+#   project-template/bundle/*  ->  bundle/*  [stage:S6,cmd_update]  [class:generic]
+# _CLIENT_INSTALLED_GLOBS_END
+'
+G12="$(printf '%s' "$NOARROW_MAP" | mk_root emptyblock)"
+seed_family "$G12"
+export INSTALL_MAP_PACK="$G12"
+unset _INSTALL_MAP_LOADED_ROOT
+
+err="$(install_map_explicit_rows 2>&1)"; rc=$?
+if [ $rc -ne 0 ]; then
+    t_pass "a FILES block with no parseable row ⇒ rc≠0 (rc=$rc)"
+else
+    t_fail "an emptied FILES block MUST fail the non-empty floor" "$err"
+fi
+case "$err" in
+    *_CLIENT_INSTALLED_FILES_START*"no parseable entries"*)
+        t_pass "floor diagnostic names the FILES block and the required row form" ;;
+    *) t_fail "FILES-block floor diagnostic missing or unnamed" "$err" ;;
+esac
+
+# (b) GLOBS block: markers kept, rows replaced by non-row prose.
+NOROWS_MAP='#!/usr/bin/env bash
+# _CLIENT_INSTALLED_FILES_START
+#   project-template/docs/GUIDE.md  ->  docs/GUIDE.md  [stage:S6,cmd_update]  [class:generic]
+# _CLIENT_INSTALLED_FILES_END
+#
+# _CLIENT_INSTALLED_GLOBS_START
+#   (rows removed)
+# _CLIENT_INSTALLED_GLOBS_END
+'
+printf '%s' "$NOROWS_MAP" > "$G12/scripts/init-project.sh"
+unset _INSTALL_MAP_LOADED_ROOT
+err="$(install_map_glob_rows 2>&1)"; rc=$?
+if [ $rc -ne 0 ]; then
+    t_pass "a GLOBS block with no parseable row ⇒ rc≠0 (rc=$rc)"
+else
+    t_fail "an emptied GLOBS block MUST fail the non-empty floor" "$err"
+fi
+case "$err" in
+    *_CLIENT_INSTALLED_GLOBS_START*"no parseable entries"*)
+        t_pass "floor diagnostic names the GLOBS block" ;;
+    *) t_fail "GLOBS-block floor diagnostic missing or unnamed" "$err" ;;
+esac
+
+# (c) Markers relocated to wrap ZERO lines — the refactor shape that keeps
+# the exactly-once contract intact while orphaning every row.
+ADJACENT_MAP='#!/usr/bin/env bash
+# _CLIENT_INSTALLED_FILES_START
+# _CLIENT_INSTALLED_FILES_END
+#   project-template/docs/GUIDE.md  ->  docs/GUIDE.md  [stage:S6,cmd_update]  [class:generic]
+#
+# _CLIENT_INSTALLED_GLOBS_START
+#   project-template/bundle/*  ->  bundle/*  [stage:S6,cmd_update]  [class:generic]
+# _CLIENT_INSTALLED_GLOBS_END
+'
+printf '%s' "$ADJACENT_MAP" > "$G12/scripts/init-project.sh"
+unset _INSTALL_MAP_LOADED_ROOT
+err="$(install_map_explicit_rows 2>&1)"; rc=$?
+if [ $rc -ne 0 ]; then
+    t_pass "markers wrapping ZERO lines ⇒ rc≠0 (orphaned rows are not an empty set)"
+else
+    t_fail "adjacent markers MUST fail the non-empty floor" "$err"
+fi
+
+# FAILING DIRECTION CLOSED: the same root, same entry points, one parseable
+# row per block restored. Every leg above must now pass, or those legs were
+# failing for some reason other than the floor.
+printf '%s' "$GOOD_MAP" > "$G12/scripts/init-project.sh"
+unset _INSTALL_MAP_LOADED_ROOT
+out="$(install_map_explicit_rows 2>&1)"; rc=$?
+if [ $rc -eq 0 ] && printf '%s\n' "$out" | grep -q 'docs/GUIDE.md'; then
+    t_pass "FILES block PASSES once one row parses (floor discriminates)"
+else
+    t_fail "non-empty floor rejected a block that has a parseable row" "rc=$rc $out"
+fi
+
+out="$(install_map_glob_rows 2>&1)"; rc=$?
+if [ $rc -eq 0 ] && printf '%s\n' "$out" | grep -q 'SKILL.md'; then
+    t_pass "GLOBS block PASSES once one row parses (floor discriminates)"
+else
+    t_fail "non-empty floor rejected a GLOBS block that has a parseable row" "rc=$rc $out"
+fi
+
+unset INSTALL_MAP_PACK
+unset _INSTALL_MAP_LOADED_ROOT
+
+# ─────────────────────────────────────────────────────────────────
+printf "\n=== Group 13: the class operand is trimmed and shape-checked ===\n"
+
+# Class is the one operand whose bad value silently CHANGES dispatch: an
+# unrecognised token falls to the generic text merge, which three-ways a
+# client `x-` custom in the shared bundle. So a stray space must not defeat
+# the `self` sentinel, and a token that cannot be a class must not parse.
+
+SPACED_MAP='#!/usr/bin/env bash
+# _CLIENT_INSTALLED_FILES_START
+#   project-template/docs/GUIDE.md  ->  docs/GUIDE.md  [stage:S6,cmd_update]  [class: self]
+# _CLIENT_INSTALLED_FILES_END
+#
+# _CLIENT_INSTALLED_GLOBS_START
+#   project-template/bundle/*  ->  bundle/*  [stage:S6,cmd_update]  [class: generic ]
+# _CLIENT_INSTALLED_GLOBS_END
+'
+G13="$(printf '%s' "$SPACED_MAP" | mk_root spacedclass)"
+seed_family "$G13"
+export INSTALL_MAP_PACK="$G13"
+unset _INSTALL_MAP_LOADED_ROOT
+
+out="$(install_map_dispatch_set cmd_update 2>&1)"; rc=$?
+if [ $rc -eq 0 ] && printf '%s\n' "$out" | grep -q '^project-template/docs/GUIDE.md:docs/GUIDE.md:$'; then
+    t_pass "'[class: self]' still resolves to the self sentinel (empty class)"
+else
+    t_fail "a spaced 'self' must not become a FORCED class" "rc=$rc $out"
+fi
+
+# Discrimination: a spaced ORDINARY class is trimmed to the bare token, so
+# the leg above is not passing because every class went empty.
+if printf '%s\n' "$out" | grep -q '^project-template/bundle/one.md:bundle/one.md:generic$'; then
+    t_pass "'[class: generic ]' trims to 'generic' (not blanked, not padded)"
+else
+    t_fail "a spaced ordinary class must trim to the bare token" "$out"
+fi
+
+# The shape gate. A class that cannot be a class is a parse error, not a
+# silent fall-through to the generic text merge.
+BADCLASS_MAP='#!/usr/bin/env bash
+# _CLIENT_INSTALLED_FILES_START
+#   project-template/docs/GUIDE.md  ->  docs/GUIDE.md  [stage:S6,cmd_update]  [class:pack agent]
+# _CLIENT_INSTALLED_FILES_END
+#
+# _CLIENT_INSTALLED_GLOBS_START
+#   project-template/bundle/*  ->  bundle/*  [stage:S6,cmd_update]  [class:generic]
+# _CLIENT_INSTALLED_GLOBS_END
+'
+printf '%s' "$BADCLASS_MAP" > "$G13/scripts/init-project.sh"
+unset _INSTALL_MAP_LOADED_ROOT
+err="$(install_map_explicit_rows 2>&1)"; rc=$?
+if [ $rc -ne 0 ]; then
+    t_pass "a class operand that is not a bare token ⇒ rc≠0 (rc=$rc)"
+else
+    t_fail "a malformed class MUST NOT parse into a forced class" "$err"
+fi
+case "$err" in
+    *"not a bare lowercase token"*) t_pass "class diagnostic names the offending row" ;;
+    *) t_fail "class shape diagnostic missing" "$err" ;;
+esac
+
+# An EMPTY but PRESENT class operand is the same defect, not self-classify:
+# omitting `[class:...]` is how a row asks for self-classification.
+EMPTYCLASS_MAP="$(printf '%s' "$BADCLASS_MAP" | sed 's/\[class:pack agent\]/[class:]/')"
+printf '%s' "$EMPTYCLASS_MAP" > "$G13/scripts/init-project.sh"
+unset _INSTALL_MAP_LOADED_ROOT
+if install_map_explicit_rows >/dev/null 2>&1; then
+    t_fail "a PRESENT but empty [class:] must not parse"
+else
+    t_pass "a PRESENT but empty [class:] ⇒ rc≠0 (omission is the self-classify form)"
+fi
+
+# FAILING DIRECTION CLOSED: the same rows with well-formed classes parse, and
+# a row that OMITS the operand entirely still self-classifies.
+OKCLASS_MAP='#!/usr/bin/env bash
+# _CLIENT_INSTALLED_FILES_START
+#   project-template/docs/GUIDE.md  ->  docs/GUIDE.md  [stage:S6,cmd_update]  [class:pack-agent]
+#   project-template/bundle/one.md  ->  bundle/one.md  [stage:S6,cmd_update]
+# _CLIENT_INSTALLED_FILES_END
+#
+# _CLIENT_INSTALLED_GLOBS_START
+#   project-template/skills/*/SKILL.md  ->  .claude/skills/*/SKILL.md  [stage:S4,cmd_update]  [class:generic]
+# _CLIENT_INSTALLED_GLOBS_END
+'
+printf '%s' "$OKCLASS_MAP" > "$G13/scripts/init-project.sh"
+unset _INSTALL_MAP_LOADED_ROOT
+out="$(install_map_dispatch_set cmd_update 2>&1)"; rc=$?
+if [ $rc -eq 0 ] && printf '%s\n' "$out" | grep -q '^project-template/docs/GUIDE.md:docs/GUIDE.md:pack-agent$'; then
+    t_pass "a well-formed class parses (shape gate discriminates)"
+else
+    t_fail "shape gate rejected a well-formed class" "rc=$rc $out"
+fi
+if printf '%s\n' "$out" | grep -q '^project-template/bundle/one.md:bundle/one.md:$'; then
+    t_pass "a row that OMITS [class:] still self-classifies (gate is presence-scoped)"
+else
+    t_fail "shape gate broke the omitted-class row" "$out"
+fi
+
+unset INSTALL_MAP_PACK
+unset _INSTALL_MAP_LOADED_ROOT
+
+# ─────────────────────────────────────────────────────────────────
+printf "\n=== Group 14: shell and Python parsers agree on the stage axis ===\n"
+
+# ONE surface, TWO readers: this library, and the Python sibling in
+# `scripts/lib/validate_checks/boundary_refs.py` that Checks 39/41 read the
+# same map through. They must select the SAME rows for a stage token whatever
+# whitespace the `[stage:]` list carries. A shell parser that drops a row the
+# Python one counts is INVISIBLE — both checks stay green while `--update`
+# never touches that file — so the agreement is asserted here rather than
+# assumed. It is asserted against the REAL Python parser, never a
+# re-implementation: a third copy of the token idiom would be a third thing
+# that can drift.
+
+PARITY_MAP='#!/usr/bin/env bash
+# _CLIENT_INSTALLED_FILES_START
+#   project-template/docs/GUIDE.md  ->  docs/GUIDE.md  [stage:S6,cmd_update]  [class:generic]
+#   project-template/bundle/one.md  ->  bundle/one.md  [stage:S6, cmd_update]  [class:generic]
+#   project-template/bundle/two.md  ->  bundle/two.md  [stage: S6 , cmd_update ]  [class:generic]
+#   project-template/skills/alpha/SKILL.md  ->  skills/alpha/SKILL.md  [stage:S6,migrate]  [class:generic]
+# _CLIENT_INSTALLED_FILES_END
+#
+# _CLIENT_INSTALLED_GLOBS_START
+#   project-template/bundle/*  ->  bundle/*  [stage:S2]  [class:generic]
+# _CLIENT_INSTALLED_GLOBS_END
+'
+G14="$(printf '%s' "$PARITY_MAP" | mk_root parity)"
+seed_family "$G14"
+export INSTALL_MAP_PACK="$G14"
+unset _INSTALL_MAP_LOADED_ROOT
+
+shell_axis="$(install_map_dispatch_set cmd_update 2>/dev/null | cut -d: -f1 | sort)"
+python_axis="$(PARITY_ROOT="$G14" VALIDATE="$REPO_ROOT/scripts/validate-pack.py" \
+    REPO_ROOT="$REPO_ROOT" python3 - <<'PY'
+import os, sys, importlib.util
+sys.path.insert(0, os.environ['REPO_ROOT'] + '/scripts')
+spec = importlib.util.spec_from_file_location('vp', os.environ['VALIDATE'])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+# Patch REPO_ROOT on every loaded validate_checks.* submodule: the parser body
+# lives in boundary_refs and reads ITS module global, so a facade-only patch
+# would not redirect the read (same wave-invariant the Check 41 tests honour).
+import pathlib
+root = pathlib.Path(os.environ['PARITY_ROOT'])
+mod.REPO_ROOT = root
+for _n, _m in list(sys.modules.items()):
+    if (_n == 'validate_checks' or _n.startswith('validate_checks.')) \
+       and hasattr(_m, 'REPO_ROOT'):
+        _m.REPO_ROOT = root
+for pack_rel, stages in sorted(mod._parse_client_installed_file_stages().items()):
+    if 'cmd_update' in stages:
+        print(pack_rel)
+PY
+)"
+python_rc=$?
+
+# Diagnose a Python-SIDE breakage as itself. Without this leg an import error
+# or a patch-target rename yields an empty `python_axis`, and the comparison
+# below would report it as a parser DISAGREEMENT — sending the next reader to
+# the wrong file.
+if [ "$python_rc" -eq 0 ] && [ -n "$python_axis" ]; then
+    t_pass "the Python sibling parser ran and returned rows"
+else
+    t_fail "Python sibling parser did not run — the leg below cannot compare" \
+        "rc=$python_rc out=$python_axis"
+fi
+
+if [ "$shell_axis" = "$python_axis" ]; then
+    t_pass "both parsers select the same cmd_update rows (spaced lists included)"
+else
+    t_fail "shell and Python parsers DISAGREE on the cmd_update axis" \
+        "shell:
+$shell_axis
+python:
+$python_axis"
+fi
+
+# VACUITY GUARD for the leg above: equality of two EMPTY sets would pass it.
+# The map declares three cmd_update rows written three different ways, and a
+# fourth row that is deliberately OFF the axis.
+n_axis="$(printf '%s\n' "$shell_axis" | grep -c .)"
+if [ "$n_axis" = "3" ]; then
+    t_pass "the agreed axis is the expected 3 rows (not an empty-set match)"
+else
+    t_fail "expected 3 rows on the cmd_update axis, got $n_axis" "$shell_axis"
+fi
+
+# DISCRIMINATION: the fourth row carries `[stage:S6,migrate]` and NO
+# cmd_update, so a parser that ignored the token entirely would show 4 here.
+case "$shell_axis" in
+    *SKILL.md*) t_fail "a row without cmd_update leaked onto the axis" "$shell_axis" ;;
+    *) t_pass "a row whose stage list omits cmd_update stays OFF the axis" ;;
+esac
+
+unset INSTALL_MAP_PACK
+unset _INSTALL_MAP_LOADED_ROOT
+
+# ─────────────────────────────────────────────────────────────────
 printf "\n=== Summary ===\n"
 printf "  PASS: %d\n  FAIL: %d\n" "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ] || exit 1

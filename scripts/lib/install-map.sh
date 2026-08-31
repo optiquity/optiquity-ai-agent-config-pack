@@ -6,10 +6,11 @@
 #
 # Do NOT add a shebang — this file is sourced, not executed.
 #
-# Placement: this is a PACK-side library. `init-project.sh` and
-# `migrate-v10-to-v11.sh` source it at RUNTIME, so it is a pack-operation
-# dependency; it must never move to `project-template/scripts/` or become a
-# client-shipped file, and it is absent from the install map by construction.
+# Placement: this is a PACK-side library. `init-project.sh` sources it at
+# RUNTIME (`cmd_update` derives its whole dispatch set from it), so it is a
+# pack-operation dependency; it must never move to `project-template/scripts/`
+# or become a client-shipped file, and it is absent from the install map by
+# construction.
 #
 # The map is PARSED, never sourced: `init-project.sh` has a `main()` and side
 # effects, so executing it to read a comment block is not an option.
@@ -37,7 +38,14 @@
 # `install_map_declared_dests` and `install_map_dispatch_set` read the SAME
 # resolution core, so for a given token their DEST sets cannot disagree.
 #
-# CANDIDATE SET: a family row expands to git-TRACKED REGULAR FILES only.
+# CANDIDATE SET: a family row expands to git-TRACKED REGULAR FILES only,
+# INCLUDING dotfiles. Shell pathname expansion never matches a leading-dot
+# name, so a bare `*` silently drops every client-shipped dotfile a family row
+# covers (measured: `project-template/scripts/.docs-gate-allowlist.txt`, which
+# the client's `validate-docs.sh` reads). `_install_map_expand` therefore globs
+# the dot-companion pattern alongside the plain one — the same `.[!.]*`
+# technique `stage_s5_scripts` already uses for the same directory, so the
+# declared set and the installed set agree.
 # Both filters are load-bearing and neither subsumes the other:
 #   * regular-file — a bare existence test also admits a DIRECTORY, and every
 #     DEST pattern is a file pattern; a directory reaching a copy site is a
@@ -57,9 +65,22 @@
 # ERRORS (rc 1, message on stderr — a caller cannot proceed on a half-parsed
 # map and must `die`):
 #   * either block's START or END marker not present exactly once;
+#   * a block whose markers ARE exactly-once but which yields ZERO parseable
+#     rows (the NON-EMPTY FLOOR, below);
 #   * a family row whose pattern matches ZERO tracked regular files;
 #   * a family row whose SOURCE and DEST wildcard counts disagree, or which
 #     carries more than one wildcard per side.
+#
+# NON-EMPTY FLOOR: neither block has a legitimate empty state — the pack
+# installs files to clients, and a block that parses to nothing means the
+# GRAMMAR broke (rows uncommented, `->` lost, markers relocated), not that the
+# pack stopped shipping. Without the floor that state returns rc 0 with zero
+# rows and every derived consumer silently sees an empty install set, which is
+# indistinguishable from a legitimate empty set. The floor lives in the PARSER
+# rather than at any call site so every consumer inherits it; a call-site check
+# would protect one caller and silently omit the next. The Python sibling
+# parser (`scripts/lib/validate_checks/boundary_refs.py`, Check 41) already
+# hard-fails this same condition, and the wording below mirrors its diagnostic.
 #
 # COST: the map is parsed ONCE per pack root into memoised shell strings, in a
 # single pass over `init-project.sh` with no subprocess per row. The tracked
@@ -94,15 +115,51 @@ _install_map_trim() {
 }
 
 # Extract `[<name>:<value>]` from a row tail. Prints the value (may be empty).
+#
+# TRIMMED, and the trim is load-bearing. `[class: self]` must mean the `self`
+# sentinel; an untrimmed " self" matches no comparison, so the row would hand
+# `cmd_update` a FORCED class where the map asked for self-classification —
+# which forces a text merge onto the bundle whose client `x-` customs must
+# never be three-wayed.
+#
+# $3 = `list` additionally CANONICALISES a comma-separated operand: each token
+# is trimmed and empty tokens are dropped, so `[stage:S6, cmd_update]` and
+# `[stage:S6,cmd_update]` are one list. The OUTER trim alone does not reach
+# this — it leaves the inner token as " cmd_update", which the comma-exact
+# `_install_map_has_stage` then does not match. The Python sibling parser
+# (`scripts/lib/validate_checks/boundary_refs.py`, Checks 39/41) strips EVERY
+# token, so without this canonicalisation the two readers of ONE surface
+# disagree on a spaced list: Python counts the row on the `cmd_update` axis
+# while the shell drops it, and `--update` silently never touches that file
+# with both checks green. Canonicalising at the single point every consumer
+# reads an operand through makes that divergence unrepresentable rather than
+# merely detectable. The token trim is pure parameter expansion, so a list
+# costs no subshell beyond the one the caller already pays.
 _install_map_operand() {
-    local rest="$1" name="$2" tmp
+    local rest="$1" name="$2" mode="${3:-}" tmp val out tok
     case "$rest" in
         *"[$name:"*)
             tmp="${rest#*\[$name:}"
-            printf '%s' "${tmp%%\]*}"
+            val="${tmp%%\]*}"
             ;;
-        *) printf '%s' "" ;;
+        *) printf '%s' ""; return 0 ;;
     esac
+    if [ "$mode" != "list" ]; then
+        _install_map_trim "$val"
+        return 0
+    fi
+    out=""
+    while [ -n "$val" ]; do
+        case "$val" in
+            *,*) tok="${val%%,*}"; val="${val#*,}" ;;
+            *)   tok="$val"; val="" ;;
+        esac
+        tok="${tok#"${tok%%[![:space:]]*}"}"
+        tok="${tok%"${tok##*[![:space:]]}"}"
+        [ -n "$tok" ] || continue
+        if [ -n "$out" ]; then out="$out,$tok"; else out="$tok"; fi
+    done
+    printf '%s' "$out"
 }
 
 # Remove every `[...]` group from a row tail, leaving the DEST.
@@ -165,8 +222,26 @@ _install_map_parse_block() {
         src="$(_install_map_trim "${content%%->*}")"
         [ -n "$src" ] || continue
         rest="${content#*->}"
-        stages="$(_install_map_operand "$rest" stage)"
+        stages="$(_install_map_operand "$rest" stage list)"
         cls="$(_install_map_operand "$rest" class)"
+        # A PRESENT class operand must be a bare lowercase-kebab token. This
+        # is a SHAPE gate, not a vocabulary gate: the vocabulary lives in
+        # customization-preserve.sh's dispatch and a second copy here would
+        # drift. Absent is legal and means self-classify. The gate matters
+        # because class is the one operand whose bad value silently CHANGES
+        # behaviour — an unrecognised token falls to the generic text merge —
+        # whereas a malformed stage token simply matches nothing and fails
+        # closed.
+        case "$rest" in
+            *"[class:"*)
+                case "$cls" in
+                    ""|*[!a-z0-9-]*)
+                        _install_map_err "$file: row '$src' declares [class:$cls], which is not a bare lowercase token. A class operand must be a single [a-z0-9-] word (or be omitted entirely to self-classify)."
+                        return 1
+                        ;;
+                esac
+                ;;
+        esac
         dest="$(_install_map_strip_operands "$rest")"
         [ -n "$dest" ] || continue
         out="$out$src	$dest	$stages	$cls
@@ -174,6 +249,13 @@ _install_map_parse_block() {
     done < "$file"
     if [ "$n_start" -ne 1 ] || [ "$n_end" -ne 1 ]; then
         _install_map_err "marker contract violated in $file: $start x$n_start, $end x$n_end (each must appear exactly once)"
+        return 1
+    fi
+    # NON-EMPTY FLOOR (see the header). Markers are exactly-once, so any
+    # emptiness here is a broken GRAMMAR, not an empty install set. Failing
+    # loudly is the only way a caller can tell the two apart.
+    if [ -z "$out" ]; then
+        _install_map_err "$file has $start/$end markers but the block contains no parseable entries. Each entry must be a comment line of the form '#   <pack_relpath>  ->  <project_relpath>  [stage:...]' between the START/END markers."
         return 1
     fi
     printf '%s' "$out"
@@ -331,7 +413,15 @@ _install_map_expand() {
     post="${pat#*\*}"
     dpre="${dpat%%\**}"
     dpost="${dpat#*\*}"
-    for abs in "$root"/$pat; do
+    # Two patterns, not one. `*` never matches a leading dot, so the plain
+    # pattern alone drops every dotfile the row covers; `$pre.[!.]*$post`
+    # supplies exactly those names (`[!.]` excludes `.` and `..`). A row whose
+    # `*` is not a whole segment (`*.md`) yields a dot-companion that simply
+    # matches nothing, and the `-f` guard skips the unmatched literal pattern
+    # since nullglob is not set. Capture extraction is unchanged: `rel` still
+    # starts with `$pre` and ends with `$post`, so `cap` keeps its leading dot
+    # and the DEST is reconstructed with the dot intact.
+    for abs in "$root"/$pat "$root"/$pre.[!.]*$post; do
         [ -f "$abs" ] || continue
         rel="${abs#"$root"/}"
         _install_map_is_tracked "$root" "$rel" || continue
@@ -347,7 +437,12 @@ _install_map_expand() {
     return 0
 }
 
-# True when a comma-separated stage list contains $2.
+# True when a comma-separated stage list contains $2. Comma-EXACT, so a
+# superstring token cannot false-positive (`S6,cmd_updatex` does not carry
+# `cmd_update`). It reads the CANONICAL list `_install_map_operand … list`
+# stores — per-token whitespace is resolved there, at the one point operands
+# are read, and must not be re-tolerated here: a second whitespace rule would
+# let a non-canonical value reach a consumer and pass anyway.
 _install_map_has_stage() {
     case ",$1," in
         *",$2,"*) return 0 ;;

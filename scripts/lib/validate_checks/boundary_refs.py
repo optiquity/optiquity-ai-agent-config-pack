@@ -1116,17 +1116,18 @@ def check_pack_only_file_siting() -> None:
 
 # ── Check 39: cmd_update mapping/glob symmetry (BD-175 F2a + BD-180 E) ─────
 #
-# Scope: bidirectional symmetry between `scripts/init-project.sh`
-# `cmd_update` `entries=()` array and project-template surface state.
+# Scope: bidirectional symmetry between the install map's `cmd_update` axis
+# — the `_CLIENT_INSTALLED_FILES` and `_CLIENT_INSTALLED_GLOBS` comment
+# blocks in `scripts/init-project.sh` — and project-template surface state.
 #
 # Forward direction (BD-175 F2a; `_CHECK_39_EXEMPTIONS`):
 # `project-template/docs/pack/*.md` files must have explicit cmd_update
 # mappings (catches the BD-175 Commit 10 OPTIONAL-FEATURES.md gap).
 #
 # Reverse direction (BD-180 observation E; `_CHECK_39_REVERSE_EXEMPTIONS`):
-# every cmd_update entry's `pack_relpath` must resolve to a file at HEAD
-# (catches the pre-BD-180 PROMPT-TEMPLATES.md stale-mapping gap; retired
-# in v10.0 but mapping persisted at scripts/init-project.sh:1122).
+# every cmd_update row's `pack_relpath` must resolve to a file at HEAD
+# (catches the pre-BD-180 PROMPT-TEMPLATES.md stale-mapping gap: retired
+# in v10.0, yet its row persisted in the `_CLIENT_INSTALLED_FILES` block).
 #
 # Exemption allowlists (empty by default): files intentionally absent from
 # `cmd_update` mappings (forward) or whose source intentionally lives
@@ -3038,6 +3039,15 @@ _CHECK_41_COPY_VERB = re.compile(
 )
 
 
+# Map-level `[class:...]` values that are legitimate WITHOUT a
+# `customization_preserve()` dispatch arm. Exactly one: `self`, the
+# self-classify sentinel, which `install-map.sh` `_install_map_resolved`
+# converts to an EMPTY class so the copy site passes no class argument and
+# `customization_preserve` falls through to `customization_classify`. Sized to
+# the sentinel and nothing else — every other value must name a real arm.
+_CHECK_41_CLASS_SENTINELS: frozenset[str] = frozenset({"self"})
+
+
 
 
 def _parse_client_installed_files() -> tuple[list[str], int, int, bool, bool]:
@@ -3182,6 +3192,76 @@ def _parse_client_installed_file_stages() -> dict[str, set[str]]:
     return out
 
 
+def _parse_client_installed_file_classes() -> dict[str, str]:
+    """Map each `_CLIENT_INSTALLED_FILES` pack_relpath -> its `[class:...]` value.
+
+    Sibling of `_parse_client_installed_file_stages()`, walking the same block
+    with the same self-contained second parse; rows that omit the operand are
+    absent from the map (omission is the self-classify form, not a value).
+    Check 41 clause (f) consumes it. Returns {} on the same lenient conditions.
+    """
+    init_sh = REPO_ROOT / "scripts" / "init-project.sh"
+    if not init_sh.is_file():
+        return {}
+    text = init_sh.read_text()
+    start_marker = "_CLIENT_INSTALLED_FILES_START"
+    end_marker = "_CLIENT_INSTALLED_FILES_END"
+    if text.count(start_marker) != 1 or text.count(end_marker) != 1:
+        return {}
+    m = re.search(
+        rf"{re.escape(start_marker)}\s*\n(.+?)\n[^\n]*{re.escape(end_marker)}",
+        text, re.DOTALL,
+    )
+    if not m:
+        return {}
+    out: dict[str, str] = {}
+    for line in m.group(1).splitlines():
+        s = line.strip()
+        if not s.startswith("#"):
+            continue
+        content = s.lstrip("#").strip()
+        if "->" not in content:
+            continue
+        pack_rel = content.split("->", 1)[0].strip()
+        if not pack_rel:
+            continue
+        cm = re.search(r"\[class:([^\]]*)\]", content)
+        if cm:
+            out[pack_rel] = cm.group(1).strip()
+    return out
+
+
+def _customization_preserve_classes() -> set[str]:
+    """The class vocabulary that actually DISPATCHES, read from its own source.
+
+    Derived from the `case "$class" in` arms of `customization_preserve()` in
+    `scripts/lib/customization-preserve.sh` — never a second hand-maintained
+    copy of the token list, which would be a second SSOT free to drift from the
+    dispatch it claims to describe.
+
+    Returns set() when the library or the case block cannot be read, which
+    makes clause (f) skip rather than fail (a synthetic scaffold legitimately
+    ships no library).
+    """
+    lib = REPO_ROOT / "scripts" / "lib" / "customization-preserve.sh"
+    if not lib.is_file():
+        return set()
+    text = lib.read_text()
+    fn = re.search(
+        r"\ncustomization_preserve\(\)\s*\{\n(.*?)\n^\}$",
+        text, re.DOTALL | re.MULTILINE,
+    )
+    if not fn:
+        return set()
+    cm = re.search(r'case\s+"\$class"\s+in\n(.*?)\n\s*esac', fn.group(1), re.DOTALL)
+    if not cm:
+        return set()
+    vocab: set[str] = set()
+    for arm in re.findall(
+        r"^\s*([a-z0-9-]+(?:\|[a-z0-9-]+)*)\)\s*$", cm.group(1), re.MULTILINE
+    ):
+        vocab |= set(arm.split("|"))
+    return vocab
 
 
 def _install_glob_matches(pattern: str, candidate: str) -> bool:
@@ -3314,8 +3394,10 @@ def check_client_installed_files() -> None:
     """Check 41 — _CLIENT_INSTALLED_FILES self-doc list integrity (BD-180 G).
 
     Verifies the install map's explicit block in `scripts/init-project.sh`
-    is well-formed, every row maps to a real file at HEAD, and every
-    hand-enumerated row has a fresh-install copy site.
+    is well-formed, every row maps to a real file at HEAD, every
+    hand-enumerated row has a fresh-install copy site, and every declared
+    `[class:...]` names a class that really dispatches (clause (f), which reads
+    the vocabulary from `customization_preserve()` rather than restating it).
 
     There is no `cmd_update`-is-named-in-the-inventory clause. With ONE
     declaration, the `cmd_update` axis IS a subset of the map, so such a
@@ -3576,13 +3658,61 @@ def check_client_installed_files() -> None:
             )
             any_failed = True
 
+    # (f) Every `[class:...]` the map declares names a class that really
+    #     DISPATCHES. The shape gate in `install-map.sh` proves a class operand
+    #     is a bare lowercase token; it cannot prove the token means anything.
+    #     `customization_preserve()` ends in a `*)` catch-all that falls back to
+    #     the generic 3-way TEXT merge, so a well-shaped typo — `slef` for
+    #     `self`, `trinty` for `trinity`, `codex-confg` for `codex-config` — is
+    #     not an error anywhere: it silently CHANGES the merge strategy, which
+    #     is how a client `x-` custom gets three-wayed or a TOML gets text-merged
+    #     instead of key-unioned. This is the load-bearing backing test for a
+    #     declared mapping: the arm must exist, not merely the token.
+    #
+    #     The vocabulary is DERIVED from the dispatch itself, never copied here.
+    #     LENIENT: an unreadable library or case block yields an empty
+    #     vocabulary and the clause skips, so a synthetic scaffold that ships no
+    #     library is not failed for it.
+    classes_checked = 0
+    vocab = _customization_preserve_classes()
+    if vocab:
+        declared: list[tuple[str, str]] = [
+            (pack_rel, cls)
+            for pack_rel, cls in sorted(_parse_client_installed_file_classes().items())
+        ]
+        declared += [
+            (src, cls)
+            for src, _dest, _st, cls in _parse_client_installed_globs()
+            if cls
+        ]
+        for pack_rel, cls in declared:
+            if not cls:
+                continue
+            classes_checked += 1
+            if cls in vocab or cls in _CHECK_41_CLASS_SENTINELS:
+                continue
+            fail(
+                f"{pack_rel} — install map row declares `[class:{cls}]`, which "
+                f"has NO dispatch arm in `customization_preserve()` "
+                f"(scripts/lib/customization-preserve.sh). An unrecognised "
+                f"class is not an error at merge time: it falls through that "
+                f"function's `*)` catch-all to the generic 3-way TEXT merge, "
+                f"silently changing the preservation strategy for this file. "
+                f"Use one of {sorted(vocab)}, or omit `[class:...]` entirely to "
+                f"self-classify. (If a NEW class is intended, add its arm to "
+                f"`customization_preserve()` first — this check reads the "
+                f"vocabulary from that dispatch, so it needs no update here.)"
+            )
+            any_failed = True
+
     if not any_failed:
         ok(
             f"Check 41 — {files_checked} `_CLIENT_INSTALLED_FILES` entry "
             f"(entries) checked; {files_checked - exempted} resolve to "
             f"existing files at HEAD, {exempted} on exemption allowlist. "
             f"{copy_sites_checked} hand-enumerated row(s) verified to have a "
-            f"fresh-install copy site. "
+            f"fresh-install copy site. {classes_checked} declared `[class:]` "
+            f"operand(s) resolve to a real dispatch arm. "
             f"Self-documenting list is consistent with copy-site state."
         )
 
@@ -5394,6 +5524,9 @@ __all__ = [
     "_CHECK_41_COPY_VERB",
     "_parse_client_installed_files",
     "_parse_client_installed_file_stages",
+    "_parse_client_installed_file_classes",
+    "_customization_preserve_classes",
+    "_CHECK_41_CLASS_SENTINELS",
     "_parse_client_installed_globs",
     "_install_glob_matches",
     "_client_install_dest_to_source",

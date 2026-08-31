@@ -795,8 +795,9 @@ stage_s5_scripts() {
         # install). The `.[!.]*` pattern adds dotfiles while excluding `.`/`..`.
         # The `-f` guard skips the literal pattern when nothing matches
         # (nullglob is not set) AND skips any stray subdirectory (e.g. a
-        # gitignored `__pycache__`) — true parity with _cmd_update_iter_dir's
-        # `find -type f` (this dir is a flat file set, no tracked subdirs).
+        # gitignored `__pycache__`). The install map's family expansion applies
+        # the same `.[!.]*` companion for the same reason, so the declared set
+        # and the set installed here agree on dotfiles.
         for f in "$pack_scripts"/* "$pack_scripts"/.[!.]*; do
             [[ -f "$f" ]] || continue
             local name; name=$(basename "$f")
@@ -1460,34 +1461,100 @@ stage_s11_v11_artifacts() {
 # truthful report at .pack-update/report.md, and never overwrites a project
 # customization without writing a sidecar (per BD-088 contract).
 
-# Iterate every regular file under `$PACK/$pack_dir`, derive the parallel
-# project-relative path under `$proj_dir`, and dispatch via BD-088. Mirror
-# of stage S3's _stage_s3_iter_dir in migrate-v10-to-v11.sh so --update
-# and the migrator share parity (PACK-REVIEW-BD-080-BD-085 M2).
-_cmd_update_iter_dir() {
-    local pack_dir="$1" proj_dir="$2" cls="${3:-}"
-    [[ -d "$PACK/$pack_dir" ]] || return 0
-    local f rel proj_rel theirs ours dest
-    while IFS= read -r f; do
-        [[ -z "$f" ]] && continue
-        rel="${f#"$PACK/$pack_dir/"}"
-        proj_rel="$proj_dir/$rel"
-        theirs="$f"
-        ours="$TARGET/$proj_rel"
-        dest="$TARGET/$proj_rel"
-        [[ -f "$ours" ]] || ours=""
-        # An EMPTY cls means "self-classify per the customization_classify
-        # legs" — used by the Antigravity bundle leg (BD-221 corrected
-        # agent-migration model), whose dir mixes pack agents (→ pack-agent,
-        # replace-if-different) and client x- customs (→ custom-agent,
-        # preserved). A NON-empty cls forces the class for whole-dir
-        # single-class sweeps (the loose .claude/.codex/agents/ + scripts/).
-        if [[ -n "$cls" ]]; then
-            customization_preserve "" "$ours" "$theirs" "$proj_rel" "$dest" "$cls" >/dev/null
-        else
-            customization_preserve "" "$ours" "$theirs" "$proj_rel" "$dest" >/dev/null
+# Resolve the merge BASE for ONE text-class file, per the four-rung cascade.
+# Sets `_CU_BASE` ("" = no base), `_CU_BASE_TMP` (a materialised temp the
+# caller must remove), and `_CP_OURS_BLOB` (read by customization-preserve.sh
+# for the R2 recoverability note).
+#
+#   R1  a prior run's ledger names the blob it installed here — materialise it
+#   R2  OURS is itself a blob the pack has held at this SOURCE path, so OURS
+#       IS a pack baseline — pass OURS as BASE
+#   R3' OURS is not provably pack-authored — BASE stays EMPTY, which routes to
+#       project-shadows-new-pack, i.e. needs-reconciliation with a sidecar and
+#       a three-way diff
+#   R4' the run cannot reach the baseline anchor — BASE stays EMPTY for every
+#       file, i.e. R3' semantics run-wide
+#
+# R3' keeps the EMPTY base deliberately. A base that made the classifier answer
+# `merged-with-customization` would keep the client's file, drop the pack
+# update, and write neither sidecar nor diff — stale content, silently. An
+# empty base costs a sidecar the client may not need: noisy, never stale.
+#
+# R1's prior-run sha is NOT searched for here. The caller joins the whole
+# prior ledger onto the dispatch set in ONE awk pass before the loop and hands
+# each row's sha in as $3, because a per-file lookup is what makes this
+# function's cost compound: searching a ~35 KB ledger string with a
+# leading-`*` parameter expansion is quadratic on bash 3.2 (the macOS system
+# shell, and this script carries no version guard), and 260 of them dominated
+# the whole `--update` wall clock. Costs per call, measured: ZERO forks on an
+# R1 miss, and THREE on a hit (`mktemp` + `cat-file` + `rm`) — the sole
+# remaining per-file forks in the cascade.
+_cmd_update_resolve_base() {
+    local pack_rel="$1" ours="$2" sha="$3"
+    _CU_BASE=""
+    _CU_BASE_TMP=""
+    _CP_OURS_BLOB=""
+
+    # R4' — evaluated once per run by the caller; nothing here can establish
+    # provenance without the baseline objects.
+    [[ "${_CU_BASELINE_OK:-0}" -eq 1 ]] || return 0
+    # No installed file means there is nothing to establish a baseline for.
+    [[ -n "$ours" ]] || return 0
+
+    # R1 — materialise the blob the prior run recorded for this path.
+    if [[ -n "$sha" ]]; then
+        local tmp=""
+        tmp=$(mktemp "${TMPDIR:-/tmp}/cu-base.XXXXXX") || tmp=""
+        if [[ -n "$tmp" ]]; then
+            if git -C "$PACK" cat-file blob "$sha" > "$tmp" 2>/dev/null; then
+                _CU_BASE="$tmp"
+                _CU_BASE_TMP="$tmp"
+                return 0
+            fi
+            rm -f "$tmp"
         fi
-    done < <(find "$PACK/$pack_dir" -type f -print 2>/dev/null)
+    fi
+
+    # R2 — the probe is keyed by the PACK SOURCE path, never the client
+    # relpath (pack-provenance.sh header); the dispatch triple carries it.
+    local blob=""
+    if blob=$(pack_provenance_is_pack_authored "$pack_rel" "$ours" 2>/dev/null); then
+        _CU_BASE="$ours"
+        _CP_OURS_BLOB="$blob"
+        return 0
+    fi
+
+    # R3' — leave BASE empty.
+    return 0
+}
+
+# BASE-cascade rung R1 WRITE. Pair the staged rows with the blob shas of the
+# files this run installed, and hand each to the ledger.
+#
+# ONE `git hash-object` pass over the whole set: `--stdin-paths` reads a path
+# per line and emits a sha per line IN ORDER, so the cost is one fork for the
+# run rather than one per file. `--no-filters` for the reason
+# pack-provenance.sh documents — a local `core.autocrlf` must not be able to
+# change the recorded sha, or a later run would materialise a BASE that never
+# existed. The line-count guard is load-bearing: a hash pass that died partway
+# would otherwise pair each path with the WRONG file's sha.
+_cmd_update_write_ledger() {
+    local stage="$1"
+    [[ -s "$stage" ]] || return 0
+    local shas paired
+    shas=$(mktemp "${TMPDIR:-/tmp}/cu-shas.XXXXXX") || return 0
+    paired=$(mktemp "${TMPDIR:-/tmp}/cu-paired.XXXXXX") || { rm -f "$shas"; return 0; }
+    if cut -f4 "$stage" \
+         | git -C "$PACK" hash-object --no-filters --stdin-paths > "$shas" 2>/dev/null \
+       && [[ "$(wc -l < "$shas")" -eq "$(wc -l < "$stage")" ]]; then
+        paste "$stage" "$shas" > "$paired"
+        local lrel lsrc ldisp lpath lsha
+        while IFS=$'\t' read -r lrel lsrc ldisp lpath lsha; do
+            customization_preserve_ledger_record "$lrel" "$lsrc" "$lsha" "$ldisp"
+        done < "$paired"
+    fi
+    rm -f "$shas" "$paired"
+    return 0
 }
 
 cmd_update() {
@@ -1504,7 +1571,9 @@ cmd_update() {
     local lib_dir="$PACK/scripts/lib"
     if [[ ! -f "$lib_dir/three-way.sh" \
        || ! -f "$lib_dir/customization-preserve.sh" \
-       || ! -f "$lib_dir/customization-report.sh" ]]; then
+       || ! -f "$lib_dir/customization-report.sh" \
+       || ! -f "$lib_dir/install-map.sh" \
+       || ! -f "$lib_dir/pack-provenance.sh" ]]; then
         die "customization library missing under $lib_dir; cannot --update" \
             "$EXIT_UPDATE_LIB_MISSING"
     fi
@@ -1532,101 +1601,168 @@ cmd_update() {
     source "$lib_dir/customization-preserve.sh"
     # shellcheck disable=SC1091
     source "$lib_dir/customization-report.sh"
+    # shellcheck disable=SC1091
+    source "$lib_dir/install-map.sh"
+    # shellcheck disable=SC1091
+    source "$lib_dir/pack-provenance.sh"
 
     local state_dir="$TARGET/.pack-update"
+
+    # The set of files --update touches, DERIVED from the install map below:
+    # every row whose `[stage:]` carries `cmd_update`, with family rows
+    # expanded to concrete files and their DEST brace groups fanned out.
+    # Enumerated ONCE for the whole run, never per file.
+    #
+    # Each emitted triple is `pack_relpath:project_relpath:class`:
+    #   pack_relpath     — path under $PACK (or $PACK/project-template/)
+    #   project_relpath  — path under $TARGET
+    #   class            — explicit class for customization_preserve; EMPTY
+    #                      means self-classify (no class argument is passed).
+    #                      That is what the Antigravity bundle needs: its dir
+    #                      mixes pack agents (pack-agent, replace-if-different)
+    #                      with client `x-` customs (custom-agent, preserved),
+    #                      so a forced class would three-way a custom and risk
+    #                      sidecaring it.
+    #
+    # Resolved FIRST, before this function touches anything. It reads only the
+    # map, so it has no ordering dependency on the state dir or the ledger —
+    # and running it here means both `die`s below fire before `rm -rf
+    # "$state_dir"` has destroyed the prior ledger the cascade reads, and
+    # before any temp file exists to leak on the way out.
+    local dispatch
+    dispatch=$(install_map_dispatch_set cmd_update) \
+        || die "install map is unreadable; cannot --update" \
+               "$EXIT_UPDATE_LIB_MISSING"
+
+    # The parser's non-empty floor guards each BLOCK; the stage-token filter
+    # runs AFTER it, so a map whose blocks parse but whose `cmd_update` axis
+    # selects nothing still returns rc 0 with zero rows. There is no legitimate
+    # pack in which `--update` has nothing to dispatch, so treat that as the
+    # same failure an unreadable map is: without this, a mistyped stage token
+    # makes `--update` exit 0 having refreshed not one file.
+    [[ -n "$dispatch" ]] \
+        || die "install map declares no cmd_update rows; cannot --update" \
+               "$EXIT_UPDATE_LIB_MISSING"
+
+    # BASE-cascade rung R1 READ. The ledger a previous run left behind names
+    # the blob that run installed at each path; it must be copied OUT BEFORE
+    # the state dir is cleared two lines down, or the cascade would delete its
+    # own input. `.pack-update/` is a prior update's ledger, and
+    # `.pack-install-reconcile/` a fresh install's — both are directories those
+    # paths already create, so no new client-tree artefact appears.
+    # The filename comes from the library that writes it, never a second copy.
+    #
+    # Kept as a FILE, never slurped into a shell string: the join below reads
+    # it in one `awk` pass, and a whole-ledger string is what made the old
+    # per-file lookup quadratic (see _cmd_update_resolve_base).
+    local prior_ledger=""
+    local _cu_prior
+    for _cu_prior in "$state_dir/$_CP_LEDGER_BASENAME" \
+                     "$TARGET/.pack-install-reconcile/$_CP_LEDGER_BASENAME"; do
+        if [[ -s "$_cu_prior" ]]; then
+            prior_ledger=$(mktemp "${TMPDIR:-/tmp}/cu-prior.XXXXXX") || prior_ledger=""
+            if [[ -n "$prior_ledger" ]]; then
+                # A failed `cp` disables the accelerator, and the temp it
+                # would have filled is removed HERE: blanking the variable is
+                # what makes the `rm -f` at the end of the join block
+                # unreachable, so without this the partial file survives the
+                # run.
+                if ! cp "$_cu_prior" "$prior_ledger"; then
+                    rm -f "$prior_ledger"
+                    prior_ledger=""
+                fi
+            fi
+            break
+        fi
+    done
+
     rm -rf "$state_dir"
     customization_preserve_init "$state_dir" ".pre-update"
 
-    # The set of files --update touches. BASE is left empty (no prior pack
-    # baseline available offline; the BD-088 classifier handles
-    # `project-shadows-new-pack` for files where ours and theirs differ
-    # without a base).
-    #
-    # Each entry is: pack_relpath:project_relpath:class
-    #   pack_relpath     — path under $PACK (or $PACK/project-template/)
-    #   project_relpath  — path under $TARGET
-    #   class            — explicit class for customization_preserve
-    #
-    # Self-documenting fixture-affecting list lives below at
-    # `_CLIENT_INSTALLED_FILES` (BD-180 observation G per
-    # ARCHITECTURE-BD-176.md §5.3). validate-pack.py Check 41 asserts the
-    # `_CLIENT_INSTALLED_FILES` list matches the actual copy-site state of
-    # this script (cmd_update entries below + fresh-install stages
-    # S3/S4/S5/S6/S7/S8/S11).
-    local entries=(
-        "project-template/CLAUDE.md:CLAUDE.md:trinity"
-        "project-template/AGENTS.md:AGENTS.md:trinity"
-        "project-template/GEMINI.md:GEMINI.md:trinity"
-        "project-template/.claude/settings.json:.claude/settings.json:claude-settings"
-        "project-template/.codex/config.toml:.codex/config.toml:codex-config"
-        "project-template/.codex/config.toml.example:.codex/config.toml.example:codex-config-example"
-        "project-template/.codex/requirements.toml:.codex/requirements.toml:codex-config"
-        "project-template/.mcp.json.example:.mcp.json:claude-mcp-example"
-        "project-template/.agents/mcp_config.json.example:.agents/mcp_config.json:mcp-config-json"
-        "project-template/docs/pack/PM-CHAT.md:docs/pack/PM-CHAT.md:pm-chat"
-        "project-template/docs/pack/PM-OPERATING-MODES.md:docs/pack/PM-OPERATING-MODES.md:generic"
-        "project-template/docs/pack/PM-DASHBOARD-SPEC.md:docs/pack/PM-DASHBOARD-SPEC.md:generic"
-        "project-template/docs/pack/PLATFORM-SKILLS.md:docs/pack/PLATFORM-SKILLS.md:generic"
-        "project-template/docs/pack/PACK-FEEDBACK.md:docs/pack/PACK-FEEDBACK.md:generic"
-        # BD-180 observation E (2026-05-20): PROMPT-TEMPLATES.md entry
-        # REMOVED — the file was retired in v10.0 (replaced by per-agent
-        # prompts under docs/pack/prompts/). The stale mapping had no
-        # source file to copy from. Reverse-direction Check 39 now flags
-        # such drift bidirectionally.
-        "project-template/docs/pack/HELP-FRAGMENT.md:docs/pack/HELP-FRAGMENT.md:generic"
-        "project-template/docs/pack/OPTIONAL-FEATURES.md:docs/pack/OPTIONAL-FEATURES.md:generic"
-        # BD-214 (2026-06-13): tracker.toml.example entry REMOVED — tracker
-        # integration is deferred indefinitely and flat-file is the sole
-        # supported mode. The deferred flip material no longer ships to
-        # clients (design D-C); the dormant config record stays committed
-        # pack-side (project-template/tracker.toml.project-example).
-        "project-template/.github/ISSUE_TEMPLATE/work-item.yml:.github/ISSUE_TEMPLATE/work-item.yml:generic"
-        "project-template/.github/ISSUE_TEMPLATE/inbound.yml:.github/ISSUE_TEMPLATE/inbound.yml:generic"
-        "project-template/.github/ISSUE_TEMPLATE/config.yml:.github/ISSUE_TEMPLATE/config.yml:generic"
-        # BD-221 (2026-06-16): pm-help + pm-startup are ordinary pool
-        # skills (project-template/skills/{pm-help,pm-startup}/SKILL.md)
-        # distributed LOOSE to claude/codex/agents by stage S4. The former
-        # per-CLI explicit-copy rows (.claude/.codex SKILL.md + the retired
-        # `.toml` command surfaces) are gone — the S4 fresh-install loop
-        # propagates pool-skill updates to existing clients (the BD-180
-        # bulk-copy pattern), and Antigravity has no `.toml` command format.
-        # BD-180 observation D (2026-05-20): per-entry skeleton templates
-        # (BD-166/BD-167). Installed at fresh init by S11 step 6 (lines
-        # 891-947 — explicit `"$copy_fn"` calls for each); without these
-        # cmd_update entries, template updates (e.g., `_rules.md` schema
-        # changes) would not propagate to existing clients via
-        # `pack update`. BD-167 scaffolding contract is load-bearing.
-        "project-template/docs/project/backlog/_rules.md:docs/project/backlog/_rules.md:generic"
-        "project-template/docs/project/backlog/_intro.md:docs/project/backlog/_intro.md:generic"
-        "project-template/docs/project/implementation-plan/_rules.md:docs/project/implementation-plan/_rules.md:generic"
-        "project-template/docs/project/implementation-plan/_intro.md:docs/project/implementation-plan/_intro.md:generic"
-        "project-template/docs/project/changelog/_rules.md:docs/project/changelog/_rules.md:generic"
-        "project-template/docs/project/changelog/_intro.md:docs/project/changelog/_intro.md:generic"
-        # BD-263 (groupings provisioning): fourth per-entry stream sidecars
-        # (BD-262 contract). Without these rows an already-installed v11.0
-        # tree (pre-groupings dev install) would never gain the groupings
-        # stream via `pack update` — cmd_update is the live same-version
-        # propagation surface (no v11.0→v11.x migrator exists by design).
-        # Post-copy, cmd_update seeds the empty groupings `_toc.md` iff
-        # absent (see the toc-seed block below the iter-dir legs).
-        "project-template/docs/project/groupings/_rules.md:docs/project/groupings/_rules.md:generic"
-        "project-template/docs/project/groupings/_intro.md:docs/project/groupings/_intro.md:generic"
-        # BD-180 observation F (2026-05-20): supporting-docs/* installed
-        # to docs/pack/ by S6 (lines 565-583 — separate copy blocks below
-        # the docs/pack/*.md glob loop since these source files live under
-        # $PACK/supporting-docs/, not under $PACK/project-template/). Same
-        # gap class as observations B/D — files reached fresh-init clients
-        # but not update clients. BD-175 Commit 8 CI-failure precedent
-        # (METHODOLOGY.md manifest drift) confirms both files ARE
-        # fixture-affecting + ARE distributed at install time.
-        "supporting-docs/METHODOLOGY.md:docs/pack/METHODOLOGY.md:generic"
-        "supporting-docs/INSTALL-PROCEDURES.md:docs/pack/INSTALL-PROCEDURES.md:generic"
-    )
+    # R4' — the whole-run baseline gate, evaluated ONCE before the loop.
+    # Without the baseline objects no rung can establish provenance, so every
+    # file falls back to R3' semantics. The run PROCEEDS rather than dying:
+    # under R3' DEST still becomes THEIRS, so nothing is left stale — the cost
+    # is a spurious sidecar, which is noisy, never stale.
+    # pack_provenance_baseline_reachable prints the condition and the
+    # `git fetch origin v10:v10` remedy on stderr.
+    _CU_BASELINE_OK=1
+    if ! pack_provenance_baseline_reachable "$PACK"; then
+        _CU_BASELINE_OK=0
+        say "NOTE: the pack baseline is unreachable, so provenance cannot be"
+        say "      established; every file whose content differs from the pack"
+        say "      is routed to manual reconciliation with a .pre-update sidecar."
+    fi
 
-    local entry pack_rel proj_rel cls theirs ours dest
-    for entry in "${entries[@]}"; do
-        pack_rel="${entry%%:*}"
-        local rest="${entry#*:}"
+    # Build the provenance index ONCE, in THIS shell. pack_provenance_init
+    # memoises into the shell it runs in, so letting the first probe build it
+    # inside a `$(...)` subshell would discard the memo every time and re-walk
+    # the object store once per file (pack-provenance.sh constraint 1).
+    if [[ "$_CU_BASELINE_OK" -eq 1 ]]; then
+        pack_provenance_init "$PACK" || _CU_BASELINE_OK=0
+    fi
+
+    # R1 READ, resolved for the WHOLE RUN in one pass. Attach each dispatch
+    # row's prior-run blob sha as a trailing TAB column, joining on the client
+    # relpath (ledger column 1). One `awk` fork for the run, mirroring the
+    # single-pass `hash-object` idiom the WRITE side uses.
+    #
+    # The ledger is an accelerator, never a requirement: if the join fails the
+    # rows keep their unjoined form, every sha reads empty, and the cascade
+    # falls through to R2/R3'. That costs sidecars, never staleness.
+    #
+    # `!($1 in m)` keeps the FIRST row for a repeated path, matching the
+    # shortest-match lookup this replaced. `-F'\t'` is load-bearing — the
+    # default splitter would break any path containing a space.
+    if [[ -n "$prior_ledger" ]]; then
+        local joined=""
+        if joined=$(printf '%s\n' "$dispatch" | awk -F'\t' '
+            NR == FNR {
+                if (substr($0, 1, 1) == "#") next
+                if ($1 != "" && !($1 in m)) m[$1] = $3
+                next
+            }
+            {
+                i = index($0, ":")
+                r = substr($0, i + 1)
+                j = index(r, ":")
+                k = (j ? substr(r, 1, j - 1) : r)
+                print $0 "\t" (k in m ? m[k] : "")
+            }
+        ' "$prior_ledger" - 2>/dev/null); then
+            # Adopt the join ONLY if it produced rows. The two-file `NR == FNR`
+            # idiom has exactly one degenerate mode: a first file holding ZERO
+            # records makes every stdin record satisfy `NR == FNR`, so the whole
+            # dispatch set is consumed as ledger rows and nothing is printed.
+            # `awk` still exits 0, so the rc test above cannot see it. Adopting
+            # that result would empty the value the loop below reads, refreshing
+            # not one file — the failure the non-empty guard above exists to
+            # prevent, reintroduced downstream of it where that guard can no
+            # longer see it. The run does not even end quietly: with nothing
+            # installed it fails later at the immutable-manifest gate, whose
+            # diagnostic names a missing installed file and says nothing about
+            # the dispatch set. The fallback is the UNJOINED set rather than a
+            # `die` because the ledger is an accelerator: without it every sha
+            # reads empty and the cascade resolves through R2/R3'.
+            if [[ -n "$joined" ]]; then
+                dispatch="$joined"
+            fi
+        fi
+        rm -f "$prior_ledger"
+    fi
+
+    # R1 WRITE staging: `proj_rel<TAB>pack_source<TAB>disposition<TAB>abs_path`.
+    # Blob shas for the whole set are computed in ONE pass after the loop.
+    # An unwritable stage is a no-op, not a failure — same contract as the
+    # ledger itself, and the guard keeps `set -e` from aborting the run.
+    local ledger_stage
+    ledger_stage=$(mktemp "${TMPDIR:-/tmp}/cu-ledger.XXXXXX") || ledger_stage=""
+
+    local row row_sha rest pack_rel proj_rel cls eff_cls theirs ours dest
+    while IFS=$'\t' read -r row row_sha; do
+        [[ -n "$row" ]] || continue
+        pack_rel="${row%%:*}"
+        rest="${row#*:}"
         proj_rel="${rest%%:*}"
         cls="${rest##*:}"
         theirs="$PACK/$pack_rel"
@@ -1637,32 +1773,62 @@ cmd_update() {
         # — so the truthful-report contract is preserved.
         [[ -f "$theirs" ]] || theirs=""
         [[ -f "$ours" ]]   || ours=""
-        customization_preserve "" "$ours" "$theirs" "$proj_rel" "$dest" "$cls" >/dev/null
-    done
 
-    # Iterate pack-shipped scripts and per-CLI agents (parity with
-    # migrate-v10-to-v11.sh stage S3). Without this, pack-shipped script
-    # / agent updates would silently NOT be picked up by --update.
-    _cmd_update_iter_dir "project-template/scripts" "scripts" pack-script
-    local tool
-    # Claude/Codex keep loose per-CLI agent dirs. Antigravity agents ship
-    # as a plugin BUNDLE — the bundle updates via its own dir leg below.
-    for tool in claude codex; do
-        _cmd_update_iter_dir "project-template/.${tool}/agents" \
-            ".${tool}/agents" pack-agent
-    done
-    # BD-221 corrected agent-migration model: the bundle dir mixes pack
-    # agents AND client x- customs, so it must SELF-CLASSIFY per file (NO
-    # forced class). With the .agents-plugin/*/agents/{x-*,*.md} classifier
-    # legs, a bundle pack agent is replace-if-different and a bundle x-
-    # custom is PRESERVED on a `--update` bump (a forced `pack-agent` would
-    # 3-way the custom and risk sidecaring it). Empty 3rd arg = self-classify.
-    _cmd_update_iter_dir "project-template/.agents-plugin/optiquity-agents/agents" \
-        ".agents-plugin/optiquity-agents/agents"
+        # SCOPING GATE — the BASE cascade is TEXT-CLASS ONLY. `trinity` and
+        # the five structured classes keep empty-BASE dispatch.
+        #   * Structured: a non-empty BASE lets the classifier answer
+        #     `merged-with-customization`, and _cp_strategy_structured returns
+        #     on that token BEFORE the key-merge helper runs — the pack's new
+        #     keys would never reach the client. Today they arrive via the
+        #     key-union path, and they must keep arriving.
+        #   * Trinity: marker_preserve_trinity's first step is base-aware with
+        #     three branches, so supplying a non-empty BASE moves which branch
+        #     fires.
+        # Widening this case list to either family is a regression, not a
+        # completion.
+        eff_cls="$cls"
+        [[ -n "$eff_cls" ]] || eff_cls=$(customization_classify "$proj_rel")
+        _CU_BASE=""
+        _CU_BASE_TMP=""
+        _CP_OURS_BLOB=""
+        # Reset alongside the three above: the staged row below reads it, and
+        # an arm that returned without recording would otherwise stage the
+        # PREVIOUS file's disposition against this path.
+        _CP_LAST_DISP=""
+        case "$eff_cls" in
+            generic|pm-chat|pack-script|pack-agent)
+                _cmd_update_resolve_base "$pack_rel" "$ours" "$row_sha"
+                ;;
+        esac
+
+        if [[ -n "$cls" ]]; then
+            customization_preserve "$_CU_BASE" "$ours" "$theirs" "$proj_rel" "$dest" "$cls" >/dev/null
+        else
+            customization_preserve "$_CU_BASE" "$ours" "$theirs" "$proj_rel" "$dest" >/dev/null
+        fi
+        if [[ -n "$_CU_BASE_TMP" ]]; then
+            rm -f "$_CU_BASE_TMP"
+        fi
+
+        # Stage the R1 row: the pack blob that is the merge BASE for the NEXT
+        # run at this path. On the adopt arms that blob is also what DEST now
+        # holds; on the merged and needs-reconciliation arms it is not, and it
+        # is still the right value — the pack blob is the common ancestor the
+        # next three-way has to diff against. Only rows the pack ships.
+        if [[ -n "$theirs" && -n "$ledger_stage" ]]; then
+            printf '%s\t%s\t%s\t%s\n' "$proj_rel" "$pack_rel" \
+                "${_CP_LAST_DISP:--}" "$theirs" >> "$ledger_stage"
+        fi
+    done <<< "$dispatch"
+
+    if [[ -n "$ledger_stage" ]]; then
+        _cmd_update_write_ledger "$ledger_stage"
+        rm -f "$ledger_stage"
+    fi
 
     # BD-263 (groupings provisioning): seed the empty groupings `_toc.md`
     # iff absent. A groupings-less v11.0 tree gains docs/project/groupings/
-    # {_rules.md,_intro.md} from the entries above; without this seed the
+    # {_rules.md,_intro.md} from the dispatch above; without this seed the
     # stream's SOLE readable index would be missing until the client's
     # first TOC regenerate. Guarded by absence — a tree with a populated
     # groupings stream keeps its regenerated `_toc.md` untouched, and a

@@ -769,6 +769,186 @@ case $? in
 esac
 
 # ─────────────────────────────────────────────────────────────────
+# Group 2c: clause (f) class-vocabulary guard — RED + GREEN legs
+# ─────────────────────────────────────────────────────────────────
+#
+# Clause (f) asserts every declared `[class:...]` names a class with a real
+# dispatch arm in `customization_preserve()`. The install map's own shape gate
+# proves a class operand is a bare lowercase token; it cannot prove the token
+# MEANS anything, and `customization_preserve()` ends in a `*)` catch-all, so a
+# well-shaped typo silently changes the merge strategy instead of failing.
+#
+# The vocabulary is DERIVED from that dispatch, so these legs stage a synthetic
+# library alongside the synthetic map. The derivation itself is asserted against
+# the REAL library too: if a reformat of the case block made the derivation
+# return an empty set, the clause would skip forever and pass everything —
+# a guard that cannot fail.
+
+printf "\n=== Group 2c: clause (f) class-vocabulary guard (RED + GREEN) ===\n"
+
+REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 <<'EOF'
+import os, sys, tempfile, pathlib
+REPO_ROOT_PY = os.environ['REPO_ROOT']
+VALIDATE_PY = os.environ['VALIDATE']
+sys.path.insert(0, REPO_ROOT_PY + '/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('vp', VALIDATE_PY)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+def _patch_root(mod, root):
+    """See Group 2b — the check body reads boundary_refs.REPO_ROOT, so the
+    patch must reach every loaded validate_checks.* submodule."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
+failures = []
+
+# A dispatch whose arms are `trinity`, `pack-agent`, `generic` — and whose
+# catch-all is the very fall-through clause (f) exists to make visible.
+LIB_WITH_DISPATCH = '''#!/usr/bin/env bash
+customization_preserve() {
+    local class="${6:-}"
+    case "$class" in
+        trinity)
+            marker_preserve_trinity "$@"
+            ;;
+        pack-agent|generic)
+            _cp_strategy_text "$class" "$@"
+            ;;
+        *)
+            _cp_strategy_text "generic" "$@"
+            ;;
+    esac
+}
+'''
+
+def run_class_check(class_operand, stage_lib=True):
+    """Check 41 over a synthetic root whose single map row carries
+    `class_operand` (a literal like '[class:generic]', or '' to omit it).
+    Returns (failures_count, captured_stdout)."""
+    tmpdir = tempfile.mkdtemp(prefix="vp-check41f-")
+    root = pathlib.Path(tmpdir)
+    (root / "scripts").mkdir()
+    target = root / "project-template/docs/pack/FOO.md"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("# stub\n")
+    if stage_lib:
+        (root / "scripts" / "lib").mkdir()
+        (root / "scripts" / "lib" / "customization-preserve.sh").write_text(
+            LIB_WITH_DISPATCH
+        )
+    (root / "scripts" / "init-project.sh").write_text(
+        '#!/usr/bin/env bash\n'
+        '# _CLIENT_INSTALLED_FILES_START\n'
+        '#   project-template/docs/pack/FOO.md  ->  docs/pack/FOO.md  '
+        '[stage:S6,cmd_update]  ' + class_operand + '\n'
+        '# _CLIENT_INSTALLED_FILES_END\n'
+    )
+    import io, contextlib
+    saved_root = mod.REPO_ROOT
+    saved_failures = list(mod.failures)
+    mod.failures.clear()
+    _patch_root(mod, root)
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            mod.check_client_installed_files()
+        n = len(mod.failures)
+        captured = buf.getvalue()
+    finally:
+        _patch_root(mod, saved_root)
+        mod.failures.clear()
+        mod.failures.extend(saved_failures)
+    return (n, captured)
+
+# GREEN: a class with a real arm.
+n, cap = run_class_check('[class:generic]')
+if n != 0:
+    failures.append(f"GREEN [class:generic] expected 0 failures, got {n}: {cap}")
+if "1 declared `[class:]` operand(s) resolve to a real dispatch arm" not in cap:
+    failures.append(f"GREEN must report the class count in the OK line: {cap}")
+
+# RED: a WELL-SHAPED typo. The map's own shape gate accepts it (it is a bare
+# lowercase token); only the backing test can reject it.
+n, cap = run_class_check('[class:slef]')
+if n != 1:
+    failures.append(f"RED [class:slef] expected 1 failure, got {n}: {cap}")
+if "slef" not in cap:
+    failures.append(f"RED diagnostic must name the offending token: {cap}")
+if "customization_preserve()" not in cap:
+    failures.append(f"RED diagnostic must name where the arm belongs: {cap}")
+if "catch-all" not in cap or "silently changing the preservation strategy" not in cap:
+    failures.append(f"RED diagnostic must name the silent consequence: {cap}")
+
+# RED: a token that IS a real classifier token but has NO dispatch arm. Proves
+# the clause keys on the ARM, not on the token appearing in the library.
+n, cap = run_class_check('[class:unknown-classification]')
+if n != 1:
+    failures.append(
+        f"RED [class:unknown-classification] expected 1 failure, got {n}: {cap}"
+    )
+
+# GREEN: the `self` sentinel has no arm BY DESIGN (it means self-classify).
+n, cap = run_class_check('[class:self]')
+if n != 0:
+    failures.append(f"GREEN [class:self] sentinel expected 0 failures, got {n}: {cap}")
+
+# GREEN: an omitted operand is the self-classify form and is not a class.
+n, cap = run_class_check('')
+if n != 0:
+    failures.append(f"GREEN omitted [class:] expected 0 failures, got {n}: {cap}")
+if "0 declared `[class:]` operand(s)" not in cap:
+    failures.append(f"GREEN omitted must count zero declared classes: {cap}")
+
+# LENIENT: no library staged -> no derivable vocabulary -> clause SKIPS rather
+# than failing a scaffold that legitimately ships no library.
+n, cap = run_class_check('[class:slef]', stage_lib=False)
+if n != 0:
+    failures.append(
+        f"LENIENT (no library) expected the clause to skip, got {n} failures: {cap}"
+    )
+
+# The derivation must keep working against the REAL library. A reformat of the
+# case block that broke the regex would return an empty set, which turns clause
+# (f) into a permanent skip — a guard that cannot fail. This leg is what makes
+# that visible.
+real_vocab = mod._customization_preserve_classes()
+if not real_vocab:
+    failures.append(
+        "the class vocabulary derived from the REAL "
+        "scripts/lib/customization-preserve.sh is EMPTY — clause (f) would "
+        "skip on every run; the case-block shape or the function shape changed"
+    )
+for expected in ("generic", "trinity", "pack-agent", "codex-config"):
+    if expected not in real_vocab:
+        failures.append(
+            f"derived vocabulary is missing the shipped class `{expected}`: "
+            f"{sorted(real_vocab)}"
+        )
+if "self" in real_vocab:
+    failures.append(
+        "`self` must NOT come from the dispatch — it is a map-level sentinel "
+        "carried by _CHECK_41_CLASS_SENTINELS"
+    )
+
+if failures:
+    print("FAILURES")
+    for f in failures:
+        print(" ", f)
+    sys.exit(1)
+print("OK")
+EOF
+case $? in
+    0) t_pass "clause (f) class-vocabulary guard (GREEN arm / RED typo / RED no-arm token / GREEN self sentinel / GREEN omitted / LENIENT no-library / real-vocabulary derivation)" ;;
+    *) t_fail "clause (f) class-vocabulary guard tests failed (see Python output above)" ;;
+esac
+
+# ─────────────────────────────────────────────────────────────────
 # Group 3: End-to-end validate-pack.py exit-status on HEAD
 # ─────────────────────────────────────────────────────────────────
 

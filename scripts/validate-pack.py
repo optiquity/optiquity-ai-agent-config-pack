@@ -197,9 +197,10 @@ Checks:
       content mis-sited outside `pack-ops/`.
   39. cmd_update mapping/glob symmetry (BD-175 F2a per F4 bundle
       reviewer prevention-design feed-in #2; BD-180 reverse-direction
-      extension 2026-05-20): bidirectional symmetry between
-      `scripts/init-project.sh` `cmd_update` `entries=()` array and
-      project-template surface.
+      extension 2026-05-20): bidirectional symmetry between the install
+      map's `cmd_update` axis — the `_CLIENT_INSTALLED_FILES` and
+      `_CLIENT_INSTALLED_GLOBS` comment blocks in
+      `scripts/init-project.sh` — and project-template surface.
       - Forward direction (BD-175 F2a): walks every file under
         `project-template/docs/pack/*.md` (the fresh-install S6 glob
         target) and verifies a corresponding explicit mapping entry
@@ -209,16 +210,16 @@ Checks:
         intentionally absent from `cmd_update` (default: empty —
         surface-over-silently-exempt).
       - Reverse direction (BD-180 observation E 2026-05-20): every
-        `cmd_update` entry's `pack_relpath` must point at a file
+        `cmd_update` row's `pack_relpath` must point at a file
         that exists at HEAD. Catches stale mappings whose source
         file was retired (empirical example: pre-BD-180,
-        `project-template/docs/pack/PROMPT-TEMPLATES.md` mapped at
-        scripts/init-project.sh:1122 referenced a file retired in
-        v10.0). Allowlist `_CHECK_39_REVERSE_EXEMPTIONS` admits
-        entries whose source intentionally lives outside the repo
+        `project-template/docs/pack/PROMPT-TEMPLATES.md` was mapped
+        in the `_CLIENT_INSTALLED_FILES` block yet referenced a file
+        retired in v10.0). Allowlist `_CHECK_39_REVERSE_EXEMPTIONS`
+        admits rows whose source intentionally lives outside the repo
         tree (default: empty).
-      The check parses the `cmd_update` entries array via regex (does
-      not source the shell file).
+      The check parses those comment blocks via regex (it does not
+      source the shell file).
   41. _CLIENT_INSTALLED_FILES self-documenting list integrity
       (BD-180 observation G per ARCHITECTURE-BD-176.md §5.3): the
       `_CLIENT_INSTALLED_FILES_START` / `_CLIENT_INSTALLED_FILES_END`
@@ -226,8 +227,18 @@ Checks:
       inventory of files install to clients. Check 41 asserts: (a)
       the START/END markers exist exactly once each, (b) the block is
       well-formed (at least one entry line), (c) every entry's
-      `pack_relpath` exists at HEAD, and (d) every cmd_update
-      `pack_relpath` is listed in the block. Catches drift between
+      `pack_relpath` exists at HEAD, (e) every hand-enumerated row has
+      a fresh-install copy site in a stage its `[stage:]` names, and
+      (f) every declared `[class:...]` names a class with a real
+      dispatch arm in `customization_preserve()` — an unrecognised
+      class is not an error at merge time, it falls through that
+      function's catch-all to the generic text merge and silently
+      changes the preservation strategy. Clause (f) DERIVES the
+      vocabulary from that dispatch, so a new class needs no edit
+      here. There is no cmd_update-is-listed clause: with ONE
+      declaration the `cmd_update` axis IS a subset of the map, so
+      such a clause would test `map ⊆ map`; that axis is Check 39's
+      job. Catches drift between
       the self-documenting comment and the actual copy-site state.
       Allowlist `_CHECK_41_EXEMPTIONS` admits inventory entries
       whose source intentionally lives outside repo HEAD (default:

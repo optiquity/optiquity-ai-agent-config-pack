@@ -156,6 +156,11 @@ _cp_flat_name() {
 
 # ── Init ──────────────────────────────────────────────────────────────────
 
+# Ledger filename, shared by the writer below and by any caller that must
+# locate a PRIOR run's ledger before init truncates the state dir. Assigned
+# here, ahead of its first use, so the ordering is not load-bearing.
+_CP_LEDGER_BASENAME="ledger.tsv"
+
 customization_preserve_init() {
     local state_dir="$1"
     local sidecar_suffix="${2:-.pre-update}"
@@ -173,9 +178,52 @@ customization_preserve_init() {
     _CP_SIDECAR_SUFFIX="$sidecar_suffix"
     _CP_DISPOSITIONS_FILE="$state_dir/dispositions.tsv"
     _CP_DIFFS_DIR="$state_dir/diffs"
+    _CP_LEDGER_FILE="$state_dir/$_CP_LEDGER_BASENAME"
     _CP_FINDINGS_COUNT=0
     printf '# disposition\tclass\trel_path\taction\tsidecar\tdiff\tnotes\n' \
         > "$_CP_DISPOSITIONS_FILE"
+    printf '# proj_rel\tpack_source\tblob_sha\tdisposition\n' > "$_CP_LEDGER_FILE"
+}
+
+# ── Baseline ledger (BASE cascade rung R1) ────────────────────────────────
+#
+# The ledger records, for every declared file an install path writes or
+# refreshes, THE PACK BLOB THAT IS THE MERGE BASE FOR THE NEXT RUN:
+#
+#   proj_rel<TAB>pack_source<TAB>blob_sha<TAB>disposition
+#
+# On the adopt arms that blob is also what DEST now holds. On the merged and
+# needs-reconciliation arms it is NOT — DEST holds a merge, or the client's
+# own bytes — and the pack blob is still the correct record, because it is the
+# common ancestor the next three-way has to diff against. Recording DEST's own
+# sha instead would look more truthful and would destroy that property.
+#
+# The NEXT run reads it and materialises that blob as the merge BASE
+# (`git -C <pack> cat-file blob <sha>`), which is what lets the classifier
+# tell a pack-authored stale file from client work. It is written into the
+# state dir the caller already initialises — `.pack-update/` on an update,
+# `.pack-install-reconcile/` on a fresh install — so no new client-tree
+# artefact surface appears; the caller's own `customization_preserve_init`
+# creates it.
+#
+# The sha is supplied BY THE CALLER, never computed here: a caller hashes its
+# whole write set in one `git hash-object --stdin-paths` pass, where computing
+# it per record would fork once per file.
+
+customization_preserve_ledger_path() {
+    printf '%s\n' "${_CP_LEDGER_FILE:-}"
+}
+
+customization_preserve_ledger_record() {
+    local proj_rel="${1:-}" pack_source="${2:-}" blob_sha="${3:-}" disp="${4:-}"
+    # A missing ledger (an install path that never initialised one) or a
+    # missing sha is a no-op, never an error: the ledger is an accelerator for
+    # the NEXT run, and a run that cannot write one still installs correctly.
+    [[ -n "${_CP_LEDGER_FILE:-}" && -f "$_CP_LEDGER_FILE" ]] || return 0
+    [[ -n "$proj_rel" && -n "$blob_sha" ]] || return 0
+    printf '%s\t%s\t%s\t%s\n' \
+        "$proj_rel" "${pack_source:--}" "$blob_sha" "${disp:--}" \
+        >> "$_CP_LEDGER_FILE"
 }
 
 customization_findings_count() {
@@ -263,6 +311,11 @@ _cp_record() {
         "$disp" "$class" "$rel" "$action" "$sidecar" "$diff" "$notes" \
         >> "$_CP_DISPOSITIONS_FILE"
     _CP_FINDINGS_COUNT=$((_CP_FINDINGS_COUNT + 1))
+    # Last disposition, for a caller that must pair its ledger row with the
+    # verdict this file received. Every strategy reaches _cp_record exactly
+    # once per file and is invoked as a plain call (never `$(...)`), so the
+    # assignment is visible in the caller's shell.
+    _CP_LAST_DISP="$disp"
 }
 
 # BD-287: stash the v10 BASE blob as a fixed companion `<DEST>.v10-base` next to
@@ -358,7 +411,18 @@ _cp_strategy_text() {
         pack-update-applied|new-file-in-pack)
             mkdir -p "$(dirname "$dest")"
             cp "$theirs" "$dest"
-            _cp_record "$disp" "$class" "$rel" "copied" "-" "-" "-"
+            # BASE-cascade rung R2 recoverability. When the caller proved OURS
+            # was pack-authored it passed OURS ITSELF as BASE, so this arm
+            # overwrites the client's bytes WITHOUT a sidecar. That is only
+            # safe because those exact bytes are, by R2's own precondition,
+            # already a blob in the pack's object store — so record the sha and
+            # the overwrite stays recoverable with zero new files. A caller
+            # that set no sha (every path other than R2) keeps today's `-`.
+            local r2_note="-"
+            if [[ -n "${_CP_OURS_BLOB:-}" ]]; then
+                r2_note="pack-authored OURS overwritten; recover with: git -C <pack> cat-file blob ${_CP_OURS_BLOB}"
+            fi
+            _cp_record "$disp" "$class" "$rel" "copied" "-" "-" "$r2_note"
             ;;
         merged-with-customization)
             _cp_record "$disp" "$class" "$rel" "preserved" "-" "-" "kept project edits"

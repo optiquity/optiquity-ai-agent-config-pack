@@ -134,6 +134,143 @@ assert_contains "2.7 user told to reconcile sidecars" "$out" \
 
 rm -rf "$T"
 
+# 2.8 the map PARSES but its `cmd_update` axis is EMPTY. The parser's
+# non-empty floor guards each BLOCK; the stage-token filter runs after it, so
+# a mistyped stage token yields rc 0 with ZERO rows and — without the
+# call-site guard — an --update that exits 0 having refreshed not one file.
+# The map root is SYNTHETIC (INSTALL_MAP_PACK); the real map is never mutated.
+T=$(make_configured_target)
+NOAXIS=$(mktemp -d "${TMPDIR:-/tmp}/init-noaxis.XXXXXX")
+mkdir -p "$NOAXIS/scripts" "$NOAXIS/project-template/bundle"
+printf 'x\n' > "$NOAXIS/project-template/bundle/one.md"
+cat > "$NOAXIS/scripts/init-project.sh" <<'NOAXIS_MAP'
+#!/usr/bin/env bash
+# _CLIENT_INSTALLED_FILES_START
+#   project-template/bundle/one.md  ->  bundle/one.md  [stage:S6]  [class:generic]
+# _CLIENT_INSTALLED_FILES_END
+#
+# _CLIENT_INSTALLED_GLOBS_START
+#   project-template/bundle/*  ->  bundle/*  [stage:S6]  [class:generic]
+# _CLIENT_INSTALLED_GLOBS_END
+NOAXIS_MAP
+
+out=$(INSTALL_MAP_PACK="$NOAXIS" PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T" 2>&1) ; rc=$?
+assert_eq "2.8 an empty cmd_update axis makes --update refuse" "51" "$rc"
+assert_contains "2.8 diagnostic names the empty axis" "$out" \
+    "install map declares no cmd_update rows"
+
+# 2.9 DISCRIMINATION for 2.8: the SAME target with the REAL map dispatches
+# normally, so 2.8 is not passing because --update refuses this target.
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T" 2>&1) ; rc=$?
+assert_eq "2.9 the real map still dispatches (2.8 discriminates)" "0" "$rc"
+
+# 2.10 the refusal in 2.8 must leave the client exactly as it found them. The
+# dispatch set is resolved — and both its `die`s fire — before this function
+# touches anything, which closes two failure modes at once:
+#
+#   * the prior ledger is copied to a `mktemp` (it must be, since the state dir
+#     that holds it is cleared moments later), and `set -euo pipefail` means a
+#     `die` between that copy and its `rm -f` never reaches the cleanup;
+#   * `rm -rf "$state_dir"` destroys the ledger itself, so a refusal AFTER it
+#     degrades the NEXT run's R1 rung as well — the cascade loses the baseline
+#     it would otherwise have resolved from.
+#
+# TMPDIR is private to the run so the temp count is exact and no other test's
+# temps are counted.
+T2=$(make_configured_target)
+mkdir -p "$T2/.pack-update"
+printf 'docs/pack/FOO.md\tproject-template/docs/pack/FOO.md\tLEDGERSENTINEL\n' \
+    > "$T2/.pack-update/ledger.tsv"
+LEAKDIR=$(mktemp -d "${TMPDIR:-/tmp}/init-leak.XXXXXX")
+
+# PRECONDITION: the ledger sits where the R1 READ loop looks and is non-empty.
+# Without it nothing would be copied and the leg would pass vacuously.
+[[ -s "$T2/.pack-update/ledger.tsv" ]] \
+    && t_pass "2.10 precondition: a non-empty prior ledger is present" \
+    || t_fail "2.10 precondition: no prior ledger, so nothing could leak"
+
+out=$(TMPDIR="$LEAKDIR" INSTALL_MAP_PACK="$NOAXIS" PACK="$REPO_ROOT" \
+    bash "$INIT_SH" --update "$T2" 2>&1) ; rc=$?
+assert_eq "2.10 the empty-axis refusal still fires" "51" "$rc"
+n_leaked=$(find "$LEAKDIR" -name 'cu-prior.*' 2>/dev/null | wc -l | tr -d ' ')
+assert_eq "2.10 the refusal leaves no cu-prior temp behind" "0" "$n_leaked"
+grep -q 'LEDGERSENTINEL' "$T2/.pack-update/ledger.tsv" 2>/dev/null \
+    && t_pass "2.10 the refusal leaves the prior ledger intact for the next run" \
+    || t_fail "2.10 the refusal destroyed the prior ledger (R1 input for the next run)"
+rm -rf "$LEAKDIR" "$T2"
+
+# 2.11 a join that yields NOTHING must not empty the dispatch set. The R1 READ
+# join is an `awk` two-file `NR == FNR` pass, whose one degenerate mode is a
+# first file with ZERO records: every stdin record then satisfies `NR == FNR`,
+# is consumed as a ledger row, and nothing is printed — with `awk` still
+# exiting 0, so the rc test cannot see it. The loop reads the POST-join value,
+# so adopting that result refreshes not one file. The pre-join non-empty guard
+# cannot catch it: it runs upstream, on a set that was still populated.
+#
+# That state is unreachable through the front door: the R1 READ loop tests
+# `-s`, which requires at least one byte and therefore at least one record.
+# Relaxing that ONE test to `-e` in a COPY of the script is what lets this leg
+# reach the join with an empty first file. The coupling being tested is exactly
+# the fragile one: nothing but that `-s`, sixty lines earlier, stands between a
+# future change in how the ledger is materialised and a silent no-op update.
+T3=$(make_configured_target)
+MUTDIR=$(mktemp -d "${TMPDIR:-/tmp}/init-mut.XXXXXX")
+MUT="$MUTDIR/init-project.sh"
+# The script sources its startup libraries from `$SCRIPT_DIR/lib`, so a copy
+# needs that sibling to exist. Symlinked, not duplicated: the copy must differ
+# from the original in the ONE relaxed test and nothing else.
+ln -s "$REPO_ROOT/scripts/lib" "$MUTDIR/lib"
+sed 's/\[\[ -s "\$_cu_prior" \]\]/[[ -e "$_cu_prior" ]]/' "$INIT_SH" > "$MUT"
+if ! cmp -s "$MUT" "$INIT_SH" && grep -q '\[\[ -e "\$_cu_prior" \]\]' "$MUT"; then
+    t_pass "2.11 precondition: the -s relaxation applied to the script copy"
+else
+    t_fail "2.11 precondition: the -s anchor drifted; this leg proves nothing"
+fi
+
+mkdir -p "$T3/.pack-update"
+: > "$T3/.pack-update/ledger.tsv"
+[[ -e "$T3/.pack-update/ledger.tsv" && ! -s "$T3/.pack-update/ledger.tsv" ]] \
+    && t_pass "2.11 precondition: the prior ledger exists and is 0 bytes" \
+    || t_fail "2.11 precondition: ledger is not the 0-byte case"
+
+out=$(PACK="$REPO_ROOT" bash "$MUT" --update "$T3" 2>&1) ; rc=$?
+assert_eq "2.11 the run completes" "0" "$rc"
+rows=$(awk 'NR > 1 && NF > 0' "$T3/.pack-update/dispositions.tsv" 2>/dev/null | wc -l | tr -d ' ')
+[[ "$rows" -gt 0 ]] \
+    && t_pass "2.11 an empty join does not empty the dispatch set ($rows rows)" \
+    || t_fail "2.11 the empty join emptied the dispatch set" "rows=$rows"
+
+# DISCRIMINATION for 2.11: invert the guard's sense in a second copy, which
+# reproduces the pre-guard behaviour for THIS input (an empty join is adopted).
+# The same 0-byte ledger must then produce ZERO rows — that is what makes the
+# leg above a guard rather than a leg that would pass either way.
+#
+# ROWS, not the exit code, is the assertion. An emptied dispatch set installs
+# nothing, so the run does not necessarily reach exit 0 — measured, it fails
+# further downstream at the immutable-manifest gate, whose diagnostic names a
+# missing installed file and says nothing about the dispatch set. A run that
+# ends in the wrong error is the same defect as one that ends silently.
+MUTBAD="$MUTDIR/init-project-noguard.sh"
+sed 's/\[\[ -n "\$joined" \]\]/[[ -z "$joined" ]]/' "$MUT" > "$MUTBAD"
+if ! cmp -s "$MUTBAD" "$MUT" && grep -q '\[\[ -z "\$joined" \]\]' "$MUTBAD"; then
+    t_pass "2.11 precondition: the guard inversion applied to the second copy"
+else
+    t_fail "2.11 precondition: the guard anchor drifted; discrimination is void"
+fi
+T4=$(make_configured_target)
+mkdir -p "$T4/.pack-update"
+: > "$T4/.pack-update/ledger.tsv"
+out=$(PACK="$REPO_ROOT" bash "$MUTBAD" --update "$T4" 2>&1) ; rc=$?
+rows_bad=$(awk 'NR > 1 && NF > 0' "$T4/.pack-update/dispositions.tsv" 2>/dev/null | wc -l | tr -d ' ')
+[[ "$rows_bad" -eq 0 ]] \
+    && t_pass "2.11 without the guard the same input refreshes nothing (rc=$rc, 0 rows)" \
+    || t_fail "2.11 discrimination failed — the unguarded copy still dispatched" \
+        "rc=$rc rows=$rows_bad"
+
+rm -rf "$MUTDIR" "$T3" "$T4"
+
+rm -rf "$T" "$NOAXIS"
+
 # ─────────────────────────────────────────────────────────────────────────
 # Group 3: stage S11 artifacts (full install — fresh empty repo)
 # ─────────────────────────────────────────────────────────────────────────
@@ -1333,6 +1470,375 @@ grep -q '"MINE"' "$T/.claude/settings.json" \
     && t_pass "14.9 new-* guided: merged in place (no .pack-template sidecar)" \
     || t_fail "14.9 new-* guided: wrote a .pack-template (structured key-union did not fire)"
 rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 15: map-derived --update dispatch + the BASE cascade
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 15: map-derived dispatch + BASE cascade ===\n"
+
+# A writable PACK copy, so a test can mutate a pack SOURCE without touching
+# the real tree. `.git` is deliberately not copied — this checkout may be a
+# worktree, whose `.git` is a gitfile pointing elsewhere — so the copy gets a
+# fresh history instead. Everything is committed because family expansion
+# draws its candidate set from `git ls-files`, and the provenance baseline
+# anchor is re-pointed at that history: the real `v10` anchor does not exist
+# in a fresh copy, and without a reachable anchor R4' would fire run-wide and
+# the cascade under test would never run.
+make_pack_copy() {
+    local d e
+    d=$(mktemp -d "${TMPDIR:-/tmp}/c6-pack.XXXXXX")
+    for e in "$REPO_ROOT"/*; do
+        cp -R "$e" "$d/" 2>/dev/null
+    done
+    for e in .gitignore .gitattributes; do
+        if [[ -f "$REPO_ROOT/$e" ]]; then cp "$REPO_ROOT/$e" "$d/"; fi
+    done
+    git init -q "$d" >/dev/null 2>&1
+    git -C "$d" config user.email "test@example.com"
+    git -C "$d" config user.name  "Test"
+    git -C "$d" add -A >/dev/null 2>&1
+    git -C "$d" commit -q -m "pack copy" >/dev/null 2>&1
+    printf '%s\n' "$d"
+}
+
+# Count sidecars the way cmd_update's own stale-sidecar pre-check counts them.
+count_sidecars() {
+    find "$1" -type f -name '*.pre-update' \
+        -not -path '*/.pack-update/*' -not -path '*/.git/*' 2>/dev/null \
+        | wc -l | tr -d ' '
+}
+
+# Column $2 of the dispositions row whose rel_path (column 3) is $3.
+disp_col() {
+    awk -F '\t' -v c="$2" -v want="$3" '$3 == want { print $c; exit }' "$1"
+}
+
+PACKC=$(make_pack_copy)
+export PACK_PROVENANCE_BASELINE_REF=HEAD
+
+# ── T-IDEM + T-PROMPTS-REACH + T-SKILLS-REACH share one installed client ──
+T=$(make_target)
+PACK="$PACKC" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1
+assert_eq "15.0 fixture install rc=0" "0" "$?"
+git -C "$T" add -A >/dev/null 2>&1
+git -C "$T" commit -q -m "installed" >/dev/null 2>&1
+
+# 15.1 T-IDEM — two --update runs, with NO sidecar deletion between them.
+PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+assert_eq "15.1 T-IDEM run 1 rc=0" "0" "$?"
+DTSV="$T/.pack-update/dispositions.tsv"
+
+# The dispatch set really is the WIDENED one: both families that no copy site
+# reached before are present, and so is the dotfile a bare `*` would drop.
+# Without these the idempotence claim would be measured at the old, narrower
+# set and would prove nothing about the new one.
+n_prompts=$(awk -F '\t' '$3 ~ /^docs\/pack\/prompts\//' "$DTSV" | wc -l | tr -d ' ')
+n_skills=$(awk -F '\t' '$3 ~ /skills\/.*SKILL\.md$/' "$DTSV" | wc -l | tr -d ' ')
+n_dotfile=$(awk -F '\t' '$3 == "scripts/.docs-gate-allowlist.txt"' "$DTSV" | wc -l | tr -d ' ')
+[[ "$n_prompts" -gt 0 ]] \
+    && t_pass "15.1 dispatch reaches docs/pack/prompts/ ($n_prompts rows)" \
+    || t_fail "15.1 dispatch reaches docs/pack/prompts/" "0 rows"
+[[ "$n_skills" -gt 0 ]] \
+    && t_pass "15.1 dispatch reaches per-CLI skills ($n_skills rows)" \
+    || t_fail "15.1 dispatch reaches per-CLI skills" "0 rows"
+[[ "$n_dotfile" -eq 1 ]] \
+    && t_pass "15.1 dispatch reaches the scripts/ dotfile (family glob keeps dotfiles)" \
+    || t_fail "15.1 dispatch reaches the scripts/ dotfile" "got $n_dotfile rows"
+
+PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+assert_eq "15.1 T-IDEM run 2 rc=0" "0" "$?"
+assert_eq "15.1 T-IDEM run 2 leaves 0 sidecars on disk" "0" "$(count_sidecars "$T")"
+nr=$(grep -c "needs-reconciliation" "$DTSV" 2>/dev/null || true)
+assert_eq "15.1 T-IDEM run 2 records 0 needs-reconciliation" "0" "$nr"
+
+# 15.2 T-PROMPTS-REACH / 15.3 T-SKILLS-REACH — mutate a pack prompt and a
+# pool skill, then prove each mutation reaches the installed client. The map
+# rows are the only thing that dispatches either family.
+printf '\nC6_PROMPT_MUTATION_MARKER\n' \
+    >> "$PACKC/project-template/docs/pack/prompts/coder.md"
+printf '\nC6_SKILL_MUTATION_MARKER\n' \
+    >> "$PACKC/project-template/skills/review/SKILL.md"
+git -C "$PACKC" add -A >/dev/null 2>&1
+git -C "$PACKC" commit -q -m "pack mutation" >/dev/null 2>&1
+
+PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+assert_eq "15.2 --update after pack mutation rc=0" "0" "$?"
+
+grep -q 'C6_PROMPT_MUTATION_MARKER' "$T/docs/pack/prompts/coder.md" 2>/dev/null \
+    && t_pass "15.2 T-PROMPTS-REACH: prompt mutation reached the client" \
+    || t_fail "15.2 T-PROMPTS-REACH: prompt mutation did NOT reach the client"
+
+# This client has already run --update twice, so a ledger EXISTS and rung R1
+# wins: BASE is the blob the previous run installed here, which is a more
+# precise baseline than R2's. BASE == OURS still yields pack-update-applied
+# with no sidecar; the notes column stays `-` because no R2 overwrite of
+# client bytes happened. The notes column is what tells the two rungs apart.
+assert_eq "15.2 R1 fired for the prompt (pack-update-applied)" \
+    "pack-update-applied" "$(disp_col "$DTSV" 1 'docs/pack/prompts/coder.md')"
+assert_eq "15.2 R1 wrote no sidecar for the prompt" \
+    "-" "$(disp_col "$DTSV" 5 'docs/pack/prompts/coder.md')"
+assert_eq "15.2 R1 (not R2) — notes carries no blob-recovery hint" \
+    "-" "$(disp_col "$DTSV" 7 'docs/pack/prompts/coder.md')"
+
+miss=0
+for tool in claude codex agents; do
+    grep -q 'C6_SKILL_MUTATION_MARKER' "$T/.$tool/skills/review/SKILL.md" 2>/dev/null \
+        || miss=1
+done
+[[ "$miss" -eq 0 ]] \
+    && t_pass "15.3 T-SKILLS-REACH: skill mutation reached ALL THREE per-CLI copies" \
+    || t_fail "15.3 T-SKILLS-REACH: at least one per-CLI skill copy missed the mutation"
+rm -rf "$T"
+
+# 15.2b Rung R2 in isolation — a client with NO prior ledger, whose installed
+# bytes ARE a blob the pack has held at that source path. R1 cannot fire, so
+# R2 must: BASE becomes OURS itself, the file adopts THEIRS with no sidecar,
+# and the OURS blob sha is recorded so the overwrite stays recoverable.
+T=$(make_target)
+PACK="$PACKC" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1
+git -C "$T" add -A >/dev/null 2>&1
+git -C "$T" commit -q -m "installed" >/dev/null 2>&1
+# Self-check: this fixture only tests R2 if no ledger is reachable.
+[[ ! -f "$T/.pack-update/ledger.tsv" && ! -f "$T/.pack-install-reconcile/ledger.tsv" ]] \
+    && t_pass "15.2b fixture has no prior ledger (R1 cannot fire)" \
+    || t_fail "15.2b fixture already has a ledger — this would test R1, not R2"
+
+printf '\nC6_PROMPT_MUTATION_MARKER_2\n' \
+    >> "$PACKC/project-template/docs/pack/prompts/coder.md"
+git -C "$PACKC" add -A >/dev/null 2>&1
+git -C "$PACKC" commit -q -m "pack mutation 2" >/dev/null 2>&1
+
+PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+assert_eq "15.2b --update rc=0" "0" "$?"
+DTSV="$T/.pack-update/dispositions.tsv"
+assert_eq "15.2b R2 fired (pack-update-applied)" \
+    "pack-update-applied" "$(disp_col "$DTSV" 1 'docs/pack/prompts/coder.md')"
+assert_eq "15.2b R2 wrote no sidecar" \
+    "-" "$(disp_col "$DTSV" 5 'docs/pack/prompts/coder.md')"
+assert_contains "15.2b R2 recorded the OURS blob sha in notes" \
+    "$(disp_col "$DTSV" 7 'docs/pack/prompts/coder.md')" "cat-file blob"
+# The recorded sha must actually resolve to the client's pre-update bytes —
+# that is the whole reason R2 is allowed to overwrite without a sidecar.
+r2_sha=$(disp_col "$DTSV" 7 'docs/pack/prompts/coder.md' | awk '{print $NF}')
+if git -C "$PACKC" cat-file blob "$r2_sha" 2>/dev/null \
+     | grep -q 'C6_PROMPT_MUTATION_MARKER'; then
+    t_pass "15.2b R2 sha resolves to the overwritten client bytes (recoverable)"
+else
+    t_fail "15.2b R2 sha does not resolve to the overwritten client bytes"
+fi
+grep -q 'C6_PROMPT_MUTATION_MARKER_2' "$T/docs/pack/prompts/coder.md" 2>/dev/null \
+    && t_pass "15.2b R2 adopted the pack update" \
+    || t_fail "15.2b R2 did not adopt the pack update"
+rm -rf "$T"
+
+# 15.4 T-R3-opposite — the probe cannot prove the client's bytes are
+# pack-authored, so BASE stays EMPTY. The verdict MUST be
+# needs-reconciliation with BOTH a sidecar and a diff. A cascade that resolved
+# this rung to `merged-with-customization` would keep the client's stale file,
+# adopt nothing, and write neither column.
+T=$(make_target)
+PACK="$PACKC" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1
+git -C "$T" add -A >/dev/null 2>&1
+git -C "$T" commit -q -m "installed" >/dev/null 2>&1
+
+# A client edit whose bytes the pack has never held anywhere in its history.
+printf '\nC6_CLIENT_LOCAL_EDIT_NEVER_IN_PACK_HISTORY\n' \
+    >> "$T/docs/pack/METHODOLOGY.md"
+# A pack edit on the same file, so OURS and THEIRS genuinely differ.
+printf '\nC6_PACK_SIDE_EDIT\n' >> "$PACKC/supporting-docs/METHODOLOGY.md"
+git -C "$PACKC" add -A >/dev/null 2>&1
+git -C "$PACKC" commit -q -m "pack methodology edit" >/dev/null 2>&1
+
+PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+assert_eq "15.4 --update rc=0" "0" "$?"
+DTSV="$T/.pack-update/dispositions.tsv"
+assert_eq "15.4 T-R3-opposite: token is needs-reconciliation (NOT merged-with-customization)" \
+    "customization-detected-needs-reconciliation" \
+    "$(disp_col "$DTSV" 1 'docs/pack/METHODOLOGY.md')"
+sidecar_col=$(disp_col "$DTSV" 5 'docs/pack/METHODOLOGY.md')
+diff_col=$(disp_col "$DTSV" 6 'docs/pack/METHODOLOGY.md')
+[[ -n "$sidecar_col" && "$sidecar_col" != "-" ]] \
+    && t_pass "15.4 T-R3-opposite: sidecar column is non-'-'" \
+    || t_fail "15.4 T-R3-opposite: sidecar column is '-'" "got '$sidecar_col'"
+[[ -n "$diff_col" && "$diff_col" != "-" ]] \
+    && t_pass "15.4 T-R3-opposite: diff column is non-'-'" \
+    || t_fail "15.4 T-R3-opposite: diff column is '-'" "got '$diff_col'"
+grep -q 'C6_CLIENT_LOCAL_EDIT_NEVER_IN_PACK_HISTORY' \
+    "$T/docs/pack/METHODOLOGY.md.pre-update" 2>/dev/null \
+    && t_pass "15.4 T-R3-opposite: the client's bytes survive in the sidecar" \
+    || t_fail "15.4 T-R3-opposite: the client's bytes are NOT in the sidecar"
+rm -rf "$T"
+
+# 15.5 T-CLASS-SCOPE — a structured config keeps EMPTY-BASE dispatch, so a
+# client-edited file still goes through the key-union and still gains the
+# pack's NEW keys.
+#
+# The scenario is built so a cascade wrongly widened to structured classes
+# would FAIL it: run 1 leaves a ledger row holding the blob of the CURRENT
+# pack file, and the client then edits that file. A widened cascade would
+# resolve BASE from that ledger row, and because BASE == THEIRS the classifier
+# answers `merged-with-customization`, which _cp_strategy_structured returns
+# on BEFORE reaching the key-merge — so `pack_new_key` would never arrive.
+# With the gate in place BASE stays empty and the key-union runs.
+T=$(make_target)
+REQ="$PACKC/project-template/.codex/requirements.toml"
+REQ_ORIG=$(mktemp "${TMPDIR:-/tmp}/c6-req.XXXXXX")
+cp "$REQ" "$REQ_ORIG"
+PACK="$PACKC" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1
+git -C "$T" add -A >/dev/null 2>&1
+git -C "$T" commit -q -m "installed" >/dev/null 2>&1
+
+# The pack ships a new key; run 1 adopts it AND records the ledger row.
+printf '\n[c6_scope]\npack_new_key = "ARRIVED"\n' >> "$REQ"
+git -C "$PACKC" add -A >/dev/null 2>&1
+git -C "$PACKC" commit -q -m "pack toml key" >/dev/null 2>&1
+PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+assert_eq "15.5 run 1 rc=0" "0" "$?"
+[[ -f "$T/.pack-update/ledger.tsv" ]] \
+    && t_pass "15.5 run 1 wrote the R1 ledger" \
+    || t_fail "15.5 run 1 wrote the R1 ledger" "ledger.tsv missing"
+grep -q '\.codex/requirements\.toml' "$T/.pack-update/ledger.tsv" 2>/dev/null \
+    && t_pass "15.5 ledger holds a row for the structured config" \
+    || t_fail "15.5 ledger holds a row for the structured config"
+
+# The client rewrites the file: its OWN key, and no pack_new_key.
+cp "$REQ_ORIG" "$T/.codex/requirements.toml"
+printf '\n[c6_client]\nclient_key = "KEPT"\n' >> "$T/.codex/requirements.toml"
+git -C "$T" add -A >/dev/null 2>&1
+git -C "$T" commit -q -m "client edit" >/dev/null 2>&1
+
+PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+assert_eq "15.5 run 2 rc=0" "0" "$?"
+grep -q 'pack_new_key' "$T/.codex/requirements.toml" \
+    && t_pass "15.5 T-CLASS-SCOPE: the pack's NEW key arrived via the key-union" \
+    || t_fail "15.5 T-CLASS-SCOPE: the pack's NEW key did NOT arrive (cascade leaked into a structured class)"
+grep -q 'client_key' "$T/.codex/requirements.toml" \
+    && t_pass "15.5 T-CLASS-SCOPE: the client's own key was kept" \
+    || t_fail "15.5 T-CLASS-SCOPE: the client's own key was lost"
+# A TOML round trip through a dict drops every comment unless they are
+# re-attached, so the merged file must still carry them.
+[[ "$(grep -c '^[[:space:]]*#' "$T/.codex/requirements.toml")" -gt 0 ]] \
+    && t_pass "15.5 T-CLASS-SCOPE: comments survived the structured merge" \
+    || t_fail "15.5 T-CLASS-SCOPE: the structured merge stripped every comment"
+rm -f "$REQ_ORIG"
+rm -rf "$T"
+rm -rf "$PACKC"
+unset PACK_PROVENANCE_BASELINE_REF
+
+# 15.5b The structured merge above keys each comment block by the construct it
+# precedes, and a construct is recognised by LINE SHAPE. A multi-line array
+# holding bracketed elements is the shape that breaks a leading-`[` test: the
+# element line looks like a table header, so the section moves to a table that
+# does not exist and every later comment in the real table is keyed somewhere
+# the merged output never mentions. Asserted directly against the merge helper,
+# because the end-to-end leg above cannot reach the shape — no pack-shipped
+# TOML nests an array today, and a client edit is what would introduce one.
+MTD=$(mktemp -d "${TMPDIR:-/tmp}/init-mergetoml.XXXXXX")
+cat > "$MTD/base.toml" <<'MT_EOF'
+# file header
+
+[t]
+m = [
+  [1, 2],
+  [3, 4],
+]
+# comment above zz
+zz = 5
+MT_EOF
+cp "$MTD/base.toml" "$MTD/ours.toml"
+sed 's/^zz = 5$/zz = 5\nnewk = 9/' "$MTD/base.toml" > "$MTD/theirs.toml"
+python3 "$REPO_ROOT/scripts/merge-toml.py" \
+    "$MTD/base.toml" "$MTD/ours.toml" "$MTD/theirs.toml" > "$MTD/out.toml" 2>/dev/null
+assert_eq "15.5b the nested-array merge succeeds" "0" "$?"
+grep -q 'comment above zz' "$MTD/out.toml" \
+    && t_pass "15.5b a comment after a nested multi-line array survives" \
+    || t_fail "15.5b the comment after a nested array was dropped" "$(cat "$MTD/out.toml")"
+# DISCRIMINATION: the header is keyed by a different mechanism (it precedes
+# the first construct), so it would survive even with the section broken —
+# and the merged value must still be the union, not just a comment carrier.
+grep -q '^# file header' "$MTD/out.toml" \
+    && t_pass "15.5b the file header survives (separate mechanism, still intact)" \
+    || t_fail "15.5b the file header was dropped"
+grep -q 'newk' "$MTD/out.toml" \
+    && t_pass "15.5b the merge still unions the incoming key" \
+    || t_fail "15.5b the incoming key was lost"
+python3 -c "import sys,tomllib;tomllib.load(open(sys.argv[1],'rb'))" "$MTD/out.toml" 2>/dev/null \
+    && t_pass "15.5b the merged output is still valid TOML" \
+    || t_fail "15.5b the merged output no longer parses" "$(cat "$MTD/out.toml")"
+rm -rf "$MTD"
+
+# 15.6 T-ARMS — table-driven: every disposition arm's terminal DEST is one of
+# {untouched OURS, THEIRS, a merge that preserved OURS in a sidecar}. This is
+# the mechanical form of the idempotence proof — no arm may leave DEST holding
+# content that is neither side and is recorded nowhere.
+export _CP_PACK_ROOT="$REPO_ROOT"
+# shellcheck disable=SC1091
+source "$REPO_ROOT/scripts/lib/three-way.sh"
+# shellcheck disable=SC1091
+source "$REPO_ROOT/scripts/lib/customization-preserve.sh"
+# shellcheck disable=SC1091
+source "$REPO_ROOT/scripts/lib/customization-report.sh"
+
+ARMS_DIR=$(mktemp -d "${TMPDIR:-/tmp}/c6-arms.XXXXXX")
+customization_preserve_init "$ARMS_DIR/state" ".pre-update" >/dev/null 2>&1
+
+# arm|base|ours|theirs|expected DEST token|expected sidecar
+#   a content field of `-` means that side is ABSENT.
+arms_table="
+unchanged-pack|B|X|X|OURS|no
+pack-update-applied|B|B|T|THEIRS|no
+merged-with-customization|B|O|B|OURS|no
+real-merge-required|B|O|T|MERGED|any
+project-shadows-new-pack|-|O|T|THEIRS|yes
+new-file-in-pack|-|-|T|THEIRS|no
+project-only-file|-|O|-|OURS|no
+"
+
+while IFS='|' read -r arm base_c ours_c theirs_c want_dest want_sc; do
+    [[ -n "$arm" ]] || continue
+    d="$ARMS_DIR/$arm"
+    mkdir -p "$d"
+    base=""; ours=""; theirs=""
+    if [[ "$base_c"   != "-" ]]; then base="$d/base";     printf 'content-%s\n' "$base_c"   > "$base"; fi
+    if [[ "$ours_c"   != "-" ]]; then ours="$d/ours";     printf 'content-%s\n' "$ours_c"   > "$ours"; fi
+    if [[ "$theirs_c" != "-" ]]; then theirs="$d/theirs"; printf 'content-%s\n' "$theirs_c" > "$theirs"; fi
+    dest="$d/dest"
+    # DEST starts as OURS — an in-place refresh is how every real call site runs.
+    ours_arg=""
+    if [[ -n "$ours" ]]; then cp "$ours" "$dest"; ours_arg="$dest"; fi
+
+    customization_preserve "$base" "$ours_arg" "$theirs" "arms/$arm.md" "$dest" generic >/dev/null 2>&1
+
+    got="ABSENT"
+    if [[ -f "$dest" ]]; then
+        got="MERGED"
+        if [[ -n "$ours"   ]] && cmp -s "$dest" "$ours";   then got="OURS";   fi
+        if [[ -n "$theirs" ]] && cmp -s "$dest" "$theirs"; then got="THEIRS"; fi
+    fi
+    # In the identity arm OURS and THEIRS are byte-equal, so either token names
+    # the same bytes; normalise before comparing.
+    if [[ "$want_dest" == "OURS" && "$got" == "THEIRS" && "$ours_c" == "$theirs_c" ]]; then
+        got="OURS"
+    fi
+    assert_eq "15.6 T-ARMS $arm: terminal DEST" "$want_dest" "$got"
+
+    sc="no"
+    [[ -f "$dest.pre-update" ]] && sc="yes"
+    if [[ "$want_sc" != "any" ]]; then
+        assert_eq "15.6 T-ARMS $arm: sidecar" "$want_sc" "$sc"
+    fi
+    # Union invariant: whenever DEST is neither side verbatim, OURS must stay
+    # recoverable — from a sidecar, or at minimum from a recorded disposition.
+    if [[ "$got" == "MERGED" && "$sc" == "no" && -n "$ours" ]]; then
+        if grep -q "arms/$arm.md" "$ARMS_DIR/state/dispositions.tsv"; then
+            t_pass "15.6 T-ARMS $arm: merge recorded a disposition"
+        else
+            t_fail "15.6 T-ARMS $arm: merged DEST with no sidecar AND no record"
+        fi
+    fi
+done <<< "$arms_table"
+rm -rf "$ARMS_DIR"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Summary
