@@ -586,7 +586,7 @@ done
 out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T6" 2>&1) ; rc=$?
 assert_eq "6.6 second --update rc=0 (no reconcile step between runs)" "0" "$rc"
 
-# 6.6b IDEMPOTENCE (BD-295 T-IDEM). A second --update against an UNCHANGED
+# 6.6b IDEMPOTENCE (BD-293 T-IDEM). A second --update against an UNCHANGED
 # pack must be a true no-op: zero sidecars on disk and zero reconciliation
 # findings in the report. rc=0 above already proves run 1 left no sidecars
 # (the stale-sidecar pre-check would have refused to start); these two

@@ -1,28 +1,32 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "3b56d83",
-  "checkpoint": "2026-08-29T20:05:00Z",
+  "boundary_commit": "747490e",
+  "checkpoint": "2026-08-31T10:30:00Z",
   "active": [
-    "BD-293+BD-295 Wave A COMPLETE and pushed: C1, C3, C2 one commit each; C4 as two (client half first). All four closed CLEAN on their final reviewer; none escalated. Next: C5 (needs C4), then Wave B C6->C7 || C8."
+    "BD-293 (BD-295 folded in; single entry). C1..C5 landed + CI-green. C6 written, reviewed once, fixed once, sitting uncommitted in its commit workspace; its second review is running. Then: acceptance smoke test, C7..C15."
   ],
-  "in_flight_agents": [],
+  "in_flight_agents": [
+    "reviewer-bd293-c6-perf2b (isolated) -- C6 second review; report to ~/.local/state/optiquity-pack-handoff/bd293-c6review2b-20260831T100000Z/"
+  ],
   "queue": [
-    "SCHEDULED into C6 (from Wave-A closing reviews, inside BD-293, no new entry): install-map.sh header claims a runtime source neither init-project.sh nor the migrator performs -- correct the tense in the commit that adds the source line; add a non-empty floor INSIDE install-map.sh so a grammar-broken map cannot return rc=0 with zero rows; the .codex/requirements.toml comment-loss fix.",
-    "SCHEDULED, still open: reword the Check 65 + Check 67 dead-record message together ('cleared no marker-carrying line') -- a 67-only edit creates parity drift. (C5 discharged the IN_GLOBS tether and the L3 strip_blocks predicate.)",
-    "BD-293 pipeline: researcher -> architect (needs user spawn approval) -> adversarial -> reconciliation-if-findings -> user design review -> planner chain -> coder waves",
-    "BD-294 pipeline: same, sequenced after BD-293's source fixes; D3 DIRECTION is a user decision at its design review after the architect measures each option's effect on existing installs",
-    "user: flip the repo public (the launch) -- now gated on BD-293 + BD-294 (a fresh install must pass its own shipped gate; the trinity must be graftable)"
+    "C6 -> acceptance smoke test (PLAN §14, scratch clone) -> C7 (fresh-install currency + 3 missing map rows + S2 cp -R reshape) -> C8 -> C9 (Check 97) -> C10/C11 -> C12..C14 (committed T-REMEDIATE + acceptance run + Resolved flip) -> C15 dashboard.",
+    "STILL OPEN inside BD-293: reword the Check 65 + Check 67 dead-record message together ('cleared no marker-carrying line') -- a 67-only edit creates parity drift. The L3 axis-matching strengthening as its own commit (leave-one-out leg, allowance sized to the 6 measured trinity carrier records).",
+    "BD-294 (trinity graft, D3/D5): IN SCOPE, sequenced after BD-293. Status stays Open. The D3 direction is a user decision at its design review, after an architect measures each option's effect on existing installs.",
+    "user: flip the repo public (the launch)"
   ],
-  "parallelization": "PARALLEL: Wave A = C1||C2||C3||C4 (no shared file); then C5 (needs C4); Wave B C6->C7 || C8; Wave C C9 || C10->C11; then C12..C15 serial.",
-  "wave": "v11.0 (RC1) CI-green; main sole live branch; repo still private. Launch now gated on BD-293 + BD-294 + BD-295. Open BDs 19. BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
+  "parallelization": "SERIAL from here: C6 -> smoke test -> C7 -> C8 -> C9 -> C10/C11 -> C12..C15. The Wave A parallel phase is complete.",
+  "wave": "v11.0 (RC1) CI-green; main sole live branch; repo still private. Launch gated on BD-293 + BD-294. BD-171 + BD-172 stay Status: Open by explicit user decision -- do NOT flip.",
   "pending_decisions": [
     "LOCKED: main history is PRESERVED intact -- NO squash, NO rewrite, ever.",
     "LOCKED: NO scrub. Target-app initials and generic vocabulary are ACCEPTABLE on internal surfaces; the Check 93 two-tier model is UNCHANGED. ONE repo forever.",
-    "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no narration, under the byte cap); modes review=itemized intervention=full isolation=full (user-selected post-BD-290; the repaired contract); manifest-sync screen runs before EVERY push whose range touches fixture inputs.",
-    "Standing (BD-291, user): launch gated on the target app working correctly on v11.0; issues found in the target-app v11.0 install are fixed pack-side before GA; synthetic/manual field fill acceptable only as shipped instructions executed by the target-app PM chat + user.",
-    "USER: dashboard re-render (C15) is OUT of this batch -- run it at the end of the work or on user request, never as a batch gate. USER: proceed through C5..C14 without per-commit approval unless something changes.",
-    "USER: the L3 axis-matching strengthening RIDES in this batch as its OWN commit after C5 -- leave-one-out leg with a redundancy allowance sized to the 6 measured trinity carrier records; NOT a C5 rider, and NOT the gate-output-channel variant (that would edit a shipped client artifact and break the pack-only keyword).",
+    "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no narration, under the byte cap); modes review=itemized intervention=full isolation=full; the manifest screen is run -> COMMIT its result -> push, three steps never collapsed.",
+    "Standing (BD-291, user): launch gated on the target app working correctly on v11.0; issues found in the target-app v11.0 install are fixed pack-side before GA.",
+    "USER: BD-295 is FOLDED into BD-293 and its entry DELETED -- one plan, one commit sequence, one acceptance run means one entry. Commit subjects predating the fold cite the retired ID.",
+    "USER: the PLAN §14 acceptance run happens TWICE -- once as a smoke test immediately after C6 lands (early yes/no on whether an already-migrated client takes the fix via --update), and again in its planned place at C12..C14 as the committed test. Both on a SCRATCH CLONE; the real client checkout is READ-ONLY.",
+    "USER: dashboard re-render (C15) runs at the END of the work or on request, never as a batch gate. Proceed through the commits without per-commit approval unless something changes.",
+    "USER: plugin.json is PACK-OWNED -> replace-if-different class, not generic 3-way. The three missing map rows (agent-run.sh, plugin.json, RUNTIME-SUBAGENT-PATTERN.md) + the S2 cp -R reshape land at C7.",
+    "OPEN: the installed-but-undeclared CI gate. Its architect pass was killed mid-run but wrote a full design doc + measurements to ~/.local/state/optiquity-pack-handoff/bd293-mapcov-architect-20260831T130000Z/ -- read it and decide use-as-is / re-run / drop.",
     "UG-2 resolved by fact: the criterion repair LANDED, so C12/C14 parameterize on the LANDED criterion text, NOT the plan defaults. UG-3 taken at the plan default (a): C7 asserts its two outcomes directly; C12 adds the CDP call to that leg in its own commit."
   ],
-  "cycle_position": "No commit cycle open. Wave A landed + pushed; awaiting C5 spawn."
+  "cycle_position": "C6: coder done, review 1 DIRTY (11 findings), fix pass 1 done (all 11), review 2 RUNNING. Bounded cycle intact -- 1 of 2 fix passes used."
 }

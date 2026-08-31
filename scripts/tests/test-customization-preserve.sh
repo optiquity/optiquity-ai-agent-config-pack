@@ -258,7 +258,7 @@ assert_eq "2.4d F8 demote: sidecar KEPT (not dropped)" \
     && t_pass "2.4d F8 demote: sidecar file present on disk" \
     || t_fail "2.4d F8 demote: sidecar missing"
 
-# 2.4e IDENTITY RULE (BD-295 T-P0-bite). OURS and THEIRS byte-identical with an
+# 2.4e IDENTITY RULE (BD-293 T-P0-bite). OURS and THEIRS byte-identical with an
 # ABSENT base is `unchanged-pack`, not `project-shadows-new-pack`: the project
 # file already carries the pack's content, so there is nothing to reconcile.
 # This is the property that makes `--update` idempotent — an unmodified
@@ -283,7 +283,7 @@ assert_eq "2.4e sidecar column dash" "-" "$(tsv_col 5 "$last")"
     && t_pass "2.4e ZERO sidecar on disk for a byte-identical file" \
     || t_fail "2.4e unexpected sidecar written for a byte-identical file"
 
-# 2.4f IDENTITY RULE, OPPOSITE DIRECTION (BD-295 T-P0-opposite). The identity
+# 2.4f IDENTITY RULE, OPPOSITE DIRECTION (BD-293 T-P0-opposite). The identity
 # rule must NOT swallow genuine client work: a generic-class file whose OURS
 # DIVERGES from THEIRS with an absent base still records
 # `customization-detected-needs-reconciliation` AND still produces both
