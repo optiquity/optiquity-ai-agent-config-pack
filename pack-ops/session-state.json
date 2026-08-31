@@ -19,7 +19,9 @@
     "LOCKED: main history is PRESERVED intact -- NO squash, NO rewrite, ever.",
     "LOCKED: NO scrub. Target-app initials and generic vocabulary are ACCEPTABLE on internal surfaces; the Check 93 two-tier model is UNCHANGED. ONE repo forever.",
     "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no narration, under the byte cap); modes review=itemized intervention=full isolation=full (user-selected post-BD-290; the repaired contract); manifest-sync screen runs before EVERY push whose range touches fixture inputs.",
-    "Standing (BD-291, user): launch gated on the target app working correctly on v11.0; issues found in the target-app v11.0 install are fixed pack-side before GA; synthetic/manual field fill acceptable only as shipped instructions executed by the target-app PM chat + user."
+    "Standing (BD-291, user): launch gated on the target app working correctly on v11.0; issues found in the target-app v11.0 install are fixed pack-side before GA; synthetic/manual field fill acceptable only as shipped instructions executed by the target-app PM chat + user.",
+    "USER: dashboard re-render (C15) is OUT of this batch -- run it at the end of the work or on user request, never as a batch gate. USER: proceed through C5..C14 without per-commit approval unless something changes.",
+    "UG-2 resolved by fact: the criterion repair LANDED, so C12/C14 parameterize on the LANDED criterion text, NOT the plan defaults. UG-3 taken at the plan default (a): C7 asserts its two outcomes directly; C12 adds the CDP call to that leg in its own commit."
   ],
   "cycle_position": "No commit cycle open. Wave A landed + pushed; awaiting C5 spawn."
 }
