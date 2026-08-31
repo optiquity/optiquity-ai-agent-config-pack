@@ -8,7 +8,7 @@
   "in_flight_agents": [],
   "queue": [
     "SCHEDULED into C6 (from Wave-A closing reviews, inside BD-293, no new entry): install-map.sh header claims a runtime source neither init-project.sh nor the migrator performs -- correct the tense in the commit that adds the source line; add a non-empty floor INSIDE install-map.sh so a grammar-broken map cannot return rc=0 with zero rows; the .codex/requirements.toml comment-loss fix.",
-    "SCHEDULED into BD-293's remaining commits (C5..C15): tether validate-docs.sh IN_GLOBS/EXCLUDE_BASENAMES to the hand-copied mirror in test-validate-docs-template-fullscan.sh and delete the hand-copy; reword the Check 65 + Check 67 dead-record message together ('cleared no marker-carrying line'); strengthen that test's L3 predicate to the load-bearing form (strip_blocks then axis-match) -- L3 called 4 deny-list-region records live while they cleared nothing.",
+    "SCHEDULED, still open: reword the Check 65 + Check 67 dead-record message together ('cleared no marker-carrying line') -- a 67-only edit creates parity drift. (C5 discharged the IN_GLOBS tether and the L3 strip_blocks predicate.)",
     "BD-293 pipeline: researcher -> architect (needs user spawn approval) -> adversarial -> reconciliation-if-findings -> user design review -> planner chain -> coder waves",
     "BD-294 pipeline: same, sequenced after BD-293's source fixes; D3 DIRECTION is a user decision at its design review after the architect measures each option's effect on existing installs",
     "user: flip the repo public (the launch) -- now gated on BD-293 + BD-294 (a fresh install must pass its own shipped gate; the trinity must be graftable)"
@@ -21,6 +21,7 @@
     "Standing: PUBLIC-BOUND PACK; commit-gate token written in a SEPARATE bash call BEFORE git commit; session-state COMPACT (one SHA in boundary only, one date in checkpoint, no narration, under the byte cap); modes review=itemized intervention=full isolation=full (user-selected post-BD-290; the repaired contract); manifest-sync screen runs before EVERY push whose range touches fixture inputs.",
     "Standing (BD-291, user): launch gated on the target app working correctly on v11.0; issues found in the target-app v11.0 install are fixed pack-side before GA; synthetic/manual field fill acceptable only as shipped instructions executed by the target-app PM chat + user.",
     "USER: dashboard re-render (C15) is OUT of this batch -- run it at the end of the work or on user request, never as a batch gate. USER: proceed through C5..C14 without per-commit approval unless something changes.",
+    "USER: the L3 axis-matching strengthening RIDES in this batch as its OWN commit after C5 -- leave-one-out leg with a redundancy allowance sized to the 6 measured trinity carrier records; NOT a C5 rider, and NOT the gate-output-channel variant (that would edit a shipped client artifact and break the pack-only keyword).",
     "UG-2 resolved by fact: the criterion repair LANDED, so C12/C14 parameterize on the LANDED criterion text, NOT the plan defaults. UG-3 taken at the plan default (a): C7 asserts its two outcomes directly; C12 adds the CDP call to that leg in its own commit."
   ],
   "cycle_position": "No commit cycle open. Wave A landed + pushed; awaiting C5 spawn."
