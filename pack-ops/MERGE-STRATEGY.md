@@ -56,7 +56,81 @@ AFTER dispatch behind a zero-loss gate, never auto-invoked by the migrator.
 | **Prose auto-merge** | `generic`, `pm-chat` | `tw_merge_file` (git `merge-file -p --diff3`), real line-level 3-way | different-line → clean union, drop sidecar, `merged-with-customization`; same-line → `--diff3` markers, keep sidecar, `needs-reconciliation` (action `merged`) | dispatch (different-line) OR the skill (same-line markers) |
 | **Trinity graft-or-fold** | `CLAUDE/AGENTS/GEMINI.md` | marker-aware graft (`marker_preserve_trinity`) | WRAPPED → clean graft, `merged-with-customization`; UNWRAPPED hand-edit → sidecar (+ stashed `.v10-base`), `needs-reconciliation` (class `trinity`) | the graft (wrapped) OR the skill's section-aware fold (unwrapped) — automating `supporting-docs/PRE-RECONCILE-v10-to-v11.md`'s recipe |
 | **Hand sidecar (no line-merge — safety)** | `pack-script`, `pack-agent` | loud sidecar; NEVER line-merged | OURS → sidecar, THEIRS → live file, `needs-reconciliation` | client HAND-reapplies over the pack file (skill out of scope) |
-| **Structured key-merge** | JSON / TOML configs | key-union (`scripts/merge-json.py` / `scripts/merge-toml.py`) | clean key-merge, warnings on overlap; rc-error → sidecar | dispatch (key merge); skill N/A |
+| **Structured key-merge** | JSON / TOML configs | key-union (`scripts/merge-json.py` / `scripts/merge-toml.py`) over the BASE resolved below | pack-authored OURS → adopt THEIRS whole-file, `pack-update-applied`, no sidecar; else clean key-merge, warnings on overlap; rc-error → sidecar | dispatch (key merge); skill N/A |
+
+### Structured BASE on a refresh
+
+The base cascade is text-class only, so a refresh reaches a structured file
+with NO recorded BASE — and a BASE-less three-way cannot tell a stale PACK
+value from a client edit. It keeps the project value, which freezes every
+diverged pack key in the file, including keys the client never touched. Two
+arms supply the missing ancestor from the pack's own object history. Both
+reach the merge as a signal only: `three_way_classify` still runs on the empty
+BASE, so the dispatch it selects is unchanged.
+
+| Arm | Condition | Result |
+|---|---|---|
+| Whole-file | OURS is byte-identical to a blob the pack has held at that SOURCE path | adopt THEIRS whole-file; `pack-update-applied`; no sidecar |
+| Per-key | OURS is not such a blob — the client edited something | `scripts/lib/pack_provenance_keys.py` derives a per-key ancestor; the normal key-merge then runs against it, so an edited key keeps the project value while an untouched key takes THEIRS |
+
+The per-key derivation selects the best-matching historical blob, then adopts
+OURS's own value at every key the pack has held that value at — including keys
+the selected blob itself does not carry. A key whose value NO historical blob
+has held is a genuine client addition and gets no BASE entry at all. List
+elements are never promoted into the derived BASE: `merge_list` reads a
+BASE-only element as a project removal, so promoting one would delete a value
+the client still holds.
+
+Both arms require the baseline objects to be reachable. When they are not,
+`_CU_BASELINE_OK` withholds both and the run says so on stderr. A derivation
+that runs and simply finds no usable candidate is a different case and is
+silent: the file keeps base-absent key-union behavior, which is the same
+outcome as before either arm existed.
+
+### What the derived BASE changes about removals
+
+Supplying an ancestor changes what a removal MEANS, in both directions. This
+is a behavior change for every existing client, so it is stated rather than
+left to be discovered:
+
+| Shape | Base-absent (before) | With a derived BASE |
+|---|---|---|
+| Client deleted a pack key, pack still ships it unchanged | key comes BACK on every refresh | client's deletion is HONOURED |
+| Client deleted a pack-shipped list element | element comes BACK | deletion is HONOURED |
+| Pack RETIRED a value the client still holds | value is KEPT | value is REMOVED, at rc 0 |
+
+The first two are the point: re-granting something the client deliberately
+removed is the wrong default, most sharply for `permissions.allow`, where it
+silently restores a capability.
+
+The third is the cost of the same inference, and it lands on the clean arm —
+rc 0, no warning, no sidecar, no `.pre-update` copy. It is therefore reported
+rather than warned: both merge helpers run a post-merge census of every value
+OURS held that the result does not, emit one `notice:` line per value, and the
+`merged-with-customization` disposition row carries the count. `notice:` and
+not `warning:` is deliberate — a warning is what returns rc 2, rc 2 is what
+writes a sidecar, and a sidecar is what blocks the next `--update`, so routing
+an intended outcome through that channel would rebuild the reconciliation loop
+the derivation exists to end.
+
+### Sidecars that cannot be reconciled
+
+`--update` refuses to start while a `.pre-update` sidecar exists, because a
+second run would overwrite it and destroy the client's pre-update content.
+A sidecar whose bytes are IDENTICAL to the live file it shadows is exempt from
+that gate.
+
+The exemption exists because one shape otherwise has no exit. A client who
+deleted a WHOLE key the pack is still editing gets `project removed; pack
+edited` — a genuine conflict, correctly rc 2 — on every run. The merge honours
+the removal, so the live file never changes, so each run writes a sidecar
+identical to it. Deleting the sidecar by hand resolves nothing and the next run
+re-creates it, and until then the WHOLE tree's refresh is blocked. Exempting an
+identical sidecar costs the gate nothing: the content it protects is the
+client's pre-update bytes, and those bytes are still in the live file. A
+sidecar that DIFFERS still blocks, and that block terminates, because
+reconciling the file is something the client can finish. Deleting a whole key
+is the only shape that reaches this; deleting a sub-key merges cleanly.
 
 ---
 
@@ -211,7 +285,8 @@ permission entries) survive intact.
 plus project edits to any pack-shipped key.
 
 **What gets updated:** pack-shipped keys whose project value matched
-the baseline (no project edit).
+the baseline (no project edit). On a refresh the baseline is resolved per
+"Structured BASE on a refresh" above.
 
 **On `customization-detected-needs-reconciliation`:** rare — only when
 both sides edited the same scalar key with conflicting values.

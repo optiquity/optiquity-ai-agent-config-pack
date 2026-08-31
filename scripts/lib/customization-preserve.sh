@@ -33,6 +33,36 @@
 #   customization_findings_tsv_path
 #       Echo the path to the dispositions TSV.
 #
+# Caller-supplied provenance signals (OPTIONAL globals, reset by the caller
+# per file; absent means "unproven" and every strategy keeps its default):
+#   _CP_OURS_BLOB             — the pack blob sha OURS was proved to be, used
+#                               for the recoverability note on an arm that
+#                               overwrites OURS without a sidecar.
+#   _CP_OURS_PACK_AUTHORED    — 1 when OURS is proved to be a blob the pack has
+#                               held at this SOURCE path. Read by the STRUCTURED
+#                               strategy, which then adopts THEIRS instead of
+#                               key-merging: with an empty BASE the key-merge
+#                               cannot tell a stale pack value from a client
+#                               edit, and this proof says there is no client
+#                               content to protect. Passed as a signal, NEVER
+#                               as a BASE — the empty-BASE structured dispatch
+#                               is load-bearing (see the SCOPING GATE in
+#                               init-project.sh cmd_update).
+#   _CP_OURS_PACK_SOURCE      — the pack-relative SOURCE path of OURS. Read by
+#                               the STRUCTURED strategy for the case
+#                               _CP_OURS_PACK_AUTHORED cannot reach: a client
+#                               who edited ANY key in the file. Whole-file
+#                               provenance answers NO for that client, so the
+#                               key-merge runs with no ancestor and freezes
+#                               every diverged pack key — and the key the
+#                               client is missing need not be the key they
+#                               edited. Given this path the merge helper
+#                               DERIVES the ancestor per key from the pack's
+#                               object history (lib/pack_provenance_keys.py).
+#                               Still a signal, never a BASE: three_way_classify
+#                               keeps seeing the empty BASE the SCOPING GATE
+#                               requires; only the merge helper is told.
+#
 # Disposition tokens (per IMPLEMENTATION-PLAN.md §2.5 BD-088, mirroring the
 # v10 disposition vocabulary established in V10-MIGRATION-FIX-DESIGN.md
 # Part 3.11):
@@ -291,6 +321,19 @@ customization_classify() {
             printf 'custom-agent\n' ;;
         .agents-plugin/*/agents/*.md)
             printf 'pack-agent\n' ;;
+        # The bundle MANIFEST. Its content describes the PACK's own agent
+        # bundle (plugin name, version, the agent roster), so a client never
+        # authors it and a stale copy is a defect, not a customization —
+        # `pack-agent` is the pack-owned replace-if-different class the
+        # bundle's own agents already use, and it is chosen over the `generic`
+        # fallthrough this path had because `generic` is a PROSE class: the
+        # BD-287 class gate hands prose classes to the line-merger, and a
+        # `git merge-file` line-union of a JSON object is textually lossless
+        # yet structurally invalid. The leg is keyed on the bundle-root
+        # position (never under `agents/`), so the `x-` custom-agent
+        # invariant above is untouched.
+        .agents-plugin/*/plugin.json)
+            printf 'pack-agent\n' ;;
         # Scripts: default is `pack-script` (3-way text dispatch). Callers
         # that know a script is project-added should pass class=custom-script
         # explicitly to bypass classification (preserved untouched). The
@@ -387,6 +430,26 @@ _cp_write_diff() {
         fi
     } > "$out"
     printf '%s\n' "$out"
+}
+
+# Write SRC to DEST only when the bytes differ. `cp` always stamps a new
+# mtime, so a strategy whose output equals DEST still shows up as a modified
+# file in the client's `git status` — a real cost for a command clients are
+# meant to run routinely, and the reason a no-op `--update` is not observably
+# a no-op. Applied at the STRUCTURED write sites only, and that scoping is
+# measured, not stylistic: the structured key-merge is the one strategy whose
+# output can equal DEST while the classifier still routes to a write arm
+# (`pack-update-applied` in the text path fires only when DEST already differs
+# from THEIRS, so a `cmp` there is a guaranteed miss — pure per-file cost with
+# no possible saving, which `ci-check-runtime-compounding` rules out). Same
+# `cmp -s` primitive three_way_classify's identity rule uses, applied at the
+# write site instead of the classify site.
+_cp_copy_if_different() {
+    local src="$1" dst="$2"
+    if [[ -f "$dst" ]] && cmp -s "$src" "$dst"; then
+        return 0
+    fi
+    cp "$src" "$dst"
 }
 
 # ── Per-class preservation strategies ─────────────────────────────────────
@@ -590,6 +653,49 @@ _cp_strategy_structured() {
             return 0
             ;;
         real-merge-required|project-shadows-new-pack)
+            # PACK-AUTHORED OURS. The caller may prove, out of band, that the
+            # client's WHOLE file is a blob this pack has held at this SOURCE
+            # path (`pack_provenance_is_pack_authored`, the same R2 rung the
+            # text classes use). The proof is passed as a SEPARATE signal —
+            # `_CP_OURS_PACK_AUTHORED`, never as a BASE — so the empty-BASE
+            # dispatch the structured classes depend on is untouched and the
+            # `merged-with-customization` short-circuit above still cannot be
+            # reached by a caller-supplied base.
+            #
+            # What the proof buys: OURS carries ZERO client content, so every
+            # divergence from THEIRS is a pack change the client has not yet
+            # received. Without it the key-merge has no way to tell a stale
+            # pack value from a client edit — its rule is "both added with
+            # different values -> keep project value", which protects an older
+            # PACK value as though the client had written it. That freezes
+            # pack-owned keys permanently AND re-emits a `.pre-update` sidecar
+            # every run, and `cmd_update`'s own pre-check refuses to start
+            # while a sidecar exists: an inescapable manual loop with the
+            # pack's new wiring never arriving.
+            #
+            # Adopting THEIRS whole-file (rather than key-wise) is the limit
+            # case of the same proof, and is what the proof licenses: a
+            # key-wise "theirs wins" would also RESURRECT any key the pack has
+            # since RETIRED, because the union keeps an OURS-only key — and an
+            # OURS-only key here is by construction a retired pack key, never a
+            # client addition. It is also byte-for-byte the text classes' own
+            # R2 arm, so ONE provenance rung means ONE thing in both strategy
+            # families, and it lands the truthful `pack-update-applied`
+            # disposition instead of asserting a customization that provably
+            # does not exist. The overwrite stays recoverable with zero new
+            # files for the same reason the text arm's does: those exact bytes
+            # are already a blob in the pack's object store.
+            if [[ "${_CP_OURS_PACK_AUTHORED:-0}" -eq 1 ]]; then
+                mkdir -p "$(dirname "$dest")"
+                _cp_copy_if_different "$theirs" "$dest"
+                local pa_note="-"
+                if [[ -n "${_CP_OURS_BLOB:-}" ]]; then
+                    pa_note="pack-authored OURS overwritten; recover with: git -C <pack> cat-file blob ${_CP_OURS_BLOB}"
+                fi
+                _cp_record "pack-update-applied" "$class" "$rel" "copied" \
+                    "-" "-" "$pa_note"
+                return 0
+            fi
             local helper
             case "$fmt" in
                 json) helper="${_CP_PACK_ROOT}/scripts/merge-json.py" ;;
@@ -608,7 +714,28 @@ _cp_strategy_structured() {
             local merged_tmp
             merged_tmp=$(mktemp)
             local rc=0
+            # DERIVED-BASE hand-off. Only when the caller supplied NO base:
+            # a real base (the migrator's) is the recorded ancestor and must
+            # never be second-guessed. The helper re-derives nothing when the
+            # positional base is non-empty, but not passing the flags at all
+            # keeps that contract visible at the call site too.
+            #
+            # This is what reaches the client whose file the whole-file probe
+            # above could not clear. `three_way_classify` has already run on
+            # the empty base, so the SCOPING GATE's invariant is intact: the
+            # classifier's answer is unchanged and only the merge gains an
+            # ancestor.
+            local pk_args
+            pk_args=()
+            if [[ -z "$base" && -n "${_CP_OURS_PACK_SOURCE:-}" \
+               && -n "${_CP_PACK_ROOT:-}" ]]; then
+                pk_args=(--pack-authored-base "$_CP_PACK_ROOT"
+                         --pack-source "$_CP_OURS_PACK_SOURCE")
+            fi
+            # `${a[@]+"${a[@]}"}` — bash 3.2 expands a bare "${a[@]}" of an
+            # EMPTY array to an unbound-variable error under `set -u`.
             python3 "$helper" "${base:-}" "$ours" "$theirs" --output "$merged_tmp" \
+                ${pk_args[@]+"${pk_args[@]}"} \
                 2> "$stderr_log" || rc=$?
             local diff_path
             diff_path=$(_cp_write_diff "$base" "$ours" "$theirs" "$rel")
@@ -616,21 +743,53 @@ _cp_strategy_structured() {
             local sidecar="${dest}${_CP_SIDECAR_SUFFIX}"
             case "$rc" in
                 0)
-                    cp "$merged_tmp" "$dest"
-                    _cp_record "merged-with-customization" "$class" "$rel" "merged" \
-                        "-" "$diff_path" "structured key-level merge clean"
-                    rm -f "$stderr_log"
+                    _cp_copy_if_different "$merged_tmp" "$dest"
+                    # A CLEAN merge can still REMOVE a value the client held:
+                    # once the derived BASE proves the pack once shipped that
+                    # value, a pack that no longer ships it reads as a
+                    # retirement, and honouring it is the point (the opposite
+                    # would silently re-grant a permission the client
+                    # deliberately deleted). Honouring it INVISIBLY is not.
+                    # The helper emits one `notice:` line per removed value;
+                    # they carry rc 0 precisely so they do NOT mint a sidecar
+                    # and re-open the reconciliation loop, so the disposition
+                    # row is the only place a client would ever see them.
+                    # Read the COUNT from the helper's one machine line
+                    # (`NOTICE_COUNT_PREFIX` in lib/pack_provenance_keys.py),
+                    # never by counting `notice:` lines — the human lines are
+                    # capped and truncated, so counting them would report a
+                    # number that is wrong exactly when it matters most.
+                    local n_notices=0
+                    if [[ -s "$stderr_log" ]]; then
+                        n_notices=$(sed -n 's/^notice: pack-retired-removals=\([0-9][0-9]*\)$/\1/p' \
+                            "$stderr_log" 2>/dev/null | head -1)
+                        [[ -n "$n_notices" ]] || n_notices=0
+                    fi
+                    if [[ "$n_notices" -gt 0 ]]; then
+                        _cp_record "merged-with-customization" "$class" "$rel" "merged" \
+                            "-" "$diff_path" \
+                            "structured key-level merge clean; ${n_notices} project-held value(s) removed as pack-retired (see $stderr_log)"
+                    else
+                        _cp_record "merged-with-customization" "$class" "$rel" "merged" \
+                            "-" "$diff_path" "structured key-level merge clean"
+                        rm -f "$stderr_log"
+                    fi
                     ;;
                 2)
                     cp "$ours" "$sidecar"
-                    cp "$merged_tmp" "$dest"
+                    _cp_copy_if_different "$merged_tmp" "$dest"
+                    # The remedy is named because this verdict can RECUR: a
+                    # client who deleted a whole key the pack is still editing
+                    # gets the same warning on every run, and nothing they do
+                    # to the sidecar changes that. Naming both exits turns an
+                    # unactionable repeat into a one-time decision.
                     _cp_record "$_CP_DISP_NEEDS_RECONCILIATION" "$class" \
                         "$rel" "merged" "$sidecar" "$diff_path" \
-                        "structured merge with reconciliation warnings (see $stderr_log)"
+                        "structured merge with reconciliation warnings (see $stderr_log); to settle: re-add the named key to take the pack's value, or keep your removal and ignore the repeat"
                     ;;
                 *)
                     cp "$ours" "$sidecar"
-                    cp "$theirs" "$dest"
+                    _cp_copy_if_different "$theirs" "$dest"
                     _cp_record "$_CP_DISP_NEEDS_RECONCILIATION" "$class" \
                         "$rel" "sidecar" "$sidecar" "$diff_path" \
                         "structured merge errored (rc=$rc); fell back to sidecar (see $stderr_log)"

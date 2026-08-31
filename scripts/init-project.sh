@@ -1528,6 +1528,61 @@ _cmd_update_resolve_base() {
     return 0
 }
 
+# Resolve the provenance answers for ONE STRUCTURED-class file WITHOUT
+# resolving a BASE. Sets `_CP_OURS_PACK_AUTHORED` (1 = OURS is itself a blob
+# the pack has held at this SOURCE path), `_CP_OURS_BLOB`, and
+# `_CP_OURS_PACK_SOURCE` (the SOURCE path itself).
+#
+# Deliberately NOT `_cmd_update_resolve_base`: that function's job is to hand
+# the classifier a BASE, and the SCOPING GATE below documents why a non-empty
+# BASE must never reach a structured file. This one answers the SAME question
+# and hands the answer over as a separate signal, so the structured strategy
+# can act on the proof while the classifier keeps seeing an empty BASE.
+#
+# TWO GRANULARITIES, ONE RUNG. `_CP_OURS_PACK_AUTHORED` answers WHOLE-FILE and
+# clears only a client who never touched the file. `_CP_OURS_PACK_SOURCE`
+# carries the key the merge helper needs to answer the same question PER KEY,
+# which is the only thing that reaches a client who edited anything at all —
+# and their frozen key is generally not the key they edited, so the whole-file
+# answer alone leaves the pack's change undelivered indefinitely.
+#
+# R1 has no analogue here on purpose. The ledger blob is a DIFFERENT blob from
+# OURS, so consuming it would mean supplying a base — exactly what the gate
+# forbids. R2 is the only rung whose answer is a property OF OURS.
+#
+# Cost: ONE index membership test plus ONE `git hash-object` fork per
+# structured file (the index itself is built once per run by
+# pack_provenance_init), over the 6 structured rows in the whole dispatch set
+# — no per-file object walk. The per-key derivation costs two further forks,
+# but only on the files that actually reach the key-merge.
+_cmd_update_probe_pack_authored() {
+    local pack_rel="$1" ours="$2"
+    _CP_OURS_PACK_AUTHORED=0
+    _CP_OURS_BLOB=""
+    _CP_OURS_PACK_SOURCE=""
+
+    # R4' — same whole-run gate the base cascade obeys: without the baseline
+    # objects nothing can establish provenance. The per-key derivation is
+    # gated here too, and for a sharper reason than symmetry: it reads the
+    # object history, so a clone missing the baseline would derive an ancestor
+    # from the recent blobs alone. That ancestor claims the client REMOVED
+    # every list element the pack has added since — turning today's harmless
+    # key-union into a silent deletion. Unreachable baseline therefore keeps
+    # exactly today's behaviour, and the operator already has the notice and
+    # the `git fetch` remedy from pack_provenance_baseline_reachable.
+    [[ "${_CU_BASELINE_OK:-0}" -eq 1 ]] || return 0
+    [[ -n "$ours" ]] || return 0
+
+    _CP_OURS_PACK_SOURCE="$pack_rel"
+
+    local blob=""
+    if blob=$(pack_provenance_is_pack_authored "$pack_rel" "$ours" 2>/dev/null); then
+        _CP_OURS_PACK_AUTHORED=1
+        _CP_OURS_BLOB="$blob"
+    fi
+    return 0
+}
+
 # BASE-cascade rung R1 WRITE. Pair the staged rows with the blob shas of the
 # files this run installed, and hand each to the ledger.
 #
@@ -1582,9 +1637,39 @@ cmd_update() {
     # prior --update run still exist. Single-slot sidecars must be
     # reconciled before re-running, else the second run silently
     # overwrites them and destroys the user's pre-update content.
-    local stale_sidecars
-    stale_sidecars=$(find "$TARGET" -type f -name "*.pre-update" \
-        -not -path "*/.pack-update/*" -not -path "*/.git/*" 2>/dev/null | head -20)
+    #
+    # THE ESCAPE: a sidecar whose bytes are IDENTICAL to the live file it
+    # shadows is exempt. Without the exemption this gate has a state with no
+    # way out. A structured file the client edited in a way that warns every
+    # run — deleting a whole key the pack is still editing is the measured
+    # case — is re-sidecarred every run, and because the merge honours the
+    # removal the live file never changes, so each new sidecar is a byte-copy
+    # of it. The gate then blocked the WHOLE tree's refresh on a file whose
+    # sidecar preserved nothing, and the only offered remedy (delete the
+    # sidecar) was answered by the next run re-creating it.
+    #
+    # The exemption costs the gate nothing, and that is a property of the
+    # gate's own rationale rather than a judgement call: the content it
+    # protects is the client's pre-update bytes, and those bytes are still in
+    # the live file, so overwriting this sidecar cannot destroy them. Any
+    # sidecar that DIFFERS from its live file still blocks — that one has real
+    # unreconciled content, and its block terminates, because reconciling the
+    # file is an act the client can actually complete.
+    #
+    # Nothing is deleted here. An exempt sidecar is left on disk and is simply
+    # not treated as a blocker; the next run overwrites it with the same bytes.
+    local stale_sidecars sc_file sc_live
+    stale_sidecars=$(
+        find "$TARGET" -type f -name "*.pre-update" \
+            -not -path "*/.pack-update/*" -not -path "*/.git/*" 2>/dev/null \
+        | while IFS= read -r sc_file; do
+              sc_live="${sc_file%.pre-update}"
+              if [[ -f "$sc_live" ]] && cmp -s "$sc_file" "$sc_live"; then
+                  continue
+              fi
+              printf '%s\n' "$sc_file"
+          done | head -20
+    )
     if [[ -n "$stale_sidecars" ]]; then
         say "refusing to proceed: prior --update sidecars present:"
         printf '  %s\n' $stale_sidecars >&2
@@ -1786,11 +1871,36 @@ cmd_update() {
         #     fires.
         # Widening this case list to either family is a regression, not a
         # completion.
+        #
+        # The structured arm below is NOT a widening of that list: it resolves
+        # the SAME R2 question and hands the ANSWER to the strategy as a
+        # separate signal, leaving `_CU_BASE` empty. Empty-BASE dispatch is
+        # what the gate protects, and empty-BASE dispatch is what the
+        # structured classes still get. What the signal repairs is the gate's
+        # unintended cost: with BASE always empty the key-merge cannot tell a
+        # stale PACK value from a client edit, so its "keep project value" rule
+        # protects an older pack value forever and re-emits a sidecar every run
+        # — and the sidecar pre-check above then refuses the next run. Trinity
+        # is deliberately NOT given the signal: its engine branches on BASE
+        # itself, so the same proof would have to change which branch fires,
+        # which is the regression this gate exists to prevent.
+        #
+        # Two signals, two granularities. The whole-file answer only clears a
+        # client who never touched the file; ONE edited key anywhere makes it
+        # NO, and then every diverged pack key in that file freezes — the key
+        # the client is missing is generally not the key they edited. The
+        # SOURCE path is therefore handed over as well, so the merge helper can
+        # derive the ancestor PER KEY. That derivation reaches only the helper:
+        # `three_way_classify` still runs on the empty BASE two lines below, so
+        # the `merged-with-customization` short-circuit this gate protects
+        # remains unreachable from a caller-supplied base.
         eff_cls="$cls"
         [[ -n "$eff_cls" ]] || eff_cls=$(customization_classify "$proj_rel")
         _CU_BASE=""
         _CU_BASE_TMP=""
         _CP_OURS_BLOB=""
+        _CP_OURS_PACK_AUTHORED=0
+        _CP_OURS_PACK_SOURCE=""
         # Reset alongside the three above: the staged row below reads it, and
         # an arm that returned without recording would otherwise stage the
         # PREVIOUS file's disposition against this path.
@@ -1798,6 +1908,9 @@ cmd_update() {
         case "$eff_cls" in
             generic|pm-chat|pack-script|pack-agent)
                 _cmd_update_resolve_base "$pack_rel" "$ours" "$row_sha"
+                ;;
+            claude-settings|claude-mcp-example|mcp-config-json|codex-config|codex-config-example)
+                _cmd_update_probe_pack_authored "$pack_rel" "$ours"
                 ;;
         esac
 
@@ -1939,6 +2052,9 @@ cmd_update() {
 #   project-template/.codex/requirements.toml  ->  .codex/requirements.toml  [stage:S3,cmd_update,migrate]  [class:codex-config]
 #   project-template/.mcp.json.example  ->  .mcp.json  [stage:S3,cmd_update,migrate]  [class:claude-mcp-example]
 #   project-template/.agents/mcp_config.json.example  ->  .agents/mcp_config.json  [stage:S3,cmd_update,migrate]  [class:mcp-config-json]
+#   project-template/.agents-plugin/optiquity-agents/plugin.json  ->  .agents-plugin/optiquity-agents/plugin.json  [stage:S2,cmd_update,migrate]  [class:self]
+#   project-template/.agents-plugin/optiquity-agents/RUNTIME-SUBAGENT-PATTERN.md  ->  .agents-plugin/optiquity-agents/RUNTIME-SUBAGENT-PATTERN.md  [stage:S2,cmd_update,migrate]  [class:self]
+#   project-template/agent-run.sh  ->  agent-run.sh  [stage:S5,cmd_update]  [class:pack-script]
 #   project-template/.github/ISSUE_TEMPLATE/work-item.yml  ->  .github/ISSUE_TEMPLATE/work-item.yml  [stage:S11,cmd_update,migrate]  [class:generic]
 #   project-template/.github/ISSUE_TEMPLATE/inbound.yml  ->  .github/ISSUE_TEMPLATE/inbound.yml  [stage:S11,cmd_update,migrate]  [class:generic]
 #   project-template/.github/ISSUE_TEMPLATE/config.yml  ->  .github/ISSUE_TEMPLATE/config.yml  [stage:S11,cmd_update,migrate]  [class:generic]

@@ -42,6 +42,7 @@ scripts/tests/template-version-test.sh	2.0
 scripts/tests/test-customization-preserve.sh	3.0
 scripts/tests/test-init-project.sh	5.0
 scripts/tests/test-issue-forms.sh	2.0
+scripts/tests/test-pack-provenance-keys.sh	2.0
 scripts/tests/test-per-entry.sh	2.0
 scripts/tests/test-tracker-cycle-check.sh	2.0
 scripts/tests/test-tracker-links.sh	2.0
@@ -51,6 +52,7 @@ scripts/tests/test-validate-pack-check-16.sh	1.5
 scripts/tests/test-validate-pack-check-18.sh	1.5
 scripts/tests/test-validate-pack-check-19.sh	1.5
 scripts/tests/test-validate-pack-check-39.sh	1.5
+scripts/tests/test-validate-pack-check-39-wholesale-copy.sh	1.0
 scripts/tests/test-validate-pack-check-40.sh	1.5
 scripts/tests/test-validate-pack-check-41.sh	1.5
 scripts/tests/test-validate-pack-check-42.sh	1.5

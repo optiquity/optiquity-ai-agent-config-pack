@@ -687,6 +687,72 @@ grep -q '^docs/project/groupings/_rules.md ' "$T6/docs/project/immutable-manifes
 ( cd "$T6" && bash scripts/verify-immutable.sh ) >/dev/null 2>&1 ; vi_rc=$?
 assert_eq "6.5 installed verify-immutable.sh rc=0 after --update" "0" "$vi_rc"
 
+# 6.5b — the manifest is a deterministic function of the installed immutable
+# files, so regenerating it must not TOUCH it when nothing changed. It is
+# generated unconditionally on every install and every --update, so a
+# write-always here left the client one modified file in `git status` after
+# every otherwise-no-op refresh. Both directions, because a write-if-different
+# guard that never writes is worse than the churn it replaced.
+#
+# mtime is read through python3, NEVER `stat -f %m`: `-f` is BSD-only and on
+# the GNU coreutils build CI runs it means `--file-system`, which makes the
+# probe report something that does not change when an mtime changes. Same
+# probe and same rationale as `scripts/tests/test-customization-preserve.sh`
+# 3c.4.
+im_manifest="$T6/docs/project/immutable-manifest.txt"
+_im_mtime() { python3 -c 'import os,sys;print(os.path.getmtime(sys.argv[1]))' "$1"; }
+touch -t 200001010000 "$im_manifest"
+im_before=$(_im_mtime "$im_manifest")
+bash "$REPO_ROOT/scripts/immutable-manifest.sh" --client-tree "$T6" >/dev/null 2>&1
+assert_eq "6.5b regenerating an UNCHANGED manifest does not rewrite it" \
+    "$im_before" "$(_im_mtime "$im_manifest")"
+# BITE: change an immutable file's content, and the manifest MUST be rewritten.
+#
+# Snapshot to a temp file BEFORE mutating, and `cp` back after — the same
+# snapshot-then-restore idiom as the §P5 C2 probe further down. A
+# `git show HEAD:<path> > <path>` restore CANNOT work here and must never be
+# reintroduced: `groupings/` was `rm -rf`'d and committed above, so the path
+# is absent at $T6's HEAD, and the installed copy is still untracked at this
+# point. Bash applies the `>` redirection BEFORE running `git show`, so the
+# fixture is truncated first and the failure is then swallowed — leaving a
+# ZERO-BYTE `_rules.md` that makes the 6.7 byte-compare and the 6.8/6.9
+# tamper probe below run against an empty file, i.e. pass vacuously while
+# the suite still reports all-green.
+im_rules="$T6/docs/project/groupings/_rules.md"
+im_rules_orig=$(mktemp "${TMPDIR:-/tmp}/bd263-im-rules.XXXXXX")
+cp "$im_rules" "$im_rules_orig"
+printf '\n<!-- 6.5b mutation -->\n' >> "$im_rules"
+bash "$REPO_ROOT/scripts/immutable-manifest.sh" --client-tree "$T6" >/dev/null 2>&1
+if [[ "$(_im_mtime "$im_manifest")" != "$im_before" ]]; then
+    t_pass "6.5b BITE: a changed immutable file DOES rewrite the manifest"
+else
+    t_fail "6.5b BITE: manifest not rewritten after an immutable file changed"
+fi
+# Restore, so later assertions see the installed content.
+cp "$im_rules_orig" "$im_rules"
+rm -f "$im_rules_orig"
+bash "$REPO_ROOT/scripts/immutable-manifest.sh" --client-tree "$T6" >/dev/null 2>&1
+
+# 6.5c — a regression guard on the CLEANUP ITSELF. A restore that silently
+# fails degrades every later Group 6 assertion into a vacuous comparison
+# without failing anything, so the cleanup gets its own two-sided assertion:
+# the fixture is non-empty AND byte-identical to the pack template it was
+# installed from (6.2 pinned that identity, and nothing between 6.2 and here
+# touches the file except the 6.5b mutation this block just reverted).
+im_rules_bytes=$(wc -c < "$im_rules" | tr -d ' ')
+if [[ "$im_rules_bytes" -gt 0 ]]; then
+    t_pass "6.5c cleanup restored a NON-EMPTY groupings/_rules.md ($im_rules_bytes bytes)"
+else
+    t_fail "6.5c cleanup left groupings/_rules.md EMPTY" \
+        "6.7/6.8/6.9 below would compare and tamper an empty file"
+fi
+if cmp -s "$REPO_ROOT/project-template/docs/project/groupings/_rules.md" "$im_rules"; then
+    t_pass "6.5c restored groupings/_rules.md is byte-identical to the pack template"
+else
+    t_fail "6.5c restored groupings/_rules.md differs from the pack template" \
+        "the 6.5b mutation was not reverted cleanly"
+fi
+
 # (c) customization-preserving upgrade: client-authored entry files —
 # a user grouping (GRP-001.md) and an existing-stream entry (TD-001.md) —
 # are OUTSIDE the update dispatch set and must never be touched.

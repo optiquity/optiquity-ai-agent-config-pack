@@ -27,8 +27,19 @@ comment in the file.
 
 Usage:
     merge-toml.py BASE OURS THEIRS [--output PATH]
+    merge-toml.py "" OURS THEIRS --pack-authored-base PACK --pack-source REL
 
 If --output is not given, the merged TOML is written to stdout.
+
+DERIVED BASE (--pack-authored-base / --pack-source)
+
+Same contract as `merge-json.py`: `--update` has no recorded BASE for a
+structured file, and a BASE-less three-way cannot tell a stale PACK value from
+a CLIENT edit, so every diverged pack key freezes. These two flags let the
+common ancestor be DERIVED per key from the pack's own object history
+(`scripts/lib/pack_provenance_keys.py`). Used ONLY when the positional BASE is
+empty; a derivation that finds nothing leaves BASE absent, i.e. exactly
+today's behaviour.
 
 Exit codes:
     0  merged cleanly (no warnings)
@@ -42,6 +53,11 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+from pack_provenance_keys import (  # noqa: E402
+    derive_base, emit_removal_notices, historical_docs,
+)
 
 try:
     import tomllib
@@ -490,6 +506,12 @@ def main() -> int:
     ap.add_argument("ours", help="project file pre-migration")
     ap.add_argument("theirs", help="v10 pack template file")
     ap.add_argument("--output", help="write merged TOML to PATH (default: stdout)")
+    ap.add_argument("--pack-authored-base", metavar="PACK_ROOT",
+                    help="derive BASE from this pack clone's object history "
+                         "(only when the positional BASE is empty)")
+    ap.add_argument("--pack-source", metavar="RELPATH",
+                    help="pack-relative SOURCE path of OURS, the key the "
+                         "history walk is indexed by")
     args = ap.parse_args()
 
     try:
@@ -506,6 +528,26 @@ def main() -> int:
     if not is_present(theirs):
         print("error: theirs file is missing or empty", file=sys.stderr)
         return 1
+
+    # DERIVED BASE — see the module docstring. Strictly a fallback: an explicit
+    # BASE is never overridden, so the migrator's three-way keeps the ancestor
+    # it recorded. A failed or empty derivation leaves BASE absent, which is
+    # the pre-existing behaviour rather than an error.
+    #
+    # Broad `except` for the same reason as merge-json.py: the derivation is an
+    # ACCELERATOR, so a failure inside it must cost the ancestor and nothing
+    # else. Raising would exit 1, and the structured strategy reads a non-0/2
+    # rc as "merge errored" — sidecar the client's file and copy THEIRS over
+    # it. Degrading to the empty base is stale, never destructive.
+    if not is_present(base) and args.pack_authored_base and args.pack_source:
+        try:
+            docs = historical_docs(args.pack_authored_base, args.pack_source,
+                                   tomllib.loads)
+            derived = derive_base(ours, docs)
+        except Exception:  # noqa: BLE001 — see above
+            derived = None
+        if derived is not None:
+            base = derived
 
     warnings: list[str] = []
     merged = merge_value(base, ours, theirs, "", warnings)
@@ -526,6 +568,9 @@ def main() -> int:
 
     for w in warnings:
         print(f"warning: {w}", file=sys.stderr)
+    # Disclosure, not a verdict: a value the client holds can be dropped at
+    # rc 0 when the pack has retired it. See the DERIVED BASE note above.
+    emit_removal_notices(ours, merged, sys.stderr)
 
     return 2 if warnings else 0
 

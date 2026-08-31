@@ -1211,6 +1211,133 @@ _CHECK_39_MIGRATOR_EXEMPTIONS: dict[str, str] = {
 }
 
 
+# ── Forward leg 3 support: WHOLESALE-COPY roots (BD-293 F1) ─────────────────
+#
+# Forward legs 1 and 2 above bound copy sites that enumerate their members
+# (the S6 `docs/pack/*.md` loop, the prompts loop). A WHOLESALE copy site —
+# `cp -R "$dir"` or a `find "$dir"` walk — does the opposite: it reaches EVERY
+# file beneath its source and therefore cannot omit one, while the install map
+# declares members one at a time and `cmd_update` dispatches ONLY from that
+# map. A file the wholesale site ships but the map does not declare is placed
+# by a fresh install AND by a migration, yet is invisible to `--update`: it can
+# be neither refreshed when the pack changes it nor repaired when it is
+# missing. Leg 3 is that asymmetry's forward assertion, and it is the same
+# question legs 1 and 2 ask, so it lives here rather than in a new check.
+#
+# The scripts scanned. Bounded to the two paths that copy pack sources into a
+# client tree; the migrator's helper libs are excluded because their `find`
+# walks target the CLIENT tree, not a pack source (measured: `checkpoint.sh`
+# walks `"$target"`, which no `$PACK/project-template/...` assignment binds).
+_CHECK_39_WHOLESALE_SCRIPTS: tuple[str, ...] = (
+    "scripts/init-project.sh",
+    "scripts/migrate-v10-to-v11.sh",
+)
+
+# `<VAR>="$PACK/project-template/<literal>"` — the only assignment shape that
+# binds a shell variable to a LITERAL pack source path. A COMPOSED assignment
+# (`local src="$pack_pt/$rel"`) deliberately does NOT match: its value is a
+# runtime expression naming no single surface a guard could bound. Measured
+# consequence: `stage_s5b_populate_pool`'s `cp -R "$src"` (the capability pool,
+# declared as PROSE and fresh-install-only) resolves to nothing here and is
+# correctly out of scope, with NO allowlist entry needed.
+_CHECK_39_PACK_VAR_ASSIGN = re.compile(
+    r'^[ \t]*(?:local[ \t]+)?([A-Za-z_]\w*)='
+    r'"\$\{?PACK\}?/(project-template/[^"$]+)"[ \t]*$',
+    re.M,
+)
+
+# A verb that reaches EVERY file beneath a directory: a recursive `cp` or a
+# `find` walk.
+#
+# The leading guard is a LOOKBEHIND, not `(?:^|\s)`, and that is load-bearing:
+# the migrator's walk is written `done < <(find "$bundle_src" -type f)`, where
+# the character before `find` is `(`. A whitespace-or-start anchor silently
+# misses it, which would shrink the bounded surface to whatever happens to be
+# written with a leading space (measured: 1 site found instead of 2).
+# `(?<![-\w])` still rejects the substring cases that matter — a longer word
+# ending in `find`, and a flag like `--find`.
+_CHECK_39_WHOLESALE_USE = re.compile(
+    r'(?<![-\w])(?:cp[ \t]+-[A-Za-z]*[Rr][A-Za-z]*|find)[ \t]+"\$\{?([A-Za-z_]\w*)\}?"'
+)
+
+# A human-readable EXEMPLAR of the recursive-copy verb, used only to make the
+# leg-3 diagnostic concrete. It is deliberately NOT the predicate: matching a
+# bare `"cp -R"` substring is NARROWER than `_CHECK_39_WHOLESALE_USE`, which
+# also accepts `cp -r`, `cp -pR`, and `find`. A tree left with only those
+# shapes would report the marker ABSENT and the leg would skip silently —
+# a vacuum inside the very backstop that exists to prevent one. The predicate
+# below therefore derives from the regex, so the backstop can never be
+# narrower than the thing it backstops.
+_CHECK_39_WHOLESALE_MARKER = "cp -R"
+
+
+def _check_39_wholesale_roots() -> dict[str, list[str]]:
+    """Derive the pack-relative directories a wholesale copy site reaches.
+
+    Returns `{pack_relative_dir: [<script>:<line> ...]}`. DERIVED from the copy
+    sites themselves, never hard-coded: a rename of the source directory moves
+    the assertion with it, and a copy site that disappears empties the mapping
+    — which leg 3 treats as an absence-of-backing FAILURE rather than a
+    vacuous pass.
+    """
+    roots: dict[str, list[str]] = {}
+    for script in _CHECK_39_WHOLESALE_SCRIPTS:
+        path = REPO_ROOT / script
+        if not path.is_file():
+            continue
+        text = path.read_text()
+        binding = {
+            m.group(1): m.group(2).rstrip("/")
+            for m in _CHECK_39_PACK_VAR_ASSIGN.finditer(text)
+        }
+        if not binding:
+            continue
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            if line.lstrip().startswith("#"):
+                continue
+            for m in _CHECK_39_WHOLESALE_USE.finditer(line):
+                target = binding.get(m.group(1))
+                if not target:
+                    continue
+                if not (REPO_ROOT / target).is_dir():
+                    continue
+                roots.setdefault(target, []).append(f"{script}:{lineno}")
+    return roots
+
+
+def _check_39_wholesale_marker_present() -> bool:
+    """True iff any scanned install script still uses a recursive-copy verb.
+
+    This is leg 3's "the derivation has something to find" predicate — the
+    thing that separates a legitimately-inapplicable tree (a scaffold with no
+    stage bodies) from a REGRESSED one (a real tree whose copy idiom changed
+    shape).
+
+    DERIVED from `_CHECK_39_WHOLESALE_USE` — the exact regex whose failure to
+    resolve a root this predicate backstops — rather than from a narrower
+    literal. A literal `"cp -R"` substring test accepts a strict SUBSET of the
+    regex (it misses `cp -r`, `cp -pR`, and `find`), so a tree written only in
+    those shapes would answer False and the leg would go silently vacuous
+    instead of FAILing. Sharing one definition makes that impossible: the
+    predicate is True on exactly the lines the derivation scans, so it can
+    never be narrower than the derivation it guards.
+
+    Uses the same comment-line skip as `_check_39_wholesale_roots()` so both
+    read the identical line set — a verb mentioned only in a comment is not a
+    use, and must not keep the backstop alive on a tree that stopped copying.
+    """
+    for script in _CHECK_39_WHOLESALE_SCRIPTS:
+        path = REPO_ROOT / script
+        if not path.is_file():
+            continue
+        for line in path.read_text().splitlines():
+            if line.lstrip().startswith("#"):
+                continue
+            if _CHECK_39_WHOLESALE_USE.search(line):
+                return True
+    return False
+
+
 def _parse_migrator_manifest_sources() -> tuple:
     """Parse the v10→v11 adapter's two path-emitting hooks.
 
@@ -1256,6 +1383,22 @@ def check_cmd_update_symmetry() -> None:
     `project-template/docs/pack/prompts/*.md`, which the non-recursive
     `docs/pack/*.md` glob never descends into; a prompts file is covered by
     the GLOB-block family row, not by an explicit row.
+
+    A THIRD forward leg (BD-293 F1) covers the WHOLESALE copy sites — the
+    `cp -R "$dir"` / `find "$dir"` shapes that reach every file beneath a pack
+    source directory and so cannot omit a member. Legs 1 and 2 bound sites
+    that enumerate their members; this one bounds the sites that do not, which
+    is how `plugin.json` and `RUNTIME-SUBAGENT-PATTERN.md` shipped in the
+    Antigravity bundle while appearing in ZERO map rows on ANY axis — placed by
+    a fresh install and by a migration, invisible to `--update`. The root set
+    is DERIVED from the copy sites (never hard-coded), and the leg FAILs rather
+    than passing vacuously when the recursive-copy marker is present but the
+    derivation resolves nothing. It carries NO exemption list: a wholesale site
+    ships every member, so every member must be refreshable.
+
+    Note this leg is the forward twin of Check 41 clause (e), which asks the
+    OPPOSITE question (does a DECLARED row have a copy site?) and is keyed to
+    per-file copy literals — a `cp -R` row is structurally outside it.
 
     Reverse direction (BD-180 observation E): every explicit `cmd_update`
     row's `pack_relpath` must resolve to a file at HEAD, and every
@@ -1373,6 +1516,99 @@ def check_cmd_update_symmetry() -> None:
                 f"with a one-line rationale."
             )
             any_failed = True
+
+    # ── Forward leg 3: WHOLESALE-copy roots (BD-293 F1) ──────────────────
+    # Legs 1 and 2 bound copy sites that ENUMERATE their members. This leg
+    # bounds the opposite shape: a site that copies a whole directory reaches
+    # every file under it and cannot omit one, so the map is the only surface
+    # that can disagree — and when it does, `--update` (which dispatches the
+    # `cmd_update` axis and nothing else) can neither refresh nor repair the
+    # undeclared file, permanently and silently.
+    #
+    # NO allowlist, deliberately: an exemption would re-admit exactly the gap
+    # this leg closes, and the measured legitimate set is "everything under the
+    # root" — a wholesale site ships all of it by construction, so no member
+    # legitimately never updates.
+    #
+    # Two-part, so a vacuous pass is impossible (declare-verify-backing, the
+    # absence-of-backing instance): the root set is DERIVED from the copy
+    # sites, and when the recursive-copy marker is PRESENT but the derivation
+    # resolves nothing — or resolves a root holding no tracked file — the leg
+    # FAILs instead of quietly measuring an empty set.
+    wholesale_checked = 0
+    wholesale_roots = _check_39_wholesale_roots()
+    if not wholesale_roots:
+        if _check_39_wholesale_marker_present():
+            fail(
+                f"install map forward leg 3 — a recursive-copy verb "
+                f"(e.g. `{_CHECK_39_WHOLESALE_MARKER}`) is still used in "
+                f"{list(_CHECK_39_WHOLESALE_SCRIPTS)}, but NO wholesale copy "
+                f"site resolves to a pack source directory. This leg bounds "
+                f"sites that copy a WHOLE directory into a client "
+                f"(`cp -R \"$var\"` / `find \"$var\"`, where `var` is assigned "
+                f"a literal `\"$PACK/project-template/...\"` path). Resolving "
+                f"NONE while the verb is still there means the assignment was "
+                f"rewritten into a composed form or the idiom changed — the "
+                f"leg would then pass vacuously forever, which is exactly the "
+                f"silent state it exists to prevent. Restore the literal "
+                f"assignment, or update `_CHECK_39_PACK_VAR_ASSIGN` / "
+                f"`_CHECK_39_WHOLESALE_USE` to match the new shape."
+            )
+            any_failed = True
+    else:
+        for root in sorted(wholesale_roots):
+            # `None` and `[]` are DIFFERENT answers and must never be folded
+            # together. `None` means git could not be asked (not installed, or
+            # not a work tree) — an UNKNOWN, which every other call site in
+            # this module SKIPs leniently per the helper's own contract and per
+            # `ci-guard-measure-then-bound`. `[]` means git WAS asked and the
+            # root genuinely holds no tracked file — a real finding, because
+            # the member sweep below would then pass vacuously. Collapsing the
+            # two (`or []`) turns a lenient skip into a hard FAIL whose
+            # diagnostic tells the operator to track files that are in fact
+            # already tracked.
+            tracked = _git_tracked_relpaths(root)
+            if tracked is None:
+                ok(
+                    f"install map forward leg 3 — git is unavailable or this "
+                    f"is not a work tree, so the members of `{root}/` cannot "
+                    f"be enumerated; skipping the wholesale-coverage sweep for "
+                    f"this root (lenient)."
+                )
+                continue
+            members = [rel for rel in tracked if (REPO_ROOT / rel).is_file()]
+            if not members:
+                fail(
+                    f"install map forward leg 3 — wholesale copy site "
+                    f"{wholesale_roots[root]} copies `{root}/`, but that "
+                    f"directory holds NO git-tracked file, so the coverage "
+                    f"assertion below would be vacuously true. Either the "
+                    f"directory was emptied (remove the copy site) or its "
+                    f"contents are untracked (track them)."
+                )
+                any_failed = True
+                continue
+            for rel in sorted(members):
+                wholesale_checked += 1
+                if _covered(rel):
+                    continue
+                fail(
+                    f"{rel} — shipped by the WHOLESALE copy site "
+                    f"{wholesale_roots[root]} (`{root}/` is copied in full) "
+                    f"but the install map has no `cmd_update` coverage for it. "
+                    f"A fresh install and a migration both place this file; "
+                    f"`--update` derives its whole dispatch set from the map, "
+                    f"so it can neither refresh nor repair it — the client "
+                    f"keeps whatever bytes it first received, forever. Add a "
+                    f"row to the EXPLICIT block of the install map in "
+                    f"scripts/init-project.sh of the form: "
+                    f"`#   {rel}  ->  <project_relpath>  "
+                    f"[stage:<copy-site>,cmd_update,migrate]  [class:<token>]`. "
+                    f"There is no exemption list for this leg: a wholesale "
+                    f"copy site ships every member, so every member must be "
+                    f"refreshable."
+                )
+                any_failed = True
 
     # ── Reverse direction (BD-180 observation E) ─────────────────────────
     reverse_checked = 0
@@ -1569,7 +1805,10 @@ def check_cmd_update_symmetry() -> None:
             f"forward-checked against the install map; "
             f"{files_checked + prompts_checked - exempted} are covered by a "
             f"map row on the `cmd_update` axis, {exempted} on the forward "
-            f"exemption allowlist. {reverse_checked} explicit `cmd_update` "
+            f"exemption allowlist. {wholesale_checked} wholesale-copied "
+            f"member(s) across {len(wholesale_roots)} derived copy root(s) "
+            f"forward-checked; all are covered on the `cmd_update` axis (no "
+            f"exemption list for this leg). {reverse_checked} explicit `cmd_update` "
             f"row(s) + {glob_reverse_checked} `cmd_update` GLOB row(s) "
             f"reverse-checked; "
             f"{reverse_checked + glob_reverse_checked - reverse_exempted} "
@@ -3025,6 +3264,7 @@ _CHECK_41_LIST_LOOP_STAGES: frozenset[str] = frozenset({"S3", "S7"})
 # sentinel is absent from the captured body -> clause (e) emits a diagnostic
 # FAIL instead of a silent short body. Extend when a NEW stage hosts a KEEP row.
 _CHECK_41_STAGE_SENTINELS: dict[str, tuple[str, str]] = {
+    "S5":  ("stage_s5_scripts",          "agent-run.sh missing or not executable"),
     "S6":  ("stage_s6_docs_pack",        "blast_radius_sweep"),
     "S11": ("stage_s11_v11_artifacts",   "per_entry_regenerate_toc"),
 }
@@ -3036,6 +3276,18 @@ _CHECK_41_STAGE_SENTINELS: dict[str, tuple[str, str]] = {
 # or a warn/fail_stage message line.
 _CHECK_41_COPY_VERB = re.compile(
     r'(^|\s)(cp\b|existing_classifier_copy\b)|"\$copy_fn"|\$copy_fn\b'
+)
+
+# A LITERAL pack-source operand on a copy-verb line, e.g.
+# `cp "$PACK/project-template/agent-run.sh" ...`. Clause (g) uses it to walk
+# copy sites BACK to inventory rows. Deliberately literal-only: a loop variable
+# (`cp "$f" ...`) names no path here and a composed assignment is not a copy
+# line at all, so both fall out without an exemption list. The captured group
+# is the path relative to `project-template/`; the clause then keeps only the
+# operands that resolve to a real FILE, which is what excludes the directory
+# operand of the fixed-list loop (`"$PACK/project-template/scripts"`).
+_CHECK_41_PACK_SRC_LITERAL = re.compile(
+    r'\$PACK/project-template/([A-Za-z0-9._][A-Za-z0-9._/-]*)'
 )
 
 
@@ -3597,14 +3849,17 @@ def check_client_installed_files() -> None:
             return False  # fixed-list loop — not a hand-enumerated per-file copy
         return True
 
-    # LAZY: which sentinel-registered stages do surviving KEEP rows reference?
-    needed_stages: set[str] = set()
-    for pack_rel in entries:
-        sx = _row_stages(pack_rel)
-        if _is_keep(pack_rel, sx):
-            needed_stages |= (sx & _CHECK_41_STAGE_SENTINELS.keys())
-
+    # EVERY sentinel-registered stage, not only the ones surviving KEEP rows
+    # reference. Clause (g) below walks the copy sites to find literals with NO
+    # row, and a DELETED row is precisely the case that would drop its stage
+    # out of a demand-driven set — the guard would go blind on exactly the
+    # mutation it exists to catch. The registry holds 3 stages and `init_text`
+    # is already in memory, so this is 3 regex matches, not 3 file reads
+    # (`ci-check-runtime-compounding`). Clause (e)'s verdict is unchanged: it
+    # filters `stage_copy_bodies` down to each row's own stages, so bodies no
+    # row references cannot affect it.
     init_text = init_sh.read_text()
+    needed_stages: set[str] = set(_CHECK_41_STAGE_SENTINELS)
     # Extract + validate the copy-verb body for each NEEDED stage. A stage whose
     # function is ABSENT is skipped (graceful-absence); a stage whose captured
     # body is TRUNCATED (sentinel missing) is a loud diagnostic FAIL.
@@ -3705,13 +3960,67 @@ def check_client_installed_files() -> None:
             )
             any_failed = True
 
+    # (g) The REVERSE of (e): every PER-FILE copy literal in a registered stage
+    #     body has an inventory row. Clause (e) walks rows -> copy sites and so
+    #     can only catch a row whose copy site went missing; it is structurally
+    #     blind to a copy site whose ROW went missing, because a deleted row is
+    #     simply not iterated. That blind spot is not hypothetical — it is the
+    #     defect class that lost `project-template/agent-run.sh` from the map in
+    #     the first place, and Check 39's wholesale leg does not cover it either
+    #     (that leg bounds sites which copy a WHOLE DIRECTORY; this is the
+    #     per-file `cp "$PACK/project-template/<file>"` shape).
+    #
+    #     A file with a copy site and no row installs on a fresh install and is
+    #     then unreachable forever: `--update` derives its entire dispatch set
+    #     from the map, so it can neither refresh nor repair the file.
+    #
+    #     NO allowlist, and none is needed — the clause is self-bounding. It
+    #     considers only LITERAL `$PACK/project-template/...` operands on
+    #     copy-verb lines, and only those resolving to a real FILE. A directory
+    #     operand (`"$PACK/project-template/scripts"`, the fixed-list loop) and
+    #     a loop variable (`cp "$f" ...`) both fall out by construction, which
+    #     is what keeps the legitimate-set EMPTY (`ci-guard-measure-then-bound`).
+    reverse_sites_checked = 0
+    for sid in sorted(stage_copy_bodies):
+        fnname = _CHECK_41_STAGE_SENTINELS[sid][0]
+        # De-duplicated per stage: a single file is routinely named on TWO
+        # copy-verb lines (the `existing_classifier_copy` arm and the plain
+        # `cp` fallback of the same `if`), and one missing row is one finding,
+        # not two.
+        literals = {
+            f"project-template/{m.group(1)}"
+            for m in _CHECK_41_PACK_SRC_LITERAL.finditer(stage_copy_bodies[sid])
+        }
+        for pack_rel in sorted(literals):
+            if not (REPO_ROOT / pack_rel).is_file():
+                continue  # directory operand / stale literal — not a per-file ship
+            reverse_sites_checked += 1
+            if pack_rel in entries:
+                continue
+            fail(
+                f"{pack_rel} — `{fnname}()` (stage {sid}) copies this file to "
+                f"the client from a per-file literal, but it has NO "
+                f"`_CLIENT_INSTALLED_FILES` inventory row. A fresh install "
+                f"places the file and `--update` then cannot see it at all: "
+                f"the dispatch set is derived entirely from the map, so the "
+                f"client keeps whatever bytes it first received, forever. Add "
+                f"a row to the inventory block in scripts/init-project.sh of "
+                f"the form `#   {pack_rel}  ->  <project_relpath>  "
+                f"[stage:{sid},cmd_update]  [class:<token>]`. There is no "
+                f"exemption list for this clause: a per-file copy site ships "
+                f"the file, so the file must be refreshable."
+            )
+            any_failed = True
+
     if not any_failed:
         ok(
             f"Check 41 — {files_checked} `_CLIENT_INSTALLED_FILES` entry "
             f"(entries) checked; {files_checked - exempted} resolve to "
             f"existing files at HEAD, {exempted} on exemption allowlist. "
             f"{copy_sites_checked} hand-enumerated row(s) verified to have a "
-            f"fresh-install copy site. {classes_checked} declared `[class:]` "
+            f"fresh-install copy site. {reverse_sites_checked} per-file copy "
+            f"literal(s) verified to have an inventory row. "
+            f"{classes_checked} declared `[class:]` "
             f"operand(s) resolve to a real dispatch arm. "
             f"Self-documenting list is consistent with copy-site state."
         )
@@ -5561,4 +5870,10 @@ __all__ = [
     "_CHECK_71_SKILL_MIRROR_DIRS",
     "check_pack_skill_mirror_identity",
     "check_sanctioned_pack_side_shipped",
+    "_CHECK_39_WHOLESALE_SCRIPTS",
+    "_CHECK_39_PACK_VAR_ASSIGN",
+    "_CHECK_39_WHOLESALE_USE",
+    "_CHECK_39_WHOLESALE_MARKER",
+    "_check_39_wholesale_roots",
+    "_check_39_wholesale_marker_present",
 ]

@@ -145,7 +145,17 @@ $IMMUTABLE_PROJECT_RELS
 EOF
 
     mkdir -p "$(dirname "$manifest")"
-    mv "$tmp" "$manifest"
+    # Write only when the CONTENT differs. `mv` always stamps a fresh mtime,
+    # and this file is regenerated unconditionally on every install AND every
+    # `--update`, so an otherwise no-op refresh still left the client one
+    # modified file in `git status` every single run. The manifest is a
+    # deterministic function of the installed immutable files, so identical
+    # content means there is nothing to record.
+    if [[ -f "$manifest" ]] && cmp -s "$tmp" "$manifest"; then
+        rm -f "$tmp"
+    else
+        mv "$tmp" "$manifest"
+    fi
     say "immutable-manifest: generated $manifest (pack-version: $pack_version)"
     return 0
 }

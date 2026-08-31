@@ -90,10 +90,28 @@ assert_eq "1.16 .agents-plugin/optiquity-agents/agents/coder.md → pack-agent" 
 assert_eq "1.17 .agents-plugin/other-ns/agents/x-bar.md → custom-agent" \
     "custom-agent" \
     "$(customization_classify .agents-plugin/other-ns/agents/x-bar.md)"
-# Bundle meta files (plugin.json, not under agents/) fall to generic.
-assert_eq "1.18 .agents-plugin/optiquity-agents/plugin.json → generic" \
-    "generic" \
+# The bundle MANIFEST is PACK-OWNED, so it classifies pack-agent (the
+# replace-if-different class the bundle's own agents use) — NOT the `generic`
+# fallthrough. `generic` is a PROSE class and the BD-287 class gate hands prose
+# classes to the line-merger; a `git merge-file` line-union of a JSON object is
+# textually lossless yet structurally invalid, and a stale manifest describes
+# the wrong agent bundle.
+assert_eq "1.18 .agents-plugin/optiquity-agents/plugin.json → pack-agent" \
+    "pack-agent" \
     "$(customization_classify .agents-plugin/optiquity-agents/plugin.json)"
+# Robust to a different plugin namespace dir, same as the agents legs above.
+assert_eq "1.18b .agents-plugin/other-ns/plugin.json → pack-agent" \
+    "pack-agent" \
+    "$(customization_classify .agents-plugin/other-ns/plugin.json)"
+# The manifest leg is keyed at the bundle ROOT and must NOT disturb the `x-`
+# custom-agent invariant one level down (a client custom is still preserved).
+assert_eq "1.18c .agents-plugin/optiquity-agents/agents/x-baz.md → custom-agent" \
+    "custom-agent" \
+    "$(customization_classify .agents-plugin/optiquity-agents/agents/x-baz.md)"
+# A non-manifest bundle-root doc keeps the generic prose class.
+assert_eq "1.18d .agents-plugin/optiquity-agents/RUNTIME-SUBAGENT-PATTERN.md → generic" \
+    "generic" \
+    "$(customization_classify .agents-plugin/optiquity-agents/RUNTIME-SUBAGENT-PATTERN.md)"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Group 2: text-strategy dispositions
@@ -600,6 +618,205 @@ assert_eq "3.3 BITE: broken append-into wiring DUPLICATES commit-gate (count 2)"
     "2" "$cg_bad"
 
 rm -rf "$T3B"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 3c: BD-293 F2/F3 — the PACK-AUTHORED provenance signal + the
+#           no-op-write guard on the structured strategy
+# ─────────────────────────────────────────────────────────────────────────
+#
+# F2. With an EMPTY BASE (which every structured class gets, deliberately) the
+# key-merge cannot tell a STALE PACK value from a client edit: its rule is
+# "both added with different values -> keep project value", so an older PACK
+# value is protected as though the client had written it. The caller can prove
+# out of band that OURS is a blob the pack has held at that source path, and
+# passes the proof as the SEPARATE `_CP_OURS_PACK_AUTHORED` signal (never as a
+# BASE — the empty-BASE dispatch is load-bearing). Under the proof there is no
+# client content to protect, so DEST becomes THEIRS with NO sidecar, and the
+# recorded disposition is the truthful `pack-update-applied`.
+#
+# F3. A structured merge whose output equals DEST must NOT rewrite DEST: `cp`
+# stamps a new mtime, so a no-op `--update` would dirty the client's git status.
+#
+# Both directions are asserted: signal SET adopts, signal UNSET keeps today's
+# key-merge behaviour (the guard must not fire on an unproven file).
+
+printf "\n=== Group 3c: BD-293 pack-authored signal + no-op-write guard ===\n"
+
+T3C=$(mktemp -d "${TMPDIR:-/tmp}/cp-json-prov.XXXXXX")
+state="$T3C/state"
+setup_state "$state"
+
+# The pack CHANGED a pack-owned key's value; the client still holds the older
+# pack value verbatim (it never edited the file).
+cat > "$T3C/ours.json" <<'EOF'
+{ "hooks": { "PostToolUse": [ { "matcher": "Edit", "hooks": [] } ] }, "env": { "A": "1" } }
+EOF
+cat > "$T3C/theirs.json" <<'EOF'
+{ "hooks": { "PreToolUse": [ { "matcher": "Agent", "hooks": [] } ] }, "env": { "A": "1" } }
+EOF
+
+# ── 3c.1 signal UNSET (unproven OURS): today's key-merge, sidecar, stale key ──
+cp "$T3C/ours.json" "$T3C/dest-unset.json"
+_CP_OURS_PACK_AUTHORED=0
+_CP_OURS_BLOB=""
+customization_preserve "" "$T3C/ours.json" "$T3C/theirs.json" \
+    ".claude/settings.json" "$T3C/dest-unset.json" claude-settings >/dev/null
+last=$(tail -1 "$state/dispositions.tsv")
+assert_contains "3c.1 unproven OURS -> needs-reconciliation (unchanged behaviour)" \
+    "$last" "customization-detected-needs-reconciliation"
+assert_contains "3c.1 unproven OURS keeps the STALE pack-owned key" \
+    "$(cat "$T3C/dest-unset.json")" "PostToolUse"
+
+# ── 3c.2 signal SET (proven pack-authored OURS): adopt THEIRS, no sidecar ─────
+cp "$T3C/ours.json" "$T3C/dest-set.json"
+_CP_OURS_PACK_AUTHORED=1
+_CP_OURS_BLOB="deadbeefcafe"
+customization_preserve "" "$T3C/ours.json" "$T3C/theirs.json" \
+    ".claude/settings.json" "$T3C/dest-set.json" claude-settings >/dev/null
+last=$(tail -1 "$state/dispositions.tsv")
+assert_contains "3c.2 proven pack-authored OURS -> pack-update-applied" \
+    "$last" "pack-update-applied"
+assert_eq "3c.2 sidecar column is a dash (no reconciliation artifact)" \
+    "-" "$(printf '%s' "$last" | cut -f5)"
+assert_eq "3c.2 NO sidecar file on disk" \
+    "absent" "$([ -e "$T3C/dest-set.json.pre-update" ] && echo present || echo absent)"
+assert_contains "3c.2 recoverability note names the pack blob" \
+    "$last" "deadbeefcafe"
+assert_eq "3c.2 DEST is byte-identical to THEIRS (the v11 wiring arrived)" \
+    "same" "$(cmp -s "$T3C/dest-set.json" "$T3C/theirs.json" && echo same || echo differ)"
+
+# ── 3c.3 CONVERGENCE: re-running on the adopted DEST is a no-op ───────────────
+# The whole point of F2 — the second `--update` must settle, not re-emit.
+_CP_OURS_PACK_AUTHORED=1
+customization_preserve "" "$T3C/dest-set.json" "$T3C/theirs.json" \
+    ".claude/settings.json" "$T3C/dest-set.json" claude-settings >/dev/null
+last=$(tail -1 "$state/dispositions.tsv")
+assert_contains "3c.3 second pass converges to unchanged-pack" "$last" "unchanged-pack"
+assert_eq "3c.3 still no sidecar after the second pass" \
+    "absent" "$([ -e "$T3C/dest-set.json.pre-update" ] && echo present || echo absent)"
+
+# ── 3c.4 F3: a byte-identical structured write does NOT touch DEST ────────────
+# `_cp_copy_if_different` is the write-site guard; assert the mtime is stable
+# across a write whose payload equals DEST, and that a DIFFERING payload still
+# writes (the guard must not suppress a real update).
+#
+# mtime is read through python3's `os.path.getmtime`, NEVER `stat -f %m`.
+# `stat -f %m` is BSD-only. On the GNU coreutils build CI runs (all four
+# `validate-pack.yml` jobs are `ubuntu-latest`) `-f` means `--file-system` and
+# `%m` is parsed as a second FILE operand, so the command exits 1 and prints a
+# filesystem-status block. This file runs under `set -uo pipefail` with no
+# `-e`, so that rc is swallowed and BOTH sides of the comparison capture the
+# SAME block — and a filesystem block does not change when a file's mtime
+# changes. The assertion would therefore pass unconditionally on the only
+# platform it has to hold on. Same remedy and same rationale as
+# `scripts/lib/tracker-migrate-reverse.sh` `_tmr_mapping_age_secs`, and the
+# same trap `scripts/tests/test-init-project.sh` avoids by other means.
+_cp_test_mtime() {
+    python3 -c 'import os,sys;print(os.path.getmtime(sys.argv[1]))' "$1"
+}
+printf 'same\n' > "$T3C/g-src.txt"
+printf 'same\n' > "$T3C/g-dst.txt"
+touch -t 200001010000 "$T3C/g-dst.txt"
+stamped=$(_cp_test_mtime "$T3C/g-dst.txt")
+_cp_copy_if_different "$T3C/g-src.txt" "$T3C/g-dst.txt"
+assert_eq "3c.4 identical payload leaves DEST untouched (mtime stable)" \
+    "$stamped" "$(_cp_test_mtime "$T3C/g-dst.txt")"
+printf 'different\n' > "$T3C/g-src2.txt"
+_cp_copy_if_different "$T3C/g-src2.txt" "$T3C/g-dst.txt"
+assert_eq "3c.4 BITE: differing payload IS written" \
+    "different" "$(cat "$T3C/g-dst.txt")"
+
+# BITE PROOF for the mtime probe itself. The stability assertion above is only
+# meaningful if the probe can report a CHANGE; a probe that returns a constant
+# (which is exactly what `stat -f %m` degrades to on GNU) makes it vacuous. Run
+# the identical comparison with the guard MUTATED AWAY — a bare `cp`, which
+# always restamps — and require the probe to see it.
+printf 'same\n' > "$T3C/g-src3.txt"
+printf 'same\n' > "$T3C/g-dst3.txt"
+touch -t 200001010000 "$T3C/g-dst3.txt"
+stamped3=$(_cp_test_mtime "$T3C/g-dst3.txt")
+cp "$T3C/g-src3.txt" "$T3C/g-dst3.txt"
+assert_eq "3c.4 BITE: the mtime probe detects an unconditional cp (guard mutated away)" \
+    "changed" \
+    "$([ "$stamped3" != "$(_cp_test_mtime "$T3C/g-dst3.txt")" ] && echo changed || echo same)"
+
+# ── 3c.5 F4: a CLEAN merge that removed a client-held value must SAY SO ───────
+# With an ancestor available the three-way honours a pack RETIREMENT, which
+# removes a value the client still holds — at rc 0, so no warning and no
+# sidecar. Honouring it is correct; doing it invisibly is not. The disposition
+# row is the only surface a client would ever see it on.
+#
+# Both directions, because a disclosure that fires on every clean merge is
+# noise and a disclosure that never fires is decoration.
+cat > "$T3C/f4-base.json" <<'EOF'
+{ "keep": "v1", "retired": "x", "env": { "A": "1" } }
+EOF
+# OURS carries an ordinary client edit (`env.A`) so the file classifies as
+# customized and reaches the real-merge arm — the arm the disclosure lives on.
+cat > "$T3C/f4-ours.json" <<'EOF'
+{ "keep": "v1", "retired": "x", "env": { "A": "client" } }
+EOF
+cat > "$T3C/f4-theirs.json" <<'EOF'
+{ "keep": "v2", "env": { "A": "1" } }
+EOF
+cp "$T3C/f4-ours.json" "$T3C/f4-dest.json"
+_CP_OURS_PACK_AUTHORED=0
+customization_preserve "$T3C/f4-base.json" "$T3C/f4-ours.json" \
+    "$T3C/f4-theirs.json" ".claude/settings.json" "$T3C/f4-dest.json" \
+    claude-settings >/dev/null
+last=$(tail -1 "$state/dispositions.tsv")
+assert_contains "3c.5 a clean merge is still merged-with-customization" \
+    "$last" "merged-with-customization"
+assert_contains "3c.5 the row DISCLOSES the removed client-held value" \
+    "$last" "1 project-held value(s) removed as pack-retired"
+assert_eq "3c.5 the disclosure did NOT mint a sidecar (rc stayed 0)" \
+    "absent" "$([ -e "$T3C/f4-dest.json.pre-update" ] && echo present || echo absent)"
+assert_eq "3c.5 the pack-retired key really is gone from DEST" \
+    "gone" "$(grep -q '"retired"' "$T3C/f4-dest.json" && echo present || echo gone)"
+
+# BITE: a clean merge that removed NOTHING must carry no disclosure at all.
+cat > "$T3C/f4b-base.json" <<'EOF'
+{ "keep": "v1", "env": { "A": "1" } }
+EOF
+cat > "$T3C/f4b-ours.json" <<'EOF'
+{ "keep": "v1", "env": { "A": "client" } }
+EOF
+cp "$T3C/f4b-ours.json" "$T3C/f4b-dest.json"
+customization_preserve "$T3C/f4b-base.json" "$T3C/f4b-ours.json" \
+    "$T3C/f4-theirs.json" ".claude/settings.json" "$T3C/f4b-dest.json" \
+    claude-settings >/dev/null
+last=$(tail -1 "$state/dispositions.tsv")
+assert_eq "3c.5 BITE: a merge that dropped nothing carries NO disclosure" \
+    "clean" \
+    "$(printf '%s' "$last" | grep -q 'project-held value(s) removed' && echo disclosed || echo clean)"
+
+# ── 3c.6 J6: a warning verdict that RECURS must name the way out ──────────────
+# A client who deleted a whole key the pack is still editing gets the same rc 2
+# on every run, and nothing they do to the sidecar changes it. The row has to
+# name both exits or the repeat is unactionable.
+cat > "$T3C/j6-base.json" <<'EOF'
+{ "hooks": { "PostToolUse": [] }, "env": { "A": "1" } }
+EOF
+cat > "$T3C/j6-ours.json" <<'EOF'
+{ "env": { "A": "1" } }
+EOF
+cat > "$T3C/j6-theirs.json" <<'EOF'
+{ "hooks": { "PostToolUse": [], "PreToolUse": [] }, "env": { "A": "1" } }
+EOF
+cp "$T3C/j6-ours.json" "$T3C/j6-dest.json"
+customization_preserve "$T3C/j6-base.json" "$T3C/j6-ours.json" \
+    "$T3C/j6-theirs.json" ".claude/settings.json" "$T3C/j6-dest.json" \
+    claude-settings >/dev/null
+last=$(tail -1 "$state/dispositions.tsv")
+assert_contains "3c.6 the recurring conflict is still needs-reconciliation" \
+    "$last" "customization-detected-needs-reconciliation"
+assert_contains "3c.6 the row names the remedy, not just the verdict" \
+    "$last" "to settle: re-add the named key"
+
+# Reset the caller-supplied signals so later groups see the default.
+_CP_OURS_PACK_AUTHORED=0
+_CP_OURS_BLOB=""
+rm -rf "$T3C"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Group 4: structured config (TOML — OT model_providers removal case)

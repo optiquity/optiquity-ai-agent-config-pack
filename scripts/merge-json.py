@@ -33,9 +33,22 @@ Recursive merge over the union of keys present in any of the three:
 
 Usage:
     merge-json.py BASE OURS THEIRS [--output PATH]
+    merge-json.py "" OURS THEIRS --pack-authored-base PACK --pack-source REL
 
 If --output is not given, the merged JSON is written to stdout.
 A trailing newline is emitted.
+
+DERIVED BASE (--pack-authored-base / --pack-source)
+
+`--update` has no recorded BASE for a structured file, and a BASE-less
+three-way cannot tell a stale PACK value from a CLIENT edit: every diverged
+pack key in the file freezes and the run re-emits a sidecar. Passing the pack
+root plus the file's pack SOURCE relpath lets this script DERIVE the common
+ancestor from the pack's own object history, per key
+(`scripts/lib/pack_provenance_keys.py`). Used ONLY when the positional BASE is
+empty — an explicitly supplied BASE always wins, so the migrator path is
+untouched. A derivation that finds nothing leaves BASE absent, i.e. exactly
+today's behaviour.
 
 Exit codes:
     0  merged cleanly (no warnings)
@@ -49,6 +62,11 @@ import json
 import sys
 from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+from pack_provenance_keys import (  # noqa: E402
+    derive_base, emit_removal_notices, historical_docs,
+)
 
 
 def load_json(path: str | None) -> Any:
@@ -266,6 +284,12 @@ def main() -> int:
     ap.add_argument("ours", help="project file pre-migration")
     ap.add_argument("theirs", help="v10 pack template file")
     ap.add_argument("--output", help="write merged JSON to PATH (default: stdout)")
+    ap.add_argument("--pack-authored-base", metavar="PACK_ROOT",
+                    help="derive BASE from this pack clone's object history "
+                         "(only when the positional BASE is empty)")
+    ap.add_argument("--pack-source", metavar="RELPATH",
+                    help="pack-relative SOURCE path of OURS, the key the "
+                         "history walk is indexed by")
     args = ap.parse_args()
 
     try:
@@ -283,6 +307,29 @@ def main() -> int:
         print("error: theirs file is missing or empty", file=sys.stderr)
         return 1
 
+    # DERIVED BASE. Strictly a fallback: an explicit BASE is never overridden,
+    # so the migrator's three-way keeps the ancestor it recorded. A failed or
+    # empty derivation leaves BASE absent — the pre-existing behaviour, never
+    # an error, because a refresh must still run on a pack clone whose history
+    # cannot answer.
+    #
+    # Broad `except` on purpose. The derivation is an ACCELERATOR — it can only
+    # improve the ancestor, never be required for one — so any failure inside
+    # it must cost the ancestor and nothing else. Letting it raise would exit 1
+    # here, and the structured strategy reads a non-0/2 rc as "merge errored",
+    # sidecars the client's file, and copies THEIRS over it: a whole-file
+    # clobber triggered by a git or parse hiccup. Degrading to the empty base
+    # keeps the pre-fix behaviour, which is stale but never destructive.
+    if not is_present(base) and args.pack_authored_base and args.pack_source:
+        try:
+            docs = historical_docs(args.pack_authored_base, args.pack_source,
+                                   json.loads)
+            derived = derive_base(ours, docs)
+        except Exception:  # noqa: BLE001 — see above
+            derived = None
+        if derived is not None:
+            base = derived
+
     warnings: list[str] = []
     merged = merge_value(base, ours, theirs, "", warnings)
 
@@ -294,6 +341,9 @@ def main() -> int:
 
     for w in warnings:
         print(f"warning: {w}", file=sys.stderr)
+    # Disclosure, not a verdict: a value the client holds can be dropped at
+    # rc 0 when the pack has retired it. See the DERIVED BASE note above.
+    emit_removal_notices(ours, merged, sys.stderr)
 
     return 2 if warnings else 0
 
