@@ -1,11 +1,18 @@
 # .graphifyignore — graphify-only exclusion list for the pack repo (BD-225).
-# MATCHER: graphify uses Python fnmatch (detect.py), last-match-wins — NOT git's
-# pathspec. So `*` crosses `/`, `**` is NOT special (just two `*`), and bracket
-# classes `[Aa]` work. Patterns below were validated against fnmatch.
-# ONE-FILE-OR-THE-OTHER: when this file is present, graphify uses ONLY this list
-# and does NOT read .gitignore for indexing. graphify's built-in always-pruned
-# set (graphify-out, node_modules, .git, .venv, build, dist, .next, target,
-# caches) applies on top of this and is NOT re-listed.
+# MATCHER: gitignore syntax, as git implements it. `*` does NOT cross `/`; `**`
+# IS special; a pattern with no `/` matches a BASENAME at any depth; a leading
+# `/` anchors to the repo root; a trailing `/` matches directories only; `!`
+# negates; bracket classes `[Aa]` work; last match wins.
+# MERGED, NOT EXCLUSIVE: graphify reads .gitignore (including nested ones) AND
+# this file. This file is evaluated LAST and wins conflicts, but it can only
+# EXCLUDE FURTHER — a `!` here cannot re-include something .gitignore excludes.
+# It narrows; it never widens. graphify's built-in always-pruned set
+# (graphify-out, node_modules, .git, .venv, build, dist, .next, target, caches)
+# applies on top and is NOT re-listed.
+# CONSEQUENCE: most entries below are redundant with .gitignore and kept only as
+# documentation of intent. The ones doing real work are the archive glob (those
+# files are git-TRACKED) and the `.env` family (.gitignore deliberately
+# re-includes four fixture .env files; this file excludes them again).
 # Index scope = WHOLE REPO minus the exclusions below (BD-225 D6 "start big";
 # revisit via BD-234 after burn-in).
 
@@ -23,11 +30,11 @@
 # ── Sub-agent worktree checkouts (mirrors .gitignore) ──
 # Isolated per-agent worktrees materialized by sub-agent worktree isolation.
 # Each is a FULL second checkout of this repo, so indexing one duplicates every
-# node in the graph and corrupts query/affected results. This list is read
-# INSTEAD of .gitignore (see the ONE-FILE-OR-THE-OTHER note above), so the
-# .gitignore entry does NOT propagate here — the exclusion must be restated.
-# Plain literal, not a `**/` form: the matcher is fnmatch, where `*` crosses
-# `/` and `**` is not special.
+# node in the graph and corrupts query/affected results. .gitignore carries the
+# identical entry and is now merged, so this line is redundant — kept because
+# the consequence of losing it is a silently corrupted graph, and a reader
+# should not have to consult another file to see that this case is handled.
+# Root-anchored by the embedded `/`; directory-only by the trailing `/`.
 .claude/worktrees/
 
 # ── Local tracker state (regenerable; no graph value) ──
@@ -61,11 +68,14 @@ scripts/.bd119-pre-refactor-monolith.sh.snapshot
 # Mirrors test-fixtures/.gitignore: ignore EVERYTHING under test-fixtures/
 # except the committed recipe/manifest files and the static-snapshot dir.
 # Future-forward — any NEW generated dir not in the keep-list below is excluded
-# automatically (no edit needed). fnmatch-validated against detect.py: `*`
-# crosses `/` (so `test-fixtures/*` excludes every depth); the bare keep-dir
-# line re-includes the directory ITSELF so its contents survive gitignore's
-# parent-exclusion rule; last-match-wins ⇒ the negations MUST follow the broad
-# exclude (and the whole block sits after the archive glob so it wins).
+# automatically (no edit needed): `test-fixtures/*` matches each DIRECT child,
+# and excluding a directory excludes its contents, so a single `*` reaches every
+# depth without crossing `/` itself. The bare keep-dir line re-includes the
+# directory ITSELF, which is what lets its contents be reached at all — a
+# negation cannot rescue a file whose parent directory stays excluded. Last
+# match wins, so the negations MUST follow the broad exclude. These negations
+# are permitted because test-fixtures/.gitignore already admits these same
+# paths; this file can only narrow, never re-include past .gitignore.
 test-fixtures/*
 !test-fixtures/README.md
 !test-fixtures/build.sh
