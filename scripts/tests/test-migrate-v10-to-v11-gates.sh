@@ -557,10 +557,12 @@ assert_eq "4.2 stage cap is 30, gate is 31 — disjoint" "ok" \
 # 4.3 End-to-end: --apply that fails Gate 2 surfaces rc=31 (verified by
 #     forcing a Gate 2 failure mid-apply). We do this by planting a
 #     custom HELP-FRAGMENT.md inside the v10 fixture BEFORE --dry-run.
-#     S5's artifact-install honors the `! -f` guard and keeps our custom
-#     copy; Gate 2's help-fragments check then observes the byte-mismatch
-#     against the pack mirror and FAILs, propagating EXIT_GATE_FAILED=31
-#     through the apply.sh post_report_hook wrapper.
+#     docs/pack/HELP-FRAGMENT.md is a `migrate`-tagged install-map row, so
+#     S5 dispatches it: the client's custom copy is a divergence the engine
+#     preserves in a *.v10-customized sidecar while installing the current
+#     pack text, and Gate 2's sidecar check then FAILs on the unresolved
+#     sidecar, propagating EXIT_GATE_FAILED=31 through the apply.sh
+#     post_report_hook wrapper.
 #
 #     Why HELP-FRAGMENT.md (not trinity)? The v10 customization-surface
 #     fingerprint covers trinity but NOT docs/pack/HELP-FRAGMENT.md, so
@@ -575,14 +577,30 @@ printf '# CUSTOM HELP FRAGMENT — DRIFT FOR GATE 2 TEST\n' \
 git -C "$T" add -A >/dev/null
 git -C "$T" commit -q -m "plant drifted HELP-FRAGMENT.md" 2>/dev/null
 PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1
-# Now run --apply. S5 keeps our custom HELP-FRAGMENT. Gate 2 fires from
-# inside post_report_hook, observes the help-fragment byte-mismatch,
-# and apply.sh exits with EXIT_GATE_FAILED.
+# Now run --apply. Gate 2 fires from inside post_report_hook, observes the
+# unresolved sidecar S5 wrote for the drifted file, and apply.sh exits with
+# EXIT_GATE_FAILED.
 out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply "$T" 2>&1) ; rc=$?
 assert_eq "4.3 --apply exit code on Gate 2 FAIL" "31" "$rc"
 assert_contains "4.3 output names Gate 2"           "$out" "Gate 2 FAIL"
-assert_contains "4.3 output names help-fragments"   "$out" "[FAIL] help-fragments"
-assert_contains "4.3 output names HELP-FRAGMENT.md" "$out" "HELP-FRAGMENT.md differs"
+assert_contains "4.3 output names sidecars"         "$out" "[FAIL] sidecars"
+assert_contains "4.3 output names HELP-FRAGMENT.md" "$out" \
+    "HELP-FRAGMENT.md.v10-customized"
+# The gate failing is only half the contract: the client's drifted content
+# must survive and the pack's current text must be installed. Asserting both
+# is what keeps 4.3 from passing on a migrator that simply refused to touch
+# the file (the pre-C8 behavior, where the drift was left live, unattributed,
+# and with nothing preserved).
+if [[ -f "$T/docs/pack/HELP-FRAGMENT.md.v10-customized" ]] \
+   && grep -q "CUSTOM HELP FRAGMENT" "$T/docs/pack/HELP-FRAGMENT.md.v10-customized"; then
+    t_pass "4.3 client's drifted bytes preserved in the .v10-customized sidecar"
+else
+    t_fail "4.3 client's drifted bytes lost (no sidecar holding the original)"
+fi
+cmp -s "$T/docs/pack/HELP-FRAGMENT.md" \
+       "$REPO_ROOT/project-template/docs/pack/HELP-FRAGMENT.md" \
+    && t_pass "4.3 current pack HELP-FRAGMENT.md installed alongside the sidecar" \
+    || t_fail "4.3 HELP-FRAGMENT.md left at the client's drifted bytes"
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────

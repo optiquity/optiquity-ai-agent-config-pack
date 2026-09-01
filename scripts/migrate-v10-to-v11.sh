@@ -145,6 +145,59 @@ migrator_artifact_installs() { :; }
 # and S4 relocations stages. We use this hook to perform both S4 and S5
 # in a single unit so the adapter retains the exact stdout + report.md
 # shape the pre-refactor monolith produced.
+# Internal: the client's top-level surface directories as they stood BEFORE
+# the migration touched anything.
+#
+# The map-derived install in S5 resolves a REAL v10 BASE per row, and the
+# three-way engine reads an absent OURS against a PRESENT base as
+# `project-deleted-pack-kept` — "the client deleted this; honor it" — which
+# records a disposition and copies NOTHING. That reading is correct only
+# when the v10 install could have put a file at that destination. It is
+# wrong for a destination on a surface v11 INTRODUCES: `.agents/skills/`
+# holds the Antigravity skill pool, and a v10 client's third-CLI skills
+# lived under `.gemini/skills/`, so `.agents/` does not exist in a v10 tree
+# at all. Every pool skill that also shipped at v10 has a v10 pack blob, so
+# a base keyed on the PACK path alone would classify all of them
+# `project-deleted-pack-kept` under `.agents/` and the client's Antigravity
+# install would come out of the migration missing them — a deletion honored
+# that the client never performed.
+#
+# The discriminator is therefore the DESTINATION's top-level surface: a
+# surface absent from the client's pre-migration tree is one the client
+# never had, so nothing under it can be a deletion and its rows dispatch
+# with an EMPTY base (`new-file-in-pack` → clean add). A surface the client
+# DOES have keeps the real v10 base, so genuine deletions under `.claude/`
+# and `.codex/` are still honored and stale files under them still refresh.
+#
+# The answer is read from the S1 BACKUP MIRROR rather than from the live
+# target, because by S5 the live target no longer holds it: S3 creates
+# surfaces on its own (`.agents/mcp_config.json` is a manifest row, and
+# writing it makes `.agents/` exist). The backup is a faithful full mirror
+# of the pre-migration working tree, and reading it there rather than
+# snapshotting into a variable is what makes this correct under the BD-095
+# two-phase flow — `--apply` and `--resume` are SEPARATE processes that
+# re-enter at S4/S5, so any value held only in shell memory from a
+# pre-dispatch hook is gone by the time S5 runs in them. The mirror is on
+# disk and every phase can read it.
+#
+# Memoised: one glob per run, no subprocess.
+_V10_TO_V11_PRE_SURFACES=""
+_v10_to_v11_pre_surfaces() {
+    [[ -z "$_V10_TO_V11_PRE_SURFACES" ]] || return 0
+
+    [[ -d "$_MIGRATOR_BACKUP_DIR" ]] || fail_stage S5 \
+        "cannot determine the pre-migration surfaces: backup mirror missing at $_MIGRATOR_BACKUP_DIR"
+
+    _V10_TO_V11_PRE_SURFACES=$'\n'
+    local d b
+    for d in "$_MIGRATOR_BACKUP_DIR"/* "$_MIGRATOR_BACKUP_DIR"/.*; do
+        [[ -d "$d" ]] || continue
+        b="${d##*/}"
+        case "$b" in .|..|.git) continue ;; esac
+        _V10_TO_V11_PRE_SURFACES="${_V10_TO_V11_PRE_SURFACES}${b}"$'\n'
+    done
+}
+
 migrator_post_dispatch_hook() {
     # In --dry-run mode the framework's stage helpers short-circuit
     # writes; the adapter's hook must do the same so BD-095 can rely on
@@ -321,22 +374,177 @@ _v10_to_v11_relocate_legacy_docs() {
     info "relocation: $moved legacy doc(s) moved"
 }
 
-# Internal: v11 artifact install. Mirrors monolith stage_s5_v11_artifacts
-# (lines 305–370). Plain `cp` with no BD-088 disposition record so the
-# behavior-preservation harness's report.md A3 axis stays clean (the
-# pre-refactor monolith never recorded these).
+# Internal: the set of client-relative paths S3 has ALREADY dispatched, so
+# the map-derived install in S5 does not dispatch them a SECOND time.
+#
+# Both S3 legs are covered and both are DERIVED from the adapter's own
+# hooks — never a hand-kept name list that could drift from what S3
+# actually iterates:
+#   * `migrator_manifest` — its 12 `transform` rows carry per-file
+#     transformation semantics (trinity marker-preservation, structured-
+#     config key-merge) that the map does not model. Every one of those 12
+#     rows is ALSO a `migrate`-tagged map row, so without this the map
+#     dispatch would run `customization_preserve` a second time on each and
+#     write two disposition rows for one file. The manifest is the more
+#     specific declaration, so the manifest WINS.
+#   * `migrator_directory_sweeps` — S3 sweeps `project-template/scripts`
+#     and the two loose per-CLI agent dirs file-by-file, mapping pack-dir
+#     to project-dir by stripping the `project-template/` prefix. The map
+#     declares the same three families as glob rows, so the same
+#     double-dispatch applies and the sweep likewise wins.
+#
+# Emitted as one newline-delimited blob; the caller wraps it in sentinel
+# newlines and tests membership with a pure-bash `==` glob, so the loop
+# costs ZERO subprocesses per row.
+_v10_to_v11_s3_covered_set() {
+    migrator_manifest 2>/dev/null \
+        | awk -F'\t' 'NF >= 2 && substr($1, 1, 1) != "#" { print $2 }'
+
+    local rows row pack_dir proj_dir f
+    rows=$(migrator_directory_sweeps 2>/dev/null || true)
+    [[ -n "$rows" ]] || return 0
+    while IFS= read -r row; do
+        [[ -n "$row" ]] || continue
+        case "${row#"${row%%[![:space:]]*}"}" in '#'*) continue ;; esac
+        pack_dir=$(printf '%s' "$row" | awk '{print $1}')
+        [[ -n "$pack_dir" && -d "$PACK/$pack_dir" ]] || continue
+        proj_dir="${pack_dir#project-template/}"
+        while IFS= read -r f; do
+            [[ -n "$f" ]] || continue
+            printf '%s\n' "$proj_dir/${f#"$PACK/$pack_dir/"}"
+        done < <(find "$PACK/$pack_dir" -type f -print 2>/dev/null)
+    done <<< "$rows"
+}
+
+# Internal: the map-derived install. Every `migrate`-tagged install-map row
+# that S3 has not already dispatched goes through `customization_preserve`
+# with the migrator's REAL v10 BASE.
+#
+# This is what makes the migration ASK ABOUT CURRENCY instead of treating
+# PRESENCE as sufficient. The install map already declares every file the
+# pack ships to a client and which stages install it; deriving S5 from that
+# declaration means a doc lands because it is a map row, not because its
+# name was added to a list here — so a v10 client migrating today receives
+# the CURRENT v11 text of every declared file in ONE step, with no
+# follow-up `--update`.
+#
+# Per row the engine decides, and each outcome is the client-correct one:
+#   * client's copy equals the v10 base, pack changed → pack-update-applied
+#     (the stale doc REFRESHES);
+#   * no base and no client copy → new-file-in-pack (a clean add);
+#   * client edited their copy → the ordinary customization-preserve
+#     outcome, sidecar and all — a client edit is never silently clobbered;
+#   * base present and client copy absent on a surface the client HAS →
+#     project-deleted-pack-kept, the deletion is honored.
+_v10_to_v11_map_derived_install() {
+    local dispatch covered
+    # Read the map from the pack being migrated FROM, not from wherever
+    # this adapter happens to live.
+    INSTALL_MAP_PACK="$PACK"
+    export INSTALL_MAP_PACK
+    dispatch=$(install_map_dispatch_set migrate) \
+        || fail_stage S5 "install map is unreadable; cannot run the map-derived install"
+    # The parser's non-empty floor guards each map BLOCK; the stage-token
+    # filter runs after it, so a map whose blocks parse but whose `migrate`
+    # axis selects nothing still returns rc 0 with zero rows. There is no
+    # legitimate pack in which the migration has nothing to install, so a
+    # mistyped stage token must fail loudly here rather than complete a
+    # migration that installed not one file.
+    [[ -n "$dispatch" ]] \
+        || fail_stage S5 "install map declares no migrate rows; cannot run the map-derived install"
+
+    covered=$'\n'"$(_v10_to_v11_s3_covered_set)"$'\n'
+    _v10_to_v11_pre_surfaces
+
+    # ONE reusable temp file for the whole loop rather than a mktemp per
+    # row — the base blob is consumed by customization_preserve before the
+    # next row overwrites it.
+    local base_tmp
+    base_tmp=$(mktemp) \
+        || fail_stage S5 "failed to create the map-derived install base tempfile"
+
+    local row rest pack_rel proj_rel cls surface base theirs ours dest
+    local dispatched=0 precedence=0 landed_miss=0
+    local missing_list=""
+    while IFS= read -r row; do
+        [[ -n "$row" ]] || continue
+        pack_rel="${row%%:*}"
+        rest="${row#*:}"
+        proj_rel="${rest%%:*}"
+        cls="${rest##*:}"
+
+        # S3 precedence — pure-bash membership, no fork.
+        if [[ "$covered" == *$'\n'"$proj_rel"$'\n'* ]]; then
+            precedence=$((precedence + 1))
+            continue
+        fi
+
+        # BASE resolution. A destination on a surface the client did not
+        # have before the migration gets an EMPTY base (see
+        # _v10_to_v11_pre_surfaces); everything else gets the real v10
+        # blob, which is absent for a net-new pack path anyway.
+        base=""
+        surface="${proj_rel%%/*}"
+        if [[ "$surface" == "$proj_rel" ]] \
+           || [[ "$_V10_TO_V11_PRE_SURFACES" == *$'\n'"$surface"$'\n'* ]]; then
+            if migrator_baseline_to_tmp "$pack_rel" "$base_tmp"; then
+                base="$base_tmp"
+            fi
+        fi
+
+        theirs="$PACK/$pack_rel"
+        ours="$_MIGRATOR_TARGET/$proj_rel"
+        dest="$_MIGRATOR_TARGET/$proj_rel"
+        [[ -f "$theirs" ]] || theirs=""
+        [[ -f "$ours" ]]   || ours=""
+
+        _CP_LAST_DISP=""
+        if [[ -n "$cls" ]]; then
+            customization_preserve \
+                "$base" "$ours" "$theirs" "$proj_rel" "$dest" "$cls" >/dev/null
+        else
+            # Empty class means self-classify: the Antigravity bundle mixes
+            # pack agents (replace-if-different) with client `x-` customs
+            # (preserved), so forcing one class would three-way a custom.
+            customization_preserve \
+                "$base" "$ours" "$theirs" "$proj_rel" "$dest" >/dev/null
+        fi
+        dispatched=$((dispatched + 1))
+
+        # declare-verify-backing: a row whose disposition is not one of the
+        # deliberate NO-COPY outcomes must have produced a file on disk.
+        # Asserting the FILE is what makes this guard load-bearing —
+        # a recorded disposition is not an installed document.
+        case "${_CP_LAST_DISP:-}" in
+            project-deleted-pack-kept|removed-everywhere \
+            |removed-by-pack-clean|removed-by-pack-customized)
+                ;;
+            *)
+                if [[ ! -f "$dest" ]]; then
+                    landed_miss=$((landed_miss + 1))
+                    missing_list="$missing_list $proj_rel"
+                fi
+                ;;
+        esac
+    done <<< "$dispatch"
+
+    rm -f "$base_tmp"
+
+    (( landed_miss == 0 )) || fail_stage S5 \
+        "map-derived install incomplete: $landed_miss declared file(s) missing after dispatch:$missing_list"
+
+    info "map-derived install: $dispatched file(s) dispatched from the install map ($precedence already dispatched by S3)"
+}
+
+# Internal: v11 artifact install. The bulk of this stage is the map-derived
+# dispatch above, which records a BD-088 disposition for every file it
+# touches; what remains here is the work the map does not model —
+# generating the integrity manifest over the freshly installed files,
+# seeding the groupings TOC, and the two presence guards.
 _v10_to_v11_install_v11_artifacts() {
     say "── S5 — install v11 client artifacts ──"
 
-    # HELP-FRAGMENT.md
-    mkdir -p "$_MIGRATOR_TARGET/docs/pack"
-    local help_src
-    for help_src in HELP-FRAGMENT.md; do
-        local pack_file="$PACK/project-template/docs/pack/$help_src"
-        if [[ -f "$pack_file" && ! -f "$_MIGRATOR_TARGET/docs/pack/$help_src" ]]; then
-            cp "$pack_file" "$_MIGRATOR_TARGET/docs/pack/$help_src"
-        fi
-    done
+    _v10_to_v11_map_derived_install
 
     # tracker.toml.example — NO LONGER INSTALLED (BD-214, 2026-06-13).
     #   Tracker integration is deferred indefinitely and flat-file
@@ -344,18 +552,6 @@ _v10_to_v11_install_v11_artifacts() {
     #   longer lays down the flip-material config template (design D-C).
     #   The dormant config record stays committed pack-side at
     #   project-template/tracker.toml.project-example for a future resumption.
-
-    # .github/ISSUE_TEMPLATE/*
-    if [[ -d "$PACK/project-template/.github/ISSUE_TEMPLATE" ]]; then
-        mkdir -p "$_MIGRATOR_TARGET/.github/ISSUE_TEMPLATE"
-        local form
-        for form in "$PACK/project-template/.github/ISSUE_TEMPLATE"/*.yml; do
-            [[ -e "$form" ]] || continue
-            local name; name=$(basename "$form")
-            [[ -f "$_MIGRATOR_TARGET/.github/ISSUE_TEMPLATE/$name" ]] && continue
-            cp "$form" "$_MIGRATOR_TARGET/.github/ISSUE_TEMPLATE/$name"
-        done
-    fi
 
     # Antigravity agent plugin BUNDLE — net-new v11 surface (BD-221). v11
     # ships the third-CLI agents as a plugin bundle at
@@ -372,11 +568,14 @@ _v10_to_v11_install_v11_artifacts() {
     #   - a client x- custom agent already in the bundle is PRESERVED
     #     (never overwritten), via the .agents-plugin/*/agents/x-* →
     #     custom-agent classifier leg added in customization-preserve.sh.
-    # Self-classify (NO forced class arg) so each bundle file gets the
-    # right class per the corrected classifier legs. Base is "" — the
-    # bundle is a net-new v11 surface with no v10 baseline (the v10 tag has
-    # no .agents-plugin/ path); on a v10→v11 migration `ours` is absent so
-    # three_way_classify yields new-file-in-pack → clean add. The departing
+    # The bundle's 18 files are `migrate`-tagged map rows (two explicit
+    # rows plus the `agents/*` family), so the map-derived dispatch above
+    # installs them — self-classifying, because the map declares
+    # `[class:self]` for exactly this reason: the bundle mixes pack agents
+    # with client `x-` customs and a forced class would three-way a custom.
+    # The base is empty there too, and for the same reason it was empty in
+    # the hand-rolled loop this replaces: `.agents-plugin/` is a net-new
+    # v11 surface the v10 tag has no path for. The departing
     # Gemini x- customs are lifted INTO this bundle by the separate
     # _v10_to_v11_lift_gemini_customs_to_bundle step (runs after this, before
     # the .gemini/ retire). Re-run disposition: on a second pass `ours` is now
@@ -393,21 +592,6 @@ _v10_to_v11_install_v11_artifacts() {
     # departing .gemini/ tree and this .agents-plugin/ surface are disjoint).
     local bundle_src="$PACK/project-template/.agents-plugin/optiquity-agents"
     if [[ -d "$bundle_src" ]]; then
-        local bundle_file rel proj_rel bundle_dest bundle_ours
-        while IFS= read -r bundle_file; do
-            rel="${bundle_file#"$bundle_src/"}"
-            proj_rel=".agents-plugin/optiquity-agents/$rel"
-            bundle_dest="$_MIGRATOR_TARGET/$proj_rel"
-            bundle_ours="$bundle_dest"
-            [[ -f "$bundle_ours" ]] || bundle_ours=""
-            mkdir -p "$(dirname "$bundle_dest")"
-            # Engine-routed, self-classify (no forced class): bundle pack
-            # agents → replace-if-different; bundle x- customs → preserved.
-            # Base "" — net-new surface, no v10 baseline (NEW design §3.1).
-            customization_preserve \
-                "" "$bundle_ours" "$bundle_file" "$proj_rel" "$bundle_dest" \
-                >/dev/null
-        done < <(find "$bundle_src" -type f)
         # Superset-tolerant count guard (NOT init's strict ==): the
         # replace-if-different + preserve-x- semantics mean a project that
         # customized its .agents-plugin/agents/ (kept an x- custom, removed
@@ -426,39 +610,20 @@ _v10_to_v11_install_v11_artifacts() {
             fail_stage S5 "Antigravity bundle install incomplete: $missing_bundle pack agent(s) missing under .agents-plugin/optiquity-agents/agents"
     fi
 
-    # BD-167 (per-entry split, mandatory v11.0): canonical project-side
-    # per-entry tree skeletons.
-    #
-    # Source: project-template/docs/project/<stream>/{_rules.md,
-    # _intro.md}. Four streams: backlog,
-    # implementation-plan, changelog, groupings (the fourth stream per
-    # BD-262/BD-263). Client-immutable — the
-    # supporting-file installation creates the directory if absent and
-    # copies each support file iff the destination is absent (additive,
-    # no overwrite of client-customized supporting files; BD-088
-    # truthful-report mechanism handles divergence at next pack
-    # version-bump per ARCHITECTURE-PER-ENTRY-SPLIT.md §4.2).
+    # BD-167 (per-entry split, mandatory v11.0): the canonical project-side
+    # per-entry tree skeletons — `_rules.md` + `_intro.md` for each of the
+    # four streams (backlog, implementation-plan, changelog, groupings) —
+    # are eight `migrate`-tagged map rows, installed by the map-derived
+    # dispatch above. They are client-immutable, and routing them through
+    # the engine is what makes a client whose `_rules.md` has drifted from
+    # the pack get the CURRENT contract text rather than keeping a v10-era
+    # copy forever.
     #
     # Per-entry decompose of the project's existing monolithic
     # BACKLOG.md / IMPLEMENTATION-PLAN.md / CHANGELOG.md is BD-165's
-    # job (6th sub-op in this hook; lands in commit 19c). BD-167
-    # installs the contract templates ONLY. Groupings has no decompose
-    # sub-op — v10 has no groupings monolith.
-    local stream_dir support_basenames base
-    for stream_dir in backlog implementation-plan changelog groupings; do
-        local pack_stream_dir="$PACK/project-template/docs/project/$stream_dir"
-        local target_stream_dir="$_MIGRATOR_TARGET/docs/project/$stream_dir"
-        [[ -d "$pack_stream_dir" ]] || continue
-        mkdir -p "$target_stream_dir"
-        # All four streams ship _rules.md + _intro.md.
-        support_basenames="_rules.md _intro.md"
-        for base in $support_basenames; do
-            if [[ -f "$pack_stream_dir/$base" \
-               && ! -f "$target_stream_dir/$base" ]]; then
-                cp "$pack_stream_dir/$base" "$target_stream_dir/$base"
-            fi
-        done
-    done
+    # job (6th sub-op in this hook). BD-167 installs the contract
+    # templates ONLY. Groupings has no decompose sub-op — v10 has no
+    # groupings monolith.
 
     # Integrity manifest — generate at migration by hashing the installed
     # _rules.md; the shipped verify-immutable.sh checks the client tree
@@ -467,8 +632,8 @@ _v10_to_v11_install_v11_artifacts() {
         || fail_stage S5 "immutable-manifest generation failed against $_MIGRATOR_TARGET"
 
     # BD-263 (F10 fold): seed the empty groupings `_toc.md` iff absent.
-    # The skeleton loop above ships docs/project/groupings/{_rules.md,
-    # _intro.md}; without this seed the migrator path would yield a
+    # The map-derived dispatch above ships docs/project/groupings/
+    # {_rules.md,_intro.md}; without this seed the migrator path would yield a
     # groupings stream whose SOLE readable index is missing — the
     # BD-165 decompose sub-op regenerates TOCs for the three v10-monolith
     # streams only (v10 has no groupings monolith to decompose). Guarded
@@ -485,60 +650,41 @@ _v10_to_v11_install_v11_artifacts() {
             || fail_stage S5 "per_entry_regenerate_toc failed for project-groupings (groupings _toc.md seed)"
     fi
 
-    # Net-new v11 SKILL.md fan-out (BD-257 D1): install every skill that is
-    # net-new since the v10 baseline into all three per-CLI skill homes
-    # (.claude/skills/, .codex/skills/, .agents/skills/ — Antigravity reads
-    # `.agents/skills/`) iff the destination is absent (additive; no overwrite
-    # of client-customized skill files; the BD-088 truthful-report mechanism
-    # handles divergence on later pack version-bumps).
+    # SKILL.md fan-out. The skill pool is a `migrate`-tagged family row
+    # (`project-template/skills/*/SKILL.md` → `.{claude,codex,agents}/
+    # skills/*/SKILL.md`), so the map-derived dispatch above fans EVERY
+    # pool skill to all three per-CLI homes.
     #
-    # SELF-MAINTAINING: the net-new set is DERIVED at runtime — the pack git
-    # index (`git ls-files`) diffed against MIGRATOR_BASELINE_TAG (a
-    # `git cat-file -e <tag>:<relpath>` object-existence probe — present at
-    # the baseline ⇒ NOT net-new ⇒ skip), never a hand-maintained name list.
-    # BD-274 + every future skill rides for free with ZERO further migrator
-    # edits. This reuses the framework's v10-baseline mechanism (the same
-    # MIGRATOR_BASELINE_TAG the `migrator_baseline_to_tmp` primitive uses),
-    # so it is an extension within the adapter hook, not a migrator rewrite.
+    # What that changes, and why it is the point of this stage: the fan-out
+    # this replaces gated on net-new-since-v10 and copied only when the
+    # destination was absent, so a pool skill that shipped at v10 was never
+    # looked at again — a client carrying the v10 text of a skill the pack
+    # has since rewritten kept the v10 text through the migration, and a
+    # client missing one never received it. Routing every pool skill
+    # through the engine asks the currency question for each: a client copy
+    # that still matches the v10 base REFRESHES to the v11 text, a client
+    # who edited theirs keeps their edit, and a client who deleted a skill
+    # from a home they HAVE still has that deletion honored
+    # (project-deleted-pack-kept). The `.agents/` home is the exception the
+    # pre-migration surface read exists for: a v10 tree keeps its
+    # third-CLI skills under `.gemini/skills/`, so `.agents/` is net-new
+    # and every pool skill lands there rather than reading as deleted.
     #
-    # Honors client deletions of v10 skills: a v10 skill the client removed
-    # is not net-new (it existed at the baseline) so it is never re-added —
-    # consistent with the engine's `project-deleted-pack-kept` disposition
-    # (scripts/lib/customization-preserve.sh). For a net-new skill the client
-    # never had it, so "iff absent" always fires and it installs.
-    #
-    # This SUBSUMES the former hardcoded 6-skill loop AND the pm-help
-    # special-case (both DELETED — pm-help is net-new since v10, so it lands
-    # via this loop). The client help RUNNER `scripts/pm-help.sh` is an
-    # ordinary `project-template/scripts/` file that ships via the
+    # The client help RUNNER `scripts/pm-help.sh` is an ordinary
+    # `project-template/scripts/` file that ships via the
     # `project-template/scripts` directory sweep — NO pack-side file
     # (pack-help.sh / lib/detect.sh) is copied into the client: no dual-use,
     # and the ship-allowlist is empty per BD-257
     # (dependency-direction-placement conjunct (c)).
-    local skill_relpath skill_name cli skill_dest missing_skill=0
-    while IFS= read -r skill_relpath; do
-        # Net-new gate: skip any skill that already existed at the v10
-        # baseline (object present at the tag ⇒ cat-file -e succeeds).
-        if git -C "$PACK" cat-file -e "$MIGRATOR_BASELINE_TAG:$skill_relpath" 2>/dev/null; then
-            continue
-        fi
-        skill_name=$(basename "$(dirname "$skill_relpath")")
-        for cli in .claude .codex .agents; do
-            skill_dest="$_MIGRATOR_TARGET/$cli/skills/$skill_name/SKILL.md"
-            if [[ ! -f "$skill_dest" ]]; then
-                mkdir -p "$_MIGRATOR_TARGET/$cli/skills/$skill_name"
-                # Source is a client deliverable under project-template/ (the
-                # copy vector Check 47 verifies as no-dual-use-clean); the
-                # literal project-template/ prefix keeps that machine-checkable.
-                cp "$PACK/project-template/skills/$skill_name/SKILL.md" "$skill_dest"
-            fi
-        done
-    done < <(git -C "$PACK" ls-files 'project-template/skills/*/SKILL.md')
-
-    # declare-verify-backing: every net-new skill MUST land in all three
+    #
+    # declare-verify-backing: every NET-NEW skill MUST land in all three
     # per-CLI homes. For a net-new skill the client never had it, so there
     # is no legitimate divergence — a STRICT presence guard is correct here
-    # (unlike the bundle's superset-tolerant guard). Fail loud if any missing.
+    # (unlike the bundle's superset-tolerant guard), and it asserts the
+    # FILE, not a disposition row. Pre-existing pool skills are deliberately
+    # NOT asserted: an honored client deletion legitimately leaves those
+    # absent. Fail loud if any net-new one is missing.
+    local skill_relpath skill_name cli missing_skill=0
     while IFS= read -r skill_relpath; do
         git -C "$PACK" cat-file -e "$MIGRATOR_BASELINE_TAG:$skill_relpath" 2>/dev/null && continue
         skill_name=$(basename "$(dirname "$skill_relpath")")
@@ -1036,6 +1182,15 @@ if [[ ! -f "$SCRIPT_DIR/lib/prompt.sh" ]]; then
 fi
 # shellcheck source=lib/prompt.sh disable=SC1091
 . "$SCRIPT_DIR/lib/prompt.sh"
+
+# The install map is the ONE declaration of what the pack installs to
+# clients; `install_map_dispatch_set migrate` is what S5's map-derived
+# install iterates. Existence-guarded like the prompt library above.
+if [[ ! -f "$SCRIPT_DIR/lib/install-map.sh" ]]; then
+    die "missing install-map reader: $SCRIPT_DIR/lib/install-map.sh" "$EXIT_INTERNAL"
+fi
+# shellcheck source=lib/install-map.sh disable=SC1091
+. "$SCRIPT_DIR/lib/install-map.sh"
 
 # ── BD-095 two-phase mode dispatch ─────────────────────────────────────────
 #

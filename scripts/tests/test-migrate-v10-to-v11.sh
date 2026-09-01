@@ -499,8 +499,13 @@ rm -rf "$T"
 printf "\n=== Group 3: BD-042 relocation ===\n"
 
 T=$(make_v10_target)
-# Inject legacy root-level doc that should relocate.
-echo "# legacy METHODOLOGY" > "$T/METHODOLOGY.md"
+# Inject the legacy root-level doc that should relocate, carrying the bytes a
+# real pre-relocation client holds: the pack's own text at the baseline. The
+# relocated file then lands at a path the map dispatches, where an unmodified
+# pack copy is a clean pack-update — so this case tests RELOCATION only. The
+# customization collision is a separate case, asserted at 3.2.
+git -C "$REPO_ROOT" show "${V10_TAG:-v10}:supporting-docs/METHODOLOGY.md" \
+    > "$T/METHODOLOGY.md" 2>/dev/null
 git -C "$T" add -A >/dev/null
 git -C "$T" commit -q -m "legacy root doc" 2>/dev/null
 
@@ -518,6 +523,48 @@ if [[ -f "$T/docs/pack/METHODOLOGY.md" \
 else
     t_fail "3.1 legacy file disappeared (no relocation)"
 fi
+# The relocated doc is not merely present — an untouched baseline copy is
+# brought CURRENT, which is the whole point of dispatching the relocation
+# destination instead of leaving it wherever the move put it.
+cmp -s "$T/docs/pack/METHODOLOGY.md" "$REPO_ROOT/supporting-docs/METHODOLOGY.md" \
+    && t_pass "3.1 relocated METHODOLOGY.md refreshed to the current pack text" \
+    || t_fail "3.1 relocated METHODOLOGY.md left at its pre-migration bytes"
+
+rm -rf "$T"
+
+# 3.2 A legacy root doc the client AUTHORED collides with a pack doc at the
+# relocation destination. The migration must NOT silently clobber it: the
+# client's bytes survive in a sidecar, the run records the path with its
+# companion artifact, and the post-Phase-A gate refuses to call the run clean
+# so the user is routed to reconciliation. Under the pre-C8 migrator this path
+# was unreachable — docs/pack/METHODOLOGY.md was never dispatched at all.
+T=$(make_v10_target)
+printf '# legacy METHODOLOGY\n' > "$T/METHODOLOGY.md"
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "client-authored legacy root doc" 2>/dev/null
+
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$T" 2>&1) ; rc=$?
+[[ "$rc" -ne 0 ]] \
+    && t_pass "3.2 client-authored collision does not report success (rc=$rc)" \
+    || t_fail "3.2 client-authored collision reported rc=0 (customization silently clobbered?)"
+
+if [[ -f "$T/docs/pack/METHODOLOGY.md.v10-customized" ]] \
+   && grep -q "legacy METHODOLOGY" "$T/docs/pack/METHODOLOGY.md.v10-customized"; then
+    t_pass "3.2 client's authored bytes preserved in the .v10-customized sidecar"
+else
+    t_fail "3.2 client's authored bytes lost (no sidecar with the original content)"
+fi
+
+t32_disp="$T/.pack-migrate-v10-to-v11/dispositions.tsv"
+t32_diff=$(awk -F'\t' '$3 == "docs/pack/METHODOLOGY.md" { print $6 }' "$t32_disp" 2>/dev/null | head -1)
+if [[ -n "$t32_diff" && "$t32_diff" != "-" && -e "$t32_diff" ]]; then
+    t_pass "3.2 divergence is attributed: disposition row names a three-way diff that exists on disk"
+else
+    t_fail "3.2 divergence unattributed (no companion diff artifact recorded/written)"
+fi
+
+assert_contains "3.2 gate refuses to pass with an unresolved sidecar" "$out" \
+    "unresolved *.v10-customized"
 
 rm -rf "$T"
 
@@ -845,6 +892,181 @@ else
 fi
 
 rm -rf "$G6"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 7: T-MIGRATE-CURRENCY — the migration leaves every declared file
+# CURRENT, not merely present
+# ─────────────────────────────────────────────────────────────────────────
+#
+# The invariant, verbatim: after an install path completes, every path the
+# install map declares is PRESENT, and its bytes are BYTE-IDENTICAL to its
+# declared pack source — unless the run left the destination holding merged
+# or deliberately-preserved content AND recorded that path in the run's
+# disposition report together with the COMPANION ARTIFACT it wrote for it (a
+# three-way diff or a sidecar). A path the run never dispatched, a path left
+# at its prior bytes with no such record and artifact, and any divergence the
+# run could not attribute, are all STALE.
+#
+# Encoded as: present ∧ (bytes == source ∨ (row in dispositions.tsv ∧
+# companion artifact exists on disk)). Every term is a byte-compare or a
+# file-existence test — no judgement, and nothing is weakened to "present".
+#
+# The fixture is a V10-FAITHFUL tree, which the minimal `make_v10_target`
+# deliberately is not. Currency is only a meaningful question against a
+# client that actually holds the v10 files: on a tree that never had them,
+# an absent destination is an honored deletion rather than a staleness, and
+# the assertion would be measuring the fixture instead of the migrator. The
+# v10 shape is taken from the v10 tag itself, and its one structural
+# difference from v11 is stated independently of the migrator: v10's THIRD
+# CLI surface is `.gemini/` (agents and skills both), so a v10 tree has no
+# `.agents/` or `.agents-plugin/` directory at all.
+
+printf "\n=== Group 7: T-MIGRATE-CURRENCY ===\n"
+
+C7T=$(mktemp -d "${TMPDIR:-/tmp}/migrate10-currency.XXXXXX")
+git init -q "$C7T" >/dev/null
+git -C "$C7T" config user.email "test@example.com"
+git -C "$C7T" config user.name  "Test"
+
+# Seed every install-map `migrate` destination that a v10 install would have
+# created, with its v10 bytes. Destinations under the two v11-only surfaces
+# are deliberately NOT seeded; the `.gemini/` analogues are seeded instead.
+c7_seeded=0
+while IFS= read -r c7row; do
+    [[ -n "$c7row" ]] || continue
+    c7_pack="${c7row%%:*}"; c7_rest="${c7row#*:}"; c7_proj="${c7_rest%%:*}"
+    case "$c7_proj" in .agents/*|.agents-plugin/*) continue ;; esac
+    git -C "$REPO_ROOT" cat-file -e "${V10_TAG:-v10}:$c7_pack" 2>/dev/null || continue
+    mkdir -p "$C7T/$(dirname "$c7_proj")"
+    git -C "$REPO_ROOT" show "${V10_TAG:-v10}:$c7_pack" > "$C7T/$c7_proj" 2>/dev/null \
+        && c7_seeded=$((c7_seeded + 1))
+done < <(
+    # shellcheck disable=SC1091
+    . "$REPO_ROOT/scripts/lib/install-map.sh"
+    INSTALL_MAP_PACK="$REPO_ROOT" install_map_dispatch_set migrate
+)
+
+# v10's third-CLI surface: `.gemini/` skills + agents, from the v10 tag.
+while IFS= read -r c7sk; do
+    [[ -n "$c7sk" ]] || continue
+    c7name=$(basename "$(dirname "$c7sk")")
+    mkdir -p "$C7T/.gemini/skills/$c7name"
+    git -C "$REPO_ROOT" show "${V10_TAG:-v10}:$c7sk" \
+        > "$C7T/.gemini/skills/$c7name/SKILL.md" 2>/dev/null
+done < <(git -C "$REPO_ROOT" ls-tree -r --name-only "${V10_TAG:-v10}" \
+             -- project-template/skills/ | grep '/SKILL\.md$')
+
+[[ "$c7_seeded" -gt 0 ]] \
+    && t_pass "7.0 v10-faithful fixture seeded ($c7_seeded map destinations at v10 bytes)" \
+    || t_fail "7.0 v10-faithful fixture seeded nothing (map read failed?)"
+
+git -C "$C7T" add -A >/dev/null
+git -C "$C7T" commit -q -m "v10 installed state" 2>/dev/null
+
+c7_out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$C7T" 2>&1); c7_rc=$?
+assert_eq "7.1 migration on the v10-faithful tree rc=0" "0" "$c7_rc"
+
+c7_disp="$C7T/.pack-migrate-v10-to-v11/dispositions.tsv"
+[[ -f "$c7_disp" ]] \
+    && t_pass "7.2 dispositions.tsv written" \
+    || t_fail "7.2 dispositions.tsv missing at $c7_disp"
+
+# The invariant, one row at a time.
+c7_total=0; c7_stale=0; c7_current=0; c7_attributed=0; c7_stale_list=""
+while IFS= read -r c7row; do
+    [[ -n "$c7row" ]] || continue
+    c7_pack="${c7row%%:*}"; c7_rest="${c7row#*:}"; c7_proj="${c7_rest%%:*}"
+    c7_total=$((c7_total + 1))
+    c7_dest="$C7T/$c7_proj"
+
+    # Term 1 — PRESENT.
+    if [[ ! -f "$c7_dest" ]]; then
+        c7_stale=$((c7_stale + 1)); c7_stale_list="$c7_stale_list
+  absent: $c7_proj"
+        continue
+    fi
+    # Term 2a — bytes identical to the declared pack source.
+    if cmp -s "$c7_dest" "$REPO_ROOT/$c7_pack"; then
+        c7_current=$((c7_current + 1)); continue
+    fi
+    # Term 2b — recorded AND a companion artifact exists on disk. Columns:
+    # 1 disposition, 2 class, 3 relpath, 4 action, 5 sidecar, 6 diff.
+    c7_art=$(awk -F'\t' -v p="$c7_proj" '$3 == p { print $5 "\n" $6 }' \
+                 "$c7_disp" 2>/dev/null)
+    c7_has_art=0
+    while IFS= read -r c7a; do
+        [[ -n "$c7a" && "$c7a" != "-" && -e "$c7a" ]] && c7_has_art=1
+    done <<< "$c7_art"
+    if [[ "$c7_has_art" -eq 1 ]]; then
+        c7_attributed=$((c7_attributed + 1))
+    else
+        c7_stale=$((c7_stale + 1)); c7_stale_list="$c7_stale_list
+  unattributed divergence: $c7_proj"
+    fi
+done < <(
+    # shellcheck disable=SC1091
+    . "$REPO_ROOT/scripts/lib/install-map.sh"
+    INSTALL_MAP_PACK="$REPO_ROOT" install_map_dispatch_set migrate
+)
+
+[[ "$c7_total" -gt 0 ]] \
+    && t_pass "7.3 install map yielded $c7_total migrate-tagged rows to assert" \
+    || t_fail "7.3 install map yielded ZERO migrate rows (the assertion could not fail)"
+
+if [[ "$c7_stale" -eq 0 && "$c7_total" -gt 0 ]]; then
+    t_pass "7.4 every one of $c7_total declared migrate rows is CURRENT after the migration ($c7_current byte-identical, $c7_attributed attributed) — no second --update needed"
+else
+    t_fail "7.4 $c7_stale of $c7_total declared migrate rows STALE after the migration" "$c7_stale_list"
+fi
+
+# The five docs whose absence or staleness is what this group exists to
+# catch, asserted by name so a regression names itself.
+c7_named_bad=""
+for c7pair in "supporting-docs/METHODOLOGY.md docs/pack/METHODOLOGY.md" \
+              "supporting-docs/INSTALL-PROCEDURES.md docs/pack/INSTALL-PROCEDURES.md" \
+              "project-template/docs/pack/OPTIONAL-FEATURES.md docs/pack/OPTIONAL-FEATURES.md" \
+              "project-template/docs/pack/PM-OPERATING-MODES.md docs/pack/PM-OPERATING-MODES.md" \
+              "project-template/docs/pack/PM-DASHBOARD-SPEC.md docs/pack/PM-DASHBOARD-SPEC.md"; do
+    # shellcheck disable=SC2086
+    set -- $c7pair
+    cmp -s "$C7T/$2" "$REPO_ROOT/$1" || c7_named_bad="$c7_named_bad $2"
+done
+[[ -z "$c7_named_bad" ]] \
+    && t_pass "7.5 the five docs land byte-identical to their declared pack source" \
+    || t_fail "7.5 not current after migration:$c7_named_bad"
+
+# Single dispatch: no path may carry two disposition rows. A path covered by
+# BOTH migrator_manifest and a migrate-tagged map row would get two if the
+# S3-precedence skip were dropped, and customization_preserve would have run
+# on it twice.
+c7_dupes=$(awk -F'\t' '{print $3}' "$c7_disp" 2>/dev/null | sort | uniq -d)
+[[ -z "$c7_dupes" ]] \
+    && t_pass "7.6 no path carries more than one disposition row (single dispatch)" \
+    || t_fail "7.6 duplicate disposition rows (double dispatch)" "$(printf '%s' "$c7_dupes" | tr '\n' ' ')"
+
+# ...and specifically for the manifest∩map overlap, which is the set the
+# precedence rule exists for: exactly one row each.
+c7_overlap_bad=""
+while IFS= read -r c7m; do
+    [[ -n "$c7m" ]] || continue
+    c7n=$(awk -F'\t' -v p="$c7m" '$3 == p' "$c7_disp" 2>/dev/null | wc -l | tr -d ' ')
+    [[ "$c7n" == "1" ]] || c7_overlap_bad="$c7_overlap_bad $c7m($c7n)"
+done < <(
+    # shellcheck disable=SC1091
+    . "$REPO_ROOT/scripts/lib/install-map.sh"
+    c7_mapdests=$(INSTALL_MAP_PACK="$REPO_ROOT" install_map_dispatch_set migrate \
+                    | cut -d: -f2 | sort -u)
+    sed -n '/^migrator_manifest() {/,/^}/p' "$MIGRATE_SH" \
+        | awk -F'\t' 'NF >= 4 { print $2 }' | sort -u \
+        | while IFS= read -r c7d; do
+              printf '%s\n' "$c7_mapdests" | grep -F -x -q -- "$c7d" && printf '%s\n' "$c7d"
+          done
+)
+[[ -z "$c7_overlap_bad" ]] \
+    && t_pass "7.7 every manifest row that is ALSO a migrate map row has exactly one disposition row (manifest precedence)" \
+    || t_fail "7.7 manifest∩map paths with a row count != 1:$c7_overlap_bad"
+
+rm -rf "$C7T"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Summary
