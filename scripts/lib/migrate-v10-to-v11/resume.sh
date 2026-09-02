@@ -191,7 +191,11 @@ migrate_v10_to_v11_resume_run() {
             printf '  (c) merge both — resolve conflict markers by hand, or run the\n'
             printf '      resolve-merge-conflicts skill (it folds a trinity sidecar\n'
             printf '      section-aware; scripts/agents are re-applied by hand), then\n'
-            printf '      `touch <sidecar>.resolved`.\n'
+            printf '      `touch <sidecar>.resolved`. The skill is not installed in\n'
+            printf '      this project until the migration finishes — read it from\n'
+            printf '      the pack you are migrating from:\n'
+            printf '        %s/project-template/skills/resolve-merge-conflicts/SKILL.md\n' \
+                "$PACK"
             printf '\n'
             printf 'Unresolved sidecars:\n'
             printf '%s\n' "$unresolved_list"

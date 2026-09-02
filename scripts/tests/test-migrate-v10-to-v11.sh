@@ -931,12 +931,33 @@ git -C "$C7T" config user.name  "Test"
 # Seed every install-map `migrate` destination that a v10 install would have
 # created, with its v10 bytes. Destinations under the two v11-only surfaces
 # are deliberately NOT seeded; the `.gemini/` analogues are seeded instead.
+#
+# FIDELITY RULE — seed what a v10 INSTALL produced, not what the v10 PACK
+# shipped. The two differ for a NAME-TRANSFORM row: one whose v11 destination
+# basename differs from its pack source basename, where the v10 pack carries
+# nothing at the destination's own path. The pack ships `.mcp.json.example`
+# and the v11 map lands it as `.mcp.json`; a v10 install laid down
+# `.mcp.json.example` and never created `.mcp.json`. Seeding the v11
+# destination anyway hands the migrator a file no real client has, and the
+# currency assertion below then passes on a row it is structurally unable to
+# fail. Such rows are recorded in c7_unseeded and asserted explicitly, so the
+# gap is visible as a named assertion instead of a silent client outcome.
+#
+# Cost: the basename compare is pure parameter expansion (no fork). The extra
+# cat-file runs only when the basenames differ — 1 row of the seeded set.
 c7_seeded=0
+c7_unseeded=""
 while IFS= read -r c7row; do
     [[ -n "$c7row" ]] || continue
     c7_pack="${c7row%%:*}"; c7_rest="${c7row#*:}"; c7_proj="${c7_rest%%:*}"
     case "$c7_proj" in .agents/*|.agents-plugin/*) continue ;; esac
     git -C "$REPO_ROOT" cat-file -e "${V10_TAG:-v10}:$c7_pack" 2>/dev/null || continue
+    if [[ "${c7_pack##*/}" != "${c7_proj##*/}" ]] \
+       && ! git -C "$REPO_ROOT" cat-file -e \
+                "${V10_TAG:-v10}:project-template/$c7_proj" 2>/dev/null; then
+        c7_unseeded="$c7_unseeded $c7_proj"
+        continue
+    fi
     mkdir -p "$C7T/$(dirname "$c7_proj")"
     git -C "$REPO_ROOT" show "${V10_TAG:-v10}:$c7_pack" > "$C7T/$c7_proj" 2>/dev/null \
         && c7_seeded=$((c7_seeded + 1))
@@ -973,6 +994,7 @@ c7_disp="$C7T/.pack-migrate-v10-to-v11/dispositions.tsv"
 
 # The invariant, one row at a time.
 c7_total=0; c7_stale=0; c7_current=0; c7_attributed=0; c7_stale_list=""
+c7_gap=0; c7_gap_seen=""
 while IFS= read -r c7row; do
     [[ -n "$c7row" ]] || continue
     c7_pack="${c7row%%:*}"; c7_rest="${c7row#*:}"; c7_proj="${c7_rest%%:*}"
@@ -981,6 +1003,16 @@ while IFS= read -r c7row; do
 
     # Term 1 — PRESENT.
     if [[ ! -f "$c7_dest" ]]; then
+        # A destination the fixture deliberately did NOT seed, because a real
+        # v10 install never created it. The migrator cannot carry forward a
+        # file the client never had, so this absence is a KNOWN GAP in the
+        # migrator rather than a staleness introduced by this run. It is
+        # counted separately and asserted by name below — never folded into
+        # "current", and never silently dropped.
+        if [[ " $c7_unseeded " == *" $c7_proj "* ]]; then
+            c7_gap=$((c7_gap + 1)); c7_gap_seen="$c7_gap_seen $c7_proj"
+            continue
+        fi
         c7_stale=$((c7_stale + 1)); c7_stale_list="$c7_stale_list
   absent: $c7_proj"
         continue
@@ -1014,9 +1046,34 @@ done < <(
     || t_fail "7.3 install map yielded ZERO migrate rows (the assertion could not fail)"
 
 if [[ "$c7_stale" -eq 0 && "$c7_total" -gt 0 ]]; then
-    t_pass "7.4 every one of $c7_total declared migrate rows is CURRENT after the migration ($c7_current byte-identical, $c7_attributed attributed) — no second --update needed"
+    t_pass "7.4 $((c7_total - c7_gap)) of $c7_total declared migrate rows are CURRENT after the migration ($c7_current byte-identical, $c7_attributed attributed, $c7_gap known-gap) — no second --update needed"
 else
     t_fail "7.4 $c7_stale of $c7_total declared migrate rows STALE after the migration" "$c7_stale_list"
+fi
+
+# ── The known-gap class, made visible ──────────────────────────────────────
+# Before the fidelity rule above, these rows were seeded from the pack source
+# and so always passed 7.4 — the guard could not fail on them. They are now
+# pinned by name in BOTH directions: the fixture's unseeded set must be
+# exactly this, and every unseeded row must actually be absent after the
+# migration. A new name-transform row, or a migrator that starts creating one
+# of these, fails here and forces a decision instead of shipping silently.
+c7_gap_expect=".mcp.json"
+c7_unseeded_n="$(printf '%s' "$c7_unseeded" | tr -s ' ' | sed 's/^ //;s/ $//')"
+c7_gap_seen_n="$(printf '%s' "$c7_gap_seen" | tr -s ' ' | sed 's/^ //;s/ $//')"
+
+if [[ "$c7_unseeded_n" == "$c7_gap_expect" ]]; then
+    t_pass "7.4a v10-install-absent set is exactly '$c7_gap_expect' — the fixture seeds no destination a real v10 install lacks"
+else
+    t_fail "7.4a v10-install-absent set changed (update the pin and decide the behaviour)" \
+           "expected '$c7_gap_expect', got '$c7_unseeded_n'"
+fi
+
+if [[ "$c7_gap_seen_n" == "$c7_gap_expect" ]]; then
+    t_pass "7.4b the migration leaves '$c7_gap_expect' ABSENT — the guard now SEES this row instead of passing on fixture-supplied bytes"
+else
+    t_fail "7.4b known-gap row outcome changed" \
+           "expected absent='$c7_gap_expect', got absent='$c7_gap_seen_n'"
 fi
 
 # The five docs whose absence or staleness is what this group exists to
