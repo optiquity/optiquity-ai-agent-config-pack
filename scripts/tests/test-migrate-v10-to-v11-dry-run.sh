@@ -263,6 +263,61 @@ else
     [[ -f "$T/.pack-migrate-v10-to-v11/sentinels/stage-S6.done" ]] \
         && t_pass "4.1 stage-S6.done after --resume" \
         || t_fail "4.1 stage-S6.done missing after --resume"
+
+    # 4.1b BD-293 — ORIGINATION of the BASE-cascade rung-R1 ledger.
+    #
+    # This is the only place in the suite where a migration runs to
+    # completion, so it is where the migrator's own origination is pinned.
+    # `customization_preserve_init` has always CREATED this file, so its
+    # EXISTENCE proves nothing — the pre-fix state was a 44-byte, header-only
+    # file with ZERO data rows, because the sole caller of the record writer
+    # was `cmd_update` itself. A migrated client's first
+    # `init-project.sh --update` therefore found no BASE and reverted every
+    # customization the migration had just preserved. The DATA-ROW COUNT is
+    # the assertion; existence is deliberately not.
+    mig_ledger="$T/.pack-migrate-v10-to-v11/ledger.tsv"
+    mig_rows=$(awk 'substr($0, 1, 1) != "#" && NF > 0' "$mig_ledger" 2>/dev/null \
+        | wc -l | tr -d ' ')
+    [[ "${mig_rows:-0}" -gt 0 ]] \
+        && t_pass "4.1b the migration ORIGINATED an R1 ledger ($mig_rows data rows)" \
+        || t_fail "4.1b the migration left a header-only R1 ledger" "data rows=${mig_rows:-0}"
+    # The recorded sha must RESOLVE in the pack, or R1 materialises nothing
+    # and the rows are decoration.
+    mig_sha=$(awk -F '\t' 'substr($0, 1, 1) != "#" && NF > 0 { print $3; exit }' \
+        "$mig_ledger" 2>/dev/null)
+    if [[ -n "$mig_sha" ]] \
+       && git -C "$REPO_ROOT" cat-file -e "${mig_sha}^{blob}" 2>/dev/null; then
+        t_pass "4.1b a recorded sha resolves to a real pack blob"
+    else
+        t_fail "4.1b a recorded sha does not resolve in the pack" "sha=${mig_sha:-<none>}"
+    fi
+    # The S3-PRECEDENCE rows are the part of the ledger the row COUNT above
+    # cannot see. S3 installed those files from the pack moments earlier, so
+    # they need the same BASE as any mapped path; omitting them reverts
+    # exactly those files on the client's first update. Deleting the staging
+    # block leaves the total comfortably `-gt 0`, so the assertion above stays
+    # green while the rows are gone — measured.
+    #
+    # Keyed on the `s3-dispatched` token, which has exactly ONE writer in the
+    # tree (`scripts/migrate-v10-to-v11.sh`), so a non-zero check is both
+    # attributable and count-FREE. The COUNT is deliberately not asserted: it
+    # is fixture-dependent (this fixture and a full v10-minimal migration
+    # disagree), and pinning it would be a drift tripwire, not a guard.
+    mig_s3=$(awk -F '\t' 'substr($0, 1, 1) != "#" && $4 == "s3-dispatched"' \
+        "$mig_ledger" 2>/dev/null | wc -l | tr -d ' ')
+    [[ "${mig_s3:-0}" -gt 0 ]] \
+        && t_pass "4.1b the S3-precedence rows were STAGED, not skipped ($mig_s3 rows)" \
+        || t_fail "4.1b no s3-dispatched rows: S3-installed files carry no BASE into the first --update"
+    # Same reason the total-row sha is checked: a staged row whose sha does
+    # not resolve materialises nothing and is decoration.
+    mig_s3_sha=$(awk -F '\t' 'substr($0, 1, 1) != "#" && $4 == "s3-dispatched" { print $3; exit }' \
+        "$mig_ledger" 2>/dev/null)
+    if [[ -n "$mig_s3_sha" ]] \
+       && git -C "$REPO_ROOT" cat-file -e "${mig_s3_sha}^{blob}" 2>/dev/null; then
+        t_pass "4.1b an s3-dispatched row's sha resolves to a real pack blob"
+    else
+        t_fail "4.1b an s3-dispatched row's sha does not resolve" "sha=${mig_s3_sha:-<none>}"
+    fi
 fi
 rm -rf "$T"
 

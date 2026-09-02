@@ -230,11 +230,28 @@ customization_preserve_init() {
 #
 # The NEXT run reads it and materialises that blob as the merge BASE
 # (`git -C <pack> cat-file blob <sha>`), which is what lets the classifier
-# tell a pack-authored stale file from client work. It is written into the
-# state dir the caller already initialises — `.pack-update/` on an update,
-# `.pack-install-reconcile/` on a fresh install — so no new client-tree
-# artefact surface appears; the caller's own `customization_preserve_init`
-# creates it.
+# tell a pack-authored stale file from client work.
+#
+# ORIGINATION — every path that puts pack files in a client tree writes one.
+# The ledger is what a run leaves for the NEXT run, so a client whose FIRST
+# `--update` finds none has no BASE for any file, and every file they edited
+# classifies `project-shadows-new-pack`: the pack version installed, their
+# bytes parked in a sidecar. That reverts real work on the first update of a
+# client's life, whatever put the pack there. So the ledger is NOT an
+# update-only artefact — a fresh install and a migration each originate one:
+#
+#   `.pack-update/`              a prior `--update`, and the fresh install's
+#                                own seed (the update mechanism's state dir;
+#                                the install writes ONLY `ledger.tsv` into it
+#                                via customization_preserve_ledger_init, so no
+#                                empty dispositions report appears there)
+#   `.pack-install-reconcile/`   a `--trinity=merge` install's reconcile dir
+#                                (unchanged: created ONLY on a merge row —
+#                                its presence is the signal the
+#                                resolve-merge-conflicts skill keys on)
+#   `.pack-migrate-<from>-to-<to>/`  a migration's own state dir
+#
+# `init-project.sh` `cmd_update` reads all three (R1 READ).
 #
 # The sha is supplied BY THE CALLER, never computed here: a caller hashes its
 # whole write set in one `git hash-object --stdin-paths` pass, where computing
@@ -242,6 +259,62 @@ customization_preserve_init() {
 
 customization_preserve_ledger_path() {
     printf '%s\n' "${_CP_LEDGER_FILE:-}"
+}
+
+# LEDGER-ONLY init, for an install path that must originate an R1 baseline
+# without publishing a reconcile report. `customization_preserve_init` also
+# writes `dispositions.tsv` and creates `diffs/`, and an empty dispositions
+# report in a client tree reads as "a run happened and found nothing" — which
+# for `.pack-update/` would claim an `--update` had run. This creates the
+# directory, writes the header, and sets `_CP_LEDGER_FILE`; nothing else.
+#
+# Callers that already ran `customization_preserve_init` must NOT call this:
+# the header write would truncate the ledger that init just created.
+customization_preserve_ledger_init() {
+    local state_dir="${1:-}"
+    if [[ -z "$state_dir" ]]; then
+        printf 'error: customization_preserve_ledger_init: STATE_DIR required\n' >&2
+        return 1
+    fi
+    mkdir -p "$state_dir" || return 1
+    _CP_LEDGER_FILE="$state_dir/$_CP_LEDGER_BASENAME"
+    printf '# proj_rel\tpack_source\tblob_sha\tdisposition\n' > "$_CP_LEDGER_FILE"
+}
+
+# Pair a staged row set with the blob shas of the pack files it names, and
+# hand each pair to the record writer.
+#
+# STAGE SHAPE, one row per line:
+#   proj_rel<TAB>pack_source<TAB>disposition<TAB>abs_pack_path
+#
+# ONE `git hash-object` pass over the whole set: `--stdin-paths` reads a path
+# per line and emits a sha per line IN ORDER, so the cost is one fork for the
+# run rather than one per file (ci-check-runtime-compounding). `--no-filters`
+# for the reason pack-provenance.sh documents — a local `core.autocrlf` must
+# not be able to change the recorded sha, or a later run would materialise a
+# BASE that never existed. The line-count guard is load-bearing: a hash pass
+# that died partway would otherwise pair each path with the WRONG file's sha.
+#
+# Shared by every origination path (update, fresh install, migration) so the
+# recorded shape cannot drift between them.
+customization_preserve_ledger_flush() {
+    local stage="${1:-}"
+    [[ -n "$stage" && -s "$stage" ]] || return 0
+    [[ -n "${_CP_PACK_ROOT:-}" ]] || return 0
+    local shas paired
+    shas=$(mktemp "${TMPDIR:-/tmp}/cp-shas.XXXXXX") || return 0
+    paired=$(mktemp "${TMPDIR:-/tmp}/cp-paired.XXXXXX") || { rm -f "$shas"; return 0; }
+    if cut -f4 "$stage" \
+         | git -C "$_CP_PACK_ROOT" hash-object --no-filters --stdin-paths > "$shas" 2>/dev/null \
+       && [[ "$(wc -l < "$shas")" -eq "$(wc -l < "$stage")" ]]; then
+        paste "$stage" "$shas" > "$paired"
+        local lrel lsrc ldisp lpath lsha
+        while IFS=$'\t' read -r lrel lsrc ldisp lpath lsha; do
+            customization_preserve_ledger_record "$lrel" "$lsrc" "$lsha" "$ldisp"
+        done < "$paired"
+    fi
+    rm -f "$shas" "$paired"
+    return 0
 }
 
 customization_preserve_ledger_record() {

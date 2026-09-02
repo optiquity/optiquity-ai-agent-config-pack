@@ -135,6 +135,12 @@ _cp_report_reconcile_section() {
     printf '## Files needing manual reconciliation (%s)\n\n' "$total"
     printf 'Both you and the pack edited these. How you resolve each depends on\n'
     printf 'the file type, grouped below.\n\n'
+    printf 'Each group below ends by telling you to mark the file resolved —\n'
+    printf 'remove the sidecar, or add its `.resolved` companion. When a\n'
+    printf 'sidecar ALREADY has a `.resolved` companion, replace it rather\n'
+    printf 'than touching it again, so the companion matches the sidecar you\n'
+    printf 'just reconciled:\n\n'
+    printf '    rm <sidecar>.resolved && touch <sidecar>.resolved\n\n'
 
     # (a) prose auto-merge that left conflict markers (action `merged`, prose
     #     class generic/pm-chat only — structured `merged` rows go to (d)).

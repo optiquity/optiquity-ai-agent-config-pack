@@ -105,6 +105,14 @@ assert_contains "2.3 report has H1" "$report" \
     "AI Agent Config Pack — --update report"
 assert_contains "2.3 trinity surfaced as needs-reconciliation" "$report" \
     "Files needing manual reconciliation"
+# The reconciliation area's intro tells the client how to re-flag a sidecar
+# that ALREADY carries a `.resolved` companion. That advice is the report-side
+# half of a pair whose `die`-string sibling IS asserted (16.5b leg B, "re-flag
+# it"); the report half had no assertion at all, so it could be deleted with
+# the whole suite green. Asserted against the RENDERED report, so it pins the
+# text a client actually reads rather than a source line.
+assert_contains "2.3 the report says how to REPLACE a stale .resolved companion" \
+    "$report" 'rm <sidecar>.resolved && touch <sidecar>.resolved'
 
 # 2.4 sidecars written for the trinity files (real-merge-required path).
 [[ -f "$T/CLAUDE.md.pre-update" ]] \
@@ -790,14 +798,36 @@ out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T6" 2>&1) ; rc=$?
 assert_eq "6.6 second --update rc=0 (no reconcile step between runs)" "0" "$rc"
 
 # 6.6b IDEMPOTENCE (BD-293 T-IDEM). A second --update against an UNCHANGED
-# pack must be a true no-op: zero sidecars on disk and zero reconciliation
-# findings in the report. rc=0 above already proves run 1 left no sidecars
-# (the stale-sidecar pre-check would have refused to start); these two
-# assertions pin the property for run 2 as well. --update wipes and rewrites
-# $TARGET/.pack-update on entry, so the TSV read here is run 2's own report.
+# pack must be a true no-op: no sidecar that DIFFERS from its live file, and
+# zero reconciliation findings in the report. rc=0 above already proves run 1
+# left nothing blocking (the stale-sidecar pre-check would have refused to
+# start); these assertions pin the property for run 2 as well. --update wipes
+# and rewrites $TARGET/.pack-update on entry, so the TSV read here is run 2's
+# own report.
+#
+# THE CRITERION IS "no sidecar that DIFFERS from its live file", never "zero
+# sidecars". The strict form is unsatisfiable for a real client: one who has
+# deleted a top-level key the pack still edits gets that file re-dispatched
+# every run, the merge honours the removal so the live file never changes, and
+# each new sidecar is therefore a byte-copy of it — forever. The gate's own
+# predicate is `cmp` (init-project.sh, the stale-sidecar pre-check), so stating
+# the criterion in the gate's terms is what keeps criterion and gate from
+# drifting apart. Group 16.6 measures that client directly.
+#
+# On THIS fixture — nothing customized, no structured key deleted — the
+# stricter count is also 0, so both are asserted: the criterion, and the
+# stronger fact that happens to hold here. Neither is relaxed.
+diff_sidecars6=0
+while IFS= read -r sc6; do
+    [[ -n "$sc6" ]] || continue
+    cmp -s "$sc6" "${sc6%.pre-update}" || diff_sidecars6=$((diff_sidecars6 + 1))
+done < <(find "$T6" -type f -name "*.pre-update" \
+    -not -path "*/.pack-update/*" -not -path "*/.git/*")
+assert_eq "6.6b no sidecar DIFFERS from its live file after the unchanged-pack re-run" \
+    "0" "$diff_sidecars6"
 sidecars6=$(find "$T6" -type f -name "*.pre-update" \
     -not -path "*/.pack-update/*" -not -path "*/.git/*" | wc -l | tr -d ' ')
-assert_eq "6.6b zero *.pre-update sidecars after the unchanged-pack re-run" \
+assert_eq "6.6b and on this fixture the count is zero outright" \
     "0" "$sidecars6"
 disp_tsv6="$T6/.pack-update/dispositions.tsv"
 if [[ -f "$disp_tsv6" ]]; then
@@ -1614,6 +1644,26 @@ n_dotfile=$(awk -F '\t' '$3 == "scripts/.docs-gate-allowlist.txt"' "$DTSV" | wc 
 
 PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
 assert_eq "15.1 T-IDEM run 2 rc=0" "0" "$?"
+# THE CRITERION IS "no sidecar that DIFFERS from its live file", never "zero
+# sidecars" — the same restatement 6.6b carries, for the same idempotence
+# property. The strict form is unsatisfiable for a client who has deleted a
+# top-level structured key the pack still edits: that file is re-dispatched
+# every run, the merge honours the removal so the live file never changes,
+# and each new sidecar is a byte-copy of it, forever. The gate's own
+# predicate is `cmp` (init-project.sh, the stale-sidecar pre-check), so
+# stating the criterion in the gate's terms is what keeps criterion and gate
+# from drifting apart.
+#
+# On THIS fixture — nothing customized, no structured key deleted — the
+# stricter count is also 0, so both are asserted. Neither is relaxed.
+diff_sidecars15=0
+while IFS= read -r sc15; do
+    [[ -n "$sc15" ]] || continue
+    cmp -s "$sc15" "${sc15%.pre-update}" || diff_sidecars15=$((diff_sidecars15 + 1))
+done < <(find "$T" -type f -name "*.pre-update" \
+    -not -path "*/.pack-update/*" -not -path "*/.git/*")
+assert_eq "15.1 T-IDEM run 2 leaves no sidecar that DIFFERS from its live file" \
+    "0" "$diff_sidecars15"
 assert_eq "15.1 T-IDEM run 2 leaves 0 sidecars on disk" "0" "$(count_sidecars "$T")"
 nr=$(grep -c "needs-reconciliation" "$DTSV" 2>/dev/null || true)
 assert_eq "15.1 T-IDEM run 2 records 0 needs-reconciliation" "0" "$nr"
@@ -1661,10 +1711,23 @@ rm -rf "$T"
 # bytes ARE a blob the pack has held at that source path. R1 cannot fire, so
 # R2 must: BASE becomes OURS itself, the file adopts THEIRS with no sidecar,
 # and the OURS blob sha is recorded so the overwrite stays recoverable.
+#
+# BD-293: a fresh install now ORIGINATES an R1 ledger (`seed_r1_ledger`), so
+# this fixture has to REMOVE the seed to reach R2 at all. The removal is
+# asserted meaningful first — pinning that the seed WAS there is a second,
+# independent origination check, and it keeps the R2 isolation honest: if a
+# future change stopped seeding, the pin fails rather than this leg silently
+# testing a rung it no longer reaches. R2 and R3' both stay live in the field
+# (a hand-copied file the run never landed has no row; a lost or unreachable
+# ledger has none either), so the rungs still need isolated coverage.
 T=$(make_target)
 PACK="$PACKC" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1
 git -C "$T" add -A >/dev/null 2>&1
 git -C "$T" commit -q -m "installed" >/dev/null 2>&1
+[[ -s "$T/.pack-update/ledger.tsv" ]] \
+    && t_pass "15.2b the fresh install SEEDED an R1 ledger (BD-293 origination)" \
+    || t_fail "15.2b the fresh install did not seed an R1 ledger (origination regressed)"
+rm -f "$T/.pack-update/ledger.tsv"
 # Self-check: this fixture only tests R2 if no ledger is reachable.
 [[ ! -f "$T/.pack-update/ledger.tsv" && ! -f "$T/.pack-install-reconcile/ledger.tsv" ]] \
     && t_pass "15.2b fixture has no prior ledger (R1 cannot fire)" \
@@ -1703,10 +1766,19 @@ rm -rf "$T"
 # needs-reconciliation with BOTH a sidecar and a diff. A cascade that resolved
 # this rung to `merged-with-customization` would keep the client's stale file,
 # adopt nothing, and write neither column.
+#
+# BD-293: as in 15.2b, the fresh install now seeds an R1 ledger, so the seed
+# is pinned present and then removed to reach R3'. R3' is still the live rung
+# for any path with no recorded row — a file the client hand-copied, a ledger
+# the client's clone does not carry, or an unreachable baseline (R4').
 T=$(make_target)
 PACK="$PACKC" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1
 git -C "$T" add -A >/dev/null 2>&1
 git -C "$T" commit -q -m "installed" >/dev/null 2>&1
+[[ -s "$T/.pack-update/ledger.tsv" ]] \
+    && t_pass "15.4 the fresh install SEEDED an R1 ledger (BD-293 origination)" \
+    || t_fail "15.4 the fresh install did not seed an R1 ledger (origination regressed)"
+rm -f "$T/.pack-update/ledger.tsv"
 
 # A client edit whose bytes the pack has never held anywhere in its history.
 printf '\nC6_CLIENT_LOCAL_EDIT_NEVER_IN_PACK_HISTORY\n' \
@@ -1905,6 +1977,550 @@ while IFS='|' read -r arm base_c ours_c theirs_c want_dest want_sc; do
     fi
 done <<< "$arms_table"
 rm -rf "$ARMS_DIR"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 16: BD-293 — R1 ledger ORIGINATION, and the first --update in a
+# client's life.
+#
+# WHY THIS GROUP IS SHAPED THIS WAY. The suite already carried ledger cases
+# (2.10, 2.11, 15.5). Every one of them HAND-PLANTS a ledger and then asserts
+# how it is READ, or that a refusal leaves it intact. Not one asserted that any
+# arrival path ever CREATES one — and none did: the only caller of
+# `customization_preserve_ledger_record` was `cmd_update` itself, so a ledger
+# was written only BY an update FOR the next update. A client's FIRST
+# `--update` therefore had no BASE for any file; every pack file they had
+# customized classified `project-shadows-new-pack`, was reverted to the pack
+# version, and their own bytes were parked in a `.pre-update` sidecar behind
+# one generic reconciliation line. Reproduced on BOTH arrival paths — a
+# completed v10→v11 migration and a plain fresh v11 install — while every case
+# in this file passed. Planting the artefact under test is not testing it.
+#
+# So every leg here asserts ORIGINATION or the client-visible END STATE, and
+# each carries a DISCRIMINATION leg that removes the mechanism and shows the
+# SAME fixture then fails the property. A leg that would pass either way
+# proves nothing, which is the whole reason this defect shipped.
+#
+#   16.1  a fresh install ORIGINATES a non-empty ledger, BEFORE any --update
+#   16.2  the FIRST --update preserves a customization, with no sidecar
+#   16.3  DISCRIMINATION — with the seed call removed from a script COPY, the
+#         same fixture reverts the customization and sidecars it
+#   16.4  the R1 READ loop reaches the MIGRATOR's state dir (row-scoped, so
+#         the leg discriminates inside a single run)
+#   16.5  the stale-sidecar pre-check honours a `.resolved` companion
+#   16.5b a `.resolved` flag exempts ONE reconciliation, not the path
+#   16.6  the sidecar criterion that is actually satisfiable: no sidecar that
+#         DIFFERS from its live file
+#   16.7  an unreachable baseline degrades LOUDLY, and the warning is true
+#   16.8  the ledger records only rows this install actually LANDED (the
+#         DEST-EXISTS filter, on a swift-only project where S9 removes the
+#         conditionals the client does not use)
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 16: BD-293 R1 ledger origination + first --update ===\n"
+
+PACKC=$(make_pack_copy)
+export PACK_PROVENANCE_BASELINE_REF=HEAD
+
+# Apply the client customizations this group measures. Two classes, so a
+# single-class fix cannot pass the group: a shipped SHELL SCRIPT (the
+# XCODE_SCHEME slot the pack ships empty and expects the client to fill) and a
+# shipped DOC the client appends a section to.
+customize_client() {
+    local d="$1"
+    sed -e 's/^XCODE_SCHEME=""/XCODE_SCHEME="NeutralApp"/' \
+        -e 's/^XCODE_DESTINATION=""/XCODE_DESTINATION="platform=macOS"/' \
+        "$d/scripts/test-swift.sh" > "$d/scripts/test-swift.sh.tmp"
+    mv "$d/scripts/test-swift.sh.tmp" "$d/scripts/test-swift.sh"
+    printf '\n## Project notes\n\nBD293_CLIENT_TOKEN\n' >> "$d/docs/pack/PACK-FEEDBACK.md"
+}
+
+ledger_rows() {
+    awk 'substr($0, 1, 1) != "#" && NF > 0' "$1" 2>/dev/null | wc -l | tr -d ' '
+}
+
+# ── 16.1 ORIGINATION: the install writes the ledger, before any --update ──
+T=$(make_target)
+PACK="$PACKC" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1
+assert_eq "16.0 fresh install rc=0" "0" "$?"
+
+LED="$T/.pack-update/ledger.tsv"
+rows16=$(ledger_rows "$LED")
+[[ -f "$LED" ]] \
+    && t_pass "16.1 ORIGINATION: the fresh install wrote an R1 ledger" \
+    || t_fail "16.1 ORIGINATION: no R1 ledger after a fresh install" "expected $LED"
+[[ "${rows16:-0}" -gt 0 ]] \
+    && t_pass "16.1 ORIGINATION: the ledger has $rows16 DATA rows (not header-only)" \
+    || t_fail "16.1 ORIGINATION: the ledger is header-only" "rows=$rows16"
+# A header-only ledger is the exact pre-fix state of the migrator's own file,
+# so the row COUNT is the assertion, never mere existence.
+grep -q '^scripts/test-swift\.sh	' "$LED" 2>/dev/null \
+    && t_pass "16.1 the ledger carries a row for a shipped script" \
+    || t_fail "16.1 no ledger row for scripts/test-swift.sh"
+# The recorded sha must RESOLVE in the pack, or R1 materialises nothing.
+sha16=$(awk -F '\t' '$1 == "scripts/test-swift.sh" { print $3; exit }' "$LED")
+if git -C "$PACKC" cat-file blob "$sha16" 2>/dev/null | grep -q 'XCODE_SCHEME'; then
+    t_pass "16.1 the recorded sha resolves to the installed pack blob"
+else
+    t_fail "16.1 the recorded sha does not resolve in the pack" "sha=$sha16"
+fi
+# The seed must NOT publish a reconcile report: `.pack-install-reconcile/` is
+# created ONLY by a --trinity=merge fold, and an empty dispositions.tsv in
+# `.pack-update/` would claim an --update had run.
+[[ ! -d "$T/.pack-install-reconcile" ]] \
+    && t_pass "16.1 the seed did NOT create .pack-install-reconcile/" \
+    || t_fail "16.1 the seed created .pack-install-reconcile/ (destroys the merge signal)"
+[[ ! -f "$T/.pack-update/dispositions.tsv" ]] \
+    && t_pass "16.1 the seed wrote ledger.tsv ONLY (no false 'an update ran' report)" \
+    || t_fail "16.1 the seed published a dispositions.tsv no run produced"
+
+# ── 16.2 the FIRST --update in this client's life preserves their work ──
+customize_client "$T"
+git -C "$T" add -A >/dev/null 2>&1
+git -C "$T" commit -q -m "client customizations" >/dev/null 2>&1
+
+PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+assert_eq "16.2 first --update rc=0" "0" "$?"
+DTSV="$T/.pack-update/dispositions.tsv"
+grep -q '^XCODE_SCHEME="NeutralApp"' "$T/scripts/test-swift.sh" \
+    && t_pass "16.2 the client's XCODE_SCHEME survived the first --update" \
+    || t_fail "16.2 the first --update REVERTED the client's XCODE_SCHEME"
+grep -q '^XCODE_DESTINATION="platform=macOS"' "$T/scripts/test-swift.sh" \
+    && t_pass "16.2 the client's XCODE_DESTINATION survived the first --update" \
+    || t_fail "16.2 the first --update REVERTED the client's XCODE_DESTINATION"
+grep -q 'BD293_CLIENT_TOKEN' "$T/docs/pack/PACK-FEEDBACK.md" \
+    && t_pass "16.2 the client's doc section survived the first --update" \
+    || t_fail "16.2 the first --update REVERTED the client's doc section"
+assert_eq "16.2 no sidecar for a file the client customized" \
+    "0" "$(count_sidecars "$T")"
+assert_eq "16.2 the script's disposition is merged-with-customization" \
+    "merged-with-customization" "$(disp_col "$DTSV" 1 'scripts/test-swift.sh')"
+assert_eq "16.2 the doc's disposition is merged-with-customization" \
+    "merged-with-customization" "$(disp_col "$DTSV" 1 'docs/pack/PACK-FEEDBACK.md')"
+rm -rf "$T"
+
+# ── 16.3 DISCRIMINATION — remove the origination, keep everything else ──
+#
+# This is the leg that makes 16.1 + 16.2 mean something. It runs the IDENTICAL
+# fixture against a COPY of init-project.sh whose ONE difference is that the
+# seed call is gone from main(), reproducing the pre-fix behaviour. If the
+# same fixture still preserved the customization, 16.2 would be passing for
+# some reason other than the ledger and this whole group would be decorative.
+MUTDIR=$(mktemp -d "${TMPDIR:-/tmp}/bd293-mut.XXXXXX")
+MUT="$MUTDIR/init-project.sh"
+ln -s "$PACKC/scripts/lib" "$MUTDIR/lib"
+sed 's/^    seed_r1_ledger$/    :/' "$INIT_SH" > "$MUT"
+if ! cmp -s "$MUT" "$INIT_SH" && ! grep -q '^    seed_r1_ledger$' "$MUT"; then
+    t_pass "16.3 precondition: the seed call was removed from the script copy"
+else
+    t_fail "16.3 precondition: the seed-call anchor drifted; this leg proves nothing"
+fi
+
+T=$(make_target)
+PACK="$PACKC" bash "$MUT" --yes "$T" >/dev/null 2>&1
+assert_eq "16.3 unseeded install rc=0" "0" "$?"
+[[ ! -f "$T/.pack-update/ledger.tsv" ]] \
+    && t_pass "16.3 the unseeded install wrote NO ledger (pre-fix state reproduced)" \
+    || t_fail "16.3 the unseeded install still wrote a ledger; the mutation missed"
+customize_client "$T"
+git -C "$T" add -A >/dev/null 2>&1
+git -C "$T" commit -q -m "client customizations" >/dev/null 2>&1
+PACK="$PACKC" bash "$MUT" --update "$T" >/dev/null 2>&1
+assert_eq "16.3 unseeded first --update rc=0 (it does not fail — it reverts)" "0" "$?"
+grep -q '^XCODE_SCHEME=""' "$T/scripts/test-swift.sh" \
+    && t_pass "16.3 DISCRIMINATION: without origination the customization IS reverted" \
+    || t_fail "16.3 DISCRIMINATION FAILED: the fixture preserved without a ledger, so 16.2 proves nothing"
+[[ "$(count_sidecars "$T")" -gt 0 ]] \
+    && t_pass "16.3 DISCRIMINATION: without origination the client's bytes go to a sidecar" \
+    || t_fail "16.3 DISCRIMINATION FAILED: no sidecar without a ledger either"
+rm -rf "$T" "$MUTDIR"
+
+# ── 16.4 the R1 READ loop reaches the MIGRATOR's state dir ──
+#
+# The READ is what is under test here, so the ledger is legitimately PLANTED —
+# it is this leg's INPUT, not its subject. (The migrator's own origination is
+# asserted where a real migration runs: test-migrate-v10-to-v11-dry-run.sh
+# case 4.1.) The discrimination is INSIDE the run and needs no second run: the
+# planted ledger carries a row for ONE of the two customized scripts, so the
+# covered file must survive and the uncovered one must not. A READ that never
+# reached the directory would revert both.
+T=$(make_target)
+PACK="$PACKC" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1
+assert_eq "16.4 fixture install rc=0" "0" "$?"
+# Force the loop past the two earlier candidates so the migrator dir is the
+# one that can answer. `.pack-install-reconcile/` is absent by construction
+# (no handwritten trinity, so no merge fold).
+rm -f "$T/.pack-update/ledger.tsv"
+[[ ! -f "$T/.pack-install-reconcile/ledger.tsv" ]] \
+    && t_pass "16.4 precondition: no earlier ledger candidate can answer" \
+    || t_fail "16.4 precondition: .pack-install-reconcile/ledger.tsv exists"
+mkdir -p "$T/.pack-migrate-v10-to-v11"
+mig_sha=$(git -C "$PACKC" hash-object --no-filters \
+    project-template/scripts/test-swift.sh 2>/dev/null)
+{
+    printf '# proj_rel\tpack_source\tblob_sha\tdisposition\n'
+    printf 'scripts/test-swift.sh\tproject-template/scripts/test-swift.sh\t%s\tmerged-with-customization\n' "$mig_sha"
+} > "$T/.pack-migrate-v10-to-v11/ledger.tsv"
+
+customize_client "$T"
+sed 's/^XCODE_SCHEME=""/XCODE_SCHEME="NeutralApp"/' \
+    "$T/scripts/validate-swift.sh" > "$T/scripts/validate-swift.sh.tmp"
+mv "$T/scripts/validate-swift.sh.tmp" "$T/scripts/validate-swift.sh"
+git -C "$T" add -A >/dev/null 2>&1
+git -C "$T" commit -q -m "client customizations" >/dev/null 2>&1
+
+PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+assert_eq "16.4 --update rc=0" "0" "$?"
+grep -q '^XCODE_SCHEME="NeutralApp"' "$T/scripts/test-swift.sh" \
+    && t_pass "16.4 R1 READ reached .pack-migrate-*/ (its row's file was preserved)" \
+    || t_fail "16.4 R1 READ did NOT reach .pack-migrate-*/ (its row's file was reverted)"
+grep -q '^XCODE_SCHEME=""' "$T/scripts/validate-swift.sh" \
+    && t_pass "16.4 DISCRIMINATION: the file with NO row was reverted (the read is row-scoped)" \
+    || t_fail "16.4 DISCRIMINATION FAILED: an unrecorded file was preserved too, so 16.4 proves nothing"
+rm -rf "$T"
+
+# ── 16.5 the stale-sidecar pre-check honours a `.resolved` companion ──
+#
+# `cmd_update` renders `customization_report` to .pack-update/report.md, and
+# that report tells the client, for every needs-reconciliation row, to "mark
+# it resolved (remove the sidecar or add its .resolved companion)". The
+# pre-check consulted neither the flag nor the report, so a client who took
+# the second option was refused by the next run with the flag file sitting
+# beside the sidecar. The byte-identity exemption cannot cover this case: a
+# file the client CORRECTLY merged differs from its sidecar by definition.
+# The BD-095 two-signal contract is the same one the migrator's --resume and
+# Gate-2 checkpoints already implement.
+T=$(make_configured_target)
+mkdir -p "$T/docs/pack"
+printf 'live content, reconciled by hand\n' > "$T/docs/pack/HELP-FRAGMENT.md"
+printf 'the pre-update copy, deliberately different\n' \
+    > "$T/docs/pack/HELP-FRAGMENT.md.pre-update"
+cmp -s "$T/docs/pack/HELP-FRAGMENT.md.pre-update" "$T/docs/pack/HELP-FRAGMENT.md" \
+    && t_fail "16.5 precondition: sidecar is byte-identical, so the OTHER exemption would fire" \
+    || t_pass "16.5 precondition: the sidecar DIFFERS from live (byte-identity cannot apply)"
+
+out=$(PACK="$PACKC" bash "$INIT_SH" --update "$T" 2>&1) ; rc=$?
+assert_eq "16.5 without a .resolved flag the gate still refuses" "50" "$rc"
+assert_contains "16.5 the refusal names the .resolved companion" "$out" ".resolved"
+
+touch "$T/docs/pack/HELP-FRAGMENT.md.pre-update.resolved"
+PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+assert_eq "16.5 with the .resolved companion the run proceeds" "0" "$?"
+[[ -f "$T/docs/pack/HELP-FRAGMENT.md.pre-update" ]] \
+    && t_pass "16.5 the flagged sidecar is KEPT as a record (nothing deleted)" \
+    || t_fail "16.5 the flagged sidecar was deleted; .resolved means keep-as-record"
+rm -rf "$T"
+
+# ── 16.5b a `.resolved` flag exempts ONE reconciliation, not the path ──
+#
+# Honouring the flag's mere EXISTENCE makes it a permanent opt-out: nothing
+# ever clears it, and the shipped docs tell the client to keep it and commit
+# it, so every LATER, DIFFERENT, unreconciled sidecar at that path would be
+# waved through in silence. The flag is therefore bound to the sidecar
+# CONTENT it was created for.
+#
+# Three legs, and the third is what makes the second mean anything: a stale
+# flag must block, and the SAME tree with a re-flagged companion must pass,
+# so the block is attributable to the staleness and to nothing else.
+#
+# Each --update leaves its own sidecars behind. Those would block the next
+# leg for a reason that has nothing to do with the flag, so between legs
+# every sidecar EXCEPT the path under test is pruned and the count is
+# asserted — a leg that ran against a tree full of unrelated sidecars would
+# report 50 no matter what the flag did, and would prove nothing.
+prune_to_one_sidecar() {  # $1=target  $2=the sidecar to keep
+    local d="$1" keep="$2" s
+    while IFS= read -r s; do
+        [[ -n "$s" && "$s" != "$keep" ]] || continue
+        rm -f "$s" "$s.resolved"
+    done < <(find "$d" -type f -name "*.pre-update" \
+        -not -path "*/.pack-update/*" -not -path "*/.git/*")
+}
+
+T=$(make_configured_target)
+mkdir -p "$T/docs/pack"
+SC5B="$T/docs/pack/HELP-FRAGMENT.md.pre-update"
+printf 'live content, reconciled by hand\n' > "$T/docs/pack/HELP-FRAGMENT.md"
+printf 'sidecar ONE — the copy the client reconciled against\n' > "$SC5B"
+
+# Leg A — the client flags it. The run proceeds AND binds the flag.
+cmp -s "$SC5B" "$T/docs/pack/HELP-FRAGMENT.md" \
+    && t_fail "16.5b leg A precondition: sidecar is byte-identical, so cmp would exempt it" \
+    || t_pass "16.5b leg A precondition: the sidecar DIFFERS from live"
+touch "$SC5B.resolved"
+PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+assert_eq "16.5b leg A: a freshly flagged sidecar exempts" "0" "$?"
+grep -q '^pack-resolved-sidecar-sha256: [0-9a-f][0-9a-f]*$' "$SC5B.resolved" \
+    && t_pass "16.5b leg A: the run BOUND the flag to the sidecar's content" \
+    || t_fail "16.5b leg A: the flag was left unbound (existence-only exemption)"
+
+# Leg A2 — DURABILITY. Outcome (4) of `_cu_resolved_flag_binds`: a flag that
+# is PRESENT and STAMPED and whose recorded checksum still MATCHES the
+# sidecar. No other leg reaches it — A and C carry an UNSTAMPED flag, so they
+# return from the bind branch, and B carries a STALE one, so it fails the
+# equality. Without this leg the equality itself is unguarded, and "keep it
+# as a record" could silently degrade into a one-shot that clears the gate
+# exactly once and then blocks that path on every run afterwards.
+#
+# Leg A's own --update re-sidecarred this path: it dispatched the live file,
+# so the bytes leg A flagged were replaced by the previous live content and
+# the stamp leg A wrote is now stale. Re-flag per the remedy the gate itself
+# offers, and let ONE run bind the flag to the bytes actually on disk. That
+# is exactly the state a client is left in the moment they finish
+# reconciling, and every later run has to keep clearing the gate.
+prune_to_one_sidecar "$T" "$SC5B"
+a2_stale_stamp=$(cat "$SC5B.resolved")
+rm -f "$SC5B.resolved"
+touch "$SC5B.resolved"
+a2_sidecar=$(cat "$SC5B")
+PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+assert_eq "16.5b leg A2 setup: the re-flagged sidecar binds and the run proceeds" "0" "$?"
+prune_to_one_sidecar "$T" "$SC5B"
+
+# Preconditions — the gate must now be facing outcome (4) and nothing else.
+assert_eq "16.5b leg A2 precondition: the sidecar still holds the bytes the flag was just bound to" \
+    "$a2_sidecar" "$(cat "$SC5B")"
+grep -q '^pack-resolved-sidecar-sha256: [0-9a-f][0-9a-f]*$' "$SC5B.resolved" \
+    && t_pass "16.5b leg A2 precondition: the flag is STAMPED (the durability path, not the bind path)" \
+    || t_fail "16.5b leg A2 precondition: the flag is unstamped, so this is not the durability path"
+[[ "$(cat "$SC5B.resolved")" != "$a2_stale_stamp" ]] \
+    && t_pass "16.5b leg A2 precondition: the re-flag REBOUND the stamp to the current bytes" \
+    || t_fail "16.5b leg A2 precondition: the stamp is still the stale one, so the leg proves nothing"
+cmp -s "$SC5B" "$T/docs/pack/HELP-FRAGMENT.md" \
+    && t_fail "16.5b leg A2 precondition: byte-identical, so cmp would exempt it" \
+    || t_pass "16.5b leg A2 precondition: the sidecar DIFFERS from live"
+
+# The durability run. Nothing has changed since the binding run, so the
+# recorded checksum still matches and the exemption has to hold again.
+a2_stamp=$(cat "$SC5B.resolved")
+PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+assert_eq "16.5b leg A2: an already-BOUND matching flag still exempts (durable record)" "0" "$?"
+assert_eq "16.5b leg A2: the binding is unchanged (not re-stamped, not cleared)" \
+    "$a2_stamp" "$(cat "$SC5B.resolved")"
+
+# Leg B — a LATER cycle leaves brand-new, different, unreconciled bytes at
+# the same path. The client never flagged THESE; the old flag is still there.
+prune_to_one_sidecar "$T" "$SC5B"
+printf 'sidecar TWO — brand new, never reconciled, never flagged\n' > "$SC5B"
+n5b=$(find "$T" -type f -name "*.pre-update" \
+    -not -path "*/.pack-update/*" -not -path "*/.git/*" | wc -l | tr -d ' ')
+assert_eq "16.5b leg B precondition: exactly one sidecar is on disk" "1" "$n5b"
+cmp -s "$SC5B" "$T/docs/pack/HELP-FRAGMENT.md" \
+    && t_fail "16.5b leg B precondition: sidecar is byte-identical, so cmp would exempt it" \
+    || t_pass "16.5b leg B precondition: the new sidecar DIFFERS from live"
+[[ -f "$SC5B.resolved" ]] \
+    && t_pass "16.5b leg B precondition: the stale flag is still present" \
+    || t_fail "16.5b leg B precondition: the flag vanished, so the leg proves nothing"
+out=$(PACK="$PACKC" bash "$INIT_SH" --update "$T" 2>&1) ; rc=$?
+assert_eq "16.5b leg B: a STALE flag does NOT exempt a different sidecar" "50" "$rc"
+assert_contains "16.5b leg B: the refusal NAMES the unreconciled sidecar" \
+    "$out" "HELP-FRAGMENT.md.pre-update"
+assert_contains "16.5b leg B: the refusal offers the re-flag remedy" "$out" "re-flag it"
+
+# Leg C — DISCRIMINATION. Identical tree, identical bytes; the client
+# re-flags per the offered remedy. Only the flag changed, so a pass here
+# attributes leg B's refusal to the staleness alone.
+rm -f "$SC5B.resolved"
+touch "$SC5B.resolved"
+PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+assert_eq "16.5b leg C DISCRIMINATION: re-flagging the same tree passes" "0" "$?"
+rm -rf "$T"
+
+# ── 16.6 the sidecar criterion that is actually satisfiable ──
+#
+# "Zero new sidecars" is unreachable by construction for any client who
+# deleted a top-level key the pack still edits: the file is re-dispatched
+# every run, the merge honours the removal so the live file never changes, and
+# each new sidecar is therefore a byte-copy of it. The criterion that IS
+# satisfiable — and that cannot drift from the gate, because it is the gate's
+# own `cmp` predicate — is "no sidecar that DIFFERS from its live file".
+# Both halves are asserted: the strict form is measurably FALSE here (so the
+# leg is not vacuous) and the gate-aligned form is TRUE and non-blocking.
+T=$(make_target)
+PACK="$PACKC" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1
+assert_eq "16.6 fixture install rc=0" "0" "$?"
+if [[ -f "$T/.mcp.json" ]]; then
+    python3 - "$T/.mcp.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+with open(p) as fh:
+    d = json.load(fh)
+for k in ("_readme", "_tools"):
+    d.pop(k, None)
+with open(p, "w") as fh:
+    json.dump(d, fh, indent=2)
+    fh.write("\n")
+PY
+    git -C "$T" add -A >/dev/null 2>&1
+    git -C "$T" commit -q -m "client deleted top-level keys" >/dev/null 2>&1
+
+    # PRECONDITION: the deletion must actually be on disk. Without this the
+    # whole leg passes vacuously on an unedited file — the same shape of
+    # nothing-assertion this group exists to eliminate.
+    keys16=$(python3 -c "import json,sys;print(','.join(json.load(open(sys.argv[1])).keys()))" \
+        "$T/.mcp.json" 2>/dev/null)
+    [[ "$keys16" != *"_readme"* && "$keys16" != *"_tools"* && -n "$keys16" ]] \
+        && t_pass "16.6 precondition: the client's top-level key deletion is on disk (keys=$keys16)" \
+        || t_fail "16.6 precondition: the key deletion did not apply" "keys=$keys16"
+
+    PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+    assert_eq "16.6 run 1 rc=0" "0" "$?"
+    PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+    assert_eq "16.6 run 2 rc=0 (a byte-identical sidecar never blocks)" "0" "$?"
+
+    all16=$(count_sidecars "$T")
+    diff16=0
+    while IFS= read -r sc; do
+        [[ -n "$sc" ]] || continue
+        cmp -s "$sc" "${sc%.pre-update}" || diff16=$((diff16 + 1))
+    done < <(find "$T" -type f -name '*.pre-update' \
+        -not -path '*/.pack-update/*' -not -path '*/.git/*' 2>/dev/null)
+
+    assert_eq "16.6 the SATISFIABLE criterion holds: no sidecar DIFFERS from its live file" \
+        "0" "$diff16"
+
+    # 16.6b The criterion and the GATE must be the same predicate, so the
+    # predicate is bitten in BOTH directions on the same file. The sidecars
+    # are PLANTED here on purpose: the gate's `cmp` decision is the subject,
+    # and the sidecar is its input. `all16` is reported for context only —
+    # whether the structured merge happened to emit one on this fixture
+    # depends on how much pack history the checkout carries, so no assertion
+    # is hung on it. What IS asserted is deterministic.
+    printf '(16.6 context: %s sidecar(s) present after the two runs)\n' "$all16"
+    cp "$T/docs/pack/HELP-FRAGMENT.md" "$T/docs/pack/HELP-FRAGMENT.md.pre-update"
+    PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+    assert_eq "16.6b a sidecar byte-IDENTICAL to its live file does not block" "0" "$?"
+    printf '\ndiverged\n' >> "$T/docs/pack/HELP-FRAGMENT.md.pre-update"
+    PACK="$PACKC" bash "$INIT_SH" --update "$T" >/dev/null 2>&1
+    assert_eq "16.6b DISCRIMINATION: a sidecar that DIFFERS still blocks" "50" "$?"
+    rm -f "$T/docs/pack/HELP-FRAGMENT.md.pre-update"
+else
+    t_fail "16.6 fixture has no .mcp.json; the structured-deletion case cannot be built"
+fi
+rm -rf "$T"
+
+# ── 16.7 an unreachable baseline degrades LOUDLY, and the warning is true ──
+#
+# Seeding the ledger at install time gave R1 real data, which raised the
+# stakes on the whole-function baseline gate above R1: a pack clone whose
+# baseline ref does not resolve — what `actions/checkout` at `fetch-depth: 1`
+# and any `git clone --no-tags` produce — discards a good, fully populated
+# ledger and reverts the client's customization.
+#
+# That degradation is ACCEPTED here: the gate is a cascade with a written
+# rationale and narrowing it is a behavioural change, not a test fix. What is
+# NOT accepted is the degradation going QUIET. Every other group in this file
+# forces PACK_PROVENANCE_BASELINE_REF=HEAD, so nothing exercised an
+# unreachable baseline against a good ledger and the property was unguarded
+# in both directions.
+#
+# Both directions are bitten. Leg A: unreachable baseline must WARN, offer
+# the recovery command, and its warning must be TRUE — it claims files route
+# to a .pre-update sidecar, so a sidecar must actually appear. A warning that
+# no longer corresponds to what the run does is the failure mode this leg
+# exists to catch, in either direction: go quiet and the assert_contains
+# legs fail; keep the text while the behaviour changes and the consequence
+# leg fails. Leg B: the SAME tree with a reachable baseline must be silent
+# and must preserve the client's work, so leg A's noise is attributable to
+# the unreachable ref and to nothing else.
+T=$(make_target)
+PACK="$PACKC" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1
+assert_eq "16.7 fixture install rc=0" "0" "$?"
+rows17=$(ledger_rows "$T/.pack-update/ledger.tsv")
+[[ "${rows17:-0}" -gt 0 ]] \
+    && t_pass "16.7 precondition: a GOOD ledger exists ($rows17 rows) for the gate to discard" \
+    || t_fail "16.7 precondition: no ledger rows, so nothing is being discarded" "rows=$rows17"
+customize_client "$T"
+git -C "$T" add -A >/dev/null 2>&1
+git -C "$T" commit -q -m "client customizations" >/dev/null 2>&1
+cp -R "$T" "$T.reachable"
+
+# Leg A — an unresolvable baseline ref. `pack_provenance_baseline_reachable`
+# tests the ref with `rev-parse --verify`, so a name that does not resolve is
+# the same code path a tagless clone takes.
+out=$(PACK_PROVENANCE_BASELINE_REF=refs/tags/bd293-no-such-baseline \
+    PACK="$PACKC" bash "$INIT_SH" --update "$T" 2>&1) ; rc=$?
+assert_eq "16.7 leg A: the run still PROCEEDS on an unreachable baseline" "0" "$rc"
+assert_contains "16.7 leg A LOUD: it names the ref that does not resolve" \
+    "$out" "does not resolve"
+assert_contains "16.7 leg A LOUD: it offers the recovery command" \
+    "$out" "git fetch origin"
+assert_contains "16.7 leg A LOUD: it states the reconciliation consequence" \
+    "$out" "routed to manual reconciliation"
+# The warning is not decorative: it claims a .pre-update sidecar, so one must
+# exist. If the baseline gate is ever narrowed so R1 is consulted without the
+# ref, THIS is the leg that must change — deliberately, with the message.
+[[ "$(count_sidecars "$T")" -gt 0 ]] \
+    && t_pass "16.7 leg A: the warning is TRUE — a .pre-update sidecar was written" \
+    || t_fail "16.7 leg A: the run warned about sidecars but wrote none (the warning is false)"
+
+# Leg B — DISCRIMINATION. Same tree, reachable baseline, nothing else changed.
+out=$(PACK="$PACKC" bash "$INIT_SH" --update "$T.reachable" 2>&1) ; rc=$?
+assert_eq "16.7 leg B rc=0" "0" "$rc"
+[[ "$out" != *"does not resolve"* ]] \
+    && t_pass "16.7 leg B DISCRIMINATION: a reachable baseline is silent" \
+    || t_fail "16.7 leg B DISCRIMINATION: the warning fires even when reachable, so leg A proves nothing"
+grep -q '^XCODE_SCHEME="NeutralApp"' "$T.reachable/scripts/test-swift.sh" \
+    && t_pass "16.7 leg B DISCRIMINATION: the client's customization survived" \
+    || t_fail "16.7 leg B DISCRIMINATION: the customization was reverted with a reachable baseline too"
+rm -rf "$T" "$T.reachable"
+
+# ── 16.8 the ledger records only rows this install actually LANDED ──
+#
+# `seed_r1_ledger` filters its map-derived rows twice. SOURCE-EXISTS has other
+# witnesses; DEST-EXISTS has none, and it is the load-bearing one: a row for a
+# file the client never received makes the next run materialise a BASE for it
+# and read its absence as a deliberate client deletion.
+#
+# Every other leg in this group builds a MARKER-LESS target, where CLASS is
+# new-* and S9 returns before removing anything — so DEST-EXISTS never fires
+# and nothing here noticed when it was deleted. This leg gives it something to
+# do: a SWIFT-ONLY project, where S9 removes the python and proto conditionals
+# the pack ships but this client does not use.
+#
+# The assertion is the PROPERTY (no row without a file), never a row count.
+# The count is fixture-dependent — measured 258 with the filter and 264
+# without, on the same fixture — so pinning it would be a drift tripwire
+# rather than a guard.
+T=$(make_target)
+printf '// swift-tools-version:5.9\n' > "$T/Package.swift"
+git -C "$T" add -A >/dev/null 2>&1
+git -C "$T" commit -q -m "swift language marker" >/dev/null 2>&1
+PACK="$PACKC" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1
+assert_eq "16.8 swift-only install rc=0" "0" "$?"
+
+LED8="$T/.pack-update/ledger.tsv"
+rows8=$(ledger_rows "$LED8")
+[[ "${rows8:-0}" -gt 0 ]] \
+    && t_pass "16.8 precondition: the swift-only install wrote $rows8 ledger rows" \
+    || t_fail "16.8 precondition: no ledger rows, so the filter has nothing to filter" "rows=$rows8"
+# Both halves of the precondition matter: the pack must SHIP the file (so
+# SOURCE-EXISTS passes and only DEST-EXISTS can suppress the row), and S9 must
+# actually have removed it (so DEST-EXISTS has something to suppress).
+[[ -f "$PACKC/project-template/scripts/test-python.sh" ]] \
+    && t_pass "16.8 precondition: the pack SHIPS scripts/test-python.sh (source-exists passes)" \
+    || t_fail "16.8 precondition: the pack does not ship scripts/test-python.sh"
+[[ ! -e "$T/scripts/test-python.sh" ]] \
+    && t_pass "16.8 precondition: S9 removed it on this swift-only project (dest is absent)" \
+    || t_fail "16.8 precondition: S9 kept scripts/test-python.sh, so DEST-EXISTS never fires"
+
+# THE PROPERTY, count-free: walk column 1 and require every recorded path to
+# exist under the target.
+ghost8=""
+while IFS= read -r rel8; do
+    [[ -n "$rel8" ]] || continue
+    [[ -e "$T/$rel8" ]] || ghost8="$ghost8 $rel8"
+done < <(awk -F '\t' 'substr($0, 1, 1) != "#" && NF > 0 { print $1 }' "$LED8" 2>/dev/null)
+[[ -z "$ghost8" ]] \
+    && t_pass "16.8 every ledger row names a file this install actually landed" \
+    || t_fail "16.8 GHOST ledger rows for files the install never landed" "ghost:$ghost8"
+# The specific row the filter exists to suppress, named so a failure reads.
+[[ "$(awk -F '\t' '$1 == "scripts/test-python.sh"' "$LED8" 2>/dev/null | wc -l | tr -d ' ')" -eq 0 ]] \
+    && t_pass "16.8 no ledger row for the conditional file S9 removed" \
+    || t_fail "16.8 a ledger row survives for scripts/test-python.sh, which is not on disk"
+rm -rf "$T"
+
+rm -rf "$PACKC"
+unset PACK_PROVENANCE_BASELINE_REF
 
 # ─────────────────────────────────────────────────────────────────────────
 # Summary

@@ -518,7 +518,7 @@ per-entry-tree treatment in the customization-preserve pipeline.
 5. **Pre-clean stale `--update` artifacts.** If you previously ran
    `init-project.sh --update`, remove any `*.pre-update` sidecars
    first — the v10→v11 migrator and `--update` use different sidecar
-   suffixes but it's cleaner to start from a known state.
+   suffixes, and the migrator refuses to run while one is present.
 6. **(Optional but recommended) Preview the migration first.** Run
    `scripts/dry-run-migration.sh /path/to/your/v10/clone` from the
    pack repo to see exactly what files Step 1 below would change,
@@ -833,10 +833,29 @@ library:
    reserved-prefix preservation), pack-shipped scripts (3-way text),
    and so on. See `pack-ops/MERGE-STRATEGY.md`.
 3. **Single-slot sidecars.** `<file>.v10-customized` for the migrator,
-   `<file>.pre-update` for `init-project.sh --update`. The migrator
-   refuses to run when its backup directory already exists; `--update`
-   refuses when prior `.pre-update` sidecars are present. Both gates
-   prevent silent overwrites.
+   `<file>.pre-update` for `init-project.sh --update`. Both SIDECAR
+   gates prevent silent overwrites, and both accept the same two
+   resolution signals: remove the sidecar, or add a `<sidecar>.resolved`
+   companion (keep the sidecar as a record). For `.v10-customized`
+   those signals are read by the migrator's post-Phase-A verification
+   gate and by the `--resume` precondition check; for `.pre-update`, by
+   the gate that refuses the next `--update`. What that companion MEANS
+   differs by sidecar kind. For the migrator's `.v10-customized` it is
+   existence-only — a plain `touch` is enough, and nothing is recorded
+   inside it. For `--update`'s `.pre-update` it is CONTENT-BOUND: the
+   first update that honours it records the sidecar's checksum inside
+   the companion, so it covers the sidecar CONTENT it was created for,
+   not that path forever — see "refusing to proceed: prior --update
+   sidecars present" under Troubleshooting for the re-flag step. Also
+   for `--update` only, a sidecar byte-identical to its live file is
+   exempt with no companion at all — it preserves nothing the live file
+   does not already hold.
+
+   The migrator also refuses for two reasons that no sidecar signal
+   affects. It stops at S1 when its backup directory already exists —
+   rename or remove `.pack-migrate-v10-to-v11-backup/` — and it stops
+   at S0 while a `*.pre-update` sidecar from a prior `--update` is
+   present, which only removing that sidecar clears.
 4. **CI regression guard.** validate-pack Check 25 runs a
    4-fixture synthetic on every push to fail-closed if the
    customization-preserve library regresses. Class-coverage delegated
@@ -918,9 +937,23 @@ inspect what the migrator did).
 
 ## Troubleshooting
 
-### "v10 baseline tag 'v10' not present in pack repo"
+### The pack clone is missing the `v10` baseline tag
 
-The pack repo doesn't have the `v10` git tag locally. Fix:
+Two tools report this condition, with two different messages. The
+migrator stops at pre-flight and exits 14, having changed nothing:
+
+```
+error: v10 baseline tag 'v10' not present in pack repo at <pack>
+```
+
+`init-project.sh --update` does not stop. It prints this on stderr and
+continues with provenance degraded:
+
+```
+pack-provenance: baseline ref 'v10' does not resolve in <pack>
+```
+
+Either way the pack repo doesn't have the `v10` git tag locally. Fix:
 
 ```sh
 git -C "$PACK" fetch --tags
@@ -929,6 +962,13 @@ git -C "$PACK" tag --list v10
 
 If still missing, the pack repo was checked out without tags; re-clone
 or `git fetch origin v10:v10`.
+
+Until that ref resolves, provenance cannot be established and every file
+whose content differs from the pack is routed to reconciliation. An
+update then overwrites your live file with the pack version, parks your
+copy as a NEW `.pre-update` sidecar, and the next run refuses until you
+reconcile that sidecar too — including for a file you had already
+reconciled and flagged. Recover the baseline; do not work around this.
 
 ### Migrator finishes but I can't run `/pm-help`
 
@@ -946,9 +986,41 @@ land — re-run the migrator.
 ### "refusing to proceed: prior --update sidecars present"
 
 You ran `init-project.sh --update` previously and didn't reconcile the
-sidecars. Resolve them (edit destination, remove `.pre-update`) before
-re-running. If you don't intend to keep any of the sidecar content,
-just `find . -name '*.pre-update' -delete` — but only do this if you're
+sidecars named in the message. Reconcile each one — fold what you want
+back into the live file — and then mark it resolved by EITHER signal:
+
+- **remove the sidecar** — `rm <file>.pre-update`; or
+- **keep it as a record** — `touch <file>.pre-update.resolved`.
+
+Both clear the `--update` gate. The second is the option
+`.pack-update/report.md` offers for every row it lists ("remove the
+sidecar or add its `.resolved` companion"), so a sidecar you want to
+keep for reference does not block the next update.
+
+The migrator prints a near-identical refusal, and it reads neither
+signal: it stops while a `*.pre-update` sidecar is present, whatever
+that sidecar's bytes and whatever companion sits beside it. Only
+removing the sidecar clears the migrator.
+
+A `.resolved` companion covers the sidecar CONTENT it was created for,
+not that path forever. The first update that honours the flag records
+the sidecar's checksum inside the flag file — commit both files
+together. If a later update parks NEW bytes at the same path, the
+recorded checksum no longer matches and the gate names the file again,
+because those bytes are a reconciliation you have not seen. Fold them
+in, then re-flag: `rm <file>.pre-update.resolved && touch
+<file>.pre-update.resolved`. A plain `touch` on its own does not
+re-flag — the stale checksum is still in the file.
+
+A sidecar whose bytes are IDENTICAL to its live file never blocks
+`--update` and needs no action there: the content it protects is
+already in the live file. That is the state a structured config
+produces when you have deleted a top-level key the pack still edits —
+the merge honours your removal, so the live file does not change and
+each run rewrites the same sidecar bytes.
+
+If you don't intend to keep any of the sidecar content, just
+`find . -name '*.pre-update' -delete` — but only do this if you're
 certain.
 
 ### One reconciliation file is corrupt / unreadable

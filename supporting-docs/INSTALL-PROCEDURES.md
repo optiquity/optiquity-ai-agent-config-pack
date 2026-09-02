@@ -77,6 +77,17 @@ key-union-merged in place with no bookkeeping-dir residue; a malformed existing
 config falls back to keep-your-file-live plus a `<file>.pack-template` sidecar
 (never a silent pack adoption).
 
+**`<TARGET>/.pack-update/ledger.tsv` — written by EVERY install.** One file, no
+report: it records, per installed path, the pack blob that was laid down there.
+`--update` reads it as the merge BASE, which is what lets your FIRST `--update`
+tell "this file is the pack's, just older" from "the project edited this file"
+and so preserve your edits instead of reverting them to the pack version. Keep
+it — commit it with the rest of the install. If it is missing when you run
+`--update` (a colleague's clone that never had it, a deleted directory), that
+run has no baseline and routes every pack file you have customized to manual
+reconciliation with a `.pre-update` sidecar. Nothing is lost in that case, but
+you reconcile by hand. `--update` rewrites the directory on every run.
+
 ---
 
 ## Project file conventions in pack-controlled directories

@@ -182,6 +182,13 @@ trinity — leaves no such directory. Pre-existing structured configs
 (`.claude/settings.json`, `.mcp.json`, `.codex/config.toml`, …) are
 key-union-merged in place with no bookkeeping-dir residue.
 
+Every install additionally writes `<TARGET>/.pack-update/ledger.tsv` — one
+file, no report. It records the pack blob laid down at each installed path,
+and `--update` reads it as the merge BASE; that is what lets your FIRST
+`--update` preserve your edits to pack-shipped files instead of reverting them
+and parking your bytes in a `.pre-update` sidecar. Commit it with the install.
+See `docs/pack/INSTALL-PROCEDURES.md` for the full lifecycle.
+
 ---
 
 ## Customizing the trinity files

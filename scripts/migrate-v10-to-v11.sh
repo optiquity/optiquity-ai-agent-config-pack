@@ -463,6 +463,28 @@ _v10_to_v11_map_derived_install() {
     base_tmp=$(mktemp) \
         || fail_stage S5 "failed to create the map-derived install base tempfile"
 
+    # BASE-cascade rung R1 WRITE staging (BD-293). Every row this stage
+    # RESOLVES — dispatched here or already dispatched by S3 — is staged as
+    # `proj_rel<TAB>pack_source<TAB>disposition<TAB>abs_pack_path`, and the
+    # whole set is hashed in ONE pass after the loop.
+    #
+    # ORIGINATION is the point. The ledger is what the NEXT run reads as its
+    # merge BASE, and a migrated client's first `init-project.sh --update`
+    # found none: the only writer was `cmd_update` itself, so this stage
+    # created a header-only ledger and left it at zero data rows. With no BASE
+    # every file the migration had just PRESERVED (`merged-with-customization`
+    # — the client's own XCODE_SCHEME, their appended doc sections) classified
+    # `project-shadows-new-pack` on that first update and was reverted to the
+    # pack version behind a `.pre-update` sidecar. Measured, and reproduced on
+    # a never-migrated fresh install too.
+    #
+    # S3-PRECEDENCE ROWS ARE STAGED, not skipped. S3 installed those files
+    # from the pack moments earlier; they need the same BASE as any other
+    # mapped path, and omitting them would revert exactly those files on the
+    # first update. The `continue` below skips the DISPATCH, never the record.
+    local ledger_stage
+    ledger_stage=$(mktemp "${TMPDIR:-/tmp}/mig-ledger.XXXXXX") || ledger_stage=""
+
     local row rest pack_rel proj_rel cls surface base theirs ours dest
     local dispatched=0 precedence=0 landed_miss=0
     local missing_list=""
@@ -476,6 +498,11 @@ _v10_to_v11_map_derived_install() {
         # S3 precedence — pure-bash membership, no fork.
         if [[ "$covered" == *$'\n'"$proj_rel"$'\n'* ]]; then
             precedence=$((precedence + 1))
+            if [[ -n "$ledger_stage" && -f "$PACK/$pack_rel" \
+               && -f "$_MIGRATOR_TARGET/$proj_rel" ]]; then
+                printf '%s\t%s\t%s\t%s\n' "$proj_rel" "$pack_rel" \
+                    "s3-dispatched" "$PACK/$pack_rel" >> "$ledger_stage"
+            fi
             continue
         fi
 
@@ -526,12 +553,44 @@ _v10_to_v11_map_derived_install() {
                 fi
                 ;;
         esac
+
+        # Stage the R1 row: the PACK blob that is the merge BASE for the next
+        # run at this path. On the adopt arms that blob is also what DEST now
+        # holds; on the merged and needs-reconciliation arms it is not, and it
+        # is still the right value — it is the common ancestor the next
+        # three-way has to diff against. A row with no pack source (`theirs`
+        # blanked above) ships nothing, so there is no BASE to record; a row
+        # whose DEST is absent was a deliberate no-copy outcome, and recording
+        # a BASE for a file the client does not have would make the next run
+        # read its absence as a client deletion.
+        if [[ -n "$ledger_stage" && -n "$theirs" && -f "$dest" ]]; then
+            printf '%s\t%s\t%s\t%s\n' "$proj_rel" "$pack_rel" \
+                "${_CP_LAST_DISP:--}" "$theirs" >> "$ledger_stage"
+        fi
     done <<< "$dispatch"
 
     rm -f "$base_tmp"
 
     (( landed_miss == 0 )) || fail_stage S5 \
         "map-derived install incomplete: $landed_miss declared file(s) missing after dispatch:$missing_list"
+
+    # R1 WRITE. ONE `git hash-object --stdin-paths` pass for the whole set,
+    # into the ledger `_stage_libs`' `customization_preserve_init` already
+    # created in `$_MIGRATOR_STATE_DIR`. That state dir is one of the three
+    # the update path's R1 READ loop consults.
+    local ledger_rows=0
+    if [[ -n "$ledger_stage" ]]; then
+        customization_preserve_ledger_flush "$ledger_stage"
+        rm -f "$ledger_stage"
+        ledger_rows=$(awk 'substr($0, 1, 1) != "#" && NF > 0' \
+            "$_MIGRATOR_STATE_DIR/${_CP_LEDGER_BASENAME:-ledger.tsv}" 2>/dev/null \
+            | wc -l | tr -d ' ')
+    fi
+    if [[ "${ledger_rows:-0}" -gt 0 ]]; then
+        info "R1 baseline ledger written: $ledger_rows row(s) (lets the first --update after this migration preserve your edits to pack files)"
+    else
+        warn "R1 baseline ledger is EMPTY; the first \`init-project.sh --update\` after this migration will route every pack file you customized to reconciliation with a .pre-update sidecar"
+    fi
 
     info "map-derived install: $dispatched file(s) dispatched from the install map ($precedence already dispatched by S3)"
 }

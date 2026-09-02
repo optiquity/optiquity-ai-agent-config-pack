@@ -1452,6 +1452,118 @@ stage_s11_v11_artifacts() {
     fi
 }
 
+# ── R1 baseline seed (fresh install) ───────────────────────────────────────
+#
+# ORIGINATE the BASE-cascade rung-R1 ledger this install's client will need
+# the FIRST time they run `--update`.
+#
+# Without it that first run has no merge BASE for any file: a pack-shipped
+# file the client edited is not a blob the pack has held (R2 says no), BASE
+# stays empty (R3'), and the classifier answers `project-shadows-new-pack` —
+# the pack version installed over their edit, their bytes parked in a
+# `.pre-update` sidecar. The ledger was only ever written BY an update FOR
+# the next update, so every client lost their customizations on the first
+# update of their life and preserved correctly from the second onward.
+#
+# DERIVED FROM THE INSTALL MAP, not from a hand list and not by instrumenting
+# eleven copy sites: the map is the one declaration of what the pack ships,
+# and `cmd_update` resolves its own dispatch set from the same rows, so the
+# seeded set and the set the next run looks up cannot disagree. The
+# `cmd_update` token is the right filter for the same reason — a row the next
+# `--update` never dispatches is a row it never looks up.
+#
+# DEST-EXISTS is the second filter and it is load-bearing: a row this install
+# did not land (a conditional file S9 removed, a stage that did not run) must
+# NOT get a ledger row, or the next run would materialise a BASE for a file
+# the client never received and read its absence as a deliberate client
+# deletion.
+#
+# The recorded blob is the PACK SOURCE's, per the ledger contract — the common
+# ancestor the next three-way diffs against — even on the arms where DEST does
+# not hold it (a `keep` collision leaves the client's own file live). That is
+# the same value `cmd_update` records for the same path, so the seed and a
+# subsequent update agree.
+#
+# COST: one map parse (memoised) plus ONE `git hash-object --stdin-paths` pass
+# for the whole set. No fork per file.
+#
+# NON-FATAL by contract: the ledger is an accelerator, and an install that
+# cannot write one still installed correctly. It is LOUD, though — a silent
+# skip is exactly the failure mode that let this ship.
+seed_r1_ledger() {
+    say "── R1 baseline ledger ──"
+
+    local lib_dir="$PACK/scripts/lib"
+    local why=""
+    if [[ ! -f "$lib_dir/install-map.sh" ]]; then
+        why="install-map library missing under $lib_dir"
+    elif ! _ensure_customization_lib; then
+        why="customization-preserve library missing under $SCRIPT_DIR/lib"
+    fi
+    if [[ -n "$why" ]]; then
+        warn "R1 baseline ledger NOT written ($why); the first \`--update\` will route every pack file you customize to reconciliation with a .pre-update sidecar"
+        return 0
+    fi
+    if ! declare -F install_map_dispatch_set >/dev/null 2>&1; then
+        # shellcheck disable=SC1091
+        source "$lib_dir/install-map.sh"
+    fi
+
+    local dispatch=""
+    if ! dispatch=$(install_map_dispatch_set cmd_update) || [[ -z "$dispatch" ]]; then
+        warn "R1 baseline ledger NOT written (install map declares no cmd_update rows); the first \`--update\` will route every pack file you customize to reconciliation with a .pre-update sidecar"
+        return 0
+    fi
+
+    local stage
+    stage=$(mktemp "${TMPDIR:-/tmp}/init-r1.XXXXXX") || {
+        warn "R1 baseline ledger NOT written (no writable temp); the first \`--update\` will route every pack file you customize to reconciliation with a .pre-update sidecar"
+        return 0
+    }
+
+    # Column 4 records THIS run's origin rather than a three-way verdict:
+    # a fresh install computed no classification for these paths, and
+    # manufacturing one would be a claim the run never made. The column is
+    # provenance for a human reading the ledger; the R1 READ join reads
+    # columns 1 and 3 only.
+    local row rest pack_rel proj_rel
+    while IFS= read -r row; do
+        [[ -n "$row" ]] || continue
+        pack_rel="${row%%:*}"
+        rest="${row#*:}"
+        proj_rel="${rest%%:*}"
+        [[ -f "$PACK/$pack_rel" ]] || continue
+        [[ -f "$TARGET/$proj_rel" ]] || continue
+        printf '%s\t%s\t%s\t%s\n' \
+            "$proj_rel" "$pack_rel" "fresh-install" "$PACK/$pack_rel" >> "$stage"
+    done <<< "$dispatch"
+
+    # LEDGER-ONLY init: `.pack-update/` is the update mechanism's state dir and
+    # the first path the R1 READ loop consults. A full customization_preserve_init
+    # would also publish an empty dispositions.tsv + diffs/ there, which reads
+    # as "an --update ran and found nothing" — a claim this install cannot make.
+    # `.pack-install-reconcile/` is deliberately NOT used: its PRESENCE is the
+    # signal a `--trinity=merge` fold is pending (INSTALL-PROCEDURES.md
+    # "State-dir lifecycle"), and creating it on every install would destroy
+    # that signal.
+    if ! customization_preserve_ledger_init "$TARGET/.pack-update"; then
+        rm -f "$stage"
+        warn "R1 baseline ledger NOT written (cannot create $TARGET/.pack-update); the first \`--update\` will route every pack file you customize to reconciliation with a .pre-update sidecar"
+        return 0
+    fi
+    customization_preserve_ledger_flush "$stage"
+    rm -f "$stage"
+
+    local rows
+    rows=$(awk 'substr($0, 1, 1) != "#" && NF > 0' \
+        "$TARGET/.pack-update/$_CP_LEDGER_BASENAME" 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "${rows:-0}" -gt 0 ]]; then
+        info "R1 baseline ledger written: $rows row(s) at .pack-update/ledger.tsv (lets the first --update preserve your edits to pack files)"
+    else
+        warn "R1 baseline ledger is EMPTY; the first \`--update\` will route every pack file you customize to reconciliation with a .pre-update sidecar"
+    fi
+}
+
 # ── --update mode (BD-080) ─────────────────────────────────────────────────
 #
 # Refresh a previously-installed pack to the current pack version using the
@@ -1586,30 +1698,82 @@ _cmd_update_probe_pack_authored() {
 # BASE-cascade rung R1 WRITE. Pair the staged rows with the blob shas of the
 # files this run installed, and hand each to the ledger.
 #
-# ONE `git hash-object` pass over the whole set: `--stdin-paths` reads a path
-# per line and emits a sha per line IN ORDER, so the cost is one fork for the
-# run rather than one per file. `--no-filters` for the reason
-# pack-provenance.sh documents — a local `core.autocrlf` must not be able to
-# change the recorded sha, or a later run would materialise a BASE that never
-# existed. The line-count guard is load-bearing: a hash pass that died partway
-# would otherwise pair each path with the WRONG file's sha.
+# The one-pass hash + record idiom lives in customization-preserve.sh, beside
+# the record writer and the ledger's own contract, because THREE paths
+# originate a ledger now (this one, the fresh-install seed below, and the
+# migrator's map-derived install). A second copy here would let the recorded
+# shape drift between them, and the shape is what the R1 READ join parses.
 _cmd_update_write_ledger() {
-    local stage="$1"
-    [[ -s "$stage" ]] || return 0
-    local shas paired
-    shas=$(mktemp "${TMPDIR:-/tmp}/cu-shas.XXXXXX") || return 0
-    paired=$(mktemp "${TMPDIR:-/tmp}/cu-paired.XXXXXX") || { rm -f "$shas"; return 0; }
-    if cut -f4 "$stage" \
-         | git -C "$PACK" hash-object --no-filters --stdin-paths > "$shas" 2>/dev/null \
-       && [[ "$(wc -l < "$shas")" -eq "$(wc -l < "$stage")" ]]; then
-        paste "$stage" "$shas" > "$paired"
-        local lrel lsrc ldisp lpath lsha
-        while IFS=$'\t' read -r lrel lsrc ldisp lpath lsha; do
-            customization_preserve_ledger_record "$lrel" "$lsrc" "$lsha" "$ldisp"
-        done < "$paired"
+    customization_preserve_ledger_flush "$1"
+}
+
+# ── the `.resolved` companion's CONTENT BINDING ──────────────────────────
+#
+# `<sidecar>.resolved` is the client's second reconciliation signal (the
+# BD-095 two-signal contract). Honouring its mere EXISTENCE turns it into a
+# permanent opt-out for that path: nothing in the tree ever clears the flag,
+# and the shipped docs tell the client to keep it and commit it, so every
+# LATER, DIFFERENT, unreconciled sidecar at that path would be waved through
+# in silence, forever. Measured on the pre-binding gate: a stale flag against
+# a brand-new differing sidecar exited 0 and never named the file, while the
+# same tree with the flag removed exited 50.
+#
+# So the flag is bound to the sidecar CONTENT it was created for. A flag the
+# client has just `touch`ed carries no stamp, and the first run that honours
+# it records the sidecar's hash into it. From then on it exempts THAT
+# reconciliation and no other: when the sidecar's bytes change, the client's
+# prior content has been parked again — a new reconciliation event — and the
+# gate says so instead of staying silent.
+#
+# Fail CLOSED. No hash tool, an unreadable flag, or a stamp that does not
+# match all mean NO exemption; the run falls through to the byte-identity
+# check and blocks if that does not cover it either. An exemption that cannot
+# verify its own basis is the escape hatch this binding exists to remove.
+#
+# COST: one hash per FLAGGED sidecar, computed only where a flag exists —
+# never one per file. A run with no flagged sidecars forks nothing here.
+_CU_RESOLVED_STAMP_PREFIX='pack-resolved-sidecar-sha256: '
+
+# Hash one file. `shasum -a 256` first (BSD/macOS ship it), `sha256sum`
+# second (GNU/Linux) — the same order dry-run.sh and immutable-manifest.sh
+# use. Non-zero when neither exists, which the caller treats as "no
+# exemption".
+_cu_sidecar_sha() {
+    local out
+    if command -v shasum > /dev/null 2>&1; then
+        out=$(shasum -a 256 "$1" 2>/dev/null) || return 1
+    elif command -v sha256sum > /dev/null 2>&1; then
+        out=$(sha256sum "$1" 2>/dev/null) || return 1
+    else
+        return 1
     fi
-    rm -f "$shas" "$paired"
-    return 0
+    [[ -n "$out" ]] || return 1
+    printf '%s\n' "${out%% *}"
+}
+
+# Return 0 only when `<sidecar>.resolved` exempts this sidecar's CURRENT
+# content. Reading the flag is pure bash (no fork); the single fork is the
+# hash, and only when a flag is actually present.
+_cu_resolved_flag_binds() {
+    local sc_file="$1" flag="$1.resolved" line recorded='' current
+    [[ -f "$flag" ]] || return 1
+    current=$(_cu_sidecar_sha "$sc_file") || return 1
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        case "$line" in
+            "$_CU_RESOLVED_STAMP_PREFIX"*)
+                recorded=${line#"$_CU_RESOLVED_STAMP_PREFIX"}
+                break
+                ;;
+        esac
+    done < "$flag"
+    if [[ -z "$recorded" ]]; then
+        # An unstamped flag is the client's fresh, explicit act. Honour it
+        # and BIND it, so it cannot silently cover a different sidecar later.
+        printf '%s%s\n' "$_CU_RESOLVED_STAMP_PREFIX" "$current" >> "$flag" \
+            || return 1
+        return 0
+    fi
+    [[ "$recorded" == "$current" ]]
 }
 
 cmd_update() {
@@ -1658,11 +1822,43 @@ cmd_update() {
     #
     # Nothing is deleted here. An exempt sidecar is left on disk and is simply
     # not treated as a blocker; the next run overwrites it with the same bytes.
+    #
+    # THE SECOND SIGNAL: a `<sidecar>.resolved` companion is equally exempt.
+    # This is the BD-095 two-signal contract the migrator's resume + Gate-2
+    # checkpoints already implement (`scripts/lib/migrate-v10-to-v11/
+    # resume.sh`, `checkpoint.sh`): a sidecar is reconciled when it is REMOVED
+    # **or** when the client flags it resolved and keeps it as a record. Both
+    # signals mean the same thing, and honouring only one made `--update`
+    # contradict its OWN report: `customization_report` — which cmd_update
+    # renders to `.pack-update/report.md` at the end of every run — tells the
+    # client, for every needs-reconciliation row, to "mark it resolved (remove
+    # the sidecar or add its .resolved companion)". A client who took the
+    # second option was then refused by the next run, with the flag file
+    # sitting right beside the sidecar it was created to clear.
+    #
+    # The byte-identity exemption above cannot cover this case and never
+    # could: a file the client CORRECTLY merged differs from its sidecar by
+    # definition — that difference IS the merge — so `cmp` is guaranteed to
+    # say "differs" for exactly the state `.resolved` exists to describe.
+    #
+    # Costs the gate nothing it was protecting: the flag is an explicit client
+    # act on that one file, which is the same act removing the sidecar was.
+    # A sidecar with neither signal still blocks.
+    #
+    # The flag is bound to the sidecar CONTENT it was created for — see
+    # `_cu_resolved_flag_binds` above. It therefore exempts ONE
+    # reconciliation, not the path forever: when the sidecar's bytes change,
+    # the client's prior content has been parked again and the gate blocks
+    # again. A flag that does not bind falls through to the byte-identity
+    # check below, exactly as if it were absent.
     local stale_sidecars sc_file sc_live
     stale_sidecars=$(
         find "$TARGET" -type f -name "*.pre-update" \
             -not -path "*/.pack-update/*" -not -path "*/.git/*" 2>/dev/null \
         | while IFS= read -r sc_file; do
+              if _cu_resolved_flag_binds "$sc_file"; then
+                  continue
+              fi
               sc_live="${sc_file%.pre-update}"
               if [[ -f "$sc_live" ]] && cmp -s "$sc_file" "$sc_live"; then
                   continue
@@ -1673,7 +1869,7 @@ cmd_update() {
     if [[ -n "$stale_sidecars" ]]; then
         say "refusing to proceed: prior --update sidecars present:"
         printf '  %s\n' $stale_sidecars >&2
-        die "reconcile or remove the .pre-update sidecars above before re-running --update" \
+        die "reconcile or remove the .pre-update sidecars above before re-running --update — or keep one as a record by adding its .resolved companion (touch <sidecar>.resolved). A .resolved companion exempts only the sidecar CONTENT it was created for; if a sidecar listed above already has one, its bytes have changed since you resolved it — reconcile them, then re-flag it with: rm <sidecar>.resolved && touch <sidecar>.resolved" \
             "$EXIT_UPDATE_NOT_CONFIGURED"
     fi
 
@@ -1729,12 +1925,24 @@ cmd_update() {
         || die "install map declares no cmd_update rows; cannot --update" \
                "$EXIT_UPDATE_LIB_MISSING"
 
-    # BASE-cascade rung R1 READ. The ledger a previous run left behind names
-    # the blob that run installed at each path; it must be copied OUT BEFORE
-    # the state dir is cleared two lines down, or the cascade would delete its
-    # own input. `.pack-update/` is a prior update's ledger, and
-    # `.pack-install-reconcile/` a fresh install's — both are directories those
-    # paths already create, so no new client-tree artefact appears.
+    # BASE-cascade rung R1 READ. The ledger the run that put the pack here
+    # left behind names the blob it installed at each path; it must be copied
+    # OUT BEFORE the state dir is cleared two lines down, or the cascade would
+    # delete its own input. Every origination path is enumerated, because the
+    # FIRST `--update` in a client's life is the one with no prior update to
+    # read from, and it is the run that reverts their work if it finds
+    # nothing:
+    #
+    #   `.pack-update/`             a prior `--update`, or this client's own
+    #                               fresh-install seed (seed_r1_ledger below)
+    #   `.pack-install-reconcile/`  a `--trinity=merge` install
+    #   `.pack-migrate-*/`          a migration's state dir
+    #
+    # All three are directories those paths already create, so no new
+    # client-tree artefact appears. Order is most-recent-authority first: a
+    # later run's record supersedes the arrival-path seed at the same path.
+    # An unmatched `.pack-migrate-*` glob stays literal and simply fails the
+    # `-s` test, so no `nullglob` (a global shell-option change) is needed.
     # The filename comes from the library that writes it, never a second copy.
     #
     # Kept as a FILE, never slurped into a shell string: the join below reads
@@ -1743,7 +1951,8 @@ cmd_update() {
     local prior_ledger=""
     local _cu_prior
     for _cu_prior in "$state_dir/$_CP_LEDGER_BASENAME" \
-                     "$TARGET/.pack-install-reconcile/$_CP_LEDGER_BASENAME"; do
+                     "$TARGET/.pack-install-reconcile/$_CP_LEDGER_BASENAME" \
+                     "$TARGET"/.pack-migrate-*/"$_CP_LEDGER_BASENAME"; do
         if [[ -s "$_cu_prior" ]]; then
             prior_ledger=$(mktemp "${TMPDIR:-/tmp}/cu-prior.XXXXXX") || prior_ledger=""
             if [[ -n "$prior_ledger" ]]; then
@@ -2268,6 +2477,7 @@ main() {
     stage_s8_gitignore
     stage_s9_conditional_remove
     stage_s11_v11_artifacts
+    seed_r1_ledger
     stage_s10_kickoff_prompt
 
     # End-of-S10 blast-radius sweep
