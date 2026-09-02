@@ -70,7 +70,12 @@ Review for all nine of the following — do not skip any:
    Python: run `ruff check` and `pyright` and report any warnings.
    Zero warnings is the standard.
 7. **BACKLOG and deferral comment hygiene** —
-   Run `grep -rn "TD-TBD" .` on all files modified in this phase. Any result is ❌ FAIL —
+   Run `grep -n "TD-TBD"` on the files modified in this phase — pass those paths
+   explicitly, never a whole-tree `-r` scan. The pack-shipped surfaces
+   (`docs/pack/`, the per-CLI skill and agent trees, the trinity context files)
+   document the deferral convention and carry the literal by design, so an
+   unscoped scan reports dozens of hits the project does not own and cannot
+   action. Any result in a modified file is ❌ FAIL —
    it means the PM chat has not yet processed the coder's deferred items report and the
    session must not proceed to commit.
    Check that all deferral comments in reviewed files use the typed format

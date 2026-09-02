@@ -28,9 +28,11 @@
 # this config or hook (see docs/pack/PM-OPERATING-MODES.md).
 #
 # Dependency direction: a client-side hook — it is read only by the client
-# .claude/settings.json (which wires it via `python3 ./scripts/pm-modes-
-# enforce.py`) and depends on no other file. It is a self-contained client copy;
-# it shares no code with any pack-repo hook.
+# .claude/settings.json (which wires it by name, `pm-modes-enforce.py`) and
+# depends on no other file. It is a self-contained client copy; it shares no
+# code with any pack-repo hook. The wiring is named here by basename only:
+# settings.json is the sole source of truth for the invocation form, so this
+# comment cannot go stale when that form changes.
 
 import json
 import os

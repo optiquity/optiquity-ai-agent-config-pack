@@ -1508,6 +1508,27 @@ scope is not a TODO — it is an incomplete task. The reviewer flags it as an im
 plan compliance failure (reviewer checklist item 4). The fix is a coder fix pass,
 not a BACKLOG entry.
 
+### Deferral scan scope
+
+Every deferral scan in this Part runs against **project-owned files only**. The
+pack-shipped surfaces — `docs/pack/`, the per-CLI skill and agent trees
+(`.claude/`, `.codex/`, `.agents/`, `.agents-plugin/`), the capability pool, and
+the trinity context files (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) — DOCUMENT the
+deferral convention, so they contain `TD-TBD` and the typed comment markers by
+design. They are not project work and are never a defect.
+
+An unscoped whole-tree scan reports dozens of pack-owned hits the project cannot
+action. Define the scope once per session and use it for every scan below:
+
+```bash
+SCAN_SCOPE='--include=*.swift --include=*.py --include=*.md --exclude-dir=.git --exclude-dir=pack --exclude-dir=.claude --exclude-dir=.codex --exclude-dir=.agents --exclude-dir=.agents-plugin --exclude-dir=pack-capability-pool --exclude=CLAUDE.md --exclude=AGENTS.md --exclude=GEMINI.md'
+```
+
+`docs/project/` stays IN scope — project per-entry files are project work.
+
+This is the same scope the `/pm-startup` Step 5 sentinel check applies. The two
+are one contract: if either changes, change both.
+
 ### BACKLOG item format
 
 ```
@@ -1568,8 +1589,8 @@ No phase prompt is generated until this check is complete.
    - Determine resolution path using the decision logic below
    - Present list to user with proposed path for each item
    - Wait for explicit approval before incorporating into any phase prompt
-4. Run TD-TBD grep check:
-   Swift/C/C++/ObjC: grep -rn "TD-TBD" .
+4. Run TD-TBD grep check (project-owned files only — see "Deferral scan scope"):
+   grep -rn "TD-TBD" . $SCAN_SCOPE
    Any result is a defect — report to user and resolve before proceeding
 5. Run orphan audit (Procedure 3)
 6. Skill gap check:
@@ -1652,11 +1673,12 @@ no fold-into-an-existing-task outcome.
 ### Procedure 3 — Orphan audit (runs at every phase gate, step 5)
 
 ```
+   (All scans below are project-owned only — see "Deferral scan scope".)
 1. Grep for all typed deferral comments:
-   Swift/C/C++/ObjC: grep -rn "// TODO(\|// KNOWN GAP(\|// VERIFY(" .
-   Python:            grep -rn "# TODO(\|# KNOWN GAP(\|# VERIFY(" .
+   Swift/C/C++/ObjC: grep -rn "// TODO(\|// KNOWN GAP(\|// VERIFY(" . $SCAN_SCOPE
+   Python:            grep -rn "# TODO(\|# KNOWN GAP(\|# VERIFY(" . $SCAN_SCOPE
 2. Grep for unprocessed items (always a defect if found in committed code):
-   grep -rn "TD-TBD" .
+   grep -rn "TD-TBD" . $SCAN_SCOPE
 3. For each TD-NNN found in comments:
    - Confirm a corresponding BACKLOG entry exists with that number
    - Confirm Type, severity/scope, and short title match between comment and BACKLOG entry

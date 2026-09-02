@@ -39,9 +39,11 @@
 # invariant, not a tunable mode).
 #
 # Dependency direction: a client-side hook — it is read only by the client
-# .claude/settings.json (which wires it via `python3 ./scripts/pm-deletion-
-# boundary.py`) and depends on no other file. It is a self-contained client copy;
-# it shares no code with any pack-repo hook.
+# .claude/settings.json (which wires it by name, `pm-deletion-boundary.py`) and
+# depends on no other file. It is a self-contained client copy; it shares no
+# code with any pack-repo hook. The wiring is named here by basename only:
+# settings.json is the sole source of truth for the invocation form, so this
+# comment cannot go stale when that form changes.
 #
 # Test seams (mirror pm-modes-commit-gate.py's MODES_GATE_* seams):
 #   DELBOUND_REGISTRY_FILE — override the owned-dirs registry path (inject a

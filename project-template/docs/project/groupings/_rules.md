@@ -145,7 +145,10 @@ Writes are PM-Chat authority. Read more at `docs/pack/PM-CHAT.md` +
 `docs/pack/METHODOLOGY.md`. Write procedure: author / edit a per-entry
 grouping file directly, in the closed serialization (sort members
 ascending, emit the fixed field order, end with a single newline). After
-any entry edit, regenerate `_toc.md` before staging. Never hand-edit
+any entry edit, regenerate `_toc.md` before staging by running
+`bash scripts/per-entry-regen.sh groupings` from the project root
+(`bash scripts/per-entry-regen.sh --check` reports drift without
+writing). Never hand-edit
 `_toc.md` (derived index). `_toc.md` axis: entries grouped by Kind
 (alphabetical by slug), IDs ascending within each group; one row per
 entry, exactly: `- GRP-NNN — <Title> (phases: N)` where N is the member

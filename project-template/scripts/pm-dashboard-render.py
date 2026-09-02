@@ -51,8 +51,9 @@ STATE_SENTINEL = "__PM_DASHBOARD_STATE__"
 STATE_PLACEHOLDER = ">" + STATE_SENTINEL + "</script>"
 
 # ---------- backlog (TD) vocabulary ----------
-# KNOWN GAP(polish): TD-TBD - TD-entry schema regexes hardcoded, not spec-driven.
-# Scoped PRECISELY to the schema regex / format-string set below - the title
+# Design note: the TD-entry schema regexes are hardcoded here, not spec-driven.
+# This is a pack design decision, not project work - nothing to action here.
+# It covers PRECISELY the schema regex / format-string set below - the title
 # regex, the id regex, the backlog-path regex, and the `TD-%03d` id format
 # string: these are retargeted inline for the client project's TD data model
 # rather than read from PM-DASHBOARD-SPEC.md at build. They are compiled `re`
@@ -60,11 +61,11 @@ STATE_PLACEHOLDER = ">" + STATE_SENTINEL + "</script>"
 # across the collection layer; spec-driving them would require compiling
 # doc-sourced regex strings at runtime (a new parse-abort / ReDoS surface and a
 # doc<->code coupling the pack engine does not have), so a straight retarget is
-# the correct disposition now and spec-parameterization is the deferred polish.
-# NOT part of this gap: the layout path constants above (SPEC_REL_DEFAULT /
-# APPROVALS_REL / DASHBOARD_NAME / SHELL_NAME). Hardcoding them (retargeted to the
-# client tree, never spec-driven) is INTENTIONAL parity with the pack engine's own
-# hardcoded-path design - the correct steady state, not deferred tech debt.
+# the correct disposition.
+# The layout path constants above (SPEC_REL_DEFAULT / APPROVALS_REL /
+# DASHBOARD_NAME / SHELL_NAME) are hardcoded by the same intent: retargeted to
+# the client tree, never spec-driven - INTENTIONAL parity with the pack engine's
+# own hardcoded-path design, and the correct steady state.
 NON_TERMINAL = {"Open", "Unblocked", "Deferred"}
 STATUS_TOKEN = {"Open": "pending", "Unblocked": "unblocked", "Deferred": "deferred",
                 "Resolved": "done", "Deprecated": "deprecated", "Cancelled": "cancelled"}

@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ./scripts/pm-modes-enforce.py"
+            "command": "python3 $CLAUDE_PROJECT_DIR/scripts/pm-modes-enforce.py"
           }
         ]
       },
@@ -39,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ./scripts/pm-modes-commit-gate.py"
+            "command": "python3 $CLAUDE_PROJECT_DIR/scripts/pm-modes-commit-gate.py"
           }
         ]
       },
@@ -48,7 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ./scripts/pm-deletion-boundary.py"
+            "command": "python3 $CLAUDE_PROJECT_DIR/scripts/pm-deletion-boundary.py"
           }
         ]
       }
@@ -59,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./scripts/agent-post-edit-check.sh"
+            "command": "$CLAUDE_PROJECT_DIR/scripts/agent-post-edit-check.sh"
           }
         ]
       }

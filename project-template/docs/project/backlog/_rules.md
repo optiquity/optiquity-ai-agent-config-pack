@@ -87,5 +87,7 @@ Files not matching the entry regex AND not in this list are SKIP.
 Writes are PM-Chat authority. Read more at `docs/pack/PM-CHAT.md` +
 `docs/pack/METHODOLOGY.md` Part 7. Write procedure: edit the per-entry
 file directly; entries resolve in place. After any entry edit,
-regenerate `_toc.md` before staging. Never hand-edit `_toc.md`
-(derived index).
+regenerate `_toc.md` before staging by running
+`bash scripts/per-entry-regen.sh backlog` from the project root
+(`bash scripts/per-entry-regen.sh --check` reports drift without
+writing). Never hand-edit `_toc.md` (derived index).

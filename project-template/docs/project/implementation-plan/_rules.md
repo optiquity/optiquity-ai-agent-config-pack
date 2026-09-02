@@ -155,5 +155,8 @@ Files not matching the entry regex AND not in this list are SKIP.
 Writes are PM-Chat authority. Read more at `docs/pack/PM-CHAT.md` +
 `docs/pack/METHODOLOGY.md` Part 4. Write procedure: author / edit a
 `phase-N.md` entry directly. After any entry edit, regenerate `_toc.md`
-and `_index.md` before staging. Never hand-edit `_toc.md` or `_index.md`
+and `_index.md` before staging by running
+`bash scripts/per-entry-regen.sh implementation-plan` from the project
+root (`bash scripts/per-entry-regen.sh --check` reports drift without
+writing). Never hand-edit `_toc.md` or `_index.md`
 (derived indexes).

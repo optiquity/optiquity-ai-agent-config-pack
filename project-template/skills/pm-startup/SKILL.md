@@ -195,9 +195,19 @@ appropriate migrator (existing project).
 
 ## Step 5 — Check for TD-TBD sentinel
 
+Scan only what this project owns. The pack-shipped surfaces — `docs/pack/`,
+the per-CLI skill/agent trees, the capability pool, and the trinity context
+files — DOCUMENT the deferral convention, so they contain the literal
+`TD-TBD` by design. They are not project work and are excluded; without the
+exclusions every install reports dozens of hits the project cannot action.
+
 ```bash
 grep -rn "TD-TBD" . --include="*.swift" --include="*.py" --include="*.md" \
-  --exclude-dir=".git" 2>/dev/null | head -20
+  --exclude-dir=".git" --exclude-dir="pack" --exclude-dir=".claude" \
+  --exclude-dir=".codex" --exclude-dir=".agents" --exclude-dir=".agents-plugin" \
+  --exclude-dir="pack-capability-pool" \
+  --exclude="CLAUDE.md" --exclude="AGENTS.md" --exclude="GEMINI.md" \
+  2>/dev/null | head -20
 ```
 
 Any result is a defect requiring immediate attention before proceeding.

@@ -94,4 +94,7 @@ per-entry file at `docs/project/changelog/<YYYY-MM-DD-slug>.md`
 release-boundary and sweep-execution entries per the entry contract;
 date = the date of the recorded event — for a phase entry, the date
 the phase was committed to `main`). After any entry add, regenerate
-`_toc.md` before staging. Never hand-edit `_toc.md` (derived index).
+`_toc.md` before staging by running
+`bash scripts/per-entry-regen.sh changelog` from the project root
+(`bash scripts/per-entry-regen.sh --check` reports drift without
+writing). Never hand-edit `_toc.md` (derived index).
