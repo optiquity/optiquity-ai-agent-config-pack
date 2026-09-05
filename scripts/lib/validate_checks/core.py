@@ -207,7 +207,11 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # `merge-2way` action-token wire BITES + LEG 2 the Case-3 KEEP-`.user-orig`-on-
 # success static backstop, BOTH in one registry entry per ROI-2; one new registry
 # entry): 90 → 91. (Next free numeric ID = 95.)
-CHECK_REGISTRY_EXPECTED_COUNT = 91
+# Check 97 (install-map axis symmetry — every explicit + family row carries
+# both `cmd_update` and `migrate`; one new registry entry; 97 is the slot
+# BD-293's plan reserved, 95 + 96 belong to BD-289's plan and stay free until
+# it lands): 91 → 92. (Next free numeric ID = 98.)
+CHECK_REGISTRY_EXPECTED_COUNT = 92
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []

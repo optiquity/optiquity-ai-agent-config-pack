@@ -407,6 +407,268 @@ fi
 
 unset MIGRATOR_SKILLS_FILES
 
+# ─────────────────────────────────────────────────────────────────────────
+# G4 — migrator_retire_skill_dirs: the filesystem half of a retirement
+# ─────────────────────────────────────────────────────────────────────────
+#
+# The retired set is DERIVED here exactly as the library derives it (v10
+# tag pool minus tracked v11 pool) so the test names no skill; it asserts
+# the set is non-empty and drives the API against a synthetic target whose
+# three homes hold, for the first retired skill: a PRISTINE copy (v10
+# blob) in .claude, an EDITED copy in .codex, and in .agents a directory
+# holding ONLY a client symlink (no regular file — the shape a
+# regular-files-only census would call pristine and delete). A shared
+# v10∩v11 skill (c-language) is seeded in every home as the must-NOT-touch
+# control.
+echo "=== G4: migrator_retire_skill_dirs ==="
+
+G4_DIR="$FIXTURE_BASE/g4"
+mkdir -p "$G4_DIR"
+G4_TARGET="$G4_DIR/project"
+G4_STATE="$G4_TARGET/.pack-migrate-v10-to-v11"
+mkdir -p "$G4_TARGET/.claude/skills" "$G4_TARGET/.codex/skills" "$G4_TARGET/.agents/skills"
+
+g4_retired=$(comm -23 \
+    <(git -C "$PACK_ROOT" ls-tree -r --name-only v10 -- project-template/skills/ \
+        | sed -n 's#^project-template/skills/\([^/]*\)/SKILL\.md$#\1#p' | sort -u) \
+    <(git -C "$PACK_ROOT" ls-files -- 'project-template/skills/*/SKILL.md' \
+        | sed -n 's#^project-template/skills/\([^/]*\)/SKILL\.md$#\1#p' | sort -u))
+g4_first=$(printf '%s\n' "$g4_retired" | head -1)
+if [[ -n "$g4_first" ]]; then
+    pass "G4.a retired set derived from v10-vs-v11 pool inventory is non-empty (first: $g4_first)"
+else
+    fail "G4.a retired set is EMPTY — nothing to drive the API against"
+fi
+
+for cli in .claude .codex .agents; do
+    mkdir -p "$G4_TARGET/$cli/skills/c-language"
+    git -C "$PACK_ROOT" show "v10:project-template/skills/c-language/SKILL.md" \
+        > "$G4_TARGET/$cli/skills/c-language/SKILL.md"
+done
+mkdir -p "$G4_TARGET/.claude/skills/$g4_first" "$G4_TARGET/.codex/skills/$g4_first"
+git -C "$PACK_ROOT" show "v10:project-template/skills/$g4_first/SKILL.md" \
+    > "$G4_TARGET/.claude/skills/$g4_first/SKILL.md"
+git -C "$PACK_ROOT" show "v10:project-template/skills/$g4_first/SKILL.md" \
+    > "$G4_TARGET/.codex/skills/$g4_first/SKILL.md"
+printf '\n<!-- project edit -->\n' >> "$G4_TARGET/.codex/skills/$g4_first/SKILL.md"
+# .agents: the retired dir holds ONLY a client symlink — client content that
+# a `-type f`-only census cannot see.
+mkdir -p "$G4_TARGET/.agents/skills/$g4_first"
+ln -s ../../../README.md "$G4_TARGET/.agents/skills/$g4_first/notes.md"
+
+# Drive the API inside a subshell with the framework env the adapter
+# supplies, plus an initialised customization-preserve state so _cp_record
+# has a dispositions file to write.
+(
+    export _CP_PACK_ROOT="$PACK_ROOT"
+    # shellcheck source=/dev/null
+    . "$PACK_ROOT/scripts/lib/three-way.sh"
+    # shellcheck source=/dev/null
+    . "$PACK_ROOT/scripts/lib/customization-preserve.sh"
+    _MIGRATOR_TARGET="$G4_TARGET"
+    _MIGRATOR_STATE_DIR="$G4_STATE"
+    customization_preserve_init "$G4_STATE" ".v10-customized"
+    migrator_retire_skill_dirs .claude .codex .agents
+) > "$G4_DIR/run1.log" 2>&1; g4_rc=$?
+assert_eq "G4.b migrator_retire_skill_dirs rc=0" "0" "$g4_rc"
+
+[[ ! -e "$G4_TARGET/.claude/skills/$g4_first" ]] \
+    && pass "G4.c pristine retired dir removed from .claude" \
+    || fail "G4.c pristine retired dir still present in .claude"
+[[ ! -e "$G4_TARGET/.codex/skills/$g4_first" ]] \
+    && pass "G4.d edited retired dir no longer in .codex" \
+    || fail "G4.d edited retired dir still present in .codex"
+g4_moved="$G4_STATE/retired-skills/.codex/skills/$g4_first/SKILL.md"
+if [[ -f "$g4_moved" ]] && grep -q '<!-- project edit -->' "$g4_moved"; then
+    pass "G4.e edited retired dir MOVED under the state dir with the project edit intact"
+else
+    fail "G4.e edited retired copy not preserved at $g4_moved"
+fi
+[[ ! -e "$G4_STATE/retired-skills/.claude" ]] \
+    && pass "G4.f pristine copy was deleted, not parked (no .claude holding copy)" \
+    || fail "G4.f pristine copy was parked although byte-identical to the v10 blob"
+g4_link="$G4_STATE/retired-skills/.agents/skills/$g4_first/notes.md"
+if [[ ! -e "$G4_TARGET/.agents/skills/$g4_first" && -L "$g4_link" ]]; then
+    pass "G4.m symlink-only retired dir in .agents MOVED with the client symlink intact at the holding path, not deleted"
+else
+    fail "G4.m symlink-only retired dir in .agents" "moved; $g4_link is a symlink" \
+         "still-present=$([[ -e "$G4_TARGET/.agents/skills/$g4_first" ]] && echo yes || echo no) holding-symlink=$([[ -L "$g4_link" ]] && echo yes || echo no)"
+fi
+for cli in .claude .codex .agents; do
+    if cmp -s <(git -C "$PACK_ROOT" show "v10:project-template/skills/c-language/SKILL.md") \
+              "$G4_TARGET/$cli/skills/c-language/SKILL.md"; then
+        pass "G4.g control: shared v10∩v11 skill c-language untouched in $cli"
+    else
+        fail "G4.g control: c-language altered or removed in $cli"
+    fi
+done
+g4_rows=$(awk -F'\t' -v s="$g4_first" '$1 == "removed-by-design" && index($3, "/skills/" s "/") { print $3 "|" $5 }' "$G4_STATE/dispositions.tsv")
+if [[ "$g4_rows" == *".claude/skills/$g4_first/SKILL.md|-"* \
+   && "$g4_rows" == *".codex/skills/$g4_first/SKILL.md|$g4_moved"* ]]; then
+    pass "G4.h both removals recorded as removed-by-design (moved copy named in the sidecar column)"
+else
+    fail "G4.h dispositions rows missing or wrong" \
+         ".claude/…|- and .codex/…|<moved path>" "$g4_rows"
+fi
+[[ "$g4_rows" == *".agents/skills/$g4_first/notes.md|$g4_link"* ]] \
+    && pass "G4.n the symlink's removal is recorded removed-by-design with the holding path in the sidecar column" \
+    || fail "G4.n symlink disposition row missing" ".agents/skills/$g4_first/notes.md|$g4_link" "$g4_rows"
+if grep -q "retired skill dir removed: .claude/skills/$g4_first (pristine)" "$G4_DIR/run1.log" \
+   && grep -q "retired skill dir moved: .codex/skills/$g4_first" "$G4_DIR/run1.log"; then
+    pass "G4.i info lines name each retired directory and its outcome"
+else
+    fail "G4.i info lines missing" "" "$(cat "$G4_DIR/run1.log")"
+fi
+
+# Idempotent re-run: nothing left to do, rc 0, no new rows.
+g4_rows_before=$(wc -l < "$G4_STATE/dispositions.tsv" | tr -d ' ')
+(
+    export _CP_PACK_ROOT="$PACK_ROOT"
+    # shellcheck source=/dev/null
+    . "$PACK_ROOT/scripts/lib/three-way.sh"
+    # shellcheck source=/dev/null
+    . "$PACK_ROOT/scripts/lib/customization-preserve.sh"
+    _MIGRATOR_TARGET="$G4_TARGET"
+    _MIGRATOR_STATE_DIR="$G4_STATE"
+    _CP_DISPOSITIONS_FILE="$G4_STATE/dispositions.tsv"
+    _CP_FINDINGS_COUNT=0
+    migrator_retire_skill_dirs .claude .codex .agents
+) > "$G4_DIR/run2.log" 2>&1; g4_rc2=$?
+g4_rows_after=$(wc -l < "$G4_STATE/dispositions.tsv" | tr -d ' ')
+[[ "$g4_rc2" -eq 0 && "$g4_rows_before" == "$g4_rows_after" ]] \
+    && pass "G4.j second run is a no-op (rc 0, no new disposition rows)" \
+    || fail "G4.j second run changed state" "rc=0 rows=$g4_rows_before" "rc=$g4_rc2 rows=$g4_rows_after"
+
+# Contract guards: no homes / missing framework env → rc 2, nothing touched.
+(
+    _MIGRATOR_TARGET="$G4_TARGET"; _MIGRATOR_STATE_DIR="$G4_STATE"
+    migrator_retire_skill_dirs
+) >/dev/null 2>&1; g4_rc3=$?
+assert_eq "G4.k no homes → rc 2" "2" "$g4_rc3"
+(
+    unset _MIGRATOR_TARGET _MIGRATOR_STATE_DIR
+    migrator_retire_skill_dirs .claude
+) >/dev/null 2>&1; g4_rc4=$?
+assert_eq "G4.l framework env unset → rc 2" "2" "$g4_rc4"
+
+# ─────────────────────────────────────────────────────────────────────────
+# G4s — migrator_retire_skill_dirs: the retired path ITSELF is a symlink
+# ─────────────────────────────────────────────────────────────────────────
+#
+# A client who de-duplicated one skill across homes leaves a relative link
+# (`.codex/skills/x -> ../../.claude/skills/x`); one who keeps skills
+# outside the tree leaves an absolute link. The pack ships no symlinks, so
+# the link is client content: it is MOVED as the link (never read through,
+# followed, or removed through), recorded as ONE well-formed
+# removed-by-design row (path `<home>/skills/<name>`, holding path in the
+# sidecar column), and no home is left holding a dangling link. Both visit
+# orders are driven — the link visited AFTER its target was deleted
+# (dangling at visit) and BEFORE (live at visit) — because `-d` follows a
+# live link and skips a dangling one, and each order fails differently.
+echo "=== G4s: migrator_retire_skill_dirs — symlinked retired path ==="
+
+G4S_OUT="$FIXTURE_BASE/g4s-outside/$g4_first"
+mkdir -p "$G4S_OUT"
+git -C "$PACK_ROOT" show "v10:project-template/skills/$g4_first/SKILL.md" > "$G4S_OUT/SKILL.md"
+printf 'outside marker\n' > "$G4S_OUT/marker.txt"
+g4s_out_sum=$(cat "$G4S_OUT/SKILL.md" "$G4S_OUT/marker.txt" | cksum)
+
+# (A) link visited AFTER its target: .claude real pristine, .codex -> .claude
+#     (relative), .agents -> an ABSOLUTE path outside the target tree.
+G4SA="$FIXTURE_BASE/g4s-a/project"
+G4SA_STATE="$G4SA/.pack-migrate-v10-to-v11"
+mkdir -p "$G4SA/.claude/skills/$g4_first" "$G4SA/.codex/skills" "$G4SA/.agents/skills"
+git -C "$PACK_ROOT" show "v10:project-template/skills/$g4_first/SKILL.md" > "$G4SA/.claude/skills/$g4_first/SKILL.md"
+ln -s "../../.claude/skills/$g4_first" "$G4SA/.codex/skills/$g4_first"
+ln -s "$G4S_OUT" "$G4SA/.agents/skills/$g4_first"
+[[ -L "$G4SA/.codex/skills/$g4_first" && -d "$G4SA/.codex/skills/$g4_first" && -L "$G4SA/.agents/skills/$g4_first" && -d "$G4SA/.agents/skills/$g4_first" ]] \
+    && pass "G4s.a setup: .codex and .agents retired paths are LIVE symlinks (-L and -d) before the run" \
+    || fail "G4s.a setup: link shapes not as intended"
+(
+    export _CP_PACK_ROOT="$PACK_ROOT"
+    # shellcheck source=/dev/null
+    . "$PACK_ROOT/scripts/lib/three-way.sh"
+    # shellcheck source=/dev/null
+    . "$PACK_ROOT/scripts/lib/customization-preserve.sh"
+    _MIGRATOR_TARGET="$G4SA"
+    _MIGRATOR_STATE_DIR="$G4SA_STATE"
+    customization_preserve_init "$G4SA_STATE" ".v10-customized"
+    migrator_retire_skill_dirs .claude .codex .agents
+) > "$FIXTURE_BASE/g4s-a/run.log" 2>&1; g4s_rc=$?
+assert_eq "G4s.b rc=0" "0" "$g4s_rc"
+g4s_left=""
+for cli in .claude .codex .agents; do
+    [[ -e "$G4SA/$cli/skills/$g4_first" || -L "$G4SA/$cli/skills/$g4_first" ]] && g4s_left="$g4s_left $cli"
+done
+[[ -z "$g4s_left" ]] \
+    && pass "G4s.c no home holds the retired path afterwards — not as a directory, not as a (dangling) link" \
+    || fail "G4s.c retired path left in a home" "" "$g4s_left"
+g4s_hold_c="$G4SA_STATE/retired-skills/.codex/skills/$g4_first"
+if [[ -L "$g4s_hold_c" && "$(readlink "$g4s_hold_c")" == "../../.claude/skills/$g4_first" ]]; then
+    pass "G4s.d .codex link (dangling at visit — .claude was deleted first) MOVED to the holding path AS THE LINK, target text preserved"
+else
+    fail "G4s.d .codex link not moved as a link" "symlink -> ../../.claude/skills/$g4_first" "islink=$([[ -L "$g4s_hold_c" ]] && echo yes || echo no) target=$(readlink "$g4s_hold_c" 2>/dev/null)"
+fi
+g4s_hold_a="$G4SA_STATE/retired-skills/.agents/skills/$g4_first"
+if [[ -L "$g4s_hold_a" && "$(readlink "$g4s_hold_a")" == "$G4S_OUT" ]]; then
+    pass "G4s.e .agents ABSOLUTE link to an outside dir MOVED as the link"
+else
+    fail "G4s.e .agents outside link not moved as a link" "symlink -> $G4S_OUT" "islink=$([[ -L "$g4s_hold_a" ]] && echo yes || echo no) target=$(readlink "$g4s_hold_a" 2>/dev/null)"
+fi
+[[ -f "$G4S_OUT/SKILL.md" && -f "$G4S_OUT/marker.txt" && "$(cat "$G4S_OUT/SKILL.md" "$G4S_OUT/marker.txt" | cksum)" == "$g4s_out_sum" ]] \
+    && pass "G4s.f the outside target was never followed: both files intact, bytes unchanged" \
+    || fail "G4s.f outside target altered or removed through the link"
+g4s_rows=$(awk -F'\t' -v s="$g4_first" '$1 == "removed-by-design" && index($3, "/skills/" s) { print $3 "|" $5 }' "$G4SA_STATE/dispositions.tsv")
+g4s_want=".claude/skills/$g4_first/SKILL.md|-
+.codex/skills/$g4_first|$g4s_hold_c
+.agents/skills/$g4_first|$g4s_hold_a"
+if [[ "$g4s_rows" == "$g4s_want" ]]; then
+    pass "G4s.g exactly three well-formed rows: the pristine file, and ONE row per link naming the link path and its holding path"
+else
+    fail "G4s.g disposition rows differ" "$g4s_want" "$g4s_rows"
+fi
+if grep -q "retired skill dir moved: .codex/skills/$g4_first (symlink)" "$FIXTURE_BASE/g4s-a/run.log" \
+   && grep -q "retired skill dir moved: .agents/skills/$g4_first (symlink)" "$FIXTURE_BASE/g4s-a/run.log"; then
+    pass "G4s.h info lines name each moved link"
+else
+    fail "G4s.h info lines missing" "" "$(cat "$FIXTURE_BASE/g4s-a/run.log")"
+fi
+
+# (B) link visited BEFORE its target: .claude -> .codex (relative, LIVE at
+#     visit), .codex a real EDITED copy.
+G4SB="$FIXTURE_BASE/g4s-b/project"
+G4SB_STATE="$G4SB/.pack-migrate-v10-to-v11"
+mkdir -p "$G4SB/.claude/skills" "$G4SB/.codex/skills/$g4_first" "$G4SB/.agents/skills"
+git -C "$PACK_ROOT" show "v10:project-template/skills/$g4_first/SKILL.md" > "$G4SB/.codex/skills/$g4_first/SKILL.md"
+printf '\n<!-- project edit -->\n' >> "$G4SB/.codex/skills/$g4_first/SKILL.md"
+ln -s "../../.codex/skills/$g4_first" "$G4SB/.claude/skills/$g4_first"
+(
+    export _CP_PACK_ROOT="$PACK_ROOT"
+    # shellcheck source=/dev/null
+    . "$PACK_ROOT/scripts/lib/three-way.sh"
+    # shellcheck source=/dev/null
+    . "$PACK_ROOT/scripts/lib/customization-preserve.sh"
+    _MIGRATOR_TARGET="$G4SB"
+    _MIGRATOR_STATE_DIR="$G4SB_STATE"
+    customization_preserve_init "$G4SB_STATE" ".v10-customized"
+    migrator_retire_skill_dirs .claude .codex .agents
+) > "$FIXTURE_BASE/g4s-b/run.log" 2>&1; g4s_rc2=$?
+assert_eq "G4s.i (link first) rc=0" "0" "$g4s_rc2"
+g4s_hold_b="$G4SB_STATE/retired-skills/.claude/skills/$g4_first"
+if [[ ! -L "$G4SB/.claude/skills/$g4_first" && -L "$g4s_hold_b" && "$(readlink "$g4s_hold_b")" == "../../.codex/skills/$g4_first" ]]; then
+    pass "G4s.j .claude link (LIVE at visit) moved as the link, not censused through"
+else
+    fail "G4s.j live link not moved as a link" "" "home-islink=$([[ -L "$G4SB/.claude/skills/$g4_first" ]] && echo yes || echo no) holding-islink=$([[ -L "$g4s_hold_b" ]] && echo yes || echo no)"
+fi
+g4s_rows2=$(awk -F'\t' -v s="$g4_first" '$1 == "removed-by-design" && index($3, "/skills/" s) { print $3 "|" $5 }' "$G4SB_STATE/dispositions.tsv")
+g4s_want2=".claude/skills/$g4_first|$g4s_hold_b
+.codex/skills/$g4_first/SKILL.md|$G4SB_STATE/retired-skills/.codex/skills/$g4_first/SKILL.md"
+if [[ "$g4s_rows2" == "$g4s_want2" ]]; then
+    pass "G4s.k rows well-formed when the link is visited first: link path is exactly .claude/skills/$g4_first (no absolute-path fragment), edited-copy row unchanged"
+else
+    fail "G4s.k disposition rows differ (link-first order)" "$g4s_want2" "$g4s_rows2"
+fi
+
 # ── Summary ──────────────────────────────────────────────────────────────
 echo
 echo "=== Results: $passes passed, $fails failed ==="

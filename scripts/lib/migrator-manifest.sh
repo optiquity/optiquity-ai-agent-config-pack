@@ -255,7 +255,9 @@ _manifest_iterate() {
 # ── Action handlers ──────────────────────────────────────────────────────
 #
 # Each handler:
-#  - resolves the BASE blob (pack baseline tag) via migrator_baseline_to_tmp
+#  - resolves the BASE blob (pack baseline tag) via migrator_baseline_for_row
+#    (destination-aware: a row whose destination the FROM version never
+#    created gets no base — see migrator-core.sh)
 #  - resolves OURS / THEIRS / DEST paths under TARGET / PACK
 #  - calls customization_preserve to record a truthful disposition
 #  - cleans up the BASE tmp file
@@ -273,10 +275,10 @@ _manifest_dispatch_transform() {
     local dest="$_MIGRATOR_TARGET/$proj_rel"
     local base
     base=$(mktemp)
-    if migrator_baseline_to_tmp "$pack_rel" "$base"; then
+    if migrator_baseline_for_row "$pack_rel" "$proj_rel" "$base"; then
         : # base populated
     else
-        # Empty base file is what migrator_baseline_to_tmp leaves on
+        # Empty base file is what migrator_baseline_for_row leaves on
         # not-found; clear the path so customization_preserve sees
         # "absent" (empty string), matching the monolith's behavior.
         rm -f "$base"
@@ -510,7 +512,7 @@ _manifest_sweep_one_dir() {
         ours="$_MIGRATOR_TARGET/$proj_rel"
         dest="$_MIGRATOR_TARGET/$proj_rel"
         base=$(mktemp)
-        if ! migrator_baseline_to_tmp "$pack_rel" "$base"; then
+        if ! migrator_baseline_for_row "$pack_rel" "$proj_rel" "$base"; then
             rm -f "$base"
             base=""
         fi

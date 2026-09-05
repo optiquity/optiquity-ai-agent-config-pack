@@ -101,11 +101,11 @@ fi
 
 printf "\n=== Group 1: Synthetic-tree end-to-end (in-process body) ===\n"
 
-python3 <<EOF
+python3 - "$REPO_ROOT" "$VALIDATE" <<'EOF'
 import sys, tempfile, pathlib, shutil, io, contextlib
-sys.path.insert(0, '$REPO_ROOT/scripts')
+sys.path.insert(0, sys.argv[1] + '/scripts')
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', sys.argv[2])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -266,11 +266,11 @@ fi
 
 printf "\n=== Group 3: A5-collapse two-heading + project-rename-safe ===\n"
 
-python3 <<EOF
+python3 - "$REPO_ROOT" "$VALIDATE" <<'EOF'
 import sys, io, contextlib, tempfile, pathlib, shutil
-sys.path.insert(0, '$REPO_ROOT/scripts')
+sys.path.insert(0, sys.argv[1] + '/scripts')
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', sys.argv[2])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 

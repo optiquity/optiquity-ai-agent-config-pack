@@ -72,11 +72,11 @@ fi
 
 printf "\n=== Group 1: Check 36 subject-keyword + scope-rule unit tests ===\n"
 
-python3 <<EOF
+python3 - "$REPO_ROOT" "$VALIDATE" <<'EOF'
 import sys
-sys.path.insert(0, '$REPO_ROOT/scripts')
+sys.path.insert(0, sys.argv[1] + '/scripts')
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', sys.argv[2])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -183,9 +183,11 @@ assert_pside("CLAUDE.md", False, "T11d")  # pack-root trinity is pack-only-by-lo
 # -----------------------------------------------------------------
 # Check 36 scope-neutral generated-artifact carve-out (BD-197 C0;
 # ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md section 17.6).
-# NOTE: this Group-1 heredoc is UNQUOTED (<<EOF), so the shell expands
-# the body — do NOT use backticks in this block (they would be parsed
-# as command substitution). The regenerate-manifest-v11-surface rule
+# NOTE: this Group-1 heredoc is QUOTED (<<'EOF'), so the shell expands
+# NOTHING in the body — backticks and $ are literal; the two pack paths
+# arrive via argv (sys.argv[1] = REPO_ROOT, sys.argv[2] = VALIDATE). Keep
+# it quoted: an unquoted body command-substitutes backticked prose (a
+# comment saying `git rm` RUNS git rm). The regenerate-manifest-v11-surface rule
 # FORCES the pack-side test-fixtures/manifest.txt into ANY commit that
 # edits v11-surface content (incl. project-template/). Without the
 # carve-out a project-only commit that stages the manifest fails
@@ -507,11 +509,11 @@ esac
 
 printf "\n=== Group 6: Per-line fence (Guardrail 2) unit tests ===\n"
 
-python3 <<EOF
+python3 - "$REPO_ROOT" "$VALIDATE" <<'EOF'
 import sys, pathlib
-sys.path.insert(0, '$REPO_ROOT/scripts')
+sys.path.insert(0, sys.argv[1] + '/scripts')
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', sys.argv[2])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -669,7 +671,7 @@ elif skip != {3}:
 #   no false-positive failures from outside-fence prose).
 import subprocess
 result = subprocess.run(
-    ['python3', '$REPO_ROOT/scripts/validate-pack.py', '--only-check', '37'],
+    ['python3', sys.argv[1] + '/scripts/validate-pack.py', '--only-check', '37'],
     capture_output=True, text=True,
 )
 if result.returncode != 0:

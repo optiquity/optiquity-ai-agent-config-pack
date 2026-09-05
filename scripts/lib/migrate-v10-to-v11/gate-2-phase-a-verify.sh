@@ -25,6 +25,10 @@
 #   `migrate_v10_to_v11_gate2_run`; on non-zero return apply.sh exits
 #   with EXIT_GATE_FAILED so `--resume` can detect "gate fix needed"
 #   vs "stage internal failure".
+#   A FAIL whose ONLY failing check is the orphan-sidecar check is a
+#   COMPLETE migration awaiting the user's reconciliation (every stage
+#   ran, report.md is written): the banner prints the resolve-and-continue
+#   steps instead of the restore recipe. The return code is 31 either way.
 #
 # Public API:
 #   migrate_v10_to_v11_gate2_run <target> <state-dir> <pack>
@@ -48,7 +52,7 @@ migrate_v10_to_v11_gate2_run() {
     say "── Gate 2 — post-Phase-A verification (read-only) ──"
     say ""
 
-    local fails=0
+    local fails=0 sidecar_fail=0
 
     if ! checkpoint_check_trinity_addenda "$target"; then
         fails=$((fails + 1))
@@ -69,6 +73,7 @@ migrate_v10_to_v11_gate2_run() {
     # sidecars that escaped the resume.sh precondition list.
     if ! checkpoint_check_no_orphan_sidecars "$target"; then
         fails=$((fails + 1))
+        sidecar_fail=1
     fi
 
     say ""
@@ -82,6 +87,26 @@ migrate_v10_to_v11_gate2_run() {
         local _state="${state_dir:-<state-dir>}"
         say "── Gate 2 FAIL — $fails check(s) failed; route through A1 UX ──"
         say ""
+        if (( fails == 1 && sidecar_fail == 1 )); then
+            # The only defect is an unresolved sidecar: every Phase-A stage
+            # ran and the report is written, so the tree is a COMPLETE
+            # migration awaiting the user's reconciliation. The restore
+            # recipe below would throw that work away, and a re-run cannot
+            # help (--resume finds nothing paused; --apply refuses the
+            # changed tree). Same instruction as the migration guide's
+            # exit-code-31 row.
+            say "The only failing check is 'sidecars': every stage ran and the report at"
+            say "${_state}/report.md is written — the migration is COMPLETE. Do NOT restore"
+            say "from backup and do NOT re-run the migrator (--resume finds nothing to"
+            say "resume; --apply refuses the changed tree). Each file listed above holds"
+            say "the pack ${_to} version; your pre-migration copy is in its sidecar."
+            say ""
+            say "  1. Reconcile each listed sidecar: re-apply your edit over the live file."
+            say "  2. rm the sidecar, or touch <sidecar>.resolved to accept the pack default."
+            say "  3. Continue with supporting-docs/MIGRATION-${_from}-to-${_to}.md"
+            say "     Step 2 → Step 3 → Step 4 (review, verify, commit)."
+            return "${EXIT_GATE_FAILED:-31}"
+        fi
         say "Recovery — fix-and-continue is NOT supported for Phase-A gate failures."
         say "The migrator's S4/S5/S6 sentinels are already marked .done, so --resume"
         say "would skip past the failed stages without re-firing the gate. The only"

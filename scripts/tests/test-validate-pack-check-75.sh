@@ -85,11 +85,11 @@ fi
 
 printf "\n=== Group 1: in-memory graceful naming matcher (BITE teeth) ===\n"
 
-python3 <<EOF
+python3 - "$REPO_ROOT" "$VALIDATE" <<'EOF'
 import sys
-sys.path.insert(0, '$REPO_ROOT/scripts')
+sys.path.insert(0, sys.argv[1] + '/scripts')
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', sys.argv[2])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 

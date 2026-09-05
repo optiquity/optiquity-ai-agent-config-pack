@@ -90,11 +90,11 @@ fi
 
 printf "\n=== Group 1: End-to-end synthetic-tree tests (PASS + injected fails) ===\n"
 
-python3 <<EOF
+python3 - "$REPO_ROOT" "$VALIDATE" <<'EOF'
 import sys, tempfile, pathlib, shutil, io, contextlib
-sys.path.insert(0, '$REPO_ROOT/scripts')
+sys.path.insert(0, sys.argv[1] + '/scripts')
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', sys.argv[2])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -279,7 +279,7 @@ body = (
 )
 fc, pm, cap = run_check_with_synthetic(body, "")
 if fc != 0:
-    failures.append("T7a (incidents/coincidental do NOT match \\bincident\\b) expected 0 failures, got %d: %s" % (fc, cap))
+    failures.append("T7a (incidents/coincidental do NOT match \bincident\b) expected 0 failures, got %d: %s" % (fc, cap))
 if not pm:
     failures.append("T7a (incidents/coincidental clean) expected the '0 = clean' OK message: %s" % cap)
 
@@ -290,7 +290,7 @@ body = (
 )
 fc, pm, cap = run_check_with_synthetic(body, "")
 if fc < 1:
-    failures.append("T7b (standalone 'incident' DOES match \\bincident\\b) expected >=1 failure, got %d: %s" % (fc, cap))
+    failures.append("T7b (standalone 'incident' DOES match \bincident\b) expected >=1 failure, got %d: %s" % (fc, cap))
 if "incident" not in cap:
     failures.append("T7b (standalone 'incident' FAIL) expected the offending line in output: %s" % cap)
 

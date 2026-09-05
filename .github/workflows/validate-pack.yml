@@ -71,13 +71,10 @@
 # `scripts/tests/fixture-dependent/`, and ci-shard-plan.py pins
 # everything in that subdir into ONE shard. Only that shard runs the
 # conditional "build test fixtures" step (gated by
-# `--shard N --needs-fixtures`) before its run-loop. The current
-# members (auto-derived from that subdir):
-#   - test-v11-realistic-ot.sh   - built fixtures (BD-160/170 + per-entry)
-#   - test-migrator-skills.sh    - v10-realistic-ot (G1 golden snapshot)
-#   - test-persona-contracts.sh  - existing-project-mid-dev + v10-realistic-ot + existing-project-collision
-#   - test-dry-run-migration.sh  - v10-realistic-ot
-#   - test-add-capability.sh     - v11-flat-file
+# `--shard N --needs-fixtures`) before its run-loop. The member set is
+# DERIVED from that subdir at CI run time (`ls scripts/tests/fixture-
+# dependent/`); no list is kept here — a list would go stale the moment a
+# test is added, and the partitioner never reads one.
 # Each fixture-dependent test runner ALSO declares its precondition
 # inline via the `require_fixture` helper (test-migrator-skills.sh)
 # or via `_materialize_for_contract`'s built-fixture die-check

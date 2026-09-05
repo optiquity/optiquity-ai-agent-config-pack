@@ -132,6 +132,7 @@ echo "== public API names defined (PLAN §3.1) =="
 out=$(_core_subshell '
     for fn in migrator_run migrator_dispatch migrator_detect_target_version \
               migrator_select_adapter migrator_baseline_to_tmp \
+              migrator_baseline_for_row \
               migrator_target_surface_for_version migrator_pause; do
         if ! declare -F "$fn" >/dev/null 2>&1; then
             printf "missing-fn:%s\n" "$fn"
@@ -141,10 +142,95 @@ out=$(_core_subshell '
 ' 2>&1)
 rc=$?
 if [[ $rc -eq 0 && "$out" != *"missing-fn:"* && "$out" == *"all-fn-checked"* ]]; then
-    pass "seven public-API function names declared after sourcing core (incl. migrator_pause, BD-282)"
+    pass "eight public-API function names declared after sourcing core (incl. migrator_pause, migrator_baseline_for_row)"
 else
-    fail "public-API names" "all 7 declared" "rc=$rc out=$out"
+    fail "public-API names" "all 8 declared" "rc=$rc out=$out"
 fi
+
+# ── 2b. migrator_baseline_for_row: destination-aware BASE ─────────────────
+echo "== migrator_baseline_for_row: destination-aware BASE =="
+
+# No hook defined: reduces to migrator_baseline_to_tmp — an identity row
+# present at the baseline tag yields rc 0 and a non-empty blob.
+out=$(_core_subshell '
+    t=$(mktemp "${TMPDIR:-/tmp}/bfr.XXXXXX")
+    if migrator_baseline_for_row project-template/CLAUDE.md CLAUDE.md "$t"; then rc=0; else rc=1; fi
+    printf "rc=%s size=%s\n" "$rc" "$(wc -c < "$t" | tr -d " ")"
+    rm -f "$t"
+' 2>&1)
+[[ "$out" == *"rc=0"* && "$out" != *"size=0"* ]] \
+    && pass "no hook: identity row at baseline → rc 0, blob written" \
+    || fail "no hook: identity row" "rc=0 size>0" "$out"
+
+# No hook, source absent at the baseline: rc 1, empty (the net-new case).
+out=$(_core_subshell '
+    t=$(mktemp "${TMPDIR:-/tmp}/bfr.XXXXXX")
+    if migrator_baseline_for_row project-template/docs/pack/HELP-FRAGMENT.md docs/pack/HELP-FRAGMENT.md "$t"; then rc=0; else rc=1; fi
+    printf "rc=%s size=%s\n" "$rc" "$(wc -c < "$t" | tr -d " ")"
+    rm -f "$t"
+' 2>&1)
+[[ "$out" == *"rc=1"* && "$out" == *"size=0"* ]] \
+    && pass "no hook: source absent at baseline → rc 1, tmpfile empty" \
+    || fail "no hook: absent at baseline" "rc=1 size=0" "$out"
+
+# Hook defined and answering NO for a rename row: rc 1 + EMPTY even though
+# the SOURCE exists at the baseline — the must-fail control that proves the
+# hook is consulted (the same call without the hook returns the blob).
+out=$(_core_subshell '
+    migrator_from_version_delivered() { [[ "$2" == "${1#project-template/}" ]]; }
+    t=$(mktemp "${TMPDIR:-/tmp}/bfr.XXXXXX")
+    if migrator_baseline_for_row project-template/.mcp.json.example .mcp.json "$t"; then rc=0; else rc=1; fi
+    printf "rename:rc=%s size=%s\n" "$rc" "$(wc -c < "$t" | tr -d " ")"
+    if migrator_baseline_for_row project-template/.mcp.json.example .mcp.json.example "$t"; then rc=0; else rc=1; fi
+    printf "identity:rc=%s size=%s\n" "$rc" "$(wc -c < "$t" | tr -d " ")"
+    rm -f "$t"
+' 2>&1)
+[[ "$out" == *"rename:rc=1 size=0"* ]] \
+    && pass "hook says NOT delivered at DEST (rename row) → rc 1, tmpfile empty although the source exists at baseline" \
+    || fail "hook rename row" "rename:rc=1 size=0" "$out"
+[[ "$out" == *"identity:rc=0"* && "$out" != *"identity:rc=0 size=0"* ]] \
+    && pass "hook says delivered at DEST (identity row) → rc 0, blob written (must-pass control)" \
+    || fail "hook identity row" "identity:rc=0 size>0" "$out"
+
+# Hook says NOT delivered, but the client HAS a file at the destination:
+# the hook is not consulted and the source blob is the three-way base (a
+# client-created copy keeps its plausible ancestor; its edits stay honoured).
+out=$(_core_subshell '
+    migrator_from_version_delivered() { return 1; }
+    _MIGRATOR_TARGET=$(mktemp -d "${TMPDIR:-/tmp}/bfr-tgt.XXXXXX")
+    printf "{}\n" > "$_MIGRATOR_TARGET/.mcp.json"
+    t=$(mktemp "${TMPDIR:-/tmp}/bfr.XXXXXX")
+    if migrator_baseline_for_row project-template/.mcp.json.example .mcp.json "$t"; then rc=0; else rc=1; fi
+    printf "present:rc=%s size=%s\n" "$rc" "$(wc -c < "$t" | tr -d " ")"
+    rm -f "$t"; rm -rf "$_MIGRATOR_TARGET"
+' 2>&1)
+[[ "$out" == *"present:rc=0"* && "$out" != *"present:rc=0 size=0"* ]] \
+    && pass "hook says NOT delivered but client file PRESENT → hook bypassed, rc 0, source blob is the base" \
+    || fail "hook bypass on present client file" "present:rc=0 size>0" "$out"
+
+# `_MIGRATOR_TARGET` UNSET: the client file counts as ABSENT — never
+# "/<proj-relpath>" against the root filesystem. With a destination that
+# EXISTS at the root (`etc` → /etc) and a hook saying NOT delivered, the
+# hook must still be consulted → rc 1, tmpfile empty. A guard that tested
+# "/etc" would skip the hook and hand back the blob (rc 0). `exists=1`
+# proves the probe is non-vacuous on this host.
+out=$(_core_subshell '
+    migrator_from_version_delivered() { return 1; }
+    unset _MIGRATOR_TARGET
+    t=$(mktemp "${TMPDIR:-/tmp}/bfr.XXXXXX")
+    if migrator_baseline_for_row project-template/CLAUDE.md etc "$t"; then rc=0; else rc=1; fi
+    printf "unset:rc=%s size=%s exists=%s\n" "$rc" "$(wc -c < "$t" | tr -d " ")" "$([[ -e /etc ]] && echo 1 || echo 0)"
+    rm -f "$t"
+' 2>&1)
+[[ "$out" == *"unset:rc=1 size=0 exists=1"* ]] \
+    && pass "_MIGRATOR_TARGET unset → client file treated as ABSENT although /etc exists → hook consulted → rc 1, tmpfile empty" \
+    || fail "unset _MIGRATOR_TARGET guard" "unset:rc=1 size=0 exists=1" "$out"
+
+# Arity guard.
+out=$(_core_subshell 'migrator_baseline_for_row only-two args 2>&1' 2>&1); rc=$?
+[[ $rc -ne 0 && "$out" == *"usage"* ]] \
+    && pass "migrator_baseline_for_row with 2 args → die with usage" \
+    || fail "arity guard" "non-zero + usage" "rc=$rc out=$out"
 
 # ── 3. migrator_detect_target_version: v10 shape ───────────────────────
 echo "== migrator_detect_target_version: v10 shape =="

@@ -15,6 +15,12 @@
 #     2.2 FAIL: trinity addenda missing (CLAUDE H2 marker stripped)
 #     2.3 FAIL: HELP-FRAGMENT mismatched vs pack mirror
 #     2.4 FAIL: relocated doc straggler at project root
+#     2.5–2.5e orphan-sidecar classification (unresolved / .resolved-flagged)
+#     2.5f FAIL, sidecar-only: banner says the migration is complete and
+#          prints resolve-and-continue steps — NO restore/rsync recipe
+#     2.5g FAIL, sidecar + another check: restore/rsync recipe printed, the
+#          "complete" branch absent
+#     2.6–2.7 sidecar classifier; recovery-banner content
 #
 #   Gate 3 — post-Phase-B verification (conditional on tracker mode)
 #     3.1 SKIP: flat-file mode; gate exits 0 with `[INFO] skipped`
@@ -353,6 +359,44 @@ assert_eq "2.5d Gate 2 FAIL rc=31 (mix; 1 unresolved)" "31" "$rc"
 assert_contains "2.5d Gate 2 reports precise count = 1" "$out" "[FAIL] sidecars: 1 unresolved *.v10-customized file(s)"
 assert_contains "2.5d Gate 2 names the unresolved one" "$out" "raw-mix.v10-customized"
 assert_not_contains "2.5d Gate 2 does NOT name the flagged one in the orphan listing" "$out" "         $T/flagged-mix.v10-customized"
+rm -rf "$T"
+
+# 2.5f: the ONLY failing check is `sidecars` → the tree is a COMPLETE
+# migration awaiting reconciliation (every stage ran, report.md written);
+# the banner says so and prints the resolve-and-continue steps, NOT the
+# restore/rsync recipe. rc stays 31 (the exit-code contract is unchanged).
+T=$(make_v10_target)
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply   "$T" >/dev/null 2>&1
+SD="$T/.pack-migrate-v10-to-v11"
+echo "# state-(b) unresolved" > "$T/only-sidecar.v10-customized"
+out=$(PACK="$REPO_ROOT" \
+    migrate_v10_to_v11_gate2_run "$T" "$SD" "$REPO_ROOT" 2>&1) ; rc=$?
+assert_eq "2.5f sidecar-only Gate 2 FAIL still exits rc=31" "31" "$rc"
+assert_contains "2.5f sidecar-only banner counts exactly one failed check" "$out" "1 check(s) failed"
+assert_contains "2.5f sidecar-only banner: the migration is COMPLETE" "$out" "the migration is COMPLETE"
+assert_contains "2.5f sidecar-only banner: do not re-run" "$out" "do NOT re-run the migrator"
+assert_contains "2.5f sidecar-only banner: the resolve step" "$out" "touch <sidecar>.resolved"
+assert_not_contains "2.5f sidecar-only banner has NO rsync restore recipe" "$out" "rsync -a --delete"
+assert_not_contains "2.5f sidecar-only banner does NOT say fix-and-continue is unsupported" "$out" "fix-and-continue is NOT supported"
+rm -rf "$T"
+
+# 2.5g: sidecar FAIL plus ANOTHER failing check (trinity marker stripped) →
+# the restore/rsync recipe is printed (the sidecar hint alone must not
+# suppress it) and the "complete" branch is absent.
+T=$(make_v10_target)
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply   "$T" >/dev/null 2>&1
+SD="$T/.pack-migrate-v10-to-v11"
+echo "# state-(b) unresolved" > "$T/mixed-sidecar.v10-customized"
+grep -v -E '^## (Project rules|Project addenda)' "$T/CLAUDE.md" > "$T/CLAUDE.md.tmp"
+mv "$T/CLAUDE.md.tmp" "$T/CLAUDE.md"
+out=$(PACK="$REPO_ROOT" \
+    migrate_v10_to_v11_gate2_run "$T" "$SD" "$REPO_ROOT" 2>&1) ; rc=$?
+assert_eq "2.5g sidecar + trinity FAIL rc=31" "31" "$rc"
+assert_contains "2.5g two checks failed" "$out" "2 check(s) failed"
+assert_contains "2.5g mixed FAIL prints the rsync restore recipe" "$out" "rsync -a --delete"
+assert_not_contains "2.5g mixed FAIL does NOT claim the migration is complete" "$out" "the migration is COMPLETE"
 rm -rf "$T"
 
 # 2.5e (ARCHITECTURE-SIDECAR-LIFECYCLE.md §8.2): three sidecars, all

@@ -92,3 +92,7 @@ scripts/tests/fixture-dependent/test-add-capability.sh	2.0
 #
 # ── BD-283 turnkey interactive migration test (offline-confirmed local wall) ──
 scripts/tests/test-migrate-v10-to-v11-interactive.sh	68.0
+#
+# ── Migration-delivers-every-declared-path sweep + Check 97 (offline-confirmed local wall) ──
+scripts/tests/fixture-dependent/test-migration-delivers-install-map.sh	45.0
+scripts/tests/test-validate-pack-check-97.sh	2.0

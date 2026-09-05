@@ -631,7 +631,16 @@ internal failure. The exit code is also documented in
 
 - **Gate 1 FAIL** — re-run `--dry-run` after fixing the defect (no
   working-tree mutation has occurred).
-- **Gate 2 FAIL** — fix-and-continue is NOT supported. The S4/S5/S6
+- **Gate 2 FAIL** — first read WHICH checks failed. If the only `[FAIL]`
+  line is `sidecars: N unresolved *.v10-customized file(s)`, the
+  migration is complete: every stage ran and `report.md` is written;
+  each listed file holds the pack v11 version with the pre-migration
+  copy in its sidecar. Reconcile each sidecar (re-apply the edit over
+  the live file), `rm` it or `touch <sidecar>.resolved`, and continue
+  with the guide's Step 2 → Step 3 → Step 4 — do not re-run the migrator
+  (`--resume` exits `99`, `--apply` exits `12`). The banner prints these
+  same steps for this case. For any OTHER failing check, fix-and-continue
+  is NOT supported. The S4/S5/S6
   sentinels are already marked `.done` by the time Gate 2 fires, so
   `--resume`'s forward-only guard would skip past the failed stages
   without re-firing the gate. The only supported recovery is to

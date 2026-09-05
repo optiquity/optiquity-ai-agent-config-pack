@@ -253,11 +253,23 @@ under the per-class strategy in
 
 The one skill *rename* in v11 — the Python split
 (`python-architecture` → `python-server-architecture` +
-`python-data-architecture`) — is handled by migrator Stage S5b,
-which writes a `*.v10-customized` advisory listing the old
-references and the disambiguation guidance. S5b ships independently
-of the dimension reframe. See `scripts/migrate-v10-to-v11.sh` for
-the implementation.
+`python-data-architecture`) — is handled by migrator Stage S5b in
+two halves. References: unambiguous `python-architecture` mentions
+in the trinity and `PLATFORM-SKILLS.md` are rewritten in place; the
+rest are listed in
+`.pack-migrate-v10-to-v11/python-architecture-rename.advisory` with
+the disambiguation guidance, for you to rename by hand. Directories:
+every skill directory the v11 pack no longer ships is removed from
+`.claude/skills/`, `.codex/skills/` and `.agents/skills/` (the
+retired set is derived from the v10-vs-v11 skill inventory, so a
+future retirement is handled the same way). A pristine copy is
+deleted; a copy you edited — or a path that is itself a symlink you
+placed there, moved as the link and never followed — is moved, never
+deleted, under
+`.pack-migrate-v10-to-v11/retired-skills/`. Each removal is listed in
+the migration report under "Files retired by pack". S5b ships
+independently of the dimension reframe. See
+`scripts/migrate-v10-to-v11.sh` for the implementation.
 
 ### Trinity-marker non-overlap
 
@@ -595,9 +607,9 @@ framework exit code (`24` for S4; `25` for S5).
 | S3 | Dispatch v10 → v11 changes via the customization-preserve engine (trinity / configs / scripts / agents / docs) |
 | S4a | rename `IMPLEMENTATION_PLAN.md` → `IMPLEMENTATION-PLAN.md` at both locations: project root and `docs/project/`. History-preserving via `git mv` for tracked source; plain `mv` fallback for untracked. No-op per location if the source is absent there. Halts with the typed error `migration-rename-collision` naming the directory if both names exist at the same location (the user inspects, resolves, re-runs). |
 | S4b | relocation tail (legacy root docs → `docs/pack/`) |
-| S5 | Install v11 client artifacts (HELP-FRAGMENT*.md, issue forms, the per-CLI `pm-help` help skill to `.claude`/`.codex`/`.agents`, the Antigravity agent plugin bundle at `.agents-plugin/optiquity-agents/` installed replace-if-different). The client help runner `scripts/pm-help.sh` ships as an ordinary `project-template/scripts/` file via the scripts directory sweep — NO pack-side file (pack-help.sh / lib/detect.sh) is copied into the project (no dual-use; empty ship-allowlist per BD-257). `tracker.toml.example` is NO LONGER installed — tracker integration is deferred; the dormant config record stays committed pack-side at `project-template/tracker.toml.project-example`. |
+| S5 | Install v11 client artifacts — every file the install map declares for migration (HELP-FRAGMENT*.md, issue forms, the per-CLI `pm-help` help skill to `.claude`/`.codex`/`.agents`, the `agent-run.sh` launcher, `.mcp.json` created from `.mcp.json.example` — a v10 install shipped only the example — the Antigravity agent plugin bundle at `.agents-plugin/optiquity-agents/` installed replace-if-different). A file you deleted from a surface you had at v10 stays deleted; a path v10 never created is a clean add. The client help runner `scripts/pm-help.sh` ships as an ordinary `project-template/scripts/` file via the scripts directory sweep — NO pack-side file (pack-help.sh / lib/detect.sh) is copied into the project (no dual-use; empty ship-allowlist per BD-257). `tracker.toml.example` is NO LONGER installed — tracker integration is deferred; the dormant config record stays committed pack-side at `project-template/tracker.toml.project-example`. |
 | S5a | Lift each departing Gemini custom (`x-`) agent into the Antigravity bundle (`.agents-plugin/optiquity-agents/agents/`) so it becomes a live Antigravity agent — never overwriting a same-named bundle custom. |
-| S5b | Retire the departing `.gemini/` tree by moving it (never deleting) into a root-level `gemini-retired-docs/` backup holding directory. |
+| S5b | Retire the departing `.gemini/` tree by moving it (never deleting) into a root-level `gemini-retired-docs/` backup holding directory. Rewrite unambiguous `python-architecture` references (the rest go to the rename advisory), then remove every skill directory v11 no longer ships from `.claude/skills/`, `.codex/skills/` and `.agents/skills/` — pristine copies deleted; an edited copy, or a path that is itself a symlink you placed there (moved as the link, never followed), moved under `.pack-migrate-v10-to-v11/retired-skills/` — listed in the report under "Files retired by pack". |
 | S6 | Render truthful migration report at `.pack-migrate-v10-to-v11/report.md` |
 
 **Exit codes:**
@@ -612,7 +624,7 @@ framework exit code (`24` for S4; `25` for S5).
 | 14 | v10 baseline tag missing in pack repo | `git -C "$PACK" fetch --tags` then retry. |
 | 15 | Customization-preserve library missing under pack | The pack repo is corrupt or incomplete; re-clone. |
 | 21–30 | Stage `S<n>` failure | Read the printed error message; address; retry. |
-| 31 | `EXIT_GATE_FAILED` — verification gate (Gate 1, 2, or 3) reported a defect | Read the printed `[FAIL]` lines and the gate's printed recovery banner. Gate 1 (during `--dry-run`) is read-only — fix the underlying defect and re-run `--dry-run`. Gate 2 (post-Phase-A) requires restoring the working tree from `.pack-migrate-v10-to-v11-backup/` via the rsync recipe in §Rollback below + re-run of `--dry-run` + `--apply`; fix-and-continue is NOT supported because S4/S5/S6 sentinels are already marked `.done`. (The legacy `scripts/restore-from-backup.sh` is for v9.3→v10 backups and does NOT apply to v10→v11.) Gate 3 (post-Phase-B, tracker-mode only) is recoverable without restoring from backup — run `pack tracker doctor` and follow the printed verbs. See `pack-ops/MERGE-STRATEGY.md` §A1 for full gate semantics. |
+| 31 | `EXIT_GATE_FAILED` — verification gate (Gate 1, 2, or 3) reported a defect | Read the printed `[FAIL]` lines and the gate's printed recovery banner. Gate 1 (during `--dry-run`) is read-only — fix the underlying defect and re-run `--dry-run`. Gate 2 (post-Phase-A): first read WHICH checks failed. **If the only `[FAIL]` line is `sidecars: N unresolved *.v10-customized file(s)`, the migration is complete** — every stage ran, the report is written, and each listed file (typically a script or agent you had edited, such as `agent-run.sh`, which the migrator never line-merges) holds the pack v11 version with your pre-migration copy in its sidecar; the banner prints these same resolve-and-continue steps for this case (its restore-and-re-run recipe is printed only for other failures). Reconcile each listed sidecar per Step 2 group 3 (re-apply your edit over the live file), `rm` the sidecar (or `touch <sidecar>.resolved` to accept the pack default), then continue with Step 2 → Step 3 → Step 4. Do not re-run the migrator: `--resume` finds nothing to resume (`99`) and `--apply` refuses the changed tree (`12`). For any OTHER Gate 2 `[FAIL]`, restore the working tree from `.pack-migrate-v10-to-v11-backup/` via the rsync recipe in §Rollback below and re-run `--dry-run` + `--apply`; fix-and-continue is NOT supported because S4/S5/S6 sentinels are already marked `.done`. (The legacy `scripts/restore-from-backup.sh` is for v9.3→v10 backups and does NOT apply to v10→v11.) Gate 3 (post-Phase-B, tracker-mode only) is recoverable without restoring from backup — run `pack tracker doctor` and follow the printed verbs. See `pack-ops/MERGE-STRATEGY.md` §A1 for full gate semantics. |
 
 **Verification gates.** During `--dry-run` and `--apply` the
 migrator emits one or more `── Gate N — ... ──` banners. There are
@@ -726,7 +738,11 @@ After all sidecars resolved:
 
 ```sh
 git status
-# Should show modified files but no untracked .v10-customized sidecars
+# Should show modified files. The only untracked *.v10-customized files
+# (if any) are sidecars you kept beside a .resolved companion — expected
+# audit residue, which Step 4's `git add -A` WILL commit unless you rm
+# both files first. A sidecar with NO .resolved companion means Step 2
+# is not finished for that file.
 
 bash scripts/pm-help.sh
 # Should print the project's HELP-FRAGMENT (client-side header + colloquial
@@ -797,6 +813,9 @@ git diff --staged | less
 #   - .github/ISSUE_TEMPLATE/{work-item,inbound,config}.yml are new.
 #   - the per-CLI pm-help skill + scripts/pm-help.sh are new.
 #   - Any reconciliation files you edited.
+#   - Any <file>.v10-customized + .resolved pair you left as audit
+#     residue is staged too (neither suffix is gitignored) — if you do
+#     not want them in the repo, rm both files and re-run `git add -A`.
 
 git commit -m "chore: migrate to AI Agent Config Pack v11"
 ```

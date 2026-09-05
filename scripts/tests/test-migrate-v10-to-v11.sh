@@ -1004,10 +1004,10 @@ while IFS= read -r c7row; do
     # Term 1 — PRESENT.
     if [[ ! -f "$c7_dest" ]]; then
         # A destination the fixture deliberately did NOT seed, because a real
-        # v10 install never created it. The migrator cannot carry forward a
-        # file the client never had, so this absence is a KNOWN GAP in the
-        # migrator rather than a staleness introduced by this run. It is
-        # counted separately and asserted by name below — never folded into
+        # v10 install never created it. The migrator must CREATE it (a path
+        # the client never had holds no deletion to honour), so its absence
+        # here is a defect of the same class as staleness. It is counted
+        # separately and asserted by name below (7.4b) — never folded into
         # "current", and never silently dropped.
         if [[ " $c7_unseeded " == *" $c7_proj "* ]]; then
             c7_gap=$((c7_gap + 1)); c7_gap_seen="$c7_gap_seen $c7_proj"
@@ -1046,18 +1046,21 @@ done < <(
     || t_fail "7.3 install map yielded ZERO migrate rows (the assertion could not fail)"
 
 if [[ "$c7_stale" -eq 0 && "$c7_total" -gt 0 ]]; then
-    t_pass "7.4 $((c7_total - c7_gap)) of $c7_total declared migrate rows are CURRENT after the migration ($c7_current byte-identical, $c7_attributed attributed, $c7_gap known-gap) — no second --update needed"
+    t_pass "7.4 $((c7_total - c7_gap)) of $c7_total declared migrate rows are CURRENT after the migration ($c7_current byte-identical, $c7_attributed attributed, $c7_gap v10-install-absent left absent) — no second --update needed"
 else
     t_fail "7.4 $c7_stale of $c7_total declared migrate rows STALE after the migration" "$c7_stale_list"
 fi
 
-# ── The known-gap class, made visible ──────────────────────────────────────
+# ── The v10-install-absent class, made visible ─────────────────────────────
 # Before the fidelity rule above, these rows were seeded from the pack source
 # and so always passed 7.4 — the guard could not fail on them. They are now
 # pinned by name in BOTH directions: the fixture's unseeded set must be
-# exactly this, and every unseeded row must actually be absent after the
-# migration. A new name-transform row, or a migrator that starts creating one
-# of these, fails here and forces a decision instead of shipping silently.
+# exactly this (7.4a), and every unseeded row must be CREATED by the
+# migration (7.4b/7.4c) — a destination the previous version never laid
+# down holds no client deletion, so the migrator installs the pack source
+# there as a clean add. A new name-transform row fails 7.4a and forces a
+# decision instead of shipping silently; a migrator that reads the
+# never-had absence as a deletion again fails 7.4b.
 c7_gap_expect=".mcp.json"
 c7_unseeded_n="$(printf '%s' "$c7_unseeded" | tr -s ' ' | sed 's/^ //;s/ $//')"
 c7_gap_seen_n="$(printf '%s' "$c7_gap_seen" | tr -s ' ' | sed 's/^ //;s/ $//')"
@@ -1069,11 +1072,23 @@ else
            "expected '$c7_gap_expect', got '$c7_unseeded_n'"
 fi
 
-if [[ "$c7_gap_seen_n" == "$c7_gap_expect" ]]; then
-    t_pass "7.4b the migration leaves '$c7_gap_expect' ABSENT — the guard now SEES this row instead of passing on fixture-supplied bytes"
+if [[ -z "$c7_gap_seen_n" ]]; then
+    t_pass "7.4b the migration CREATES every v10-install-absent row ('$c7_gap_expect') — a path the client never had is a clean add, not an honored deletion"
 else
-    t_fail "7.4b known-gap row outcome changed" \
-           "expected absent='$c7_gap_expect', got absent='$c7_gap_seen_n'"
+    t_fail "7.4b a v10-install-absent row was left ABSENT after the migration (its absence was read as a client deletion)" \
+           "left absent: '$c7_gap_seen_n'"
+fi
+
+if cmp -s "$C7T/$c7_gap_expect" "$REPO_ROOT/project-template/.mcp.json.example"; then
+    t_pass "7.4c '$c7_gap_expect' is byte-identical to its pack source after the migration"
+else
+    t_fail "7.4c '$c7_gap_expect' missing or differs from project-template/.mcp.json.example after the migration"
+fi
+if awk -F'\t' -v p="$c7_gap_expect" '$3 == p && $1 == "pack-update-applied" { f=1 } END { exit f ? 0 : 1 }' "$c7_disp"; then
+    t_pass "7.4d '$c7_gap_expect' recorded as pack-update-applied (clean add), not project-deleted-pack-kept"
+else
+    t_fail "7.4d '$c7_gap_expect' disposition is not pack-update-applied" \
+           "$(awk -F'\t' -v p="$c7_gap_expect" '$3 == p' "$c7_disp")"
 fi
 
 # The five docs whose absence or staleness is what this group exists to
@@ -1126,6 +1141,43 @@ done < <(
 rm -rf "$C7T"
 
 # ─────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────
+# Group 8: migrator_from_version_delivered — the v10 delivery SHAPE
+# ─────────────────────────────────────────────────────────────────────────
+#
+# The adapter's optional hook answers the framework's RENAME question for an
+# ABSENT client file (migrator_baseline_for_row): did v10 lay this source
+# down at this path shape? A destination v10 never created holds no client
+# deletion, so the row installs as a clean add. The hook is sourced in a
+# subshell: the adapter's source-guard skips mode dispatch, and its `set -e`
+# stays inside the subshell (every call sits in an `if`).
+
+printf "\n=== Group 8: migrator_from_version_delivered (v10 delivery shape) ===\n"
+
+g8_probe() {
+    ( # shellcheck disable=SC1090
+      . "$MIGRATE_SH" >/dev/null 2>&1
+      if migrator_from_version_delivered "$1" "$2"; then printf '0'; else printf '1'; fi )
+}
+assert_eq "8.1 rename .mcp.json.example -> .mcp.json: NOT delivered (v10 shipped only the example)" \
+    "1" "$(g8_probe project-template/.mcp.json.example .mcp.json)"
+assert_eq "8.2 identity .mcp.json.example -> .mcp.json.example: delivered" \
+    "0" "$(g8_probe project-template/.mcp.json.example .mcp.json.example)"
+assert_eq "8.3 pool skill -> .claude/skills/<name>/SKILL.md: delivered shape" \
+    "0" "$(g8_probe project-template/skills/api-design/SKILL.md .claude/skills/api-design/SKILL.md)"
+assert_eq "8.4 pool skill -> .agents/skills/<name>/SKILL.md: delivered SHAPE (whether .agents existed is the surface rule's question)" \
+    "0" "$(g8_probe project-template/skills/api-design/SKILL.md .agents/skills/api-design/SKILL.md)"
+assert_eq "8.5 pool skill -> a different skill name: NOT delivered" \
+    "1" "$(g8_probe project-template/skills/api-design/SKILL.md .claude/skills/other/SKILL.md)"
+assert_eq "8.6 supporting-docs -> docs/pack/<name>: delivered" \
+    "0" "$(g8_probe supporting-docs/METHODOLOGY.md docs/pack/METHODOLOGY.md)"
+assert_eq "8.7 supporting-docs -> root <name>: NOT delivered" \
+    "1" "$(g8_probe supporting-docs/METHODOLOGY.md METHODOLOGY.md)"
+assert_eq "8.8 .gemini/.env.example -> .gemini/.env: delivered (the one v10 rename)" \
+    "0" "$(g8_probe project-template/.gemini/.env.example .gemini/.env)"
+assert_eq "8.9 identity agent-run.sh -> agent-run.sh: delivered" \
+    "0" "$(g8_probe project-template/agent-run.sh agent-run.sh)"
+
 # Summary
 # ─────────────────────────────────────────────────────────────────────────
 

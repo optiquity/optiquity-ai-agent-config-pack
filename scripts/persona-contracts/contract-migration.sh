@@ -223,11 +223,11 @@ done
 #   - BD-147 content-level rename: trinity files + PLATFORM-SKILLS.md
 #     references must use the v11 split skill names (`python-server-
 #     architecture`, `python-data-architecture`) and NOT the legacy v10
-#     `python-architecture` token. The legacy SKILL.md directory is
-#     deliberately retained on disk for compatibility (rename is
-#     reference-level, not filesystem-level — see migrator-skills.sh
-#     §header). The on-disk-skill assertion is therefore against the
-#     references in canonical files, not the directory inventory.
+#     `python-architecture` token. The retired skill DIRECTORY is removed
+#     from every per-CLI home by the migrator's retire step
+#     (`migrator_retire_skill_dirs`, derived from the v10-vs-v11 pool
+#     inventory); asserted below for all three homes alongside the
+#     reference-level rename.
 #   - BD-080 migrator install: the client help skill (pm-help, renamed from
 #     pack-help per BD-257) is an ordinary pool skill
 #     fanned out by the migrator to all three CLI skill homes
@@ -235,13 +235,13 @@ done
 #     reads `.agents/skills/`; there is no `.toml` command form).
 #     Asserted below for all three.
 #
-# Other v11-only skills (e.g. `apple-swiftdata-patterns`,
-# `swift-concurrency-patterns`, `protobuf-patterns`,
-# `python-server-architecture` / `python-data-architecture` SKILL.md
-# directories) are NOT installed on disk by the v10→v11 migrator today
-# — only their references are rewritten. Filesystem-level new-skill
-# install is out of scope for the v10→v11 migrator (see POQ-BD-116-1
-# in the implementation report).
+# v11-only skills (the HEAD pool minus the v10 pool — e.g.
+# `apple-swiftdata-patterns`, `protobuf-patterns`,
+# `python-server-architecture` / `python-data-architecture`) ARE installed
+# on disk by the v10→v11 migrator: S5's map-derived install fans every
+# `project-template/skills/*/SKILL.md` row out to all three CLI skill
+# homes, and a path v10 never created is a clean add. Asserted below for
+# the derived set's first member, byte-for-byte against the pack source.
 for f in CLAUDE.md AGENTS.md GEMINI.md; do
     target="$SANDBOX/$f"
     [[ -f "$target" ]] || continue
@@ -269,6 +269,68 @@ for tool in claude codex agents; do
         t_fail "skill ${tool}/pm-help MISSING post-migrate (BD-080 migrator install)"
     fi
 done
+# v11-only skills (HEAD pool minus v10 pool, DERIVED — never a hardcoded
+# name) land on disk in all three homes, byte-identical to the pack source.
+new_skills=$(comm -13 \
+    <(git -C "$PACK_ROOT" ls-tree -r --name-only v10 -- project-template/skills/ \
+        | sed -n 's#^project-template/skills/\([^/]*\)/SKILL\.md$#\1#p' | sort -u) \
+    <(git -C "$PACK_ROOT" ls-files -- 'project-template/skills/*/SKILL.md' \
+        | sed -n 's#^project-template/skills/\([^/]*\)/SKILL\.md$#\1#p' | sort -u))
+new_first=$(printf '%s\n' "$new_skills" | head -1)
+if [[ -n "$new_first" ]]; then
+    t_pass "v11-only skill set derived from the v10-vs-v11 pool inventory is non-empty (first: $new_first)"
+else
+    t_fail "v11-only skill set is EMPTY (derivation failed; the new-skill install assertion cannot bite)"
+fi
+for tool in claude codex agents; do
+    if [[ -n "$new_first" ]] \
+       && cmp -s "$SANDBOX/.${tool}/skills/$new_first/SKILL.md" "$PACK_ROOT/project-template/skills/$new_first/SKILL.md"; then
+        t_pass "v11-only skill .${tool}/skills/$new_first/SKILL.md installed byte-identical to the pack source"
+    else
+        t_fail "v11-only skill .${tool}/skills/$new_first/SKILL.md missing or differs from the pack source post-migrate"
+    fi
+done
+# Retired skill directories (v10 pool minus v11 pool, DERIVED — never a
+# hardcoded name) are gone from all three homes after the migration; the
+# fixture's copies are pristine v10 blobs, so they are deleted outright.
+# "Gone" means neither a directory nor a symlink: `-e` follows a link and
+# cannot see a DANGLING one, so `-L` is tested too.
+retired_skills=$(comm -23 \
+    <(git -C "$PACK_ROOT" ls-tree -r --name-only v10 -- project-template/skills/ \
+        | sed -n 's#^project-template/skills/\([^/]*\)/SKILL\.md$#\1#p' | sort -u) \
+    <(git -C "$PACK_ROOT" ls-files -- 'project-template/skills/*/SKILL.md' \
+        | sed -n 's#^project-template/skills/\([^/]*\)/SKILL\.md$#\1#p' | sort -u))
+if [[ -n "$retired_skills" ]]; then
+    t_pass "retired-skill set derived from the v10-vs-v11 pool inventory is non-empty"
+else
+    t_fail "retired-skill set is EMPTY (derivation failed; the directory assertion cannot bite)"
+fi
+for rs in $retired_skills; do
+    for tool in claude codex agents; do
+        if [[ ! -e "$SANDBOX/.${tool}/skills/$rs" && ! -L "$SANDBOX/.${tool}/skills/$rs" ]]; then
+            t_pass "retired skill dir .${tool}/skills/$rs removed by migrator"
+        else
+            t_fail "retired skill dir .${tool}/skills/$rs still present post-migrate (directory or symlink)"
+        fi
+    done
+done
+
+# Every declared install-map row the migration dispatches is CURRENT: the
+# launcher and the Claude MCP config are the two rows a real client found
+# stale / absent after migration, asserted by name.
+if cmp -s "$SANDBOX/agent-run.sh" "$PACK_ROOT/project-template/agent-run.sh"; then
+    t_pass "agent-run.sh byte-identical to the pack source post-migrate (launcher refreshed)"
+else
+    t_fail "agent-run.sh differs from project-template/agent-run.sh post-migrate (stale launcher)"
+fi
+[[ -x "$SANDBOX/agent-run.sh" ]] \
+    && t_pass "agent-run.sh executable post-migrate" \
+    || t_fail "agent-run.sh not executable post-migrate"
+if cmp -s "$SANDBOX/.mcp.json" "$PACK_ROOT/project-template/.mcp.json.example"; then
+    t_pass ".mcp.json created from .mcp.json.example post-migrate (a v10 install shipped only the example)"
+else
+    t_fail ".mcp.json missing or differs from project-template/.mcp.json.example post-migrate"
+fi
 # BD-257 de-ship BITE: the pre-BD-257 pack-help skill must NOT be installed,
 # and no pack-side pack-help.sh / detect.sh ships (empty ship-allowlist).
 # Each assertion would FAIL against the old shape that installed them.

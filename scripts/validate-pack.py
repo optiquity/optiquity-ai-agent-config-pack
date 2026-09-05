@@ -1467,6 +1467,24 @@ def _build_check_registry():
         # was 93).
         (94, "check_install_merge_wire",
               check_install_merge_wire, W),
+        # Check 97 — install-map axis symmetry (cmd_update ⇔ migrate). The
+        # `--update` path dispatches the map's `cmd_update` axis and the
+        # migrator dispatches its `migrate` axis; a row on one axis only is a
+        # declared install that one path silently never delivers or never
+        # refreshes (measured: the agent launcher shipped stale through every
+        # migration because its row lacked `migrate`). Asserts every explicit
+        # + family row carries BOTH tokens; zero rows FAILs (never vacuous);
+        # the allowlist is EMPTY by design (a fresh-install-only file is prose,
+        # not a row). Joins boundary_refs (reads the explicit block as a ROW
+        # LIST — never the source-keyed stage dict, which would collapse two
+        # rows sharing a source — plus the family parser shared with Checks
+        # 39/41). O(rows) over one already-parsed file; no subprocess.
+        # Number 97 is this guard's reserved slot; 95 + 96 are reserved for
+        # BD-289 (`/backlog/BD-289.md` — the bareness-coverage gate + the
+        # non-discriminating-assertion guard) and stay free until that entry
+        # lands.
+        (97, "check_install_map_axis_symmetry",
+              check_install_map_axis_symmetry, W),
     ]
 
 

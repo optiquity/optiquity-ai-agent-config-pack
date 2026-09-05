@@ -104,11 +104,11 @@ fi
 
 printf "\n=== Groups 1/2/4: builder junk-immunity + tracked control ===\n"
 
-python3 <<EOF
+python3 - "$REPO_ROOT" "$VALIDATE" <<'EOF'
 import sys, tempfile, pathlib, shutil
-sys.path.insert(0, '$REPO_ROOT/scripts')
+sys.path.insert(0, sys.argv[1] + '/scripts')
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', sys.argv[2])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 

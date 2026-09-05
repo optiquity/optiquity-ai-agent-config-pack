@@ -76,6 +76,23 @@
 #       skills); for v11.0 BD-035 only needs the bare rename API used in
 #       split mode by v10→v11's S5b.
 #
+#   migrator_retire_skill_dirs <home>...
+#       Remove, from each per-CLI skill home under `$_MIGRATOR_TARGET`,
+#       every skill DIRECTORY the destination pack no longer ships. The
+#       retired set is DERIVED (skill names under `project-template/skills/`
+#       at `$MIGRATOR_BASELINE_TAG` minus the names tracked there now), so
+#       the next retirement is caught with no edit. A pristine directory
+#       (every file byte-identical to its baseline blob, nothing added) is
+#       deleted; an edited one is MOVED, never deleted, to
+#       `$_MIGRATOR_STATE_DIR/retired-skills/<home>/skills/<name>/`; a
+#       retired path that is itself a symlink is moved AS THE LINK (never
+#       followed) to the same holding path. Every
+#       removed file is recorded as `removed-by-design` (the report's
+#       "Files retired by pack" section), a moved copy or link named in the
+#       sidecar column. Requires PACK, MIGRATOR_BASELINE_TAG,
+#       _MIGRATOR_TARGET, _MIGRATOR_STATE_DIR and an initialised
+#       customization-preserve state (`_cp_record`). Idempotent.
+#
 # macOS bash 3.2 + BSD utils only — no GNU-only flags, no associative
 # arrays, no `&>`. The file is sourced (no shebang). All public-API
 # function names are stable; internal helpers use the `_migrator_skills_`
@@ -380,4 +397,190 @@ migrator_skill_split() {
     MIGRATOR_SKILLS_SPLIT_TO_SERVER="$new_server" \
     MIGRATOR_SKILLS_SPLIT_TO_DATA="$new_data" \
         migrator_skill_rename "$old" "$new_server" "$advisory"
+}
+
+# migrator_retire_skill_dirs <home>...
+#
+# The filesystem half of a skill retirement. `migrator_skill_rename` rewrites
+# REFERENCES; it never touches the retired skill's directory, which a
+# previous-version install fanned out to every per-CLI home. This removes
+# those directories from the homes given (project-root-relative, e.g.
+# `.claude .codex .agents`) — a home or directory that is absent is skipped,
+# so a re-run finds nothing to do.
+#
+# "Retired" is DERIVED from git, never named: the skill names that had a
+# SKILL.md under `project-template/skills/` at `$MIGRATOR_BASELINE_TAG`,
+# minus the names tracked there in the pack being migrated TO. One
+# `ls-tree` + one `ls-files`, not one subprocess per skill.
+#
+# Per retired directory present in a home:
+#   * PRISTINE — every regular file in it is byte-identical to the baseline
+#     blob at `project-template/skills/<name>/<file>` and no other file or
+#     symlink is present. It is pack content the pre-migration backup and
+#     the baseline tag both hold, so it is DELETED.
+#   * EDITED — a changed or added file, or any symlink (the pack ships
+#     none, so a symlink is client content). The directory is MOVED, never
+#     deleted, to `$_MIGRATOR_STATE_DIR/retired-skills/<home>/skills/<name>/`
+#     — inside the migrator's own state dir, which the post-migration gate's
+#     orphan-sidecar scan excludes, so preserving an edit cannot fail the
+#     migration.
+#   * SYMLINK — the retired path itself is a symlink (a client de-duplicated
+#     the skill across homes, or linked it from outside the tree). Tested
+#     before the directory test, because `-d` follows a live link and skips
+#     a dangling one (the sibling copy may already be gone). The LINK is
+#     moved to the same holding path — never read through, followed, or
+#     removed through — and recorded as ONE row whose path is
+#     `<home>/skills/<name>` and whose sidecar column is the holding path.
+#     No home is left holding a dangling link.
+# Every removed file is recorded via `_cp_record` as `removed-by-design`
+# (action `removed`; the moved copy's path in the sidecar column), which the
+# report renders under "Files retired by pack" — the migration report lists
+# every retirement.
+#
+# Returns 0 on success (including nothing-to-do); 2 on a contract violation
+# (missing env / no homes); `fail_stage S5` on a delete or move that fails.
+migrator_retire_skill_dirs() {
+    local target_root="${_MIGRATOR_TARGET:-}" state_dir="${_MIGRATOR_STATE_DIR:-}"
+    if [[ -z "$target_root" || -z "$state_dir" ]]; then
+        printf 'migrator_retire_skill_dirs: _MIGRATOR_TARGET and _MIGRATOR_STATE_DIR must be set by the framework\n' >&2
+        return 2
+    fi
+    if [[ -z "${PACK:-}" || -z "${MIGRATOR_BASELINE_TAG:-}" ]]; then
+        printf 'migrator_retire_skill_dirs: PACK and MIGRATOR_BASELINE_TAG must be set\n' >&2
+        return 2
+    fi
+    if (( $# == 0 )); then
+        printf 'migrator_retire_skill_dirs: usage: migrator_retire_skill_dirs <home>...\n' >&2
+        return 2
+    fi
+    if ! declare -F _cp_record >/dev/null 2>&1; then
+        printf 'migrator_retire_skill_dirs: customization-preserve must be sourced (_cp_record undefined)\n' >&2
+        return 2
+    fi
+
+    local retired
+    retired=$(comm -23 \
+        <(git -C "$PACK" ls-tree -r --name-only "$MIGRATOR_BASELINE_TAG" \
+              -- project-template/skills/ 2>/dev/null \
+            | sed -n 's#^project-template/skills/\([^/]*\)/SKILL\.md$#\1#p' | sort -u) \
+        <(git -C "$PACK" ls-files -- 'project-template/skills/*/SKILL.md' 2>/dev/null \
+            | sed -n 's#^project-template/skills/\([^/]*\)/SKILL\.md$#\1#p' | sort -u))
+    if [[ -z "$retired" ]]; then
+        info "retire skill dirs: no skill directory retired between ${MIGRATOR_BASELINE_TAG} and this pack"
+        return 0
+    fi
+
+    local baseline_tmp
+    baseline_tmp=$(mktemp "${TMPDIR:-/tmp}/pack-skill-retire.XXXXXX") || {
+        if declare -F fail_stage >/dev/null 2>&1; then
+            fail_stage S5 "migrator_retire_skill_dirs: mktemp failed"
+        fi
+        printf 'migrator_retire_skill_dirs: mktemp failed\n' >&2
+        return 1
+    }
+
+    local holding="$state_dir/retired-skills"
+    local name home dir files f rel pristine deleted=0 moved=0 dest
+    for name in $retired; do
+        for home in "$@"; do
+            dir="$target_root/$home/skills/$name"
+            if [[ -L "$dir" ]]; then
+                # The retired path ITSELF is a symlink — a client who
+                # de-duplicated the skill across homes (`.codex/skills/x ->
+                # ../../.claude/skills/x`) or linked it from outside the tree.
+                # The pack ships no symlinks, so the link is client content:
+                # the LINK is moved to the holding path and recorded as ONE
+                # row; its target is never read, followed, or removed (it may
+                # live outside the tree, or be the sibling copy this loop
+                # already deleted — a dangling link `-d` would skip, leaving
+                # it in the home unrecorded). Tested BEFORE `-d`, which
+                # follows a live link and would census the target's files
+                # under a malformed relative path.
+                dest="$holding/$home/skills/$name"
+                mkdir -p "$(dirname "$dest")"
+                if [[ -e "$dest" || -L "$dest" ]]; then
+                    # A prior run already parked something here — never overwrite it.
+                    dest="$dest.$(date +%Y%m%d%H%M%S)"
+                fi
+                if ! mv "$dir" "$dest"; then
+                    rm -f "$baseline_tmp"
+                    fail_stage S5 "migrator_retire_skill_dirs: could not move symlink $home/skills/$name to $dest"
+                fi
+                _cp_record "removed-by-design" "generic" "$home/skills/$name" \
+                    "removed" "$dest" "-" \
+                    "pack retired skill $name; client symlink preserved (moved as the link, never followed)"
+                moved=$((moved + 1))
+                info "retired skill dir moved: $home/skills/$name (symlink) → ${dest#"$target_root/"} (link preserved, target not followed)"
+                continue
+            fi
+            [[ -d "$dir" ]] || continue
+
+            # Every regular file AND symlink in the directory, one `find`.
+            # The pristine test compares each regular file against its
+            # baseline blob and stops at the first difference, extra file,
+            # or symlink — the pack ships no symlinks, so any symlink is
+            # client content and the directory is EDITED.
+            files=$(find "$dir" \( -type f -o -type l \) -print 2>/dev/null)
+            pristine=1
+            while IFS= read -r f; do
+                [[ -n "$f" ]] || continue
+                rel="${f#"$dir/"}"
+                if [[ -L "$f" ]]; then
+                    pristine=0
+                    break
+                fi
+                if ! git -C "$PACK" show \
+                        "$MIGRATOR_BASELINE_TAG:project-template/skills/$name/$rel" \
+                        > "$baseline_tmp" 2>/dev/null \
+                   || ! cmp -s "$baseline_tmp" "$f"; then
+                    pristine=0
+                    break
+                fi
+            done <<< "$files"
+
+            if (( pristine == 1 )); then
+                if ! rm -rf "$dir"; then
+                    rm -f "$baseline_tmp"
+                    fail_stage S5 "migrator_retire_skill_dirs: could not remove $home/skills/$name"
+                fi
+                if [[ -z "$files" ]]; then
+                    _cp_record "removed-by-design" "generic" "$home/skills/$name/" \
+                        "removed" "-" "-" "pack retired skill $name; empty directory removed"
+                else
+                    while IFS= read -r f; do
+                        [[ -n "$f" ]] || continue
+                        rel="${f#"$dir/"}"
+                        _cp_record "removed-by-design" "generic" "$home/skills/$name/$rel" \
+                            "removed" "-" "-" "pack retired skill $name (no project edits)"
+                    done <<< "$files"
+                fi
+                deleted=$((deleted + 1))
+                info "retired skill dir removed: $home/skills/$name (pristine)"
+            else
+                dest="$holding/$home/skills/$name"
+                mkdir -p "$(dirname "$dest")"
+                if [[ -e "$dest" ]]; then
+                    # A prior run already parked a copy — never overwrite it.
+                    dest="$dest.$(date +%Y%m%d%H%M%S)"
+                fi
+                if ! mv "$dir" "$dest"; then
+                    rm -f "$baseline_tmp"
+                    fail_stage S5 "migrator_retire_skill_dirs: could not move $home/skills/$name to $dest"
+                fi
+                while IFS= read -r f; do
+                    [[ -n "$f" ]] || continue
+                    rel="${f#"$dir/"}"
+                    _cp_record "removed-by-design" "generic" "$home/skills/$name/$rel" \
+                        "removed" "$dest/$rel" "-" \
+                        "pack retired skill $name; project edits preserved (moved, not deleted)"
+                done <<< "$files"
+                moved=$((moved + 1))
+                info "retired skill dir moved: $home/skills/$name → ${dest#"$target_root/"} (project edits preserved)"
+            fi
+        done
+    done
+    rm -f "$baseline_tmp"
+
+    info "retire skill dirs: $deleted pristine directory(ies) removed, $moved edited or symlinked directory(ies) preserved under ${holding#"$target_root/"}"
+    return 0
 }

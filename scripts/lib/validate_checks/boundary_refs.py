@@ -1,8 +1,8 @@
 """validate_checks.boundary_refs — Cluster A: the boundary / cross-reference /
 operating-doc / deny-list check family (BD-256 W2).
 
-This module owns Cluster A's 15 check bodies (Checks 35, 36, 37, 38, 39, 40, 41,
-43, 47, 65, 67, 68, 69, 70, 71) plus their intra-cluster helpers and constants —
+This module owns Cluster A's 16 check bodies (Checks 35, 36, 37, 38, 39, 40, 41,
+43, 47, 65, 67, 68, 69, 70, 71, 97) plus their intra-cluster helpers and constants —
 the pack/project boundary-prevention checks (36/37/38, BD-175), the bare-ref /
 cross-reference checks (39/40/41/43, the `_DENY_LIST_*` + `_CHECK_40_*` /
 `_CHECK_43_*` families), the operating-doc content gates (65/67/68/69, the
@@ -1824,6 +1824,98 @@ def check_cmd_update_symmetry() -> None:
 
 
 
+# ── Check 97: install-map axis symmetry (cmd_update ⇔ migrate) ─────────────
+#
+# The install map is the ONE declaration of what the pack installs, and two
+# install paths DERIVE their dispatch set from it by stage token: `--update`
+# reads the `cmd_update` axis, the vN→vN+1 migrator reads the `migrate` axis.
+# A row on one axis but not the other is a file one path refreshes and the
+# other silently never touches. Measured at the introduction of this check:
+# `project-template/agent-run.sh` carried `cmd_update` without `migrate`, so a
+# migrated client kept the previous version's launcher while the migration
+# reported success; every other row (32 explicit + 6 family) carried both.
+#
+# There is no legitimate one-axis row: a file that must stay current across an
+# update must stay current across a migration (a migration IS an update across
+# versions), and a file the migration delivers must be refreshable afterwards.
+# A fresh-install-only file is declared as prose above the blocks, never as a
+# machine row (the map header says so). So the invariant is EVERY row carries
+# BOTH tokens and the allowlist is EMPTY — there is nothing to size it to.
+#
+# Both blocks are checked (explicit + family rows). A map that yields ZERO
+# rows FAILs instead of passing vacuously (the absence-of-backing instance).
+# Both blocks are read as ROW LISTS in declaration order
+# (`_parse_client_installed_file_rows` / `_parse_client_installed_globs`) —
+# never the source-keyed stage dict, which keeps only the LAST row for a
+# source declared to two destinations and would make the verdict depend on
+# row ORDER. O(rows) over one file; no subprocess, no tree walk.
+_CHECK_97_AXES: tuple[str, ...] = ("cmd_update", "migrate")
+
+
+def check_install_map_axis_symmetry() -> None:
+    """Check 97 — every install-map row carries BOTH `cmd_update` and `migrate`.
+
+    The `--update` path dispatches the `cmd_update` axis and the migrator
+    dispatches the `migrate` axis, each derived from the same map. A row on
+    one axis only is a declared install that one of the two paths never
+    delivers or never refreshes. Explicit and family rows alike; zero rows
+    is a FAIL; the allowlist is empty.
+    """
+    print("\n── Check 97: install-map axis symmetry (cmd_update ⇔ migrate) ──")
+    init_sh = REPO_ROOT / "scripts" / "init-project.sh"
+    if not init_sh.is_file():
+        ok("scripts/init-project.sh absent — skipping (lenient)")
+        return
+
+    # Every ROW, in declaration order — a source declared twice (two
+    # destinations, different stage sets) is two rows, each judged.
+    rows: list[tuple[str, str, str, set[str]]] = []
+    for pack_rel, dest, stages, _cls in _parse_client_installed_file_rows():
+        rows.append(("explicit", pack_rel, dest, stages))
+    for src, dest, stages, _cls in _parse_client_installed_globs():
+        rows.append(("family", src, dest, stages))
+    if not rows:
+        fail(
+            "install map in scripts/init-project.sh yielded ZERO rows on either "
+            "block — the axis-symmetry assertion would be vacuously true. Check "
+            "that `_CLIENT_INSTALLED_FILES_START/END` and "
+            "`_CLIENT_INSTALLED_GLOBS_START/END` each appear exactly once and "
+            "that the rows between them still parse (`#   <src>  ->  <dest>  "
+            "[stage:...]  [class:...]`)."
+        )
+        return
+
+    any_failed = False
+    n_explicit = sum(1 for k, _s, _d, _st in rows if k == "explicit")
+    n_family = len(rows) - n_explicit
+    for kind, src, dest, stages in rows:
+        missing = [ax for ax in _CHECK_97_AXES if ax not in stages]
+        if not missing:
+            continue
+        present = [ax for ax in _CHECK_97_AXES if ax in stages]
+        fail(
+            f"{src} -> {dest} — {kind} install-map row is on the "
+            f"{'/'.join(present) if present else 'NEITHER'} axis only; its "
+            f"[stage:...] operand lacks `{','.join(missing)}`. The `--update` "
+            f"path dispatches the `cmd_update` axis and the migrator dispatches "
+            f"the `migrate` axis, so a one-axis row is a file that one install "
+            f"path silently never delivers or never refreshes (measured: the "
+            f"agent launcher shipped stale through every migration this way). "
+            f"Add the missing token to the row's `[stage:...]` operand in "
+            f"scripts/init-project.sh. There is no exemption list: a "
+            f"fresh-install-only file is declared as prose above the blocks, "
+            f"never as a machine row."
+        )
+        any_failed = True
+
+    if not any_failed:
+        ok(
+            f"Check 97 — {n_explicit} explicit + {n_family} family install-map "
+            f"row(s) each carry both `cmd_update` and `migrate`; no one-axis "
+            f"row (allowlist: empty by design)."
+        )
+
+
 # ── Check 40: pack-ops/ bare cross-reference scanner (BD-179) ──────────────
 #
 # Per ARCHITECTURE-BD-179.md §3-§8. Walks `pack-ops/*.md` (excluding the
@@ -3442,6 +3534,59 @@ def _parse_client_installed_file_stages() -> dict[str, set[str]]:
         )
         out[pack_rel] = stages
     return out
+
+
+def _parse_client_installed_file_rows() -> list[tuple[str, str, set[str], str]]:
+    """Parse the `_CLIENT_INSTALLED_FILES` block as a ROW LIST.
+
+    Returns `(pack_relpath, project_relpath, stages, cls)` tuples, one per
+    row, in declaration order — the explicit-block twin of
+    `_parse_client_installed_globs()`. Unlike the source-keyed
+    `_parse_client_installed_file_stages()` dict (which keeps only the LAST
+    row for a source that appears twice), every row survives here, so a
+    per-row check (Check 97) sees a source declared to two destinations
+    with different `[stage:...]` sets as two rows. ALL bracketed operands
+    are stripped from the DEST column (a stage-only strip would leave
+    `[class:...]` glued to the path). Returns [] on the same lenient
+    conditions as its siblings (init-project.sh absent, markers not
+    exactly-once, no body).
+    """
+    init_sh = REPO_ROOT / "scripts" / "init-project.sh"
+    if not init_sh.is_file():
+        return []
+    text = init_sh.read_text()
+    start_marker = "_CLIENT_INSTALLED_FILES_START"
+    end_marker = "_CLIENT_INSTALLED_FILES_END"
+    if text.count(start_marker) != 1 or text.count(end_marker) != 1:
+        return []
+    m = re.search(
+        rf"{re.escape(start_marker)}\s*\n(.+?)\n[^\n]*{re.escape(end_marker)}",
+        text, re.DOTALL,
+    )
+    if not m:
+        return []
+    rows: list[tuple[str, str, set[str], str]] = []
+    for line in m.group(1).splitlines():
+        s = line.strip()
+        if not s.startswith("#"):
+            continue
+        content = s.lstrip("#").strip()
+        if "->" not in content:
+            continue
+        pack_rel, rest = content.split("->", 1)
+        pack_rel = pack_rel.strip()
+        if not pack_rel:
+            continue
+        sm = re.search(r"\[stage:([^\]]*)\]", rest)
+        stages = (
+            {t.strip() for t in sm.group(1).split(",") if t.strip()}
+            if sm else set()
+        )
+        cm = re.search(r"\[class:([^\]]*)\]", rest)
+        cls = cm.group(1).strip() if cm else ""
+        dest = re.sub(r"\[[^\]]*\]", "", rest).strip()
+        rows.append((pack_rel, dest, stages, cls))
+    return rows
 
 
 def _parse_client_installed_file_classes() -> dict[str, str]:
@@ -5797,6 +5942,8 @@ __all__ = [
     "_CHECK_39_MIGRATOR_EXEMPTIONS",
     "_parse_migrator_manifest_sources",
     "check_cmd_update_symmetry",
+    "_CHECK_97_AXES",
+    "check_install_map_axis_symmetry",
     "_CHECK_40_ALLOWLIST",
     "_CHECK_40_ANCHOR_PHRASES",
     "_CHECK_40_ANCHOR_WINDOW",
@@ -5833,6 +5980,7 @@ __all__ = [
     "_CHECK_41_COPY_VERB",
     "_parse_client_installed_files",
     "_parse_client_installed_file_stages",
+    "_parse_client_installed_file_rows",
     "_parse_client_installed_file_classes",
     "_customization_preserve_classes",
     "_CHECK_41_CLASS_SENTINELS",

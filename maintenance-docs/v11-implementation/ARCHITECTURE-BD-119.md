@@ -214,6 +214,19 @@ setting variables and defining hook functions. The core reads them.
 - `migrator_pre_dispatch_hook()` — runs after S2 (libs init) and
   before S3 (dispatch). Use sparingly; manifest-declarative is preferred.
 - `migrator_post_dispatch_hook()` — runs after S3, before S4 (relocation).
+- `migrator_from_version_delivered <pack-relpath> <proj-relpath>` — rc 0
+  iff the FROM version installed `<pack-relpath>` at `<proj-relpath>`.
+  Consulted by `migrator_baseline_for_row` (below) only when the client
+  has NO file at the destination: an absence at a destination the FROM
+  version never created (a TO-version rename such as `.mcp.json.example`
+  → `.mcp.json`) is not a client deletion, so the row dispatches with an
+  empty base and installs as a clean add; a file the client DOES have
+  there keeps the baseline SOURCE blob as its three-way base (a copy the
+  client made from the pack's example has that example as its plausible
+  ancestor). Undefined ⇒ every row counts as delivered. Addendum: added as an
+  additive extension to the frozen surface; the realized consumer is the
+  v10→v11 adapter's `migrator_from_version_delivered` in
+  `scripts/migrate-v10-to-v11.sh`.
 
 **Public-API functions exposed by the core (callable from adapters
 *and* from external harnesses like BD-114):**
@@ -234,6 +247,15 @@ setting variables and defining hook functions. The core reads them.
   (mirrors the `EXIT_GATE_FAILED` additive-constant note); the realized
   consumer is `scripts/lib/migrate-v10-to-v11/apply.sh`
   `migrate_v10_to_v11_apply_after_dispatch`.
+- `migrator_baseline_for_row <pack-relpath> <proj-relpath> <tmpfile>` —
+  destination-aware BASE resolution: `migrator_baseline_to_tmp` gated, for
+  an absent client file only, by the optional
+  `migrator_from_version_delivered` hook (rc 1 + empty tmpfile when the
+  hook says the FROM version never created that destination). Addendum:
+  additive extension to the frozen surface; the realized consumers are the
+  manifest engine (`_manifest_dispatch_transform`,
+  `_manifest_sweep_directories` in `scripts/lib/migrator-manifest.sh`) and
+  the v10→v11 adapter's `_v10_to_v11_map_derived_install`.
 
 ### 3.3 Env-var conventions
 

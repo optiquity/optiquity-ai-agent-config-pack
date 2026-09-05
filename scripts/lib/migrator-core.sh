@@ -500,6 +500,55 @@ migrator_baseline_to_tmp() {
     fi
 }
 
+# migrator_baseline_for_row <pack-relpath> <proj-relpath> <tmpfile>
+#   DESTINATION-aware BASE resolution for one install row. It changes ONE
+#   reading of `migrator_baseline_to_tmp`: a client file ABSENT at a
+#   destination the FROM version never created is not a deletion. The
+#   engine reads "base present, ours absent, theirs present" as
+#   `project-deleted-pack-kept` and copies nothing — correct only when the
+#   FROM version could have put a file there. For a destination it never
+#   created (the TO version renamed it), the client never had the file, so
+#   such a row gets NO base and the pack source installs as a clean add.
+#
+#   The rule applies only when the client has NO file at the destination.
+#   A file the client DOES have there is three-wayed against the baseline
+#   SOURCE blob exactly as before, whatever put it there: a client who
+#   created the file from the pack's example has that example as the
+#   plausible common ancestor, and dropping it would turn their edits
+#   (a removed key, say) into a two-way union that re-adds what they
+#   removed.
+#
+#   An adapter whose FROM version delivered a source elsewhere declares
+#   the optional hook
+#       migrator_from_version_delivered <pack-relpath> <proj-relpath>
+#   — rc 0 when the FROM version installed the source at that destination,
+#   rc 1 otherwise. With the hook undefined every row counts as delivered
+#   at its destination and this reduces to `migrator_baseline_to_tmp`.
+#   Same return contract as `migrator_baseline_to_tmp`: 0 with the blob
+#   written, or 1 with <tmpfile> left empty. Reads `_MIGRATOR_TARGET` for
+#   the client-file presence test (unset ⇒ treated as absent). Consumers:
+#   the manifest engine (`_manifest_dispatch_transform`,
+#   `_manifest_sweep_directories`) and the v10→v11 adapter's
+#   `_v10_to_v11_map_derived_install`.
+migrator_baseline_for_row() {
+    local pack_relpath="${1:-}"
+    local proj_relpath="${2:-}"
+    local tmpfile="${3:-}"
+    if [[ -z "$pack_relpath" || -z "$proj_relpath" || -z "$tmpfile" ]]; then
+        die "migrator_baseline_for_row: usage: <pack-relpath> <proj-relpath> <tmpfile>" \
+            "$EXIT_INTERNAL"
+    fi
+    # `_MIGRATOR_TARGET` unset ⇒ no client tree to consult ⇒ the client file
+    # counts as ABSENT (never test "/<proj-relpath>" against the root fs).
+    if { [[ -z "${_MIGRATOR_TARGET:-}" ]] || [[ ! -e "${_MIGRATOR_TARGET}/$proj_relpath" ]]; } \
+       && declare -F migrator_from_version_delivered >/dev/null 2>&1 \
+       && ! migrator_from_version_delivered "$pack_relpath" "$proj_relpath"; then
+        : > "$tmpfile"
+        return 1
+    fi
+    migrator_baseline_to_tmp "$pack_relpath" "$tmpfile"
+}
+
 # migrator_target_surface_for_version <vN>
 #   Echo a newline-delimited list of project-relative paths that a vN
 #   install creates and that real-client customization can target. Used

@@ -131,6 +131,54 @@ project-template/.codex/agents pack-agent
 EOF
 }
 
+# migrator_from_version_delivered <pack-relpath> <proj-relpath> — rc 0 iff
+# a v10 install laid <pack-relpath> down at the PATH SHAPE <proj-relpath>.
+# Read by the framework's `migrator_baseline_for_row`: a v10 blob is the
+# merge BASE for a destination only when v10 put that source THERE. v10
+# copied every `project-template/` source to its own relative path (one
+# rename: `.gemini/.env.example` → `.gemini/.env`), fanned the skill pool to
+# `<home>/skills/<name>/SKILL.md` in each per-CLI skill home, and placed
+# `supporting-docs/` under `docs/pack/`. A v11 row whose destination is none
+# of those shapes is a v11 RENAME — `.mcp.json.example` → `.mcp.json` is
+# one; v10 shipped only the example — so a client with NO file at the new
+# path never had one: the absence is not a deletion to honour and the row
+# installs as a clean add.
+#
+# This answers the RENAME question only. Whether a per-CLI HOME existed at
+# v10 (`.agents/` did not; `.gemini/` did) is the NEW-SURFACE question,
+# answered by the pre-migration-surface rule in the map-derived install —
+# so a pool skill counts as delivered to ANY `<home>/skills/` destination
+# here, and the surface rule decides the base for a home the client lacked.
+# The framework consults this hook only for an absent client file; a client
+# who created `.mcp.json` from the example keeps the v10 example as the
+# three-way base, so their edits (a removed key, say) are still honoured.
+migrator_from_version_delivered() {
+    local pack_rel="${1:-}" proj_rel="${2:-}" name
+    case "$pack_rel" in
+        project-template/skills/*/SKILL.md)
+            name="${pack_rel#project-template/skills/}"
+            name="${name%/SKILL.md}"
+            case "$proj_rel" in
+                */skills/"$name"/SKILL.md) return 0 ;;
+            esac
+            return 1
+            ;;
+        project-template/.gemini/.env.example)
+            [[ "$proj_rel" == ".gemini/.env" ]] && return 0
+            return 1
+            ;;
+        project-template/*)
+            [[ "$proj_rel" == "${pack_rel#project-template/}" ]] && return 0
+            return 1
+            ;;
+        supporting-docs/*)
+            [[ "$proj_rel" == "docs/pack/${pack_rel#supporting-docs/}" ]] && return 0
+            return 1
+            ;;
+    esac
+    return 1
+}
+
 # migrator_relocations — empty. The v10→v11 BD-042 legacy-doc relocation
 # is performed inside migrator_post_dispatch_hook with monolith-faithful
 # wording (see the architectural note at the top of this file).
@@ -205,7 +253,7 @@ migrator_post_dispatch_hook() {
     # invariant (single-shot only) made this gate unnecessary; with
     # BD-095 the gate is required.
     if _migrator_is_dryrun; then
-        info "[dry-run] would run rename (IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md at target root and docs/project/) + relocation + v11 artifact install (incl. Antigravity agent bundle, replace-if-different) + lift Gemini x- customs into the Antigravity bundle + Gemini→Antigravity retirement + python-architecture skill rename + capability-token translation + accounting-gated per-entry decompose (writes docs/project/MIGRATION-TRIAGE.md alongside the per-entry trees)"
+        info "[dry-run] would run rename (IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md at target root and docs/project/) + relocation + v11 artifact install (incl. Antigravity agent bundle, replace-if-different) + lift Gemini x- customs into the Antigravity bundle + Gemini→Antigravity retirement + python-architecture skill rename + retire skill directories the pack no longer ships + capability-token translation + accounting-gated per-entry decompose (writes docs/project/MIGRATION-TRIAGE.md alongside the per-entry trees)"
         return 0
     fi
     _v10_to_v11_rename_implementation_plan
@@ -218,6 +266,7 @@ migrator_post_dispatch_hook() {
     _v10_to_v11_lift_gemini_customs_to_bundle
     _v10_to_v11_retire_gemini
     _v10_to_v11_rename_python_architecture_refs
+    _v10_to_v11_retire_dropped_skill_dirs
     _v10_to_v11_translate_capability_tokens
     # BD-165 (per-entry split, mandatory v11.0): 6th sub-op decomposes
     # the just-installed v11-shape monolithic project-side files
@@ -435,7 +484,10 @@ _v10_to_v11_s3_covered_set() {
 #   * client edited their copy → the ordinary customization-preserve
 #     outcome, sidecar and all — a client edit is never silently clobbered;
 #   * base present and client copy absent on a surface the client HAS →
-#     project-deleted-pack-kept, the deletion is honored.
+#     project-deleted-pack-kept, the deletion is honored — and the base is
+#     present only for a destination v10 actually created (a v11 RENAME
+#     such as `.mcp.json.example` → `.mcp.json` has none, so it lands as a
+#     clean add rather than an honored deletion the client never made).
 _v10_to_v11_map_derived_install() {
     local dispatch covered
     # Read the map from the pack being migrated FROM, not from wherever
@@ -506,15 +558,22 @@ _v10_to_v11_map_derived_install() {
             continue
         fi
 
-        # BASE resolution. A destination on a surface the client did not
-        # have before the migration gets an EMPTY base (see
-        # _v10_to_v11_pre_surfaces); everything else gets the real v10
-        # blob, which is absent for a net-new pack path anyway.
+        # BASE resolution. Two conditions, both required for the real v10
+        # blob when the client has no file here: v10 delivered this SOURCE
+        # at this DESTINATION (`migrator_from_version_delivered`, consulted
+        # by `migrator_baseline_for_row` for an absent client file — a v11
+        # rename has no v10 copy at its new path), and the destination's
+        # top-level surface existed in the client's pre-migration tree (see
+        # _v10_to_v11_pre_surfaces). Either failing means the client never
+        # had a file here, so nothing here can be a deletion: the row
+        # dispatches with an EMPTY base. A present client file keeps the
+        # real v10 blob as its three-way base; a net-new pack path has no
+        # v10 blob and gets an empty base anyway.
         base=""
         surface="${proj_rel%%/*}"
         if [[ "$surface" == "$proj_rel" ]] \
            || [[ "$_V10_TO_V11_PRE_SURFACES" == *$'\n'"$surface"$'\n'* ]]; then
-            if migrator_baseline_to_tmp "$pack_rel" "$base_tmp"; then
+            if migrator_baseline_for_row "$pack_rel" "$proj_rel" "$base_tmp"; then
                 base="$base_tmp"
             fi
         fi
@@ -989,6 +1048,22 @@ _v10_to_v11_rename_python_architecture_refs() {
             "python-architecture" \
             "python-server-architecture" \
             "$_MIGRATOR_STATE_DIR/python-architecture-rename.advisory"
+}
+
+# Internal: remove the skill DIRECTORIES the destination pack no longer
+# ships, in every v11 per-CLI home. The reference rewrite above leaves the
+# retired directory (`python-architecture` today, any future retirement
+# tomorrow) in place under `.claude/skills/`, `.codex/skills/` and
+# `.agents/skills/`, where the startup roster scan reports it as improperly
+# added. The retired set is DERIVED from the v10-vs-v11 pool inventory by
+# `migrator_retire_skill_dirs` (scripts/lib/migrator-skills.sh) — never
+# named here — and every removal is recorded in the dispositions TSV so the
+# report lists it under "Files retired by pack". The departing
+# `.gemini/skills/` copy is not a home listed below: the whole `.gemini/`
+# tree was already moved to gemini-retired-docs/ by the retire step above.
+_v10_to_v11_retire_dropped_skill_dirs() {
+    say "── S5b — retire skill directories the pack no longer ships ──"
+    migrator_retire_skill_dirs .claude .codex .agents
 }
 
 # Internal: BD-144 (v11.0 skill-dimensions reframe Batch 5) — translate
