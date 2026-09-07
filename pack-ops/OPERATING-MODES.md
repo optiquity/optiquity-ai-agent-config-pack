@@ -86,7 +86,14 @@ fields, each with a default:
 
 - **Missing / absent / malformed ⇒ defaults** — never an error, never a random
   value. The three defaults (`itemized` / `full` / `read-write-only`) equal
-  current Pack-Chat behavior, so an unset config behaves as today.
+  current Pack-Chat behavior, so an unset config behaves as today. That fold is
+  a SALIENCE default: the commit-approval hook reads the same file but folds an
+  absent / malformed / unrecognized `intervention_mode` to ALLOW (see
+  `pack-ops/OPTIONAL-FEATURES.md` § "Claude Code — modes-enforcement hooks
+  (auto-wired)"), so the default `intervention_mode=full` displays on a clone
+  whose commits are not gated at all — INERT until `/pack-intervention-mode`
+  writes the file. `/pack-startup` Step 6 prints the effective gate state
+  (`live=ACTIVE` / `live=INERT`); `live=INERT` is that state, not a fault.
 - **Orchestrator-read-only** — read ONLY by Pack Chat (the main tree); spawned
   agents never read it, so its absence in an isolated worktree is harmless by
   construction.

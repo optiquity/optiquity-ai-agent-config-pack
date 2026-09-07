@@ -47,9 +47,17 @@ verb, never a silent settings mutation).
    salience — the PM chat applies the recorded value — but no hook backstops them.
 2. Re-run the function canary for ALL THREE hooks and confirm the committed
    wiring — the commit-gate canary drives the body through its `MODES_GATE_*`
-   scratch seams and the deletion-boundary canary through its `DELBOUND_*` seams
-   — a synthetic registry + synthetic temp root — touching NO live config, token,
-   or filesystem:
+   scratch seams in three legs (a scratch `intervention_mode=full` config
+   with no token must DENY; a scratch config path that does not exist must
+   ALLOW — the hook's documented absent-config fold; a scratch
+   `intervention_mode=none` config must ALLOW — auto-commit is never gated)
+   and then probes the LIVE
+   config with a scratch token path to report the gate's effective state
+   (`live=ACTIVE` / `live=INERT` — INERT is the state of a clone with no
+   config, not a fault; see `docs/pack/PM-OPERATING-MODES.md` § "Enforcement by
+   CLI"); the deletion-boundary canary runs through its `DELBOUND_*` seams — a
+   synthetic registry + synthetic temp root. Nothing here writes a live config,
+   token, or file:
 
 ```bash
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
@@ -72,8 +80,16 @@ if [ "${CLAUDECODE:-}" = "1" ]; then
     cfg="$(mktemp)"; printf '%s\n' '{"schema":"pm-session-config/1","intervention_mode":"full"}' > "$cfg"
     gc='{"tool_name":"Bash","cwd":"'"$ROOT"'","tool_input":{"command":"git commit -m canary"}}'
     gp="$(printf '%s' "$gc" | MODES_GATE_CONFIG_FILE="$cfg" MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
+    ga="$(printf '%s' "$gc" | MODES_GATE_CONFIG_FILE="$cfg.absent" MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
+    printf '%s\n' '{"schema":"pm-session-config/1","intervention_mode":"none"}' > "$cfg"
+    gn="$(printf '%s' "$gc" | MODES_GATE_CONFIG_FILE="$cfg" MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
+    gl="$(printf '%s' "$gc" | MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
     rm -f "$cfg"
-    case "$gp" in *'"permissionDecision":"deny"'*) gate="commit-gate self-test PASS" ;; *) gate="commit-gate self-test FAIL — inspect scripts/" ;; esac
+    case "$gp" in *'"permissionDecision":"deny"'*) g1="present-config denies" ;; *) g1="present-config FAILS to deny" ;; esac
+    case "$ga" in *'"permissionDecision":"deny"'*) g2="absent-config FAILS to allow" ;; *) g2="absent-config allows" ;; esac
+    case "$gn" in *'"permissionDecision":"deny"'*) g3="none FAILS to allow" ;; *) g3="none allows" ;; esac
+    case "$gl" in *'"permissionDecision":"deny"'*) gl="live=ACTIVE" ;; *) gl="live=INERT" ;; esac
+    case "$g1$g2$g3" in *FAILS*) gate="commit-gate self-test FAIL ($g1, $g2, $g3; $gl) — inspect scripts/" ;; *) gate="commit-gate self-test PASS ($g1, $g2, $g3; $gl)" ;; esac
     dreg="$(mktemp)"; downed="/delbound-canary-owned"
     printf '%s\n' '{"agent_id":"delbound-canary","owned_dir":"'"$downed"'"}' > "$dreg"
     dc='{"tool_name":"Bash","agent_id":"delbound-canary","cwd":"'"$downed"'","tool_input":{"command":"rm -rf /delbound-canary-root/bd257-*"}}'

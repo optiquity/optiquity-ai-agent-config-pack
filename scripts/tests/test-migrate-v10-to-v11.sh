@@ -348,6 +348,168 @@ trinity_needs_recon=$(awk -F'\t' \
 assert_eq "2.10 zero trinity needs-reconciliation dispositions (clean pack adopt)" \
     "0" "$trinity_needs_recon"
 
+# 2.11 (BD-293 S2b) — S5e merges the pack's client ignore entries. This fixture
+# has NO .gitignore (make_v10_target writes none), so the pack template lands
+# wholesale; the load-bearing assertion is `git check-ignore` — the per-clone
+# PM operating-mode runtime state must be IGNORED on the migrated tree, not
+# merely present as text. declare-verify-backing: RED against the pre-S5e
+# migrator (no stage touched .gitignore; check-ignore rc=1), GREEN after.
+[[ -f "$T/.gitignore" ]] \
+    && t_pass "2.11 .gitignore present after migration (pack template installed — target had none)" \
+    || t_fail "2.11 .gitignore missing after migration"
+for gi_rel in docs/project/pm-session-config.json docs/project/.pm-commit-approval-token; do
+    if git -C "$T" check-ignore -q -- "$gi_rel" 2>/dev/null; then
+        t_pass "2.11 $gi_rel is git-ignored on the migrated tree"
+    else
+        t_fail "2.11 $gi_rel is NOT git-ignored on the migrated tree (S5e missing)"
+    fi
+done
+assert_contains "2.11 S5e banner printed" "$out" "S5e — merge .gitignore"
+
+# 2.11b Ordering lock: S5e is order-free (it touches only .gitignore, which no
+# other sub-op reads) and is CALLED LAST so the S5 sub-banners print in letter
+# order. Assert the runtime order, not the comment: compare each banner's byte
+# offset in the captured output. Both markers are asserted PRESENT first — a
+# `${out%%needle*}` compare against an absent needle yields the whole string and
+# would pass vacuously. Move `_v10_to_v11_merge_gitignore` back above
+# `_v10_to_v11_decompose_streams` and this reds.
+s5d_banner='S5d (decompose)'
+s5e_banner='S5e — merge .gitignore'
+assert_contains "2.11b S5d banner printed (ordering-lock anchor)" "$out" "$s5d_banner"
+s5d_prefix="${out%%"$s5d_banner"*}"
+s5e_prefix="${out%%"$s5e_banner"*}"
+if [[ "$out" == *"$s5d_banner"* && "$out" == *"$s5e_banner"* \
+      && ${#s5e_prefix} -gt ${#s5d_prefix} ]]; then
+    t_pass "2.11b S5e banner follows the S5d banner (letter order at runtime)"
+else
+    t_fail "2.11b S5e banner does NOT follow the S5d banner (sub-op order regressed)" \
+        "S5d offset=${#s5d_prefix} S5e offset=${#s5e_prefix}"
+fi
+
+rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 2d: S5e append-and-dedup against a PRE-EXISTING v10 .gitignore
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 2d: S5e .gitignore append-and-dedup (pre-existing v10 file) ===\n"
+
+# The realistic v10 client: its .gitignore is the v10 pack template (which
+# predates the PM operating-mode block) plus one project line. Anchors are
+# asserted BEFORE the run (the entries are absent; the paths are NOT ignored)
+# so the post-run assertions cannot pass vacuously.
+T=$(make_v10_target)
+git -C "$REPO_ROOT" show "${V10_TAG:-v10}:project-template/.gitignore" > "$T/.gitignore" 2>/dev/null
+printf '%s\n' "build-artifacts-of-this-project/" >> "$T/.gitignore"
+git -C "$T" add -A >/dev/null 2>&1
+git -C "$T" commit -q -m "v10 .gitignore" >/dev/null 2>&1
+pre_lines=$(wc -l < "$T/.gitignore" | tr -d ' ')
+pre_hits=$(grep -c 'pm-session-config.json' "$T/.gitignore" | tr -d ' ')
+assert_eq "2d.0 anchor: v10 .gitignore lacks the pm-session-config entry BEFORE migration" "0" "$pre_hits"
+if git -C "$T" check-ignore -q -- docs/project/pm-session-config.json 2>/dev/null; then
+    t_fail "2d.0 anchor: pm-session-config.json already ignored BEFORE migration (fixture invalid)"
+else
+    t_pass "2d.0 anchor: pm-session-config.json NOT ignored BEFORE migration"
+fi
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$T" 2>&1) ; rc=$?
+assert_eq "2d.1 migration rc=0 with a pre-existing .gitignore" "0" "$rc"
+for gi_rel in docs/project/pm-session-config.json docs/project/.pm-commit-approval-token; do
+    if git -C "$T" check-ignore -q -- "$gi_rel" 2>/dev/null; then
+        t_pass "2d.2 $gi_rel is git-ignored after the append-and-dedup merge"
+    else
+        t_fail "2d.2 $gi_rel is NOT git-ignored after migration"
+    fi
+done
+# The client's own line and the whole v10 prefix survive byte-for-byte
+# (append-only: the first pre_lines lines are unchanged).
+if [[ "$(head -n "$pre_lines" "$T/.gitignore" | git -C "$T" hash-object --stdin)" \
+      == "$(git -C "$T" show HEAD:.gitignore | git -C "$T" hash-object --stdin)" ]]; then
+    t_pass "2d.3 pre-existing .gitignore content preserved byte-for-byte (append-only)"
+else
+    t_fail "2d.3 pre-existing .gitignore content was rewritten (must be append-only)"
+fi
+grep -q '^build-artifacts-of-this-project/$' "$T/.gitignore" \
+    && t_pass "2d.3 project's own ignore line survives" \
+    || t_fail "2d.3 project's own ignore line lost"
+# Dedup: an entry the v10 file already carried (.env) is NOT duplicated.
+env_hits=$(grep -c '^\.env$' "$T/.gitignore" | tr -d ' ')
+assert_eq "2d.4 dedup: '.env' appears exactly once after the merge" "1" "$env_hits"
+hdr_hits=$(grep -c '^# --- AI Agent Config Pack additions (v11.0) ---$' "$T/.gitignore" | tr -d ' ')
+assert_eq "2d.4 exactly one pack-additions header appended" "1" "$hdr_hits"
+assert_contains "2d.5 S5e reports the merge counts" "$out" ".gitignore merged:"
+rm -rf "$T"
+
+# 2d.6 Idempotence: a target whose .gitignore already carries every pack
+# entry (the v11 pack template plus one project line) must be left
+# byte-untouched — no header, no comment lines — and S5e must report the
+# untouched case. The mirror body in init-project.sh carries this assertion
+# (test-init-project.sh 17.1 / 17.3); an S5e whose `added == 0` early return
+# is lost appends a lone header to a complete file ("0 added" but the file
+# grew) and still passes every other case in this group — this is the case
+# that goes red.
+T=$(make_v10_target)
+cp "$REPO_ROOT/project-template/.gitignore" "$T/.gitignore"
+printf '%s\n' "build-artifacts-of-this-project/" >> "$T/.gitignore"
+git -C "$T" add -A >/dev/null 2>&1
+git -C "$T" commit -q -m "already-complete .gitignore" >/dev/null 2>&1
+snap26=$(mktemp "${TMPDIR:-/tmp}/migrate10-gi.XXXXXX")
+cp "$T/.gitignore" "$snap26"
+pre_hdr=$(grep -c '^# --- AI Agent Config Pack additions (v11.0) ---$' "$T/.gitignore" | tr -d ' ')
+assert_eq "2d.6 anchor: the complete .gitignore carries no pack-additions header BEFORE migration" "0" "$pre_hdr"
+if git -C "$T" check-ignore -q -- docs/project/pm-session-config.json 2>/dev/null; then
+    t_pass "2d.6 anchor: pm-session-config.json already ignored BEFORE migration (every pack entry present)"
+else
+    t_fail "2d.6 anchor: pm-session-config.json NOT ignored BEFORE migration (fixture invalid)"
+fi
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$T" 2>&1) ; rc=$?
+assert_eq "2d.6 migration rc=0 on an already-complete .gitignore" "0" "$rc"
+if cmp -s "$snap26" "$T/.gitignore"; then
+    t_pass "2d.6 S5e left an already-complete .gitignore byte-untouched"
+else
+    t_fail "2d.6 S5e rewrote a .gitignore that already carried every entry" \
+        "lines=$(wc -l < "$T/.gitignore" | tr -d ' ') headers=$(grep -c '^# --- AI Agent Config Pack additions (v11.0) ---$' "$T/.gitignore" | tr -d ' ')"
+fi
+hdr_hits=$(grep -c '^# --- AI Agent Config Pack additions (v11.0) ---$' "$T/.gitignore" | tr -d ' ')
+assert_eq "2d.6 no pack-additions header on an already-complete .gitignore" "0" "$hdr_hits"
+assert_contains "2d.6 S5e reports the untouched case" "$out" "already carries every pack entry"
+rm -f "$snap26"
+rm -rf "$T"
+
+# 2d.7 ONE header when the target's .gitignore ALREADY carries the v11.0
+# pack-additions header. Reachable: `init-project.sh --update` and
+# `add-capability.sh` stage A6 both emit that exact line, so a v10 tree either
+# command has touched reaches the migrator with the header already in place —
+# and S5e must append its entries under it, not emit a second one. 2d.4's
+# fixture starts at ZERO headers, so a duplicate append is invisible to it.
+# declare-verify-backing: drop the `grep -Fxq` header guard in
+# `_v10_to_v11_merge_gitignore` and this count goes to 2.
+T=$(make_v10_target)
+git -C "$REPO_ROOT" show "${V10_TAG:-v10}:project-template/.gitignore" > "$T/.gitignore" 2>/dev/null
+printf '%s\n' 'build-artifacts-of-this-project/' >> "$T/.gitignore"
+printf '\n%s\n' '# --- AI Agent Config Pack additions (v11.0) ---' >> "$T/.gitignore"
+git -C "$T" add -A >/dev/null 2>&1
+git -C "$T" commit -q -m "v10 .gitignore already carrying the pack-additions header" >/dev/null 2>&1
+pre_hdr=$(grep -c '^# --- AI Agent Config Pack additions (v11.0) ---$' "$T/.gitignore" | tr -d ' ')
+assert_eq "2d.7 anchor: exactly ONE pack-additions header BEFORE migration" "1" "$pre_hdr"
+pre_hits=$(grep -c 'pm-session-config.json' "$T/.gitignore" | tr -d ' ')
+assert_eq "2d.7 anchor: the runtime-state entry is absent BEFORE migration" "0" "$pre_hits"
+if git -C "$T" check-ignore -q -- docs/project/pm-session-config.json 2>/dev/null; then
+    t_fail "2d.7 anchor: pm-session-config.json already ignored BEFORE migration (fixture invalid)"
+else
+    t_pass "2d.7 anchor: pm-session-config.json NOT ignored BEFORE migration"
+fi
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$T" 2>&1) ; rc=$?
+assert_eq "2d.7 migration rc=0 with the header already present" "0" "$rc"
+hdr_hits=$(grep -c '^# --- AI Agent Config Pack additions (v11.0) ---$' "$T/.gitignore" | tr -d ' ')
+assert_eq "2d.7 still exactly ONE pack-additions header after S5e" "1" "$hdr_hits"
+for gi_rel in docs/project/pm-session-config.json docs/project/.pm-commit-approval-token; do
+    if git -C "$T" check-ignore -q -- "$gi_rel" 2>/dev/null; then
+        t_pass "2d.7 $gi_rel is git-ignored after the merge under the existing header"
+    else
+        t_fail "2d.7 $gi_rel is NOT git-ignored after migration"
+    fi
+done
+assert_contains "2d.7 S5e reports the merge counts" "$out" ".gitignore merged:"
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────

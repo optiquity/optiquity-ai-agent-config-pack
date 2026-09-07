@@ -612,7 +612,7 @@ _cp_strategy_text() {
                                 cp "$merge_tmp" "$dest"
                                 _cp_record "$disp" "$class" "$rel" "merged" \
                                     "$sidecar" "$diff_path" \
-                                    "prose 3-way merge left conflict markers (same-line overlap); resolve via the resolve-merge-conflicts skill"
+                                    "prose 3-way merge left conflict markers (same-line overlap); resolve via the resolve-merge-conflicts skill (pack copy: ${PACK:-\$PACK}/project-template/skills/resolve-merge-conflicts/SKILL.md — not installed in this project until the migration finishes)"
                             else
                                 # F2: a clean merge leaves NO orphan sidecar —
                                 # sidecar column dash, mirrors the structured
@@ -631,7 +631,7 @@ _cp_strategy_text() {
                             cp "$merge_tmp" "$dest"
                             _cp_record "$disp" "$class" "$rel" "merged" \
                                 "$sidecar" "$diff_path" \
-                                "prose 3-way merge left conflict markers (same-line overlap); resolve via the resolve-merge-conflicts skill"
+                                "prose 3-way merge left conflict markers (same-line overlap); resolve via the resolve-merge-conflicts skill (pack copy: ${PACK:-\$PACK}/project-template/skills/resolve-merge-conflicts/SKILL.md — not installed in this project until the migration finishes)"
                             ;;
                         *)
                             # rc2 unusable (no real BASE per I3, or a merge-file

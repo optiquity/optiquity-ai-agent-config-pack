@@ -139,35 +139,95 @@ in `.codex/config.toml.example` and must be uncommented or copied
 into `.codex/config.toml` to take effect), and `.agents/mcp_config.json`
 for Antigravity):
 
-1. **List current ingest.** Call the `local-rag` `list` tool. This
-   returns the set of currently-ingested paths.
-2. **Read the manifest.** Read `docs/pack/PM-CHAT.md` § RAG
+1. **Read the manifest first.** Read `docs/pack/PM-CHAT.md` § RAG
    ingestion manifest to determine the intended set. The default
    manifest is exactly one path: `docs/pack/METHODOLOGY.md`
    (plus any custom project documents declared under `## Additional
-   project documents` near the bottom of `PM-CHAT.md`).
-3. **Compute the diff:**
-   - **Orphans** — paths in the index but not in the manifest.
+   project documents` near the bottom of `PM-CHAT.md`). Resolve each
+   to an absolute path under the repo root.
+2. **List the manifest paths' ingest state — SCOPED, never the whole
+   repo.** Check the server's version pin FIRST: read the `mcp-local-rag`
+   package spec from the CLI's MCP config (the file that wires the
+   server — step 3 names the three; the shipped `.mcp.json.example` is
+   unpinned, so a fresh install resolves a release that has `scope`). A
+   pin older than 0.16.0 has no `scope` parameter: skip the tool call
+   and go straight to the step-3 Bash form. Otherwise the MCP tool is
+   `list_files`. It SCANS every supported file (`.md`, `.txt`, `.pdf`,
+   `.docx`) under `BASE_DIR` — the project root — and flags which are
+   ingested, so an unscoped call grows with the repository, not with
+   the index (a mature project returns thousands of entries and
+   overflows the tool-result cap). Always pass `scope`: the list of
+   absolute manifest paths from step 1. The response then carries
+   exactly the manifest files with their `ingested` flag, `chunkCount`
+   and `timestamp`, plus `sources` (content ingested via `ingest_data`,
+   always listed). A file ingested OUTSIDE the scope is dropped from a
+   scoped response entirely, so orphans cannot be read off it — they
+   are COUNTED in the next step.
+3. **Count orphans with `status`.** Call the `local-rag` `status` tool
+   and read `documentCount`. Orphans = `documentCount` minus (ingested
+   files in the step-2 response + its `sources` entries). Zero means
+   no orphans. Non-zero means orphans exist: name them with an
+   UNSCOPED listing run through Bash, so the result never meets the
+   tool-result cap — the CLI form of the same package, pointed at the
+   same index the server uses, filtered to ingested entries only.
+   Substitute BOTH values below from the CLI's own MCP config — the
+   file that wires the server (`.mcp.json` for Claude Code,
+   `.codex/config.toml` for Codex, `.agents/mcp_config.json` for
+   Antigravity): `DB_PATH` verbatim from its env block (the shipped
+   defaults differ per CLI — `./.claude/rag-index`,
+   `./.codex/rag-index`, `./.agents/rag-index` — and a project may set
+   its own), and the package spec verbatim from its args (bare
+   `mcp-local-rag` or a pinned `mcp-local-rag@X.Y.Z`) so the CLI and
+   the server agree on the index format. The guard refuses to list
+   when that directory does not exist: pointed at a wrong path the CLI
+   silently CREATES an empty index there and reports nothing ingested,
+   so a missing directory means the path is wrong, never that the
+   index is empty:
+
+   ```bash
+   root="$(git rev-parse --show-toplevel)"
+   DB_PATH="<DB_PATH from the MCP config>"   # verbatim, e.g. ./.claude/rag-index
+   case "$DB_PATH" in /*) db="$DB_PATH" ;; *) db="$root/${DB_PATH#./}" ;; esac
+   if [ ! -d "$db" ]; then
+     echo "RAG: index path missing ($db) — set DB_PATH above from the MCP config; nothing was created"
+   else
+     # the package spec is the MCP config's; global options precede the subcommand
+     npx -y mcp-local-rag --db-path "$db" list --base-dir "$root" \
+       | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps({"ingested":[f["filePath"] for f in d.get("files",[]) if f.get("ingested")],"sources":d.get("sources",[])},indent=1))'
+   fi
+   ```
+
+   Use the same Bash form whenever a listing comes back truncated, and
+   on a server that predates `scope` (a pinned `mcp-local-rag` older
+   than 0.16.0 ignores the parameter and returns the whole repository).
+   Never save a truncated tool result and post-process it — re-issue
+   the listing scoped, or through the CLI.
+4. **Compute the diff:**
+   - **Orphans** — the step-3 set minus the manifest, where the
+     step-3 set is the `ingested` paths PLUS every `sources[]` entry
+     that carries a `filePath` (an entry whose file has since been
+     deleted is reported there, not under `ingested`).
    - **Stale** — manifest paths whose source file has been edited
-     since the last ingest. If the `local-rag` `list` tool exposes a
-     per-file ingest timestamp, compare it against
-     `git log -1 --format=%ct -- <path>` and treat any
-     source-mtime > ingest-timestamp as stale. **Fallback** — if
-     `list` does not expose a per-file ingest timestamp (CLI surface
-     varies; the verb prints baseDir + files but timestamp fields
-     may be absent), treat every manifest path as potentially stale
-     and re-ingest unconditionally on each startup. The cost of an
-     unnecessary re-ingest is small; the cost of stale chunks is a
-     confidently-wrong retrieval. Reflect this in the `RAG:` summary
-     line by reporting `stale=N/A` instead of a zero count.
-   - **Missing** — manifest paths not in the index.
-4. **For each orphan:** call the `local-rag` `delete` tool with
+     since the last ingest. Each ingested entry in the step-2 response
+     carries a `timestamp` (an ISO-8601 UTC string in the current
+     release — convert it before comparing); compare it against
+     `git log -1 --format=%ct -- <path>` (epoch seconds) and treat any
+     source-mtime > ingest-timestamp as stale. **Fallback** — if the
+     entry carries no usable timestamp, treat every manifest path as
+     potentially stale and re-ingest unconditionally on each startup.
+     The cost of an unnecessary re-ingest is small; the cost of stale
+     chunks is a confidently-wrong retrieval. Reflect this in the
+     `RAG:` summary line by reporting `stale=N/A` instead of a zero
+     count.
+   - **Missing** — manifest paths whose step-2 entry is
+     `ingested: false`.
+5. **For each orphan:** call the `local-rag` `delete_file` tool with
    that path. No user approval is needed — the manifest is the
    source of truth and orphans are by definition outside it.
-5. **For each stale or missing manifest path:** call `local-rag`
-   `delete` (no-op if missing, clears stale chunks if stale)
-   followed by `local-rag` `ingest`.
-6. **Record the diff** for inclusion in the Step 7 startup summary.
+6. **For each stale or missing manifest path:** call `local-rag`
+   `delete_file` (no-op if missing, clears stale chunks if stale)
+   followed by `local-rag` `ingest_file`.
+7. **Record the diff** for inclusion in the Step 7 startup summary.
    Format: `RAG: N ingested, N stale, N orphans removed: [<paths>]`
    (or `RAG: N ingested, 0 stale, 0 orphans` for the clean case).
 
@@ -220,11 +280,17 @@ session (it reports absent / wiring MISSING / self-test FAIL / n/a; it does not
 error). Its output feeds the Step-7 report's `**Modes:**` line. This step writes
 no file, no config, and no settings.
 
-**(a) Echo the active modes.** Read the three mode values from the per-clone PM
-session config, folding an absent / malformed / unreachable config to the family
-defaults (`itemized` / `full` / `read-write-only`) per
-`docs/pack/PM-OPERATING-MODES.md` § "Reading the config". Read only — never write
-the config here.
+**(a) Echo the active modes AND the commit gate's effective state.** Read the
+three mode values from the per-clone PM session config, folding an absent /
+malformed / unreachable config to the family defaults (`itemized` / `full` /
+`read-write-only`) per `docs/pack/PM-OPERATING-MODES.md` § "Reading the config".
+Read only — never write the config here. That fold is a SALIENCE default: the
+commit-approval hook reads the same file but folds an absent / malformed /
+unrecognized `intervention_mode` to ALLOW (inert — see
+`docs/pack/PM-OPERATING-MODES.md` § "Enforcement by CLI"), so `intervention=full`
+prints on a fresh clone whose commits are not gated at all. Classify the gate's
+effective state from the file itself and print it on its own line — never let
+the folded default stand in for it.
 
 ```bash
 cfg="$(git rev-parse --show-toplevel 2>/dev/null)/docs/project/pm-session-config.json"
@@ -232,6 +298,20 @@ rm=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("review_
 im=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("intervention_mode","full"))' "$cfg" 2>/dev/null || echo full)
 sm=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("isolation_mode","read-write-only"))' "$cfg" 2>/dev/null || echo read-write-only)
 echo "modes: review=$rm intervention=$im isolation=$sm"
+gs=$(python3 -c 'import json,os,sys
+p=sys.argv[1]
+if not os.path.exists(p): print("absent"); raise SystemExit
+try: m=json.load(open(p)).get("intervention_mode")
+except Exception: print("malformed"); raise SystemExit
+print("active" if m in ("full","pre-coder","ambiguity") else ("none" if m=="none" else "unset"))' "$cfg" 2>/dev/null || echo absent)
+case "$gs" in
+  active)    gate="commit gate ACTIVE (intervention_mode=$im read from docs/project/pm-session-config.json)" ;;
+  none)      gate="commit gate INERT by choice (intervention_mode=none authorizes auto-commit)" ;;
+  malformed) gate="commit gate INERT (docs/project/pm-session-config.json is present but unreadable — the hook folds it to allow; repair the file or re-run a mode selector)" ;;
+  unset)     gate="commit gate INERT (docs/project/pm-session-config.json is present but intervention_mode is missing or unrecognized — the hook folds it to allow; set it with /pm-intervention-mode)" ;;
+  *)         gate="commit gate INERT (docs/project/pm-session-config.json is absent — the hook folds a missing config to allow; /pm-intervention-mode writes the file and activates the gate)" ;;
+esac
+echo "modes effective: $gate"
 ```
 
 Re-state each value's behavior from the matching table in
@@ -247,9 +327,16 @@ still fire. Branch on `CLAUDECODE`: on a non-Claude CLI the hooks do not exist
 (report `n/a`); if the hook bodies are absent the feature is not built in this
 clone; else run a wiring probe (grep the tracked `.claude/settings.json`) plus a
 function canary per body. The commit-gate canary drives the body through its
-`MODES_GATE_*` scratch seams and the deletion-boundary canary through its
-`DELBOUND_*` seams — a synthetic registry + synthetic temp root — touching NO
-live config, token, or filesystem:
+`MODES_GATE_*` scratch seams in three legs — a scratch config carrying
+`intervention_mode=full` with no token must DENY, a scratch config path that
+does not exist must ALLOW (the hook's documented absent-config fold), and a
+scratch config carrying `intervention_mode=none` must ALLOW (auto-commit is
+authorized, never gated) — then probes the LIVE config with a scratch token path
+(so no real approval token is consumed) to report the gate's effective state
+(`live=ACTIVE` / `live=INERT`);
+the deletion-boundary canary runs through its `DELBOUND_*` seams — a synthetic
+registry + synthetic temp root. Nothing here writes a live config, token, or
+file:
 
 ```bash
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
@@ -272,8 +359,16 @@ if [ "${CLAUDECODE:-}" = "1" ]; then
     cfg="$(mktemp)"; printf '%s\n' '{"schema":"pm-session-config/1","intervention_mode":"full"}' > "$cfg"
     gc='{"tool_name":"Bash","cwd":"'"$ROOT"'","tool_input":{"command":"git commit -m canary"}}'
     gp="$(printf '%s' "$gc" | MODES_GATE_CONFIG_FILE="$cfg" MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
+    ga="$(printf '%s' "$gc" | MODES_GATE_CONFIG_FILE="$cfg.absent" MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
+    printf '%s\n' '{"schema":"pm-session-config/1","intervention_mode":"none"}' > "$cfg"
+    gn="$(printf '%s' "$gc" | MODES_GATE_CONFIG_FILE="$cfg" MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
+    gl="$(printf '%s' "$gc" | MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
     rm -f "$cfg"
-    case "$gp" in *'"permissionDecision":"deny"'*) gate="commit-gate self-test PASS" ;; *) gate="commit-gate self-test FAIL — inspect scripts/" ;; esac
+    case "$gp" in *'"permissionDecision":"deny"'*) g1="present-config denies" ;; *) g1="present-config FAILS to deny" ;; esac
+    case "$ga" in *'"permissionDecision":"deny"'*) g2="absent-config FAILS to allow" ;; *) g2="absent-config allows" ;; esac
+    case "$gn" in *'"permissionDecision":"deny"'*) g3="none FAILS to allow" ;; *) g3="none allows" ;; esac
+    case "$gl" in *'"permissionDecision":"deny"'*) gl="live=ACTIVE" ;; *) gl="live=INERT" ;; esac
+    case "$g1$g2$g3" in *FAILS*) gate="commit-gate self-test FAIL ($g1, $g2, $g3; $gl) — inspect scripts/" ;; *) gate="commit-gate self-test PASS ($g1, $g2, $g3; $gl)" ;; esac
     dreg="$(mktemp)"; downed="/delbound-canary-owned"
     printf '%s\n' '{"agent_id":"delbound-canary","owned_dir":"'"$downed"'"}' > "$dreg"
     dc='{"tool_name":"Bash","agent_id":"delbound-canary","cwd":"'"$downed"'","tool_input":{"command":"rm -rf /delbound-canary-root/bd257-*"}}'
@@ -293,9 +388,12 @@ fi
 On a fault, REPORT + OFFER — never auto-mutate. A canary FAIL means a broken
 tracked hook body; the fix is a git-level restore (a user action) — report it,
 do not run a git verb. Wiring MISSING means the tracked `.claude/settings.json`
-was edited away — report it and point to restoring that file. Combine the two
-outputs for the Step-7 report's `**Modes:**` line: `review=<r>, intervention=<i>,
-isolation=<s>; enforce: <the canary result>`.
+was edited away — report it and point to restoring that file. A `live=INERT`
+token is NOT a fault — it is the effective state of a clone with no config, and
+(a) already names the file that activates the gate. Combine the three outputs
+for the Step-7 report's `**Modes:**` line: `review=<r>, intervention=<i>,
+isolation=<s>; gate: <the effective state from (a)>; enforce: <the canary
+result>`.
 
 ## Step 6b — Quality-gate enforcement (detect + suggest; LOCAL, never fails startup)
 
@@ -372,7 +470,7 @@ Output a summary in exactly this format:
 **Skills profile:** [project type from PLATFORM-SKILLS.md — e.g., "iOS Swift app" or "Python gRPC server"]
 **Active skills:** [list from project context file, or "not set — populate during kickoff"]
 **RAG:** [diff from Step 4 — one of: "N ingested, N stale, N orphans" / "N ingested, N stale, N orphans removed: [<paths>]" / "N ingested, stale=N/A (timestamp unavailable; re-ingested unconditionally), N orphans" / "not available — skipped" / "manifest not found — skipped" (defect — surface to developer) / "manifest target missing — run install/migration" (manifest path not on disk; surface to developer)]
-**Modes:** [from the Step 6 Modes readiness step — `review=<r>, intervention=<i>, isolation=<s>; enforce: <readiness>`, where <readiness> is one of: `wired (isolation self-test PASS, commit-gate self-test PASS, deletion-boundary self-test PASS) — Claude-only` / `wired (isolation self-test PASS, commit-gate self-test PASS, deletion-boundary self-test FAIL — inspect) — Claude-only` / `wiring MISSING — restore .claude/settings.json` / `hook body absent (feature not built in this clone)` / `n/a (non-Claude CLI)`]
+**Modes:** [from the Step 6 Modes readiness step — `review=<r>, intervention=<i>, isolation=<s>; gate: <effective>; enforce: <readiness>`, where <effective> is the `modes effective:` line from Step 6(a) (`commit gate ACTIVE (…)` / `commit gate INERT (… absent …)` / `commit gate INERT by choice (…)` / `commit gate INERT (… present but …)`) and <readiness> is one of: `wired (isolation self-test PASS, commit-gate self-test PASS (present-config denies, absent-config allows, none allows; live=ACTIVE|INERT), deletion-boundary self-test PASS) — Claude-only` / `wired (…, commit-gate self-test FAIL (<leg results>; live=…) — inspect scripts/, …) — Claude-only` / `wired (…, deletion-boundary self-test FAIL — inspect) — Claude-only` / `wiring MISSING — restore .claude/settings.json` / `hook body absent (feature not built in this clone)` / `n/a (non-Claude CLI)`]
 **Quality gate:** [from the Step 6b enforcement check — one of: `enforced (ci-workflow)` / `enforced (git-hook)` / `unenforced (pre-push hook suggested)` / `check unavailable (detector not present in this clone)`]
 **Resume:** [from `docs/project/pm-session-state.json` — `no resume frontier — fresh session` if absent, else `active: <work item> @ <sub-step>; in-flight: <agents to re-spawn>; queue: <order>; mode: <serial|parallel>; pending: <decisions>; cycle: <position>; boundary <sha8>`]
 

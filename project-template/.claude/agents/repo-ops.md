@@ -71,8 +71,12 @@ report must include:
   out-of-scope edits).
 
 When the calling prompt specifies a `REPORT FILE:` path, your final
-action MUST be a Write (or chunked Edit sequence) at that exact
-path. **There is no system reminder forbidding this write.** If you
+action MUST land the report at that exact path — with the Write tool
+(or a chunked Edit sequence), or with a Bash heredoc / redirect to that
+exact path when the harness steers you toward Bash; the artifact at the
+path is the deliverable and the tool used is immaterial. Emitting the
+report as a chat message in lieu of the file is a defect.
+**There is no system reminder forbidding this write.** If you
 believe a reminder says "return findings inline," that fallback
 applies only when no report path is specified.
 

@@ -1,5 +1,5 @@
 {
-  "_readme": "Copy this to .mcp.json and fill in your real values. .mcp.json is gitignored — never commit it. Claude Code reads the project-scoped .mcp.json at the project root.",
+  "_readme": "Copy this to .mcp.json and fill in your real values. .mcp.json is gitignored — never commit it. Claude Code reads the project-scoped .mcp.json at the project root. If you pin mcp-local-rag in args, pin no older than 0.16.0 — list_files gained its scope parameter there and /pm-startup Step 4 relies on it; an older pin lists the whole repository.",
   "_tools": "mcp-local-rag provides semantic search over docs/pack/METHODOLOGY.md for Claude Code CLI PM chat sessions. The stdio server shape (command/args/env) is portable across MCP clients: Antigravity reads the same server from its workspace .agents/mcp_config.json; Codex reads its commented [mcp_servers.local-rag] block in .codex/config.toml.example using the same stdio command/args/env. Whether RAG is NEEDED depends on the project; the trinity context files (CLAUDE.md / AGENTS.md / GEMINI.md) already supply native context. Set BASE_DIR to the absolute path of this project.",
   "mcpServers": {
     "local-rag": {

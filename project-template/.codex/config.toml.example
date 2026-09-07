@@ -17,7 +17,9 @@
 
 # Uncomment the block below to enable mcp-local-rag for Codex CLI
 # sessions in this project. Replace BASE_DIR with the absolute path of
-# this project directory.
+# this project directory. If you pin mcp-local-rag in args, pin no older
+# than 0.16.0 — list_files gained its scope parameter there and
+# /pm-startup Step 4 relies on it; an older pin lists the whole repository.
 #
 # [mcp_servers.local-rag]
 # command = "npx"

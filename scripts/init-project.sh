@@ -1077,38 +1077,171 @@ stage_s7_trinity_guided() {
         say "as <file>.user-orig and the pack version is now live. To fold your"
         say "customizations back into the pack structure, run the"
         say "resolve-merge-conflicts skill (Case 3 — install 2-way trinity fold)."
+        say "It is installed at .claude/skills/resolve-merge-conflicts/SKILL.md (and"
+        say "the .codex/ and .agents/ mirrors); its pack copy is"
+        say "  $PACK/project-template/skills/resolve-merge-conflicts/SKILL.md"
     fi
+}
+
+# Merge the pack's client `.gitignore` entries into `$TARGET/.gitignore` —
+# append-and-dedup, IDEMPOTENT. The INSTALL path (S8) only; `--update` runs the
+# narrower `merge_pack_gitignore_runtime_state` below, because a tree the client
+# has been living in owns its `.gitignore`. A SEPARATE copy of the idea behind
+# the migrator's S5e stage (mirror-but-customize; never a shared helper).
+#
+# Semantics:
+#   * a target with no `.gitignore` receives the pack template wholesale;
+#   * otherwise every non-comment pack entry the target lacks is appended
+#     under ONE `# --- AI Agent Config Pack additions (v11.0) ---` header — a
+#     header the target already carries is reused, never duplicated —
+#     each preceded by the comment block that introduces it in the pack
+#     template (a blank line ends a block; a block whose entries are all
+#     present is never emitted);
+#   * a target that already carries every entry is left byte-untouched —
+#     no header, no comment lines — so a re-run or a second `--update` is a
+#     no-op.
+# Line-exact matching (`grep -Fx`): a pattern the client expresses
+# differently (e.g. `*.env` for `.env`) is a different line and is appended;
+# that is an acceptable duplicate-in-effect, never a lost entry.
+merge_pack_gitignore() {
+    local pack_gi="$PACK/project-template/.gitignore"
+    local tgt_gi="$TARGET/.gitignore"
+    if [[ ! -f "$pack_gi" ]]; then
+        info "no pack .gitignore template — skipping"
+        return 0
+    fi
+    if [[ ! -f "$tgt_gi" ]]; then
+        cp "$pack_gi" "$tgt_gi" \
+            || die "failed to install $tgt_gi from the pack template"
+        info ".gitignore installed from the pack template (target had none)"
+        return 0
+    fi
+    local header="# --- AI Agent Config Pack additions (v11.0) ---"
+    local added=0 dup=0 line pending="" out=""
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ -z "$line" ]]; then
+            pending=""
+            continue
+        fi
+        if [[ "$line" == \#* ]]; then
+            pending="${pending}${line}"$'\n'
+            continue
+        fi
+        if grep -Fxq -- "$line" "$tgt_gi"; then
+            dup=$((dup + 1))
+            continue
+        fi
+        out="${out}${pending}${line}"$'\n'
+        pending=""
+        added=$((added + 1))
+    done < "$pack_gi"
+    if (( added == 0 )); then
+        info ".gitignore already carries every pack entry ($dup present) — untouched"
+        return 0
+    fi
+    # ONE header per file: reuse a pack-additions header the target already
+    # carries (a client who pruned entries under an earlier merge still has it)
+    # rather than appending a second — the guard form `scripts/add-capability.sh`
+    # stage A6 already uses. The newline probe keeps the append safe on a file
+    # with no trailing newline, which the header branch supplies for itself.
+    if ! grep -Fxq -- "$header" "$tgt_gi"; then
+        printf '\n%s\n' "$header" >> "$tgt_gi" \
+            || die "failed to append the pack additions header to $tgt_gi"
+    elif [[ -n "$(tail -c 1 "$tgt_gi")" ]]; then
+        printf '\n' >> "$tgt_gi" \
+            || die "failed to terminate the last line of $tgt_gi"
+    fi
+    printf '%s' "$out" >> "$tgt_gi" \
+        || die "failed to append the pack entries to $tgt_gi"
+    info ".gitignore merged: $added added, $dup already present"
+}
+
+# The ignore entries `--update` may restore. Deliberately NOT the whole pack
+# template: these two are the per-clone PM operating-mode runtime state, which
+# the pack's own design declares is NEVER committed (the
+# `# ─── PM operating-mode runtime state ───` block in
+# `project-template/.gitignore`). Every other pack entry is a convenience the
+# client owns and may legitimately prune. Two encodings of this set exist (here
+# and that template block); `test-init-project.sh` 17.4 asserts they are equal,
+# so a template rename reds the suite instead of silently emptying the
+# remediation.
+_UPDATE_RUNTIME_STATE_IGNORES=(
+    "docs/project/pm-session-config.json"
+    "docs/project/.pm-commit-approval-token"
+)
+
+# `--update`-only counterpart of `merge_pack_gitignore` — a SEPARATE, narrower
+# body, never a flag on the shared one.
+#
+# Why narrower: `--update` runs against a tree the client has been living in,
+# and `.gitignore` is client-owned. Appending every pack entry the file lacks
+# makes a deliberate deletion unfixable — the entry returns on every `--update`,
+# forever. So `--update` restores ONLY the two runtime-state entries above
+# (their absence leaves a per-clone state file tracked and committable, which
+# breaks the pack's own never-committed invariant) and leaves every other line
+# the client's business. S8 (install, an empty or brand-new surface) and the
+# migrator's S5e (a one-shot v10→v11 upgrade) keep the full append-and-dedup.
+#
+# Semantics:
+#   * a target with no `.gitignore` receives the pack template wholesale — an
+#     empty surface, so nothing of the client's is overridden;
+#   * otherwise only the MISSING runtime-state entries are appended, under the
+#     same single `# --- AI Agent Config Pack additions (v11.0) ---` header —
+#     an existing header and its explanatory line are reused, never duplicated;
+#   * a target that already carries both is left byte-untouched, so a second
+#     `--update` is a no-op.
+merge_pack_gitignore_runtime_state() {
+    local pack_gi="$PACK/project-template/.gitignore"
+    local tgt_gi="$TARGET/.gitignore"
+    if [[ ! -f "$tgt_gi" ]]; then
+        if [[ ! -f "$pack_gi" ]]; then
+            info "no pack .gitignore template — skipping"
+            return 0
+        fi
+        cp "$pack_gi" "$tgt_gi" \
+            || die "failed to install $tgt_gi from the pack template"
+        info ".gitignore installed from the pack template (target had none)"
+        return 0
+    fi
+    local header="# --- AI Agent Config Pack additions (v11.0) ---"
+    local note="# PM operating-mode runtime state — per-clone, never committed."
+    local added=0 dup=0 entry out=""
+    for entry in "${_UPDATE_RUNTIME_STATE_IGNORES[@]}"; do
+        if grep -Fxq -- "$entry" "$tgt_gi"; then
+            dup=$((dup + 1))
+            continue
+        fi
+        out="${out}${entry}"$'\n'
+        added=$((added + 1))
+    done
+    if (( added == 0 )); then
+        info ".gitignore already ignores the PM operating-mode runtime state ($dup present) — untouched"
+        return 0
+    fi
+    # ONE header and ONE explanatory line per file: reuse either if the target
+    # already carries it (a client who pruned the entries under an earlier
+    # `--update` still has both) — the guard form `scripts/add-capability.sh`
+    # stage A6 already uses. The newline probe keeps the append safe on a file
+    # with no trailing newline, which the header branch supplies for itself.
+    if ! grep -Fxq -- "$header" "$tgt_gi"; then
+        printf '\n%s\n' "$header" >> "$tgt_gi" \
+            || die "failed to append the pack additions header to $tgt_gi"
+    elif [[ -n "$(tail -c 1 "$tgt_gi")" ]]; then
+        printf '\n' >> "$tgt_gi" \
+            || die "failed to terminate the last line of $tgt_gi"
+    fi
+    if ! grep -Fxq -- "$note" "$tgt_gi"; then
+        printf '%s\n' "$note" >> "$tgt_gi" \
+            || die "failed to append the runtime-state note to $tgt_gi"
+    fi
+    printf '%s' "$out" >> "$tgt_gi" \
+        || die "failed to append the runtime-state entries to $tgt_gi"
+    info ".gitignore merged: $added added, $dup already present (PM operating-mode runtime state only)"
 }
 
 stage_s8_gitignore() {
     say "── S8 — merge .gitignore ──"
-    local pack_gi="$PACK/project-template/.gitignore"
-    if [[ ! -f "$pack_gi" ]]; then
-        info "no pack .gitignore template — skipping"
-        return
-    fi
-    local header="# --- AI Agent Config Pack additions (v11.0) ---"
-    if [[ ! -f "$TARGET/.gitignore" ]]; then
-        cp "$pack_gi" "$TARGET/.gitignore"
-        return
-    fi
-    # Append-and-dedup: for each line in pack .gitignore, append if not present.
-    local existing dup=0 added=0 line
-    existing=$(cat "$TARGET/.gitignore")
-    {
-        printf '\n%s\n' "$header"
-        while IFS= read -r line; do
-            [[ -z "$line" ]] && continue
-            [[ "$line" =~ ^# ]] && { printf '%s\n' "$line"; continue; }
-            if printf '%s\n' "$existing" | grep -Fxq "$line"; then
-                dup=$((dup + 1))
-                continue
-            fi
-            printf '%s\n' "$line"
-            added=$((added + 1))
-        done < "$pack_gi"
-    } >> "$TARGET/.gitignore"
-    info ".gitignore merged: $added added, $dup duplicates skipped"
+    merge_pack_gitignore
 }
 
 stage_s9_conditional_remove() {
@@ -2147,6 +2280,16 @@ cmd_update() {
         _cmd_update_write_ledger "$ledger_stage"
         rm -f "$ledger_stage"
     fi
+
+    # The client `.gitignore` is not an install-map row — a merged, client-owned
+    # file has no BASE/OURS/THEIRS meaning — so the map-driven loop above never
+    # refreshes it. A tree whose `.gitignore` predates the per-clone PM
+    # operating-mode runtime state (never committed by design) is remediated
+    # here in place, and ONLY for those two entries: `--update` must not undo a
+    # deliberate client deletion of a convenience entry, which the full
+    # append-and-dedup would re-add on every run. Idempotent — a no-op once both
+    # entries are present.
+    merge_pack_gitignore_runtime_state
 
     # BD-263 (groupings provisioning): seed the empty groupings `_toc.md`
     # iff absent. A groupings-less v11.0 tree gains docs/project/groupings/

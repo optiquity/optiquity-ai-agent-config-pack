@@ -142,15 +142,21 @@ _cp_report_reconcile_section() {
     printf 'just reconciled:\n\n'
     printf '    rm <sidecar>.resolved && touch <sidecar>.resolved\n\n'
 
+    # The skill these pointers name ships in the pack. On the migration path
+    # the report is read at the pause, BEFORE the install stage lays the skill
+    # down in the project, so every pointer names the pack copy. PACK is the
+    # caller's pack root (the migrator and init-project.sh both hold it); a
+    # caller without it is left the literal `$PACK` placeholder.
+    local skill_doc="${PACK:-\$PACK}/project-template/skills/resolve-merge-conflicts/SKILL.md"
     # (a) prose auto-merge that left conflict markers (action `merged`, prose
     #     class generic/pm-chat only — structured `merged` rows go to (d)).
     _cp_report_reconcile_subsection "$tsv" merged \
         "Auto-merged — resolve remaining conflict markers" \
-        "The migrator 3-way merged the pack and project edits, but some lines overlapped so the live file carries conflict markers. Resolve them by hand, or run the resolve-merge-conflicts skill; then mark it resolved (remove the sidecar or add its .resolved companion)."
+        "The migrator 3-way merged the pack and project edits, but some lines overlapped so the live file carries conflict markers. Resolve them by hand, or run the resolve-merge-conflicts skill (its pack copy is \`$skill_doc\` — during a migration the skill is not yet installed in this project, so read it there); then mark it resolved (remove the sidecar or add its .resolved companion)."
     # (b) trinity sidecar (action `sidecar`, class `trinity`).
     _cp_report_reconcile_subsection "$tsv" trinity \
         "Trinity files — fold your prior copy into the new pack version" \
-        "The live file holds the new pack trinity; your prior copy is in the sidecar. The resolve-merge-conflicts skill folds it in section-aware, or fold by hand per the pre-reconcile guide; then mark it resolved (remove the sidecar or add its .resolved companion)."
+        "The live file holds the new pack trinity; your prior copy is in the sidecar. The resolve-merge-conflicts skill folds it in section-aware (its pack copy is \`$skill_doc\` — during a migration the skill is not yet installed in this project, so read it there), or fold by hand per the pre-reconcile guide; then mark it resolved (remove the sidecar or add its .resolved companion)."
     # (c) scripts/agents sidecar (action `sidecar`, class pack-script/pack-agent).
     _cp_report_reconcile_subsection "$tsv" handreapply \
         "Scripts and agents — re-apply your customization by hand" \

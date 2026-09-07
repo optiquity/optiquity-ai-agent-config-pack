@@ -790,7 +790,8 @@ for rel in \
     "docs/project/groupings/_toc.md" \
     "docs/project/groupings/GRP-001.md" \
     "docs/project/backlog/TD-001.md" \
-    "docs/project/immutable-manifest.txt"; do
+    "docs/project/immutable-manifest.txt" \
+    ".gitignore"; do
     safe_name=$(printf '%s' "$rel" | tr '/' '_')
     cp "$T6/$rel" "$snap6/$safe_name"
 done
@@ -844,7 +845,8 @@ for rel in \
     "docs/project/groupings/_toc.md" \
     "docs/project/groupings/GRP-001.md" \
     "docs/project/backlog/TD-001.md" \
-    "docs/project/immutable-manifest.txt"; do
+    "docs/project/immutable-manifest.txt" \
+    ".gitignore"; do
     safe_name=$(printf '%s' "$rel" | tr '/' '_')
     if cmp -s "$snap6/$safe_name" "$T6/$rel"; then
         t_pass "6.7 $rel byte-identical after --update re-run (no-op)"
@@ -2521,6 +2523,410 @@ rm -rf "$T"
 
 rm -rf "$PACKC"
 unset PACK_PROVENANCE_BASELINE_REF
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 17: BD-293 — the client .gitignore: S8 idempotence + --update
+# remediation.
+#
+# The pack's ignore entries reach a client through S8 on install (full
+# append-and-dedup, an empty or brand-new surface) and, for a tree whose
+# .gitignore predates the per-clone PM operating-mode runtime state, through
+# --update — which runs a SEPARATE, NARROWER arm: it restores those two
+# never-committed entries and nothing else, so a convenience entry the client
+# deliberately pruned is not re-added on every run. Both arms must be a
+# byte-level no-op once their entries are present. Anchors are asserted BEFORE
+# each run so no assertion can pass vacuously. The load-bearing assertions are
+# `git check-ignore` (the runtime state must be IGNORED, not merely present as
+# text) and, for the deletion-honouring half, a line-exact absence count.
+#
+# Fixture shape matters for the header count: every case before 17.8 installs
+# onto an EMPTY target, where the template arrives by `cp` and no
+# pack-additions header exists at all — so a duplicate-header append is
+# invisible to them. 17.8 installs onto a target that already has its own
+# .gitignore, so the header is present before `--update` runs.
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 17: BD-293 .gitignore — S8 idempotence + --update remediation ===\n"
+
+GI_TEMPLATE="$REPO_ROOT/project-template/.gitignore"
+GI_HEADER='# --- AI Agent Config Pack additions (v11.0) ---'
+GI_NOTE='# PM operating-mode runtime state — per-clone, never committed.'
+
+# 17.1 S8 on a target whose .gitignore already equals the pack template must
+# leave it byte-untouched (no header, no comment lines). The non-idempotent S8
+# appended the header + every pack comment line on every run ("0 added").
+T=$(make_target)
+cp "$GI_TEMPLATE" "$T/.gitignore"
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "template .gitignore" 2>/dev/null
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$T" 2>&1) ; rc=$?
+assert_eq "17.1 install rc=0 on a target already carrying the template .gitignore" "0" "$rc"
+if cmp -s "$GI_TEMPLATE" "$T/.gitignore"; then
+    t_pass "17.1 S8 left a template-identical .gitignore byte-untouched"
+else
+    t_fail "17.1 S8 rewrote a .gitignore that already carried every entry" \
+        "lines=$(wc -l < "$T/.gitignore" | tr -d ' ') headers=$(grep -c -F "$GI_HEADER" "$T/.gitignore" | tr -d ' ')"
+fi
+assert_contains "17.1 S8 reports the untouched case" "$out" "already carries every pack entry"
+rm -rf "$T"
+
+# 17.1b S8's APPEND-AND-DEDUP arm — a target that already has a .gitignore but
+# lacks pack entries (installing into a project that already had one). 17.1
+# exercises only the `added == 0` early return and 17.2/17.5 now drive the
+# narrow --update arm, so without this case S8's append site is reachable in
+# production and unguarded: a prepend mutation of that one line leaves the whole
+# suite green. Anchors are asserted BEFORE the install; the load-bearing check is
+# `git check-ignore`.
+T=$(make_target)
+printf '%s\n' "build-artifacts-of-this-project/" ".env" > "$T/.gitignore"
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "project .gitignore, no pack entries" 2>/dev/null
+pre_lines=$(wc -l < "$T/.gitignore" | tr -d ' ')
+pre_hash=$(git -C "$T" hash-object "$T/.gitignore")
+assert_eq "17.1b anchor: no pack-additions header BEFORE the install" \
+    "0" "$(grep -c -F "$GI_HEADER" "$T/.gitignore" | tr -d ' ')"
+if git -C "$T" check-ignore -q -- docs/project/pm-session-config.json 2>/dev/null; then
+    t_fail "17.1b anchor: pm-session-config.json already ignored BEFORE the install (fixture invalid)"
+else
+    t_pass "17.1b anchor: pm-session-config.json NOT ignored BEFORE the install"
+fi
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$T" 2>&1) ; rc=$?
+assert_eq "17.1b install rc=0 onto a target with a pack-entry-less .gitignore" "0" "$rc"
+for gi_rel in docs/project/pm-session-config.json docs/project/.pm-commit-approval-token; do
+    if git -C "$T" check-ignore -q -- "$gi_rel" 2>/dev/null; then
+        t_pass "17.1b $gi_rel is git-ignored after the install (S8 append arm ran)"
+    else
+        t_fail "17.1b $gi_rel is NOT git-ignored after the install (S8 append arm missing)"
+    fi
+done
+assert_contains "17.1b S8 reports the merge counts" "$out" ".gitignore merged:"
+if [[ "$(head -n "$pre_lines" "$T/.gitignore" | git -C "$T" hash-object --stdin)" == "$pre_hash" ]]; then
+    t_pass "17.1b the project's own .gitignore is preserved byte-for-byte (append-only)"
+else
+    t_fail "17.1b the project's own .gitignore was rewritten (S8 must be append-only)"
+fi
+grep -q '^build-artifacts-of-this-project/$' "$T/.gitignore" \
+    && t_pass "17.1b project's own ignore line survives the S8 merge" \
+    || t_fail "17.1b project's own ignore line lost in the S8 merge"
+assert_eq "17.1b exactly one pack-additions header appended by S8" \
+    "1" "$(grep -c -F "$GI_HEADER" "$T/.gitignore" | tr -d ' ')"
+assert_eq "17.1b dedup: the project's pre-existing '.env' appears exactly once" \
+    "1" "$(grep -c '^\.env$' "$T/.gitignore" | tr -d ' ')"
+rm -rf "$T"
+
+# 17.2 The pre-fix shape: a fresh v11 install whose .gitignore is then replaced
+# by the pack template MINUS the PM operating-mode block (what a client migrated
+# on a pre-S5e pack, or one that pruned the block, is left with) plus one
+# project line, committed. --update must ignore the runtime state afterwards,
+# append-only, one header, no duplicated entry.
+T=$(make_target)
+PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1 ; rc=$?
+assert_eq "17.2 fresh install rc=0 (Group 17 base tree)" "0" "$rc"
+grep -v -e 'pm-session-config.json' -e 'pm-commit-approval-token' "$GI_TEMPLATE" > "$T/.gitignore"
+printf '%s\n' "build-artifacts-of-this-project/" >> "$T/.gitignore"
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "pre-fix .gitignore shape" 2>/dev/null
+pre_lines=$(wc -l < "$T/.gitignore" | tr -d ' ')
+pre_hash=$(git -C "$T" hash-object "$T/.gitignore")
+pre_hits=$(grep -c 'pm-session-config.json' "$T/.gitignore" | tr -d ' ')
+assert_eq "17.2 anchor: the pre-fix .gitignore lacks the pm-session-config entry" "0" "$pre_hits"
+if git -C "$T" check-ignore -q -- docs/project/pm-session-config.json 2>/dev/null; then
+    t_fail "17.2 anchor: pm-session-config.json already ignored BEFORE --update (fixture invalid)"
+else
+    t_pass "17.2 anchor: pm-session-config.json NOT ignored BEFORE --update"
+fi
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T" 2>&1) ; rc=$?
+assert_eq "17.2 --update rc=0 on the pre-fix .gitignore shape" "0" "$rc"
+for gi_rel in docs/project/pm-session-config.json docs/project/.pm-commit-approval-token; do
+    if git -C "$T" check-ignore -q -- "$gi_rel" 2>/dev/null; then
+        t_pass "17.2 $gi_rel is git-ignored after --update"
+    else
+        t_fail "17.2 $gi_rel is NOT git-ignored after --update (remediation missing)"
+    fi
+done
+assert_contains "17.2 --update reports the merge counts" "$out" ".gitignore merged:"
+# Append-only: the first pre_lines lines are the committed file, byte for byte.
+if [[ "$(head -n "$pre_lines" "$T/.gitignore" | git -C "$T" hash-object --stdin)" == "$pre_hash" ]]; then
+    t_pass "17.2 pre-existing .gitignore content preserved byte-for-byte (append-only)"
+else
+    t_fail "17.2 pre-existing .gitignore content was rewritten (must be append-only)"
+fi
+grep -q '^build-artifacts-of-this-project/$' "$T/.gitignore" \
+    && t_pass "17.2 project's own ignore line survives" \
+    || t_fail "17.2 project's own ignore line lost"
+hdr_hits=$(grep -c -F "$GI_HEADER" "$T/.gitignore" | tr -d ' ')
+assert_eq "17.2 exactly one pack-additions header appended" "1" "$hdr_hits"
+env_hits=$(grep -c '^\.env$' "$T/.gitignore" | tr -d ' ')
+assert_eq "17.2 dedup: '.env' appears exactly once after the merge" "1" "$env_hits"
+
+# 17.3 Idempotence: a second --update leaves the merged .gitignore
+# byte-identical and reports the untouched case.
+snap17=$(mktemp "${TMPDIR:-/tmp}/bd293-gi.XXXXXX")
+cp "$T/.gitignore" "$snap17"
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T" 2>&1) ; rc=$?
+assert_eq "17.3 second --update rc=0" "0" "$rc"
+if cmp -s "$snap17" "$T/.gitignore"; then
+    t_pass "17.3 .gitignore byte-identical after the second --update (idempotent)"
+else
+    t_fail "17.3 .gitignore changed on the second --update (idempotency broken)" \
+        "headers=$(grep -c -F "$GI_HEADER" "$T/.gitignore" | tr -d ' ')"
+fi
+assert_contains "17.3 second --update reports the untouched case" "$out" \
+    "already ignores the PM operating-mode runtime state"
+rm -f "$snap17"
+rm -rf "$T"
+
+# 17.4 The two encodings of the runtime-state set — the
+# `_UPDATE_RUNTIME_STATE_IGNORES` array in init-project.sh and the
+# `# ─── PM operating-mode runtime state ───` block in the pack template — must
+# be EQUAL as sets. --update's narrow arm hand-lists the entries; without this
+# tie a template rename would empty the remediation silently while every other
+# case stayed green.
+gi_sets=$(python3 - "$INIT_SH" "$GI_TEMPLATE" <<'PY'
+import re, sys
+init, tmpl = sys.argv[1], sys.argv[2]
+m = re.search(r"^_UPDATE_RUNTIME_STATE_IGNORES=\(\n(.*?)^\)$",
+              open(init, encoding="utf-8").read(), re.S | re.M)
+arr = set(re.findall(r'"([^"]+)"', m.group(1))) if m else set()
+lines, blk, seen = open(tmpl, encoding="utf-8").read().splitlines(), set(), False
+for ln in lines:
+    if "PM operating-mode runtime state" in ln:
+        seen = True
+        continue
+    if seen:
+        if not ln.strip():
+            break
+        if not ln.lstrip().startswith("#"):
+            blk.add(ln.strip())
+print("ARRAY=%s" % ("|".join(sorted(arr)) or "<none>"))
+print("TEMPLATE=%s" % ("|".join(sorted(blk)) or "<none>"))
+print("EQUAL=%s" % ("yes" if arr and arr == blk else "no"))
+PY
+)
+gi_arr=$(printf '%s\n' "$gi_sets" | sed -n 's/^ARRAY=//p')
+gi_tpl=$(printf '%s\n' "$gi_sets" | sed -n 's/^TEMPLATE=//p')
+gi_eq=$(printf '%s\n' "$gi_sets" | sed -n 's/^EQUAL=//p')
+assert_eq "17.4 anchor: the template's runtime-state block is non-empty" \
+    "docs/project/.pm-commit-approval-token|docs/project/pm-session-config.json" "$gi_tpl"
+if [[ "$gi_eq" == "yes" ]]; then
+    t_pass "17.4 --update's runtime-state set equals the pack template's block ($gi_arr)"
+else
+    t_fail "17.4 --update's runtime-state set has drifted from the pack template's block" \
+        "array=$gi_arr template=$gi_tpl"
+fi
+
+# 17.5–17.7 Deletion-honouring: `--update` restores the never-committed
+# runtime-state entries and NOTHING else. Both halves are pinned in ONE fixture
+# so each is the other's control — a client prunes one CONVENIENCE entry and
+# both RUNTIME-STATE entries in the same commit; after --update the convenience
+# entry must still be gone (widen the arm back to every pack entry and 17.5
+# reds) and the runtime-state entries must be back (remove the arm and 17.6
+# reds). The pre-fix behaviour re-added the convenience entry on EVERY --update
+# — the "reverts client work" class this BD closed elsewhere.
+T=$(make_target)
+PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1 ; rc=$?
+assert_eq "17.5 fresh install rc=0 (deletion-honouring base tree)" "0" "$rc"
+GI_CONV=$(grep -v '^#' "$GI_TEMPLATE" | grep -v '^$' \
+    | grep -v -e 'pm-session-config.json' -e 'pm-commit-approval-token' \
+    | grep -v '^!' | head -1)
+if [[ -n "$GI_CONV" ]]; then
+    t_pass "17.5 fixture: picked a pack CONVENIENCE ignore entry ('$GI_CONV')"
+else
+    t_fail "17.5 fixture: no convenience entry found in the pack template"
+fi
+grep -vxF -e "$GI_CONV" \
+    -e 'docs/project/pm-session-config.json' \
+    -e 'docs/project/.pm-commit-approval-token' "$T/.gitignore" > "$T/.gitignore.pruned"
+mv "$T/.gitignore.pruned" "$T/.gitignore"
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "client prunes one convenience + both runtime-state entries" 2>/dev/null
+pre_lines=$(wc -l < "$T/.gitignore" | tr -d ' ')
+pre_hash=$(git -C "$T" hash-object "$T/.gitignore")
+assert_eq "17.5 anchor: the pruned convenience entry is absent BEFORE --update" \
+    "0" "$(grep -cxF -- "$GI_CONV" "$T/.gitignore" | tr -d ' ')"
+if git -C "$T" check-ignore -q -- docs/project/pm-session-config.json 2>/dev/null; then
+    t_fail "17.6 anchor: pm-session-config.json still ignored BEFORE --update (fixture invalid)"
+else
+    t_pass "17.6 anchor: pm-session-config.json NOT ignored BEFORE --update"
+fi
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T" 2>&1) ; rc=$?
+assert_eq "17.5 --update rc=0 on the pruned tree" "0" "$rc"
+assert_eq "17.5 a pruned CONVENIENCE entry stays pruned after --update" \
+    "0" "$(grep -cxF -- "$GI_CONV" "$T/.gitignore" | tr -d ' ')"
+for gi_rel in docs/project/pm-session-config.json docs/project/.pm-commit-approval-token; do
+    if git -C "$T" check-ignore -q -- "$gi_rel" 2>/dev/null; then
+        t_pass "17.6 a pruned RUNTIME-STATE entry is restored by --update ($gi_rel ignored)"
+    else
+        t_fail "17.6 $gi_rel is NOT git-ignored after --update (narrow arm missing)"
+    fi
+done
+assert_contains "17.6 --update names the runtime-state-only merge" "$out" \
+    "(PM operating-mode runtime state only)"
+assert_eq "17.6 exactly one pack-additions header appended" \
+    "1" "$(grep -c -F "$GI_HEADER" "$T/.gitignore" | tr -d ' ')"
+if [[ "$(head -n "$pre_lines" "$T/.gitignore" | git -C "$T" hash-object --stdin)" == "$pre_hash" ]]; then
+    t_pass "17.6 the client's .gitignore is preserved byte-for-byte (append-only)"
+else
+    t_fail "17.6 the client's .gitignore was rewritten (must be append-only)"
+fi
+
+# 17.7 Across runs: the deletion keeps being honoured and the file stops
+# changing — the churn the pre-fix arm produced was visible only on run 2+.
+snap177=$(mktemp "${TMPDIR:-/tmp}/bd293-gi2.XXXXXX")
+cp "$T/.gitignore" "$snap177"
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T" 2>&1) ; rc=$?
+assert_eq "17.7 second --update rc=0" "0" "$rc"
+assert_eq "17.7 the pruned convenience entry is STILL absent after a second --update" \
+    "0" "$(grep -cxF -- "$GI_CONV" "$T/.gitignore" | tr -d ' ')"
+if cmp -s "$snap177" "$T/.gitignore"; then
+    t_pass "17.7 .gitignore byte-identical after the second --update (no churn)"
+else
+    t_fail "17.7 .gitignore changed on the second --update (churn)" \
+        "headers=$(grep -c -F "$GI_HEADER" "$T/.gitignore" | tr -d ' ')"
+fi
+assert_contains "17.7 second --update reports the runtime-state untouched case" "$out" \
+    "already ignores the PM operating-mode runtime state"
+rm -f "$snap177"
+rm -rf "$T"
+
+# 17.8 ONE header, and ONE runtime-state note line, across a prune-then---update
+# sequence. The fixture starts from a target that ALREADY has its own .gitignore,
+# so S8's append arm (not the `cp` arm) runs and the pack-additions header EXISTS
+# before `--update` — the shape every earlier header count is blind to. The client
+# then prunes the two runtime-state entries, so the narrow arm has something to
+# append and must reuse the existing header instead of emitting a second one.
+# declare-verify-backing: drop either `grep -Fxq` guard in
+# `merge_pack_gitignore_runtime_state` and the corresponding count goes to 2.
+T=$(make_target)
+printf '%s\n' 'build-artifacts-of-this-project/' 'LAST-CLIENT-LINE/' > "$T/.gitignore"
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "the client's own .gitignore" 2>/dev/null
+PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1 ; rc=$?
+assert_eq "17.8 install rc=0 onto a target carrying its own .gitignore" "0" "$rc"
+assert_eq "17.8 anchor: S8's append arm emitted exactly ONE header BEFORE --update" \
+    "1" "$(grep -c -xF -- "$GI_HEADER" "$T/.gitignore" | tr -d ' ')"
+gi_prune() {
+    grep -vxF -e 'docs/project/pm-session-config.json' \
+        -e 'docs/project/.pm-commit-approval-token' "$T/.gitignore" > "$T/.gitignore.pruned"
+    mv "$T/.gitignore.pruned" "$T/.gitignore"
+    git -C "$T" add -A >/dev/null
+    git -C "$T" commit -q -m "client prunes the runtime-state entries" 2>/dev/null
+}
+gi_prune
+if git -C "$T" check-ignore -q -- docs/project/pm-session-config.json 2>/dev/null; then
+    t_fail "17.8 anchor: pm-session-config.json still ignored BEFORE --update (fixture invalid)"
+else
+    t_pass "17.8 anchor: pm-session-config.json NOT ignored BEFORE --update"
+fi
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T" 2>&1) ; rc=$?
+assert_eq "17.8 --update rc=0 on the pruned tree" "0" "$rc"
+assert_eq "17.8 still exactly ONE pack-additions header after --update" \
+    "1" "$(grep -c -xF -- "$GI_HEADER" "$T/.gitignore" | tr -d ' ')"
+assert_eq "17.8 exactly ONE runtime-state note line after --update" \
+    "1" "$(grep -c -xF -- "$GI_NOTE" "$T/.gitignore" | tr -d ' ')"
+for gi_rel in docs/project/pm-session-config.json docs/project/.pm-commit-approval-token; do
+    if git -C "$T" check-ignore -q -- "$gi_rel" 2>/dev/null; then
+        t_pass "17.8 $gi_rel is git-ignored again after --update (entry restored)"
+    else
+        t_fail "17.8 $gi_rel is NOT git-ignored after --update (narrow arm missing)"
+    fi
+done
+# A SECOND prune + `--update` is what exercises the note-line guard: the note is
+# by then the client's own text and the entries below it are gone again.
+gi_prune
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T" 2>&1) ; rc=$?
+assert_eq "17.8 second --update rc=0 after a second prune" "0" "$rc"
+assert_eq "17.8 still ONE header after the second prune-then---update" \
+    "1" "$(grep -c -xF -- "$GI_HEADER" "$T/.gitignore" | tr -d ' ')"
+assert_eq "17.8 still ONE runtime-state note line after the second prune-then---update" \
+    "1" "$(grep -c -xF -- "$GI_NOTE" "$T/.gitignore" | tr -d ' ')"
+if git -C "$T" check-ignore -q -- docs/project/pm-session-config.json 2>/dev/null; then
+    t_pass "17.8 the runtime state is ignored again after the second --update"
+else
+    t_fail "17.8 the runtime state is NOT ignored after the second --update"
+fi
+# The client's own lines are never touched by any of it.
+assert_eq "17.8 the client's own ignore line survives every run exactly once" \
+    "1" "$(grep -c -xF -- 'LAST-CLIENT-LINE/' "$T/.gitignore" | tr -d ' ')"
+unset -f gi_prune
+rm -rf "$T"
+
+# 17.9 S8's OWN header guard. 17.8 covers the `--update` arm; S8's append site is
+# a SEPARATE body and needs its own shape: a target whose .gitignore already
+# carries the pack-additions header when the FULL merge runs. An install refuses a
+# tree that already has AI config (exit 20), so the reachable shape is a client
+# whose .gitignore carries the block before any install — copied from another
+# pack-configured project, or left behind after the AI config was removed. S8 has
+# entries to append (added > 0) and must reuse the header already in the file.
+# declare-verify-backing: drop the `grep -Fxq` guard in `merge_pack_gitignore`
+# and this count goes to 2.
+T=$(make_target)
+printf '%s\n' 'build-artifacts-of-this-project/' > "$T/.gitignore"
+printf '\n%s\n' "$GI_HEADER" >> "$T/.gitignore"
+printf '%s\n' '.env' >> "$T/.gitignore"
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "the client's .gitignore already carries the pack block" 2>/dev/null
+assert_eq "17.9 anchor: exactly ONE header BEFORE the install" \
+    "1" "$(grep -c -xF -- "$GI_HEADER" "$T/.gitignore" | tr -d ' ')"
+if git -C "$T" check-ignore -q -- docs/project/pm-session-config.json 2>/dev/null; then
+    t_fail "17.9 anchor: pm-session-config.json already ignored BEFORE the install (fixture invalid)"
+else
+    t_pass "17.9 anchor: pm-session-config.json NOT ignored BEFORE the install"
+fi
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$T" 2>&1) ; rc=$?
+assert_eq "17.9 install rc=0 with the header already in the client's file" "0" "$rc"
+assert_contains "17.9 S8's append arm ran (entries were missing)" "$out" ".gitignore merged:"
+assert_eq "17.9 still exactly ONE pack-additions header after S8" \
+    "1" "$(grep -c -xF -- "$GI_HEADER" "$T/.gitignore" | tr -d ' ')"
+assert_eq "17.9 dedup still holds: the client's '.env' appears exactly once" \
+    "1" "$(grep -c -xF -- '.env' "$T/.gitignore" | tr -d ' ')"
+if git -C "$T" check-ignore -q -- docs/project/pm-session-config.json 2>/dev/null; then
+    t_pass "17.9 the runtime state is git-ignored after the install"
+else
+    t_fail "17.9 the runtime state is NOT git-ignored after the install"
+fi
+rm -rf "$T"
+
+# 17.10 The append must not glue itself onto a client's last line when that line
+# has no terminating newline AND the header is already present (the branch that
+# supplies the leading newline is skipped in that case). A .gitignore whose last
+# byte is not a newline is legal and git reads its last line normally.
+# declare-verify-backing: drop the `tail -c 1` branch in
+# `merge_pack_gitignore_runtime_state` and the client's last line is consumed.
+T=$(make_target)
+printf '%s\n' 'build-artifacts-of-this-project/' > "$T/.gitignore"
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "the client's own .gitignore" 2>/dev/null
+PACK="$REPO_ROOT" bash "$INIT_SH" --yes "$T" >/dev/null 2>&1 ; rc=$?
+assert_eq "17.10 install rc=0" "0" "$rc"
+grep -vxF -e 'docs/project/pm-session-config.json' \
+    -e 'docs/project/.pm-commit-approval-token' "$T/.gitignore" > "$T/.gitignore.pruned"
+mv "$T/.gitignore.pruned" "$T/.gitignore"
+# strip the trailing newline
+printf '%s' "$(cat "$T/.gitignore")" > "$T/.gitignore.nonl"
+mv "$T/.gitignore.nonl" "$T/.gitignore"
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "client prunes; file ends without a newline" 2>/dev/null
+gi_last=$(tail -n 1 "$T/.gitignore")
+if [[ -n "$(tail -c 1 "$T/.gitignore")" ]]; then
+    t_pass "17.10 anchor: the fixture's last byte is NOT a newline"
+else
+    t_fail "17.10 anchor: the fixture still ends with a newline (fixture invalid)"
+fi
+assert_eq "17.10 anchor: the header is already present" \
+    "1" "$(grep -c -xF -- "$GI_HEADER" "$T/.gitignore" | tr -d ' ')"
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T" 2>&1) ; rc=$?
+assert_eq "17.10 --update rc=0 on a file with no trailing newline" "0" "$rc"
+assert_eq "17.10 the client's last line survives verbatim" \
+    "1" "$(grep -c -xF -- "$gi_last" "$T/.gitignore" | tr -d ' ')"
+assert_eq "17.10 still exactly ONE pack-additions header" \
+    "1" "$(grep -c -xF -- "$GI_HEADER" "$T/.gitignore" | tr -d ' ')"
+if git -C "$T" check-ignore -q -- docs/project/pm-session-config.json 2>/dev/null; then
+    t_pass "17.10 the runtime state is ignored again after --update"
+else
+    t_fail "17.10 the runtime state is NOT ignored after --update"
+fi
+rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Summary

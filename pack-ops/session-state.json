@@ -1,27 +1,28 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "9171243",
-  "checkpoint": "2026-09-05T04:30:00Z",
+  "boundary_commit": "1df7ade",
+  "checkpoint": "2026-09-07T01:20:00Z",
   "active": [
-    "BD-293 (BD-295 folded in). Landed + CI-green: C1..C8, Wave 1, Wave 2. Wave 3 (migration delivery: agent-run.sh migrate token, never-existed-file baseline, retired-skill-dir removal incl. dangling symlinks, committed install-map sweep, Check 97, heredoc deletion-hazard fix at 12 sites) reviewed CLEAN and LANDING in this commit with the README twin."
+    "BD-293 (BD-295 folded in). Landed + CI-green through Wave 3 (migration delivery). Wave 4 (small client fixes) coder RUNNING: (1) every pause/report site naming the not-yet-installed resolve-merge-conflicts skill (~8 sites incl. a fresh-install one in init-project.sh); (2) commit gate: startup Step 6 reports the EFFECTIVE state, canary covers the absent-config path, migrator adds the pm-session-config .gitignore entry -- absent config stays INERT by design; (3) pm-startup Step 4 local-rag list scoped; (4) G8 Write refusal on the handoff path MEASURED first (pack settings carry no grant), fixed only if it is a pack gap."
   ],
-  "in_flight_agents": [],
+  "in_flight_agents": [
+    "fixcoder-bd293-w4-client-4 (pack-coder, isolated, fix pass 4 = mechanical, LAST edit): false guide clause, wrong test citation, header-dedup guard x3 + case, 2 README rows; report -> FIX-REPORT-4.md in the bd293-w4-* handoff dir. Resume: no report -> re-spawn fresh."
+  ],
   "queue": [
-    "SERIAL, user-approved: (2) small client fixes in ONE wave: D4-old 8 pause/report sites naming an uninstalled skill, N7 commit-gate canary + effective-state reporting + missing .gitignore entry on migration, D3-new startup local-rag scope -> (3) BD-294 D3+D5 per ARCHITECTURE-BD-294 with the 4 user decisions -> (4) D4-new PACK-FEEDBACK.md dual-ownership scaffolding (USER DECISION PENDING: marker split vs scaffold-only update; measure how many files share the shape) -> (5) end-to-end runs of the two untested install shapes (fresh project; existing non-pack repo).",
-    "OPEN inside BD-293, from Wave 3: S5 map-derived install writes sidecars AFTER the pause decision, so Gate 2's orphan scan fails them (rc 31, content preserved); fix = run the map-derived install before the pause. Also still open: Check 65+67 dead-record message reword together; the L3 axis-matching commit.",
-    "Wave-3 follow-ups inside BD-293: run the S5 map-derived install BEFORE the pause decision (a customized launcher now yields a loud rc 31 with a truthful resolve-and-continue; the ordering fix is the cure); EDITED-branch holding collision tests -e only; sweep 4.5 prefix match admits a malformed row; ci-shard-plan.py member list stale. USER DECISION PENDING: gitignore migration sidecar residue (.v10-customized + .resolved; Step 4 currently commits it)?",
-    "v11.1 per client framing: G1..G8, N1..N3 -- except G8 (Write-tool refusal on the handoff path) which gets a one-check measurement now.",
+    "SERIAL, user-approved: Wave 4 bounded review/fix cycle -> commit (MIXED, no keyword) -> manifest-sync -> commit -> push -> (3) BD-294 D3+D5 per ARCHITECTURE-BD-294 with the 4 user decisions -> (4) D4-new PACK-FEEDBACK.md dual-ownership (USER DECISION PENDING: marker split vs scaffold-only update; measure how many files share the shape) -> (5) end-to-end runs of the two untested install shapes (fresh project; existing non-pack repo).",
+    "OPEN inside BD-293, from Wave 3: run the S5 map-derived install BEFORE the pause decision (cures the rc 31 orphan-scan failure); EDITED-branch holding collision tests -e only; sweep 4.5 prefix match admits a malformed row; ci-shard-plan.py member list stale; Check 65+67 dead-record message reword together; the L3 axis-matching commit. USER DECIDED: migration sidecar residue is NOT gitignored for now (Step 4 commits it; the guide says so).",
+    "v11.1 per client framing: G1..G7, N1..N3 (G8 moved into Wave 4).",
     "user: flip the repo public (the launch)"
   ],
   "parallelization": "SERIAL. User directed: wait and do it in serial. Every step ends with a report and a stop; nothing chains automatically.",
-  "wave": "v11.0 is DONE ONLY WHEN THE CLIENT PROJECT SAYS SO -- Pack Chat NEVER declares it. Client re-migrated cleanly on RC1-54; the client has hand-copied the v11 agent-run.sh pending the Wave-3 fix. BD-171 + BD-172 stay Status: Open by user decision.",
+  "wave": "v11.0 is DONE ONLY WHEN THE CLIENT PROJECT SAYS SO -- Pack Chat NEVER declares it. Client re-migrated cleanly on RC1-54; hand-copied the v11 agent-run.sh (Wave 3 fixed the migrate token). BD-171 + BD-172 stay Status: Open by user decision.",
   "pending_decisions": [
-    "LOCKED: main history is PRESERVED -- NO squash, NO rewrite. ONE user-directed exception: a tip commit that copied a v10 agent-run.sh over the v11 template was REMOVED via force-with-lease at the user's explicit repeated instruction (see that removal's commit message / reflog). Not a precedent.",
+    "LOCKED: main history PRESERVED -- NO squash, NO rewrite. ONE user-directed exception: the tip commit that copied a v10 agent-run.sh over the v11 template was REMOVED via force-with-lease at the user's explicit repeated instruction (reflog). Not a precedent.",
     "LOCKED: NO scrub; the Check 93 two-tier model is UNCHANGED. ONE repo forever.",
     "Standing: PUBLIC-BOUND PACK; commit-gate token in a SEPARATE bash call BEFORE git commit; session-state COMPACT; modes review=itemized intervention=full isolation=full; manifest screen is run -> COMMIT its result -> push, never collapsed. The shell is zsh: always brace ${VAR} before ':' in any git ref or path.",
     "USER (HARD): finish BD-293 + BD-294, then STOP. NO NEW BD ENTRIES, ever. Everything lands inside those two or is reported as not done.",
     "USER (BD-294 design decisions, taken): new first section '## Project Identity'; delete-the-section comments -> recipe if the choice is frequent else a pointer (measure frequency first); DELETE the how-to block; placeholder guard = validate-pack check on every push.",
     "USER: dashboard re-render at the END or on request, never a gate. BD-295 folded into BD-293, entry deleted; older commit subjects cite the retired ID."
   ],
-  "cycle_position": "Wave 3: 3 reviews + 2 fix passes, final verdict CLEAN; landing. Next per the serial plan: (2) small client fixes wave."
+  "cycle_position": "Wave 4: 4 reviews + 4 fix passes. Review 4 = NO blocker, NO must (1 SHOULD + 3 NIT), committable per its own verdict. Fix 4 RUNNING; no further adversarial review by design (targeted verification + full battery is the gate). Then patch -> ONE MIXED commit (user approval) -> manifest-sync -> commit -> push."
 }

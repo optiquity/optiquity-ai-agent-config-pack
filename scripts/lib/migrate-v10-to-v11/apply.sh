@@ -330,7 +330,11 @@ _v10_v11_apply_print_copypaste_menu() {
                 say "         mv '$s' '$live'"
                 say "    3. Resolve the conflict markers — keeps both. Resolve the"
                 say "       markers in '$live' by hand, or run the"
-                say "       resolve-merge-conflicts skill; then mark it resolved:"
+                say "       resolve-merge-conflicts skill. The skill is not installed"
+                say "       in this project until the migration finishes, so read it"
+                say "       from the pack you are migrating from:"
+                say "         $PACK/project-template/skills/resolve-merge-conflicts/SKILL.md"
+                say "       Then mark it resolved:"
                 say "         touch '$s.resolved'        # keep the sidecar as a record"
                 say "         # ...or, once resolved:  rm '$s'"
             else
@@ -457,12 +461,12 @@ _v10_v11_apply_interactive_reconcile() {
         info "your prior copy is saved at: $s"
         if [[ "$action" == "merged" ]]; then
             if [[ "$class" == "generic" || "$class" == "pm-chat" ]]; then
-                info "the live file holds a 3-way merge WITH conflict markers — accept re-installs the pack template, keep restores your copy, or resolve the markers (run the resolve-merge-conflicts skill) then --resume"
+                info "the live file holds a 3-way merge WITH conflict markers — accept re-installs the pack template, keep restores your copy, or resolve the markers (run the resolve-merge-conflicts skill — not installed in this project until the migration finishes; read it from $PACK/project-template/skills/resolve-merge-conflicts/SKILL.md) then --resume"
             else
                 info "the live file holds a key-merged config with reconciliation warnings (no conflict markers) — accept re-installs the pack template, keep restores your copy, or review/adjust the merged file by hand then --resume (the resolve-merge-conflicts skill does not apply to structured configs)"
             fi
         elif [[ "$class" == "trinity" ]]; then
-            info "trinity file — resolve by hand or run the resolve-merge-conflicts skill (folds it section-aware), then --resume; or accept/keep to pick one side wholesale"
+            info "trinity file — resolve by hand or run the resolve-merge-conflicts skill (folds it section-aware; not installed in this project until the migration finishes — read it from $PACK/project-template/skills/resolve-merge-conflicts/SKILL.md), then --resume; or accept/keep to pick one side wholesale"
         elif [[ "$class" == "pack-script" || "$class" == "pack-agent" ]]; then
             info "script/agent — the skill does NOT merge these; re-apply your edit by hand over the pack v11 file, then --resume; or accept/keep to pick one side wholesale"
         fi

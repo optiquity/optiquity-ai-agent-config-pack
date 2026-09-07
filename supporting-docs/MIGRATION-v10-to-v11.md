@@ -594,8 +594,8 @@ trinity fold defers to the `resolve-merge-conflicts` skill or a hand-edit +
 `--resume` (option 3).
 
 The script runs 7 framework stages (S0..S6). Stage S4 is split into two
-sub-banners (`S4a` and `S4b`) and stage S5 into three (`S5`, `S5a`,
-`S5b`) for operator clarity — each split pair runs inside the
+sub-banners (`S4a` and `S4b`) and stage S5 into sub-banners (`S5`,
+`S5a`–`S5e`) for operator clarity — each split runs inside the
 framework's single parent stage and shares that stage's sentinel and
 framework exit code (`24` for S4; `25` for S5).
 
@@ -610,6 +610,9 @@ framework exit code (`24` for S4; `25` for S5).
 | S5 | Install v11 client artifacts — every file the install map declares for migration (HELP-FRAGMENT*.md, issue forms, the per-CLI `pm-help` help skill to `.claude`/`.codex`/`.agents`, the `agent-run.sh` launcher, `.mcp.json` created from `.mcp.json.example` — a v10 install shipped only the example — the Antigravity agent plugin bundle at `.agents-plugin/optiquity-agents/` installed replace-if-different). A file you deleted from a surface you had at v10 stays deleted; a path v10 never created is a clean add. The client help runner `scripts/pm-help.sh` ships as an ordinary `project-template/scripts/` file via the scripts directory sweep — NO pack-side file (pack-help.sh / lib/detect.sh) is copied into the project (no dual-use; empty ship-allowlist per BD-257). `tracker.toml.example` is NO LONGER installed — tracker integration is deferred; the dormant config record stays committed pack-side at `project-template/tracker.toml.project-example`. |
 | S5a | Lift each departing Gemini custom (`x-`) agent into the Antigravity bundle (`.agents-plugin/optiquity-agents/agents/`) so it becomes a live Antigravity agent — never overwriting a same-named bundle custom. |
 | S5b | Retire the departing `.gemini/` tree by moving it (never deleting) into a root-level `gemini-retired-docs/` backup holding directory. Rewrite unambiguous `python-architecture` references (the rest go to the rename advisory), then remove every skill directory v11 no longer ships from `.claude/skills/`, `.codex/skills/` and `.agents/skills/` — pristine copies deleted; an edited copy, or a path that is itself a symlink you placed there (moved as the link, never followed), moved under `.pack-migrate-v10-to-v11/retired-skills/` — listed in the report under "Files retired by pack". |
+| S5c | Capability-token translation in the trinity `capabilities:` line (`role:apple-app` → `deployment:apple`; `deployment:linux-container` append), each touch recorded in the rename advisory. |
+| S5d | Accounting-gated per-entry decomposition of `BACKLOG.md` / `IMPLEMENTATION-PLAN.md` / `CHANGELOG.md` into the per-entry trees + TOC regenerate; writes `docs/project/MIGRATION-TRIAGE.md`. |
+| S5e | Merge the pack's client `.gitignore` entries into your `.gitignore` (append-and-dedup under one `# --- AI Agent Config Pack additions (v11.0) ---` header; a target with no `.gitignore` receives the pack template). A v10 `.gitignore` predates the per-clone PM operating-mode runtime state (the session config and the commit-approval token the mode selectors write under `docs/project/`), which is never committed by design — without the entries the first mode selector you run would leave a tracked, committable file. A `.gitignore` already carrying every entry is left byte-untouched. Runs last of the S5 sub-ops; it touches only `.gitignore`, which no other sub-op reads. A tree migrated before this stage existed gets the two runtime-state entries back from `init-project.sh --update` — that path restores those two only (a tree with **no** `.gitignore` at all receives the pack template wholesale, as at install), so a pack entry you deliberately pruned is not re-added on every update. |
 | S6 | Render truthful migration report at `.pack-migrate-v10-to-v11/report.md` |
 
 **Exit codes:**
@@ -702,6 +705,11 @@ Sections you may see:
 The `Files needing manual reconciliation` section is split into four
 groups by what the migrator could and could not merge automatically.
 Handle each per its heading:
+
+> While the migration is paused the `resolve-merge-conflicts` skill is
+> **not yet installed in your project** (stage S5 installs it after
+> `--resume`). Read it from the pack clone you are migrating from:
+> `$PACK/project-template/skills/resolve-merge-conflicts/SKILL.md`.
 
 1. **Auto-merged — resolve remaining conflict markers** (prose docs). The
    migrator 3-way merged both sides, but some lines overlapped, so the
@@ -807,7 +815,9 @@ git diff --staged | less
 #     per § "What the user does" above.
 #   - CLAUDE.md / AGENTS.md / GEMINI.md gained a "## Quick reference"
 #     block (or a fresh template if you had no customizations).
-#   - .gitignore may have been merged with new pack additions.
+#   - .gitignore gained the pack's ignore entries it lacked (S5e —
+#     notably docs/project/pm-session-config.json and the
+#     commit-approval token), under one pack-additions header.
 #   - docs/pack/HELP-FRAGMENT.md is new.
 #   - tracker.toml.example is NOT installed (tracker deferred).
 #   - .github/ISSUE_TEMPLATE/{work-item,inbound,config}.yml are new.

@@ -73,7 +73,7 @@ Output a summary in exactly this format:
 **Last commit:** [date] — [summary from git log -1 --oneline]
 **CI tooling:** [GitHub MCP available / not configured — CI via `gh run list`]
 **Graph:** [the Step-5 readiness line — e.g. `fresh | pre-push hook: installed`, or `STALE — built at <sha8>, HEAD <sha8> | pre-push hook: NOT installed — run scripts/install-graphify-hook.sh`, or `not built (optional pack-dev accelerator)`]
-**Modes enforce:** [the Step-6 readiness line — e.g. `wired (isolation self-test PASS, commit-gate self-test PASS, deletion-boundary self-test PASS) — Claude-only`, or `wired (isolation self-test PASS, commit-gate self-test PASS, deletion-boundary self-test FAIL — inspect) — Claude-only`, or `wiring MISSING — restore .claude/settings.json`, or `n/a (non-Claude CLI)`]
+**Modes enforce:** [the Step-6 readiness line — e.g. `wired (isolation self-test PASS, commit-gate self-test PASS (present-config denies, absent-config allows, none allows; live=ACTIVE|INERT), deletion-boundary self-test PASS) — Claude-only`, or `wired (isolation self-test PASS, commit-gate self-test FAIL (<leg results>; live=…) — inspect, deletion-boundary self-test PASS) — Claude-only`, or `wired (…, deletion-boundary self-test FAIL — inspect) — Claude-only`, or `wiring MISSING — restore .claude/settings.json`, or `n/a (non-Claude CLI)`; `live=INERT` is the effective state of a worktree or clone whose gitignored `pack-ops/session-config.json` is absent, not a fault]
 **Resume:** [from `pack-ops/session-state.json` — `no live session — clean start` if absent/idle, else `active: BD-NNN @ <sub-step>; in-flight: <agents to re-spawn>; queue: <order>; mode: <serial|parallel>; pending: <decisions>; cycle: <position>; boundary <sha8> (= HEAD | N behind)`]
 
 **Awaiting instructions.**
@@ -127,9 +127,17 @@ hook bodies — deterministic, O(1)) plus a FUNCTION canary per body (a dry-run 
 piped into the hook — the did-it-actually-fire signal). Branched at runtime on
 `CLAUDECODE` (the text is byte-identical across the three mirrors; only the
 runtime output differs by CLI). The commit-gate canary drives the body through
-its `MODES_GATE_*` scratch seams and the deletion-boundary canary through its
-`DELBOUND_*` seams (a synthetic registry + synthetic temp root), so both touch NO
-live config, token, or filesystem.
+its `MODES_GATE_*` scratch seams in three legs — a scratch config carrying
+`intervention_mode=full` with no token must DENY, a scratch config path that does
+not exist must ALLOW (the hook's documented absent-config fold), and a scratch
+config carrying `intervention_mode=none` must ALLOW (auto-commit is authorized,
+never gated) — then probes the LIVE `pack-ops/session-config.json` with a scratch
+token path (no real approval token is consumed) to report the gate's effective
+state: `live=ACTIVE`, or `live=INERT` when that gitignored config is absent — the
+state of every worktree and fresh clone until `/pack-intervention-mode` writes
+it, not a fault. The deletion-boundary canary runs through its `DELBOUND_*` seams
+(a synthetic registry + synthetic temp root). Nothing here writes a live config,
+token, or file.
 
 ```bash
 ROOT="$(git rev-parse --show-toplevel)"
@@ -152,8 +160,16 @@ if [ "${CLAUDECODE:-}" = "1" ]; then
     cfg="$(mktemp)"; printf '%s\n' '{"schema":"pack-session-config/1","intervention_mode":"full"}' > "$cfg"
     gc='{"tool_name":"Bash","cwd":"'"$ROOT"'","tool_input":{"command":"git commit -m canary"}}'
     gp="$(printf '%s' "$gc" | MODES_GATE_CONFIG_FILE="$cfg" MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
+    ga="$(printf '%s' "$gc" | MODES_GATE_CONFIG_FILE="$cfg.absent" MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
+    printf '%s\n' '{"schema":"pack-session-config/1","intervention_mode":"none"}' > "$cfg"
+    gn="$(printf '%s' "$gc" | MODES_GATE_CONFIG_FILE="$cfg" MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
+    gl="$(printf '%s' "$gc" | MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
     rm -f "$cfg"
-    case "$gp" in *'"permissionDecision":"deny"'*) gate="commit-gate self-test PASS" ;; *) gate="commit-gate self-test FAIL — inspect" ;; esac
+    case "$gp" in *'"permissionDecision":"deny"'*) g1="present-config denies" ;; *) g1="present-config FAILS to deny" ;; esac
+    case "$ga" in *'"permissionDecision":"deny"'*) g2="absent-config FAILS to allow" ;; *) g2="absent-config allows" ;; esac
+    case "$gn" in *'"permissionDecision":"deny"'*) g3="none FAILS to allow" ;; *) g3="none allows" ;; esac
+    case "$gl" in *'"permissionDecision":"deny"'*) gl="live=ACTIVE" ;; *) gl="live=INERT" ;; esac
+    case "$g1$g2$g3" in *FAILS*) gate="commit-gate self-test FAIL ($g1, $g2, $g3; $gl) — inspect" ;; *) gate="commit-gate self-test PASS ($g1, $g2, $g3; $gl)" ;; esac
     dreg="$(mktemp)"; downed="/delbound-canary-owned"
     printf '%s\n' '{"agent_id":"delbound-canary","owned_dir":"'"$downed"'"}' > "$dreg"
     dc='{"tool_name":"Bash","agent_id":"delbound-canary","cwd":"'"$downed"'","tool_input":{"command":"rm -rf /delbound-canary-root/bd257-*"}}'
@@ -177,4 +193,7 @@ fi
 Report the resulting one line on the Step-4 `**Modes enforce:**` line. If wiring
 is MISSING, restore the tracked `.claude/settings.json`; a local heal stopgap is
 `bash scripts/install-modes-hook.sh` (and `--dedup` drops a now-duplicate local
-entry once the committed file is present).
+entry once the committed file is present). A `live=INERT` token is NOT a fault:
+the commit gate reads the gitignored `pack-ops/session-config.json` and folds an
+absent file to allow, so every worktree and fresh clone is INERT until
+`/pack-intervention-mode` writes that file and activates the gate.

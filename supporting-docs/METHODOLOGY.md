@@ -234,8 +234,8 @@ without knowing they are orphans.
 **The reconciliation procedure.** Every `/pm-startup` Step 4
 reconciles the actual ingested set against the manifest:
 
-- Orphans (in index, not in manifest) are auto-deleted via
-  `local-rag.delete <path>`.
+- Orphans (in index, not in manifest) are auto-deleted via the
+  `local-rag` `delete_file` tool.
 - Stale entries (manifest path whose source mtime exceeds the
   ingest date) are re-ingested.
 - Missing entries (manifest path not in index) are ingested.
@@ -246,9 +246,9 @@ The procedure runs unconditionally on every startup — orphan removal
 does not require user approval, since the manifest is the source of
 truth and orphans are by definition outside it. See
 `docs/pack/PM-CHAT.md` § RAG ingestion manifest for the per-project
-manifest declaration. The same `list` / `delete` / `ingest` MCP
-calls can be invoked manually outside `/pm-startup` (the
-`CLI-PM-SETUP.md` companion doc covers MCP / RAG setup; copy it
+manifest declaration. The same `list_files` / `delete_file` /
+`ingest_file` MCP calls can be invoked manually outside `/pm-startup`
+(the `CLI-PM-SETUP.md` companion doc covers MCP / RAG setup; copy it
 alongside `METHODOLOGY.md` during install).
 
 PM Chat reconciles the RAG manifest on every `/pm-startup` per Step
@@ -1265,7 +1265,10 @@ agent's output is written to. Two sub-cases:
   architect mid-phase analysis, docs-researcher verification, planner
   breakdown, tester strategy, auditor consolidated report). The PM
   chat reads the file back; the agent does not copy-paste output
-  into chat.
+  into chat. The write mechanism is immaterial — the Write tool or a
+  Bash heredoc / redirect to that exact path both satisfy the rule; a
+  harness note that steers an agent toward Bash changes the tool,
+  never the path.
 - **Sub-case B — PM-chat self-prompt produces a target-file edit.**
   When the PM chat runs a self-prompt that edits or creates a
   project file (a `docs/project/backlog/` entry, STATUS.md, SETUP.md,

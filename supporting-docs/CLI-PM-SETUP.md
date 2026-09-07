@@ -216,18 +216,25 @@ Re-ingest your docs after updating — the vector index format may change betwee
 First check whether the index has orphans (paths that shouldn't be
 there) or stale chunks (chunks reflecting outdated file content):
 
-1. In your PM chat session, call the `local-rag` MCP `list` tool to
-   read the current ingest. Compare against the manifest declared
-   in `docs/pack/PM-CHAT.md` § RAG ingestion manifest.
-2. If a path appears in `list` but not in the manifest, it is an
-   **orphan** from a prior pack version or a retired file. Run
-   `local-rag.delete <path>` for each orphan.
+1. In your PM chat session, read the manifest declared in
+   `docs/pack/PM-CHAT.md` § RAG ingestion manifest. Check the
+   `mcp-local-rag` version pin in the CLI's MCP config FIRST: a pin
+   older than 0.16.0 has no `scope` parameter — skip the tool call and
+   list with the Bash CLI form exactly as `/pm-startup` Step 4 does.
+   Otherwise call the `local-rag` MCP `list_files` tool SCOPED to
+   those paths (its `scope` parameter) — never unscoped, which scans
+   the whole repository. Count orphans with the `status` tool's
+   `documentCount`; when the count is non-zero, name them with the
+   same Bash CLI form.
+2. A path in the index but not in the manifest is an **orphan** from
+   a prior pack version or a retired file. Call the `local-rag`
+   `delete_file` tool for each orphan.
    **Re-ingestion alone will not remove orphans** — they live in
    the index until explicitly deleted.
 3. If the manifest path's chunks reflect outdated content (the
-   source file was edited after the last ingest), run
-   `local-rag.delete <path>` followed by `local-rag.ingest <path>`
-   to rebuild from current content.
+   source file was edited after the last ingest), call `delete_file`
+   followed by `ingest_file` on that path to rebuild from current
+   content.
 
 This sequence is the same one `/pm-startup` Step 4 executes
 automatically on every startup. The manual procedure is useful when

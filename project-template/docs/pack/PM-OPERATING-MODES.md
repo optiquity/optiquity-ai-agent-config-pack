@@ -79,6 +79,13 @@ equivalent).
 - **`review_mode`** — cross-CLI salience only; no hook.
 - **`intervention_mode`** — cross-CLI salience; its commit-approval gate is
   additionally Claude-only hook-enforced (a fresh per-commit approval token).
+  The hook reads `intervention_mode` from the config file itself and folds an
+  absent / malformed / unrecognized value to ALLOW — the gate is **inert until
+  the file exists with a gating value** (any selector writes it). That fold is
+  deliberately more lenient than the isolation hook's default-mode fold: a
+  wrongful commit deny would wedge the developer's own commits. The salience
+  default (`full`) therefore does NOT mean commits are gated; `/pm-startup`
+  Step 6 prints the effective gate state next to the folded default.
 - **`isolation_mode`** — Claude-only enforcement. Worktree isolation is a
   Claude-only capability, so the under-isolated-spawn deny hook is Claude-only;
   on Codex/Antigravity the selector records the preference but it is not

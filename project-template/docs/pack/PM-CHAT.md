@@ -143,9 +143,11 @@ file: `docs/pack/METHODOLOGY.md`. All other project files are
 direct-read.
 
 **Forbidden in the index** — orphan paths (no live file backs them).
-If `local-rag.list` returns any of these, they are **orphans**: the
-retriever will surface stale chunks when queried, citing dead paths.
-Each must be removed via `local-rag.delete <path>`.
+If the `local-rag` `list_files` tool (or its Bash CLI form — see
+`/pm-startup` Step 4) reports any of these as ingested, they are
+**orphans**: the retriever will surface stale chunks when queried,
+citing dead paths. Each must be removed via the `local-rag`
+`delete_file` tool.
 
 | Orphan path | Why orphaned |
 |---|---|
@@ -412,7 +414,10 @@ These rules are non-negotiable and always apply on all tools:
 - **Agent report file.** Every agent prompt must include a
   `REPORT FILE: <path>` line. The agent's primary deliverable is the
   markdown report at that path; it is not inline text in the agent's
-  reply. See `## Permission profiles` below for per-profile prompt
+  reply. The write mechanism is immaterial: the Write tool or a Bash
+  heredoc / redirect to that exact path both satisfy the convention — a
+  harness note that steers an agent toward Bash changes the tool, never
+  the path. See `## Permission profiles` below for per-profile prompt
   requirements and `METHODOLOGY.md` § Prompt Authoring Principles →
   File-based reporting for the underlying convention.
 - **No prior reviews to reviewer.** Reviewer prompts cite
@@ -609,7 +614,11 @@ edits back:
    (If the handoff write fails because the handoff directory is not
    writable, the agent falls back to the report path the prompt named and
    reports the degradation — it never hard-errors on a failed handoff
-   write.)
+   write.) The write mechanism is immaterial: the Write tool or a Bash
+   heredoc / redirect to the exact report path both satisfy the
+   convention — the artifact at the path is the deliverable, and a
+   harness note that steers an agent toward Bash changes the tool, never
+   the path.
 3. **The PM chat reads the report and runs the bounded review/fix cycle
    IN the commit workspace** — the read-only reviewer reads the work
    there (targeting `<WS>` per call and verifying pwd/HEAD in the
@@ -724,7 +733,8 @@ per Procedure 5.
 Every prompt to a read-only agent must include:
 
 - `REPORT FILE: <path>` — the agent's primary deliverable is the
-  markdown report at that path.
+  markdown report at that path (written with the Write tool or a Bash
+  heredoc / redirect — the artifact, not the tool, is the deliverable).
 - `**Problem:**` / `**Goal:**` / `**Success criteria:**` triad — the
   full task contract.
 - A "do not modify any existing files" framing line stating the

@@ -253,7 +253,7 @@ migrator_post_dispatch_hook() {
     # invariant (single-shot only) made this gate unnecessary; with
     # BD-095 the gate is required.
     if _migrator_is_dryrun; then
-        info "[dry-run] would run rename (IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md at target root and docs/project/) + relocation + v11 artifact install (incl. Antigravity agent bundle, replace-if-different) + lift Gemini x- customs into the Antigravity bundle + Gemini→Antigravity retirement + python-architecture skill rename + retire skill directories the pack no longer ships + capability-token translation + accounting-gated per-entry decompose (writes docs/project/MIGRATION-TRIAGE.md alongside the per-entry trees)"
+        info "[dry-run] would run rename (IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md at target root and docs/project/) + relocation + v11 artifact install (incl. Antigravity agent bundle, replace-if-different) + lift Gemini x- customs into the Antigravity bundle + Gemini→Antigravity retirement + python-architecture skill rename + retire skill directories the pack no longer ships + capability-token translation + accounting-gated per-entry decompose (writes docs/project/MIGRATION-TRIAGE.md alongside the per-entry trees) + merge the pack's client .gitignore entries (append-and-dedup)"
         return 0
     fi
     _v10_to_v11_rename_implementation_plan
@@ -268,7 +268,7 @@ migrator_post_dispatch_hook() {
     _v10_to_v11_rename_python_architecture_refs
     _v10_to_v11_retire_dropped_skill_dirs
     _v10_to_v11_translate_capability_tokens
-    # BD-165 (per-entry split, mandatory v11.0): 6th sub-op decomposes
+    # BD-165 (per-entry split, mandatory v11.0): S5d decomposes
     # the just-installed v11-shape monolithic project-side files
     # (BACKLOG.md / IMPLEMENTATION-PLAN.md / CHANGELOG.md) into the
     # per-entry trees under docs/project/<stream>/ + regenerated TOCs,
@@ -278,14 +278,20 @@ migrator_post_dispatch_hook() {
     # is regenerated).
     #
     # Sequencing constraint: this
-    # MUST run AFTER all 5 prior sub-ops so the decompose step reads
-    # the FINAL v11-shape monolithic content (post BD-104 rename, post
-    # BD-042 relocation, post v11 artifact install incl. BD-167
-    # canonical templates, post python-architecture skill rename, post
-    # BD-144 capability-token translation). Anything that decomposed
+    # MUST run AFTER every content-mutating sub-op above so the decompose
+    # step reads the FINAL v11-shape monolithic content (post BD-104
+    # rename, post BD-042 relocation, post v11 artifact install incl.
+    # BD-167 canonical templates, post python-architecture skill rename,
+    # post BD-144 capability-token translation). Anything that decomposed
     # BEFORE one of those upstream mutations would produce per-entry
     # files not reflecting the final v11 content.
     _v10_to_v11_decompose_streams
+    # S5e: the client `.gitignore` gains the pack's ignore entries. Runs LAST
+    # and touches only `.gitignore`, which no other sub-op reads or writes — so
+    # it is order-free, and running it here makes the S5 sub-banners print in
+    # letter order. `scripts/tests/test-migrate-v10-to-v11.sh` 2.11b asserts the
+    # S5e banner follows the S5d one, so a reorder fails loudly.
+    _v10_to_v11_merge_gitignore
 }
 
 # Internal: BD-104 cross-pack rename of the client's IMPLEMENTATION_PLAN.md
@@ -1250,6 +1256,87 @@ _v10_to_v11_translate_capability_tokens() {
     else
         info "capability-token translation: no v10.x capability tokens found (no-op)"
     fi
+}
+
+# Internal: S5e — merge the pack's client `.gitignore` entries into the
+# target's `.gitignore`. A SEPARATE pack-side copy of the idea behind
+# init-project.sh `stage_s8_gitignore` (mirror-but-customize; never a shared
+# helper), customized for the migration path.
+#
+# Why the migrator needs it: a v10 `.gitignore` predates the per-clone PM
+# operating-mode runtime state (`docs/project/pm-session-config.json` + the
+# single-use commit-approval token), which is "never committed" by design.
+# Without the entry, the first mode selector a migrated client runs leaves a
+# tracked, committable file that travels to every clone. The install path
+# merges the entries at S8; the migration path had no equivalent stage.
+#
+# Semantics — append-and-dedup, IDEMPOTENT:
+#   * a target with no `.gitignore` receives the pack template wholesale;
+#   * otherwise every non-comment pack entry the target lacks is appended
+#     under ONE `# --- AI Agent Config Pack additions (v11.0) ---` header — a
+#     header the target already carries is reused, never duplicated —
+#     each preceded by the comment block that introduces it in the pack
+#     template (a blank line ends a block; a block whose entries are all
+#     present is never emitted);
+#   * a target that already carries every entry is left byte-untouched —
+#     no header, no comment lines — so a re-run or an already-merged file
+#     is a no-op (`--update`-style idempotence).
+# Line-exact matching (`grep -Fx`): a pattern the client expresses
+# differently (e.g. `*.env` for `.env`) is a different line and is appended;
+# that is an acceptable duplicate-in-effect, never a lost entry.
+# `--dry-run` never reaches this (the hook short-circuits above it).
+_v10_to_v11_merge_gitignore() {
+    say "── S5e — merge .gitignore (pack ignore entries, append-and-dedup) ──"
+    local pack_gi="$PACK/project-template/.gitignore"
+    local tgt_gi="$_MIGRATOR_TARGET/.gitignore"
+    if [[ ! -f "$pack_gi" ]]; then
+        info "no pack .gitignore template — skipping"
+        return 0
+    fi
+    if [[ ! -f "$tgt_gi" ]]; then
+        cp "$pack_gi" "$tgt_gi" \
+            || fail_stage S5 "S5e-gitignore: failed to install $tgt_gi from the pack template"
+        info ".gitignore installed from the pack template (target had none)"
+        return 0
+    fi
+    local header="# --- AI Agent Config Pack additions (v11.0) ---"
+    local added=0 dup=0 line pending="" out=""
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ -z "$line" ]]; then
+            pending=""
+            continue
+        fi
+        if [[ "$line" == \#* ]]; then
+            pending="${pending}${line}"$'\n'
+            continue
+        fi
+        if grep -Fxq -- "$line" "$tgt_gi"; then
+            dup=$((dup + 1))
+            continue
+        fi
+        out="${out}${pending}${line}"$'\n'
+        pending=""
+        added=$((added + 1))
+    done < "$pack_gi"
+    if (( added == 0 )); then
+        info ".gitignore already carries every pack entry ($dup present) — untouched"
+        return 0
+    fi
+    # ONE header per file: reuse a pack-additions header the target already
+    # carries rather than appending a second — the guard form
+    # `scripts/add-capability.sh` stage A6 already uses. The newline probe keeps
+    # the append safe on a file with no trailing newline, which the header
+    # branch supplies for itself.
+    if ! grep -Fxq -- "$header" "$tgt_gi"; then
+        printf '\n%s\n' "$header" >> "$tgt_gi" \
+            || fail_stage S5 "S5e-gitignore: failed to append the pack additions header to $tgt_gi"
+    elif [[ -n "$(tail -c 1 "$tgt_gi")" ]]; then
+        printf '\n' >> "$tgt_gi" \
+            || fail_stage S5 "S5e-gitignore: failed to terminate the last line of $tgt_gi"
+    fi
+    printf '%s' "$out" >> "$tgt_gi" \
+        || fail_stage S5 "S5e-gitignore: failed to append the pack entries to $tgt_gi"
+    info ".gitignore merged: $added added, $dup already present"
 }
 
 # migrator_post_report_hook — version-specific guidance text printed after

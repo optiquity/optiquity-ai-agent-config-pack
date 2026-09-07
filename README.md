@@ -245,6 +245,8 @@ scripts/persona-contracts/                  BD-116 per-persona contract scripts 
 └── contract-existing-source.sh             init on existing-project-collision fixture parks pack scripts/test.sh at .pack-template (C1)
 scripts/tests/test-migrate-v10-to-v11-dry-run.sh   BD-095 tests — dry-run / apply / resume modes (70 cases)
 scripts/tests/test-migrate-v10-to-v11-gates.sh     BD-101 tests — Gate 1 / 2 / 3 verification (39 cases)
+scripts/tests/test-pack-startup-modes-canary.sh    BD-293 tests — the /pack-startup + /pack-refresh Step 6 commit-gate canary can fail; three-tree fence parity (v11)
+scripts/tests/test-pm-startup-modes-canary.sh      BD-293 tests — the /pm-startup + /pm-refresh Step 6(b) commit-gate canary can fail; Step 6(a) modes-effective classification (v11)
 scripts/tests/test-validate-pack-check*.sh           Per-check validator tests. Not enumerated here: the wired set is
                                                      derived at CI time by scripts/lib/ci-shard-plan.py, and Check 42
                                                      gates that every per-check test file is wired.
