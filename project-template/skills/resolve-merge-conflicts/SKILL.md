@@ -129,7 +129,11 @@ auto-graft next migration). Any of those defects routes the engine to a sidecar
 `merged-with-customization` — so the gate FAILS. (Section ORDER is not enforced:
 the engine compares sections by heading NAME, not as an ordered stream, so a
 reordered-but-complete fold still passes — reordering is non-lossy and re-emits
-in canonical order next migration.)
+in canonical order next migration. Position inside the `## Project addenda`
+seed pair is no exception: a pair whose first content is its own `## ` heading
+is a whole project-owned section wherever in the file it sits, and the fold
+re-emits it after the canonical spine, outside the `## Project addenda` body —
+a relocation, never a loss.)
 
 **SUPPLEMENT — customization completeness.** A degenerate fold with EMPTY marker
 regions still passes the round-trip, so also require every added line of

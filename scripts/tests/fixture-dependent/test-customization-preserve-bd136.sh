@@ -38,7 +38,13 @@
 #         the body byte-identical (merged-with-customization, no sidecar);
 #         a NON-addenda Shape A pair containing an H3 fails loud in BOTH the
 #         merger (needs-reconciliation) and Check 91 (the exception is
-#         narrowly scoped to `## Project addenda`).
+#         narrowly scoped to `## Project addenda`). The H2-first legs cover
+#         the other seed shape: a seed pair whose first content is its own
+#         `## ` heading is Shape B and is STILL the seed pair, so Check 91's
+#         V-4 leg accepts it, the merger grafts it clean, and the graft output
+#         is itself Check-91 clean. Two controls bound the acceptance — an
+#         addenda H2 with NO pair still fires V-4 (the leg is alive), and a
+#         Shape B pair OUTSIDE the addenda section does not satisfy it.
 #   M-11  fresh-init flow (SETUP-NEW.md path): a v11-flat-file-derived
 #         project customized per BD-136 (seed H3 + Shape A body extension +
 #         Shape B project-original section) preserves every customization
@@ -141,6 +147,26 @@ try:
 finally:
     core.failures.clear(); core.failures.extend(saved)
 print(n)
+PY
+}
+
+# The SAME Check 91 entry, echoing the joined failure MESSAGES instead of the
+# count — so a control can assert WHICH leg fired, not merely that one did.
+check91_fail_text() {
+    REPO_ROOT="$REPO_ROOT" TRIN="$1" python3 - <<'PY'
+import os, sys, io, contextlib, pathlib
+sys.path.insert(0, os.path.join(os.environ["REPO_ROOT"], "scripts", "lib"))
+from validate_checks import trinity_markers as tm
+from validate_checks import core
+saved = list(core.failures); core.failures.clear()
+buf = io.StringIO()
+try:
+    with contextlib.redirect_stdout(buf):
+        tm.check_trinity_marker_wellformed(pathlib.Path(os.environ["TRIN"]), "scratch")
+    msgs = list(core.failures)
+finally:
+    core.failures.clear(); core.failures.extend(saved)
+print(" | ".join(msgs))
 PY
 }
 
@@ -439,6 +465,75 @@ assert_eq "M-10 negative merger fails loud -> needs-reconciliation" \
     "$NEEDS" "$(last_disp)"
 assert_contains "M-10 negative names the heading-inside-Shape-A defect" \
     "$(last_notes)" "heading inside a Shape A region"
+
+# H2-FIRST — the seed slot filled with a pair whose first content is its own
+# `## ` heading. That pair is Shape B (it is the section it names) and it is
+# STILL the seed pair, so Check 91's V-4 leg must accept it: the merger and the
+# validator have to agree about one shape, or the pack ships a validator that
+# calls its own legal client shape malformed. Bounded by two controls below.
+M10_SEED_H2='## Project addenda
+
+<!-- Project addenda go here. This heading is pack-owned. -->
+<!-- BEGIN project-owned -->
+## Deployment runbook
+M10H2-BODY
+<!-- END project-owned -->
+'
+# (a) Check 91 accepts the H2-first seed pair.
+m10h2_dir="$(mk_trinity_dir CLAUDE "$M10_SEED_H2")"
+assert_eq "M-10 H2-first: Check 91 PASSES on an H2-first seed pair (0 failures)" \
+    "0" "$(check91_fail_count "$m10h2_dir")"
+# (b) MUST-FAIL CONTROL — the addenda H2 with NO pair at all still fires V-4.
+#     Without it, (a) proves nothing: a dead leg passes everything.
+M10_NO_PAIR='## Project addenda
+
+<!-- Project addenda go here. This heading is pack-owned. -->
+'
+m10np_dir="$(mk_trinity_dir CLAUDE "$M10_NO_PAIR")"
+assert_eq "M-10 H2-first CONTROL: an addenda H2 with NO pair still FAILS V-4" \
+    "yes" "$([[ "$(check91_fail_count "$m10np_dir")" -ge 1 ]] && echo yes || echo no)"
+assert_contains "M-10 H2-first CONTROL: the failure is the V-4 seed-slot leg" \
+    "$(check91_fail_text "$m10np_dir")" "V-4"
+# (c) BOUND CONTROL — a Shape B pair OUTSIDE the addenda section does NOT
+#     satisfy V-4. The acceptance is scoped to the seed slot's own span.
+M10_B_ELSEWHERE='## Rules
+pack rules body
+<!-- BEGIN project-owned -->
+## Wrapped elsewhere
+NOT-THE-SEED-SLOT
+<!-- END project-owned -->
+
+## Project addenda
+
+<!-- Project addenda go here. This heading is pack-owned. -->
+'
+m10be_dir="$(mk_trinity_dir CLAUDE "$M10_B_ELSEWHERE")"
+assert_contains "M-10 H2-first BOUND: a Shape B pair outside the addenda section still FAILS V-4" \
+    "$(check91_fail_text "$m10be_dir")" "V-4"
+# (d) the merger grafts the same shape cleanly, body preserved, no sidecar.
+newstate
+printf '%s' "$M10_SEED_H2" > "$WORK/m10h2-ours.md"
+cat > "$WORK/m10h2-theirs.md" <<'MD'
+## Project addenda
+
+<!-- Project addenda go here. This heading is pack-owned. -->
+<!-- BEGIN project-owned -->
+<!-- END project-owned -->
+MD
+cp "$WORK/m10h2-ours.md" "$WORK/m10h2-dest.md"
+customization_preserve "" "$WORK/m10h2-ours.md" "$WORK/m10h2-theirs.md" \
+    "CLAUDE.md" "$WORK/m10h2-dest.md" trinity >/dev/null
+assert_eq "M-10 H2-first merger -> merged-with-customization" \
+    "merged-with-customization" "$(last_disp)"
+assert_contains "M-10 H2-first project body preserved in DEST" \
+    "$(cat "$WORK/m10h2-dest.md")" "M10H2-BODY"
+assert_eq "M-10 H2-first writes NO sidecar (clean, zero reconciliation)" \
+    "no" "$(file_present "$WORK/m10h2-dest.md.pre-update")"
+# (e) the graft output is itself Check-91 clean — the post-merge steady state,
+#     which is what a client's next `--update` reads.
+m10h2g_dir="$(mk_trinity_dir CLAUDE "$(cat "$WORK/m10h2-dest.md")")"
+assert_eq "M-10 H2-first graft output is Check 91 clean (0 failures)" \
+    "0" "$(check91_fail_count "$m10h2g_dir")"
 
 # ═══════════════════════════════════════════════════════════════════════════
 echo "== M-11: fresh-init (v11-flat-file) + customize + init --update preserves =="

@@ -14,7 +14,9 @@
 #   V-1 orphan / nesting / unclosed          -> fail
 #   V-2 heading-inside-Shape-A (partial wrap) -> fail; seed-slot H3 exception ok
 #   V-3 unterminated fenced code block        -> fail; fenced markers inert (pass)
-#   V-4 missing `## Project addenda` seed      -> fail (trinity-only)
+#   V-4 missing/empty `## Project addenda` seed -> fail; a seed pair in EITHER
+#       shape (A body-wrap, or B whose own `## ` head opens the pair inside
+#       the addenda H2) satisfies it -> pass (trinity-only)
 #   V-5 asymmetric marker-pair counts          -> WARN (not fail; trinity-only)
 #   V-6 dup H2/H3 name in Shape A + Shape B     -> fail
 #   V-7 `[CONDITIONAL]` literal in a trinity    -> fail (trinity-only, O-3)
@@ -74,7 +76,7 @@ fi
 
 # ─────────────────────────────────────────────────────────────────
 # Group 1: POSITIVE — well-formed markers pass (Shape A, Shape B,
-#          renamed-from, seed-slot H3 exception)
+#          renamed-from, seed-slot H3 exception, Shape B seed pair)
 # ─────────────────────────────────────────────────────────────────
 printf "\n=== Group 1: POSITIVE cases pass ===\n"
 
@@ -150,12 +152,29 @@ n, out = run(fenced_ok)
 if n != 0:
     failures.append(f"P5 fenced-inert example expected 0 failures, got {n}: {out}")
 
+# P6: V-4 POSITIVE — the seed pair in Shape B. A pair whose first content is
+# its own `## ` heading is Shape B wherever it sits, seed slot included, so an
+# H2-first project-owned pair INSIDE `## Project addenda` still carries the
+# seed and V-4 must pass. This is the V-rule contract for the Shape B arm.
+seed_shape_b = ("## Project addenda\n\n<!-- Project addenda go here. -->\n"
+                "<!-- BEGIN project-owned -->\n## My addenda section\nbody\n"
+                "<!-- END project-owned -->\n")
+n, out = run(seed_shape_b)
+if n != 0:
+    failures.append(f"P6 V-4 Shape B seed pair expected 0 failures, got {n}: {out}")
+# Anchor: the leg must pass THROUGH the Shape B arm — if the classifier ever
+# made this Shape A the leg would still be green while testing nothing new.
+p6 = [(r["shape"], r["host"]) for r in tm._scan_markers(seed_shape_b)["regions"]]
+if p6 != [("B", "## Project addenda")]:
+    failures.append(f"P6 anchor: expected exactly one Shape B region hosted in "
+                    f"the addenda H2, got {p6}")
+
 if failures:
     print("FAILURES"); [print(" ", f) for f in failures]; sys.exit(1)
 print("OK")
 PYEOF
 case $? in
-    0) t_pass "POSITIVE: minimal seed, Shape A, Shape B + renamed-from, seed-slot H3, fenced-inert all pass" ;;
+    0) t_pass "POSITIVE: minimal seed, Shape A, Shape B + renamed-from, seed-slot H3, fenced-inert, Shape B seed pair all pass" ;;
     *) t_fail "Group 1 POSITIVE cases failed" ;;
 esac
 
@@ -234,6 +253,14 @@ expect_fail("V-4 missing-seed", "## Sec\nbody\n", "missing `## Project addenda` 
 
 # V-4 addenda H2 present but NO marker pair inside it.
 expect_fail("V-4 empty-addenda",
+            "## Project addenda\n\n<!-- Project addenda go here. -->\n",
+            "carries no project-owned marker pair")
+
+# V-4 BOUND: the Shape B arm is scoped to the addenda HOST, not to any Shape B
+# — a Shape B pair hosted elsewhere leaves the seed slot empty and still fails.
+expect_fail("V-4 bound-pair-elsewhere",
+            "## Rules\n<!-- BEGIN project-owned -->\n## My Section\nbody\n"
+            "<!-- END project-owned -->\n"
             "## Project addenda\n\n<!-- Project addenda go here. -->\n",
             "carries no project-owned marker pair")
 

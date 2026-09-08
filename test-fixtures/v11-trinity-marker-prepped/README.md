@@ -29,8 +29,9 @@ Each file also carries one project-owned marker inside the file
 H2/H3 host, so it is neither Shape A nor Shape B — the shipped merger
 rejects it (fail-loud). The intro was therefore placed at a valid
 in-section position — a `### Repository overview` H3 at the head of the
-`## Project addenda` seed (the seed-slot exception permits project H3
-dumps). The rendered project content is preserved verbatim; only its
+`## Project addenda` seed (the seed-slot exception permits H3-and-below
+project dumps; an H2 opening the pair would instead be a Shape B
+section). The rendered project content is preserved verbatim; only its
 marker geometry is valid. Each file carries one Shape A seed pair that
 hosts the relocated `### Repository overview` intro.
 
@@ -74,8 +75,9 @@ asserts:
   counterparts in merge output (no duplicate H2s).
 - All Shape A body extensions preserved byte-identical.
 - All Shape B sections preserved byte-identical.
-- `## Project addenda` seed-slot exception honored (project H3 dump
-  permitted inside the seed Shape A wrap).
+- `## Project addenda` seed-slot exception honored (an H3-and-below
+  project dump is permitted inside the seed Shape A wrap; an H2 opening
+  the pair is a Shape B section instead).
 - No `[CONDITIONAL]` prefix appears anywhere in the output.
 
 ## Why this is a static hand-authored fixture, not a build.sh-generated one

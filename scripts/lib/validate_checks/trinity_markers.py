@@ -121,9 +121,12 @@ def _scan_markers(text: str) -> dict:
     """Single fence-aware walk producing everything V-1..V-8 need.
 
     Returns a dict with:
-      regions            list of {shape, head, begin_ln, end_ln, begin_raw}
-                         (shape "A"/"B"; head = the Shape A host H2 or the
-                          Shape B owned heading, rstripped)
+      regions            list of {shape, head, host, begin_ln, end_ln,
+                         begin_raw} (shape "A"/"B"; head = the Shape A host H2
+                         or the Shape B owned heading; host = the enclosing
+                         `## ` section the BEGIN line sits in — the region's
+                         span expressed as a section, equal to head for
+                         Shape A; both rstripped)
       errors             list of (code, message) for V-1/V-2 structural defects
                          (nest / orphan / partial / nohost)
       h2_list            ordered rstripped `## ` heading lines (fence-aware)
@@ -131,10 +134,22 @@ def _scan_markers(text: str) -> dict:
       unterminated_fence line number of an unclosed ``` fence at EOF, else 0
 
     The Shape classification MIRRORS the bash merger's `_mp_regions`: the
-    `## Project addenda` seed slot is Shape A even with inner headings; a
-    non-seed Shape A region whose body precedes a heading is a partial wrap; a
-    region whose first content is a heading is Shape B; a region with no
-    enclosing H2 (above the first `## `) has no host.
+    exact `## Project addenda` seed slot is Shape A even with inner
+    H3-and-below headings; a non-seed Shape A region whose body precedes a
+    heading is a partial wrap; a region whose first content is a heading is
+    Shape B — including inside the seed slot, where a first-content `## `
+    heading opens the project section it names; a region with no enclosing H2
+    (above the first `## `) has no host.
+
+    Design rationale for that shape rule:
+    `maintenance-docs/v11-implementation/ARCHITECTURE-BD-294.md` §2. The
+    mirrored consumer of the same design is `scripts/lib/marker-preserve.sh`
+    `_mp_regions`; `scripts/tests/test-marker-preserve-bd136.sh` M-23 is the
+    leg that proves the two agree. That agreement is scoped to the regions each
+    parser DETECTS: the two carry a deliberate divergence in the marker-token
+    predicate (bash matches the token anywhere on a line, this parser only at
+    line start after trim), documented at `_BEGIN_TOKEN` above, so a file whose
+    prose MENTIONS a marker inline is seen by one and not the other.
     """
     infence = False
     fence_open_ln = 0
@@ -179,12 +194,17 @@ def _scan_markers(text: str) -> dict:
                 errors.append(("orphan",
                     f"orphan END marker (no open BEGIN) at line {i}"))
                 continue
-            if region["beginh2"].startswith(_ADDENDA_H2):
-                regions.append({"shape": "A", "head": region["beginh2"].rstrip(),
+            if region["sawheading"]:
+                regions.append({"shape": "B", "head": region["ownh"].rstrip(),
+                                "host": region["beginh2"].rstrip(),
                                 "begin_ln": region["begin_ln"], "end_ln": i,
                                 "begin_raw": region["begin_raw"]})
-            elif region["sawheading"]:
-                regions.append({"shape": "B", "head": region["ownh"].rstrip(),
+            elif region["beginh2"].rstrip() == _ADDENDA_H2:
+                # Seed-slot exception: a Shape A body under the exact
+                # `## Project addenda` H2 may carry project H3-and-below
+                # headings — Shape A.
+                regions.append({"shape": "A", "head": region["beginh2"].rstrip(),
+                                "host": region["beginh2"].rstrip(),
                                 "begin_ln": region["begin_ln"], "end_ln": i,
                                 "begin_raw": region["begin_raw"]})
             elif region["beginh2"].strip() == "":
@@ -195,6 +215,7 @@ def _scan_markers(text: str) -> dict:
                     f"or wrap a whole section (Shape B)"))
             else:
                 regions.append({"shape": "A", "head": region["beginh2"].rstrip(),
+                                "host": region["beginh2"].rstrip(),
                                 "begin_ln": region["begin_ln"], "end_ln": i,
                                 "begin_raw": region["begin_raw"]})
             real_pairs += 1
@@ -203,13 +224,18 @@ def _scan_markers(text: str) -> dict:
 
         if region is not None:
             if is_heading:
-                if region["beginh2"].startswith(_ADDENDA_H2):
-                    region["sawbody"] = True                  # seed: headings OK
-                elif not region["sawheading"] and not region["sawbody"]:
+                seed = region["beginh2"].rstrip() == _ADDENDA_H2
+                # A first-content `## ` head opens its own section anywhere,
+                # seed slot included; inside the seed slot an H3-and-below
+                # head, or any head after body text, is seed body.
+                if (not region["sawheading"] and not region["sawbody"]
+                        and (is_h2 or not seed)):
                     region["sawheading"] = True               # Shape B owned head
                     region["ownh"] = raw
                 elif region["sawheading"]:
                     pass                                      # extra Shape B head
+                elif seed:
+                    region["sawbody"] = True                  # seed body
                 else:
                     host = region["beginh2"].strip() or "(preamble)"
                     errors.append(("partial",
@@ -354,8 +380,16 @@ def _validate_file(path: Path, label: str, is_trinity: bool) -> bool:
         if _ADDENDA_H2 not in text:
             fail(f"{rel}:V-4 — missing `## Project addenda` H2")
             failed = True
-        elif not any(r["shape"] == "A" and r["head"].startswith(_ADDENDA_H2)
-                     for r in regions):
+        elif not any(
+                (r["shape"] == "A" and r["head"].startswith(_ADDENDA_H2))
+                or (r["shape"] == "B" and r["host"].startswith(_ADDENDA_H2))
+                for r in regions):
+            # The seed pair satisfies V-4 in EITHER shape: a pair whose first
+            # content is its own `## ` heading is Shape B wherever it sits, seed
+            # slot included, so a client that fills the slot that way still
+            # carries the seed pair. `host` is the region's span expressed as a
+            # section — the same span idea the merger's OURS-head loop uses. One
+            # host predicate serves both legs, so they cannot drift apart.
             fail(f"{rel}:V-4 — `## Project addenda` H2 present but carries no "
                  f"project-owned marker pair (the seed slot)")
             failed = True

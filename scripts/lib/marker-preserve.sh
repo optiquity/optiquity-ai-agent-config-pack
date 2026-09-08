@@ -73,7 +73,8 @@
 #   L-6: orphan / unbalanced / nested markers, or a marker inside a fenced
 #     code block → fail loud.
 #   L-1 / V-2: a partial-wrap (a heading inside a Shape A region that is not
-#     the Project-addenda seed-slot) → fail loud.
+#     an H3-and-below heading in the exact `## Project addenda` seed-slot)
+#     → fail loud.
 #   L-4 / V-6: an H2/H3 name appearing in BOTH Shape A and Shape B (or twice
 #     in Shape B) → fail loud.
 #   L-10 / O-9: a `renamed-from` name with no canonical match → BASE-aware
@@ -170,7 +171,20 @@ EOF
 # Shape A: <heading> = the enclosing pack H2. Shape B: <heading> = the owned
 # heading line. Detects orphan/nested (L-6) and partial-wrap (L-1/V-2), with
 # the `## Project addenda` seed-slot exception (a seed Shape A body may carry
-# project H3/H4 headings).
+# project H3-and-below headings). The exception is scoped to the EXACT
+# `## Project addenda` H2 and to H3-and-below: a pair whose first content is
+# its own `## ` heading is Shape B wherever it sits, seed slot included.
+#
+# Design rationale for that shape rule:
+#   maintenance-docs/v11-implementation/ARCHITECTURE-BD-294.md §2
+# The mirrored consumer of the same design is
+# `scripts/lib/validate_checks/trinity_markers.py` `_scan_markers`; the two
+# classify identically over the regions each DETECTS, and
+# `scripts/tests/test-marker-preserve-bd136.sh` M-23 is the leg that proves it.
+# The two carry a deliberate divergence in the marker-token predicate — this
+# parser matches the token anywhere on a line, that one only at line start
+# after trim — documented at `trinity_markers.py` `_BEGIN_TOKEN`, so a file
+# whose prose MENTIONS a marker inline is seen by one and not the other.
 _mp_regions() {
     awk '
       function trim(s){ sub(/[ \t]+$/,"",s); return s }
@@ -191,12 +205,12 @@ _mp_regions() {
         }
         if (hasE){
           if (!open){ print "ERR\torphan\torphan END marker (no open BEGIN) at line " ln; next }
-          if (beginh2 ~ /^## Project addenda/){
-            # Seed-slot exception: a Shape A body under `## Project addenda`
-            # may contain project headings — always Shape A.
-            print "REGION\tA\t" trim(beginh2) "\t" beginln "\t" ln "\t" beginraw
-          } else if (sawheading){
+          if (sawheading){
             print "REGION\tB\t" trim(ownh) "\t" beginln "\t" ln "\t" beginraw
+          } else if (trim(beginh2) == "## Project addenda"){
+            # Seed-slot exception: a Shape A body under the exact `## Project
+            # addenda` H2 may carry project H3-and-below headings — Shape A.
+            print "REGION\tA\t" trim(beginh2) "\t" beginln "\t" ln "\t" beginraw
           } else if (trim(curh2)==""){
             # BLOCKER-2 (L-8): a marker region above the first `## ` has no H2/H3
             # host — it is neither Shape A (needs a section) nor Shape B (needs an
@@ -209,9 +223,11 @@ _mp_regions() {
         }
         if (open){
           if (isheading(raw)){
-            if (beginh2 ~ /^## Project addenda/){ sawbody=1 }        # seed: headings allowed
-            else if (!sawheading && !sawbody){ sawheading=1; ownh=raw }  # Shape B owned heading
+            if (!sawheading && !sawbody && (raw ~ /^## / || trim(beginh2) != "## Project addenda")){
+              sawheading=1; ownh=raw                                 # Shape B owned heading (a `## ` head opens its own section anywhere, seed slot included)
+            }
             else if (sawheading){ }                                  # extra heading in Shape B body: owned, fine
+            else if (trim(beginh2) == "## Project addenda"){ sawbody=1 }  # seed: an H3-and-below head, or any head after body text, is seed body
             else { print "ERR\tpartial\theading inside a Shape A region under " (curh2==""?"(preamble)":trim(curh2)) " at line " ln }
           } else if (raw ~ /[^ \t]/){ sawbody=1 }
           next
@@ -222,16 +238,30 @@ _mp_regions() {
     ' "$1"
 }
 
-# Print the ordered list of `## ` heading lines (trimmed) in a file, fence-aware.
-_mp_h2_list() {
+# Print the ordered list of `## ` heading lines (trimmed) in a file, fence-aware,
+# each prefixed with its 1-based line number:
+#   <line><TAB><trimmed `## ` heading>
+# The line number lets a caller test whether a head falls inside a marker
+# region span [begin,end] — a marker-enclosed heading is project-owned
+# whatever the region shape, so it is never adjudicated as a pack section.
+# This is the ONE fence/heading predicate; the bare-name form below derives
+# from it, so a fix here cannot be applied to one consumer and missed on the
+# other.
+_mp_h2_list_ln() {
     awk '
       BEGIN{ infence=0 }
       {
         t=$0; sub(/^[ \t]+/,"",t)
         if (t ~ /^```/){ infence=(infence?0:1); next }
-        if (!infence && $0 ~ /^## /){ h=$0; sub(/[ \t]+$/,"",h); print h }
+        if (!infence && $0 ~ /^## /){ h=$0; sub(/[ \t]+$/,"",h); print NR "\t" h }
       }
     ' "$1"
+}
+
+# The same list without the line-number column, for the `grep -qxF` name
+# lookups. `cut -f2-` keeps a heading that itself contains a TAB intact.
+_mp_h2_list() {
+    _mp_h2_list_ln "$1" | cut -f2-
 }
 
 # Print the section body for a given `## ` heading (heading line through the
@@ -514,7 +544,7 @@ EOF
     # whose heading is NOT a Shape B owned heading) must reconcile safely.
     # This closes the silent-loss hole for markerless pack sections too.
     local ours_heads
-    ours_heads=$(_mp_h2_list "$ours")
+    ours_heads=$(_mp_h2_list_ln "$ours")
 
     # Preamble reconciliation (pack-owned; a project preamble edit is caught).
     # SYMMETRIC skeleton compare (BLOCKER-1 / maintenance-docs/v11-implementation/ARCHITECTURE-BD136.md §1.2 `ours-skel == theirs-skel`):
@@ -536,12 +566,17 @@ EOF
         return 0
     fi
 
-    while IFS= read -r oh; do
+    while IFS=$'\t' read -r oh_ln oh; do
         [[ -n "$oh" ]] || continue
-        # Skip Shape B owned sections (wholly project-owned).
+        # Skip Shape B owned sections (wholly project-owned), AND any head that
+        # falls INSIDE a marker region span, whatever the shape: a
+        # marker-enclosed heading is project-owned, so it can never be
+        # adjudicated as a pack section (and never fire the L-8 branch below on
+        # a heading the project itself introduced).
         local is_sb=0
         for ((i = 0; i < n_reg; i++)); do
             if [[ "${RSHAPE[$i]}" == "B" && "${RHEAD[$i]}" == "$oh" ]]; then is_sb=1; break; fi
+            if [[ "$oh_ln" -ge "${RB[$i]}" && "$oh_ln" -le "${RE[$i]}" ]]; then is_sb=1; break; fi
         done
         [[ $is_sb -eq 1 ]] && continue
 

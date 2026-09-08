@@ -1,26 +1,27 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "aa2e90c",
-  "checkpoint": "2026-09-07T06:30:00Z",
+  "boundary_commit": "feb8dbb",
+  "checkpoint": "2026-09-08T02:15:00Z",
   "active": [
-    "BD-293 (BD-295 folded in). Wave 4 LANDED + CI-green: pause/report sites name the pack skill path; /pm-startup reports the commit gate's EFFECTIVE state (multi-leg canary + wired tests, 140->142); migrator S5e adds the session-config ignore entry and --update repairs an already-migrated client, narrowed to the two runtime-state keys so a pruned pack entry stays pruned; startup's RAG listing scoped with real tool verbs and a pin check; report writes sanction a Bash heredoc alongside the Write tool (63 agent defs + PM-CHAT + METHODOLOGY). G8 was harness behaviour, not a pack permission gap."
+    "BD-294 (launch-gating, the LAST v11.0 client-facing blocker). D5 = the seed-slot exception reclassifies a client's own end-of-file marker blocks and blames their heading as a missing pack section. D3 = the shipped trinity instructs an edit the engine forbids: filling placeholders sidecars the client's work, a marker above the first H2 fails well-formedness, five OPTIONAL comments instruct a deletion the engine silently undoes. C1 engine+parsers -> C1b duplicate gate -> C2 template -> C3 Check 98 -> C4 recipe; C5 design record (parallel); C6 close."
   ],
   "in_flight_agents": [],
   "queue": [
-    "SERIAL, user-approved, next: (3) BD-294 D3+D5 per ARCHITECTURE-BD-294 with the 4 user decisions -> (4) D4-new PACK-FEEDBACK.md dual-ownership (USER DECISION PENDING: marker split vs scaffold-only update; measure how many files share the shape) -> (5) end-to-end runs of the two untested install shapes (fresh project; existing non-pack repo).",
-    "OPEN inside BD-293: run the S5 map-derived install BEFORE the pause decision (cures the rc 31 orphan-scan failure on a customized launcher); EDITED-branch holding collision tests -e only; sweep 4.5 prefix match admits a malformed row; ci-shard-plan.py member list stale; Check 65+67 dead-record message reword together; the L3 axis-matching commit. USER DECIDED: migration sidecar residue is NOT gitignored (Step 4 commits it; the guide says so).",
-    "v11.1 per client framing: G1..G7, N1..N3 (G8 closed in Wave 4 as a harness finding, not a pack gap).",
+    "CONSTRAINT for C2: pack-ops/MERGE-STRATEGY.md now sits at EXACTLY its Check 44 ceiling (696, predicate >696) -- C1 took the last line and C2 edits the same file, so C2 pays for any addition by compressing there; re-deriving the ceiling is a governance act needing the user. SERIAL after C5+C1: C1b duplicate gate -> C2 -> C3 (must follow C2) -> C4 -> C6. Then D4-new PACK-FEEDBACK.md (USER DECISION PENDING) -> the two untested install shapes -> GA is a user call.",
+    "OPEN inside BD-293: run the S5 map-derived install BEFORE the pause decision; EDITED-branch holding collision tests -e only; sweep 4.5 prefix match admits a malformed row; ci-shard-plan.py member list stale; Check 65+67 dead-record reword; the L3 axis-matching commit.",
+    "BD-292 (v11.0-targeted, pack-dev tooling only, NOT client-shipped): its own Position says retargeting to v11.1 is a one-word user decision. UNDECIDED.",
+    "v11.1 per client framing: G1..G7, N1..N3.",
     "user: flip the repo public (the launch)"
   ],
-  "parallelization": "SERIAL. User directed: wait and do it in serial. Every step ends with a report and a stop; nothing chains automatically.",
-  "wave": "v11.0 is DONE ONLY WHEN THE CLIENT PROJECT SAYS SO -- Pack Chat NEVER declares it. Client re-migrated cleanly on RC1-54; hand-copied the v11 agent-run.sh (Wave 3 fixed the migrate token). BD-171 + BD-172 stay Status: Open by user decision.",
+  "parallelization": "SERIAL by default; parallel only where the plan's rule-10 map proves no shared file.",
+  "wave": "v11.0 is DONE ONLY WHEN THE CLIENT PROJECT SAYS SO -- Pack Chat NEVER declares it. Tagged v11.0 (RC2). GA held until BD-294 lands and the two untested install shapes run end-to-end; the user may overrule. BD-171 + BD-172 stay Open by user decision.",
   "pending_decisions": [
-    "LOCKED: main history PRESERVED -- NO squash, NO rewrite. ONE user-directed exception: the tip commit that copied a v10 agent-run.sh over the v11 template was REMOVED via force-with-lease at the user's explicit repeated instruction (reflog). Not a precedent.",
+    "LOCKED: main history PRESERVED -- NO squash, NO rewrite. One user-directed exception already taken (removing a tip commit that reverted the shipped agent-run.sh to v10). Not a precedent.",
     "LOCKED: NO scrub; the Check 93 two-tier model is UNCHANGED. ONE repo forever.",
-    "Standing: PUBLIC-BOUND PACK; commit-gate token in a SEPARATE bash call BEFORE git commit; session-state COMPACT; modes review=itemized intervention=full isolation=full; manifest screen is run -> COMMIT its result -> push, never collapsed. The shell is zsh: always brace ${VAR} before ':' in any git ref or path.",
+    "Standing: PUBLIC-BOUND PACK; the commit-gate token is written in a SEPARATE bash call BEFORE git commit (a combined call is denied, and the token expires in 120s); session-state COMPACT; modes review=itemized intervention=full isolation=full; manifest is run -> COMMIT its result -> push, never collapsed. zsh: brace ${VAR} before ':' in any ref or path.",
     "USER (HARD): finish BD-293 + BD-294, then STOP. NO NEW BD ENTRIES, ever. Everything lands inside those two or is reported as not done.",
-    "USER (BD-294 design decisions, taken): new first section '## Project Identity'; delete-the-section comments -> recipe if the choice is frequent else a pointer (measure frequency first); DELETE the how-to block; placeholder guard = validate-pack check on every push.",
-    "USER: dashboard re-render at the END or on request, never a gate. BD-295 folded into BD-293, entry deleted; older commit subjects cite the retired ID."
+    "USER (BD-294, all taken): first section is '## Project Identity'; DELETE the whole how-to banner incl. the 'Copied from' provenance line; the placeholder guard is validate-pack Check 98 on every push; the 5 OPTIONAL comments get the POINTER form, not an inline recipe; reword only, do NOT move the comments below their headings.",
+    "USER: dashboard re-render at the END or on request, never a gate."
   ],
-  "cycle_position": "Wave 4 CLOSED: 4 adversarial reviews + 4 fix passes; the final review had NO blocker and NO must. Landed as two commits (the work: 91 files, +2015/-392, 2 new tests; then the regenerated manifest for the 3 v11 fixtures). CI green on the boundary; validate/DEEP/coverage(142) green locally. Next: BD-294, on user go."
+  "cycle_position": "BD-294: C5 LANDED (design record + stale-claim addendum; its file verified tracked at HEAD so C1's citations resolve). C1 landing next in this commit (4 passes: coder -> review -> fix -> final review -> fix; final had no blocker, no must). Then manifest-sync -> commit -> push, because C1 edits a fixture input. Next: C1b duplicate gate."
 }

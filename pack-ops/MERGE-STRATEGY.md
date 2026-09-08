@@ -205,7 +205,14 @@ survive byte-identical across a pack refresh. Two shapes:
   the heading line + entire body. Used for new project sections, renamed
   optional sections, and overrides — a Shape B pair whose H2 name matches
   a pack section suppresses the pack version; a `renamed-from` annotation
-  extends the override match key (multi-name supported).
+  extends the override match key (multi-name supported). A pair whose
+  first content is its own `## ` heading is Shape B **wherever it sits**,
+  seed slot included; the graft emits it after the canonical spine, out
+  of the `## Project addenda` body — masked only while that H2 ships last.
+
+The seed slot is the one Shape A body that may carry project headings:
+**H3 and below**, under that **exact** H2. A head after seed body text is
+seed body; an H2 opening the pair is the section it names.
 
 **BASE-preferred, degrade-safe.** The engine reconciles each pack
 section's out-of-marker body under one of two regimes and emits a clean

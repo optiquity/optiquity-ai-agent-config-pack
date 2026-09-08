@@ -608,6 +608,489 @@ assert_contains "M-19 project content preserved in the sidecar (no silent loss)"
     "$(cat "$FIXTURE_BASE/m19/dest.md.pre-update")" "MY-PREAMBLE-CONTENT-DO-NOT-LOSE"
 
 # ─────────────────────────────────────────────────────────────────────────
+echo '== M-20..M-23 (D5): a pair whose first content is its own `## ` heading =='
+# ─────────────────────────────────────────────────────────────────────────
+# The seed-slot exception used to force EVERY marker region enclosed by
+# `## Project addenda` to Shape A. The pack ships that H2 LAST in all three
+# trinity files, so a whole project section appended after the shipped seed
+# pair lost its Shape B identity: its `renamed-from` was never read, its body
+# never reached the graft, and the L-8 branch reported the project heading as
+# a PACK section missing from the new canonical. The exception now covers
+# H3-and-below only, and only under the EXACT `## Project addenda` H2.
+#
+# The classification assertions read `_mp_regions` DIRECTLY. A disposition-only
+# assertion cannot see the defect: reordering the close-time tests alone changes
+# neither classification nor disposition, and a region can be reclassified while
+# the verdict stays clean.
+
+# `shape:head;` sequence straight from the bash parser. Regions and errors are
+# reported separately: `_mp_regions` interleaves them in one stream while
+# `_scan_markers` returns two lists, so only like-for-like is comparable.
+mp_seq() {
+    _mp_regions "$1" | awk -F'\t' '$1=="REGION"{printf "%s:%s;", $2, $3}'
+}
+mp_errs() {
+    _mp_regions "$1" | awk -F'\t' '$1=="ERR"{printf "%s;", $2}'
+}
+# The same two sequences from the Python Check-91 parser (the M-23 mirror).
+py_seq() {
+    python3 - "$REPO_ROOT/scripts/lib" "$1" <<'PY'
+import sys, pathlib
+sys.path.insert(0, sys.argv[1])
+from validate_checks import trinity_markers as tm
+d = tm._scan_markers(pathlib.Path(sys.argv[2]).read_text())
+sys.stdout.write("".join(f"{r['shape']}:{r['head']};" for r in d["regions"]))
+PY
+}
+py_errs() {
+    python3 - "$REPO_ROOT/scripts/lib" "$1" <<'PY'
+import sys, pathlib
+sys.path.insert(0, sys.argv[1])
+from validate_checks import trinity_markers as tm
+d = tm._scan_markers(pathlib.Path(sys.argv[2]).read_text())
+sys.stdout.write("".join(f"{c};" for c, _ in d["errors"]))
+PY
+}
+multiset() { sort "$1" | shasum | cut -c1-12; }
+# Insert block file $2 into $1 immediately BEFORE the first line equal to $3
+# (or append when $3 is the literal EOF); write to $4. Every placement variant
+# is therefore the same line multiset BY CONSTRUCTION, not by later assertion.
+insert_block() {
+    if [[ "$3" == "EOF" ]]; then cat "$1" "$2" > "$4"; return; fi
+    awk -v anchor="$3" -v blk="$2" '
+        $0 == anchor && !ins { while ((getline l < blk) > 0) print l; close(blk); ins=1 }
+        { print }' "$1" > "$4"
+}
+
+mk m20
+cat > "$FIXTURE_BASE/m20/theirs.md" <<'MD'
+# CLAUDE.md
+preamble line
+## Alpha
+pack alpha body
+## Beta pack optional
+pack beta body
+## Gamma
+pack gamma body
+## Delta
+pack delta body
+## Project addenda
+
+<!-- Project addenda go here. -->
+<!-- BEGIN project-owned -->
+<!-- END project-owned -->
+MD
+# OURS minus the override block: the client retired the pack optional section
+# and re-homed it in a Shape B override carrying `renamed-from`.
+cat > "$FIXTURE_BASE/m20/base.md" <<'MD'
+# CLAUDE.md
+preamble line
+## Alpha
+pack alpha body
+## Gamma
+pack gamma body
+## Delta
+pack delta body
+## Project addenda
+
+<!-- Project addenda go here. -->
+<!-- BEGIN project-owned -->
+<!-- END project-owned -->
+MD
+cat > "$FIXTURE_BASE/m20/block.md" <<'MD'
+<!-- BEGIN project-owned: renamed-from "## Beta pack optional" -->
+## Beta renamed by project
+M20-OVERRIDE-BODY
+<!-- END project-owned -->
+MD
+insert_block "$FIXTURE_BASE/m20/base.md" "$FIXTURE_BASE/m20/block.md" \
+    "## Gamma" "$FIXTURE_BASE/m20/at-position.md"
+insert_block "$FIXTURE_BASE/m20/base.md" "$FIXTURE_BASE/m20/block.md" \
+    "## Delta" "$FIXTURE_BASE/m20/mid-file.md"
+insert_block "$FIXTURE_BASE/m20/base.md" "$FIXTURE_BASE/m20/block.md" \
+    "EOF" "$FIXTURE_BASE/m20/at-eof.md"
+
+assert_eq "M-20 (a) at-position / mid-file are one line multiset" \
+    "$(multiset "$FIXTURE_BASE/m20/at-position.md")" \
+    "$(multiset "$FIXTURE_BASE/m20/mid-file.md")"
+assert_eq "M-20 (a) at-position / at-eof are one line multiset" \
+    "$(multiset "$FIXTURE_BASE/m20/at-position.md")" \
+    "$(multiset "$FIXTURE_BASE/m20/at-eof.md")"
+
+for v in at-position mid-file at-eof; do
+    newstate
+    cp "$FIXTURE_BASE/m20/$v.md" "$FIXTURE_BASE/m20/dest-$v.md"
+    customization_preserve "" "$FIXTURE_BASE/m20/$v.md" "$FIXTURE_BASE/m20/theirs.md" \
+        "CLAUDE.md" "$FIXTURE_BASE/m20/dest-$v.md" trinity >/dev/null
+    assert_eq "M-20 (b) $v -> merged-with-customization" \
+        "merged-with-customization" "$(last_disp)"
+    assert_contains "M-20 (d) $v override body reaches DEST" \
+        "$(cat "$FIXTURE_BASE/m20/dest-$v.md")" "M20-OVERRIDE-BODY"
+    assert_absent "M-20 (d) $v notes name no project-owned heading" \
+        "$(last_notes)" "## Beta renamed by project"
+done
+assert_eq "M-20 (c) DEST at-position == DEST mid-file (byte-identical)" "same" \
+    "$(cmp -s "$FIXTURE_BASE/m20/dest-at-position.md" "$FIXTURE_BASE/m20/dest-mid-file.md" \
+        && echo same || echo differ)"
+assert_eq "M-20 (c) DEST at-position == DEST at-eof (byte-identical)" "same" \
+    "$(cmp -s "$FIXTURE_BASE/m20/dest-at-position.md" "$FIXTURE_BASE/m20/dest-at-eof.md" \
+        && echo same || echo differ)"
+# The load-bearing assertion: the appended pair is the section it names, not
+# the seed host. Reordering the close-time tests alone leaves this at
+# `A:## Project addenda;A:## Project addenda;`.
+assert_eq "M-20 (e) at-eof classifies Shape B on its own heading" \
+    "A:## Project addenda;B:## Beta renamed by project;" \
+    "$(mp_seq "$FIXTURE_BASE/m20/at-eof.md")"
+
+# ─────────────────────────────────────────────────────────────────────────
+echo "== M-21: a brand-new project section at EOF (no renamed-from) =="
+# ─────────────────────────────────────────────────────────────────────────
+mk m21
+cp "$FIXTURE_BASE/m20/theirs.md" "$FIXTURE_BASE/m21/theirs.md"
+cp "$FIXTURE_BASE/m20/theirs.md" "$FIXTURE_BASE/m21/base.md"
+cat > "$FIXTURE_BASE/m21/block.md" <<'MD'
+<!-- BEGIN project-owned -->
+## Release checklist
+M21-NEW-SECTION-BODY
+<!-- END project-owned -->
+MD
+insert_block "$FIXTURE_BASE/m21/base.md" "$FIXTURE_BASE/m21/block.md" \
+    "## Delta" "$FIXTURE_BASE/m21/mid-file.md"
+insert_block "$FIXTURE_BASE/m21/base.md" "$FIXTURE_BASE/m21/block.md" \
+    "EOF" "$FIXTURE_BASE/m21/at-eof.md"
+assert_eq "M-21 (a) mid-file / at-eof are one line multiset" \
+    "$(multiset "$FIXTURE_BASE/m21/mid-file.md")" \
+    "$(multiset "$FIXTURE_BASE/m21/at-eof.md")"
+for v in mid-file at-eof; do
+    newstate
+    cp "$FIXTURE_BASE/m21/$v.md" "$FIXTURE_BASE/m21/dest-$v.md"
+    customization_preserve "" "$FIXTURE_BASE/m21/$v.md" "$FIXTURE_BASE/m21/theirs.md" \
+        "CLAUDE.md" "$FIXTURE_BASE/m21/dest-$v.md" trinity >/dev/null
+    d21=$(cat "$FIXTURE_BASE/m21/dest-$v.md")
+    assert_eq "M-21 (b) $v -> merged-with-customization" \
+        "merged-with-customization" "$(last_disp)"
+    assert_contains "M-21 (d) $v new-section body reaches DEST" "$d21" "M21-NEW-SECTION-BODY"
+    assert_contains "M-21 (d) $v new-section heading reaches DEST" "$d21" "## Release checklist"
+    # OI-6 containment: a heading the project introduced inside its own markers
+    # must never be adjudicated as a pack section, so it must never be named in
+    # the notes field.
+    assert_absent "M-21 ($v) notes name no project-owned heading" \
+        "$(last_notes)" "## Release checklist"
+done
+assert_eq "M-21 (c) DEST mid-file == DEST at-eof (byte-identical)" "same" \
+    "$(cmp -s "$FIXTURE_BASE/m21/dest-mid-file.md" "$FIXTURE_BASE/m21/dest-at-eof.md" \
+        && echo same || echo differ)"
+assert_eq "M-21 (e) at-eof classifies Shape B on its own heading" \
+    "A:## Project addenda;B:## Release checklist;" \
+    "$(mp_seq "$FIXTURE_BASE/m21/at-eof.md")"
+
+# ─────────────────────────────────────────────────────────────────────────
+echo "== M-21b: heads are skipped by Shape B name OR by region span =="
+# ─────────────────────────────────────────────────────────────────────────
+# CHANGE DETECTOR, not a new contract. The OURS-head loop skips a head that
+# matches a Shape B owned name OR that falls inside a region span. The two
+# tests differ on exactly one shape: a name that ALSO occurs outside every
+# region. This leg pins the outcome that shape has today, so that narrowing the
+# skip to the span test alone (which flips it to a sidecar) is a deliberate,
+# visible decision rather than a silent one.
+newstate; mk m21b
+cat > "$FIXTURE_BASE/m21b/theirs.md" <<'MD'
+# CLAUDE.md
+preamble line
+## Rules
+pack rules body
+## Duplicated
+pack duplicated body
+## Project addenda
+
+<!-- Project addenda go here. -->
+<!-- BEGIN project-owned -->
+<!-- END project-owned -->
+MD
+cat > "$FIXTURE_BASE/m21b/ours.md" <<'MD'
+# CLAUDE.md
+preamble line
+## Rules
+pack rules body
+## Duplicated
+an out-of-marker copy of the same heading
+<!-- BEGIN project-owned -->
+## Duplicated
+M21B-BODY
+<!-- END project-owned -->
+## Project addenda
+
+<!-- Project addenda go here. -->
+<!-- BEGIN project-owned -->
+<!-- END project-owned -->
+MD
+cp "$FIXTURE_BASE/m21b/ours.md" "$FIXTURE_BASE/m21b/dest.md"
+customization_preserve "" "$FIXTURE_BASE/m21b/ours.md" "$FIXTURE_BASE/m21b/theirs.md" \
+    "CLAUDE.md" "$FIXTURE_BASE/m21b/dest.md" trinity >/dev/null
+assert_eq "M-21b a Shape B name that also occurs out-of-marker keeps its skip" \
+    "merged-with-customization" "$(last_disp)"
+assert_contains "M-21b the in-marker project body reaches DEST" \
+    "$(cat "$FIXTURE_BASE/m21b/dest.md")" "M21B-BODY"
+
+# ─────────────────────────────────────────────────────────────────────────
+echo '== M-21c: a Shape B region carrying a SECOND `## ` head =='
+# ─────────────────────────────────────────────────────────────────────────
+# The most general containment case, and a CONTRACT: the open-side parser has
+# always called a second head inside a Shape B body an owned head, and the
+# OURS-head loop now agrees, because the head falls inside the region span.
+# Only the FIRST head names the region, so the second is skipped by span and by
+# span alone — the name test cannot reach it. Without the span skip the second
+# head is adjudicated as a pack section, is absent from THEIRS, and the engine
+# reports a heading the PROJECT introduced as a missing pack section (L-8) and
+# drops BOTH bodies. Narrowing the span skip re-opens exactly that misdiagnosis,
+# so this leg reds under any such narrowing.
+newstate; mk m21c
+cat > "$FIXTURE_BASE/m21c/theirs.md" <<'MD'
+# CLAUDE.md
+preamble line
+## Rules
+pack rules body
+## Project addenda
+
+<!-- Project addenda go here. -->
+<!-- BEGIN project-owned -->
+<!-- END project-owned -->
+MD
+cat > "$FIXTURE_BASE/m21c/ours.md" <<'MD'
+# CLAUDE.md
+preamble line
+## Rules
+pack rules body
+<!-- BEGIN project-owned -->
+## Owned one
+M21C-BODY-ONE
+## Owned two
+M21C-BODY-TWO
+<!-- END project-owned -->
+## Project addenda
+
+<!-- Project addenda go here. -->
+<!-- BEGIN project-owned -->
+<!-- END project-owned -->
+MD
+assert_eq "M-21c only the FIRST head names the region (the second is owned body)" \
+    "B:## Owned one;A:## Project addenda;" "$(mp_seq "$FIXTURE_BASE/m21c/ours.md")"
+cp "$FIXTURE_BASE/m21c/ours.md" "$FIXTURE_BASE/m21c/dest.md"
+customization_preserve "" "$FIXTURE_BASE/m21c/ours.md" "$FIXTURE_BASE/m21c/theirs.md" \
+    "CLAUDE.md" "$FIXTURE_BASE/m21c/dest.md" trinity >/dev/null
+assert_eq "M-21c a multi-head Shape B region grafts clean" \
+    "merged-with-customization" "$(last_disp)"
+assert_contains "M-21c the FIRST head's body reaches DEST" \
+    "$(cat "$FIXTURE_BASE/m21c/dest.md")" "M21C-BODY-ONE"
+assert_contains "M-21c the SECOND head's body reaches DEST" \
+    "$(cat "$FIXTURE_BASE/m21c/dest.md")" "M21C-BODY-TWO"
+assert_absent "M-21c notes name no project-owned heading (first head)" \
+    "$(last_notes)" "## Owned one"
+assert_absent "M-21c notes name no project-owned heading (second head)" \
+    "$(last_notes)" "## Owned two"
+assert_eq "M-21c writes NO sidecar" \
+    "no" "$([[ -f "$FIXTURE_BASE/m21c/dest.md.pre-update" ]] && echo yes || echo no)"
+
+# ─────────────────────────────────────────────────────────────────────────
+echo "== M-22: the seed slot keeps its exception (H3-and-below), five shapes =="
+# ─────────────────────────────────────────────────────────────────────────
+mk m22
+cat > "$FIXTURE_BASE/m22/theirs.md" <<'MD'
+# CLAUDE.md
+preamble line
+## Rules
+pack rules body
+## Project addenda
+
+<!-- Project addenda go here. -->
+<!-- BEGIN project-owned -->
+<!-- END project-owned -->
+MD
+m22_head() {
+    cat > "$1" <<'MD'
+# CLAUDE.md
+preamble line
+## Rules
+pack rules body
+## Project addenda
+
+<!-- Project addenda go here. -->
+MD
+}
+m22_head "$FIXTURE_BASE/m22/h3-first.md"
+cat >> "$FIXTURE_BASE/m22/h3-first.md" <<'MD'
+<!-- BEGIN project-owned -->
+### Repository overview
+M22-H3FIRST-BODY
+<!-- END project-owned -->
+MD
+m22_head "$FIXTURE_BASE/m22/prose-h3.md"
+cat >> "$FIXTURE_BASE/m22/prose-h3.md" <<'MD'
+<!-- BEGIN project-owned -->
+seed prose line
+### Sub heading
+M22-PROSEH3-BODY
+<!-- END project-owned -->
+MD
+m22_head "$FIXTURE_BASE/m22/prose-only.md"
+cat >> "$FIXTURE_BASE/m22/prose-only.md" <<'MD'
+<!-- BEGIN project-owned -->
+seed prose line
+M22-PROSEONLY-BODY
+<!-- END project-owned -->
+MD
+m22_head "$FIXTURE_BASE/m22/h2-first.md"
+cat >> "$FIXTURE_BASE/m22/h2-first.md" <<'MD'
+<!-- BEGIN project-owned -->
+## Release checklist
+M22-H2FIRST-BODY
+<!-- END project-owned -->
+MD
+m22_head "$FIXTURE_BASE/m22/prose-h2.md"
+cat >> "$FIXTURE_BASE/m22/prose-h2.md" <<'MD'
+<!-- BEGIN project-owned -->
+seed prose line
+## Client extra section
+M22-PROSEH2-BODY
+<!-- END project-owned -->
+MD
+
+# Classification FIRST, via `_mp_regions` — the three sanctioned H3-and-below
+# shapes stay Shape A hosted by the seed H2; only the `##`-first shape moves.
+assert_eq "M-22 (i) ###-first stays Shape A hosted by the seed H2" \
+    "A:## Project addenda;" "$(mp_seq "$FIXTURE_BASE/m22/h3-first.md")"
+assert_eq "M-22 (ii) prose-then-### stays Shape A hosted by the seed H2" \
+    "A:## Project addenda;" "$(mp_seq "$FIXTURE_BASE/m22/prose-h3.md")"
+assert_eq "M-22 (iii) prose-only stays Shape A hosted by the seed H2" \
+    "A:## Project addenda;" "$(mp_seq "$FIXTURE_BASE/m22/prose-only.md")"
+assert_eq "M-22 (iv) ##-first is Shape B on its own owned heading" \
+    "B:## Release checklist;" "$(mp_seq "$FIXTURE_BASE/m22/h2-first.md")"
+assert_eq "M-22 (v) a ## head AFTER seed body text stays Shape A (seed body)" \
+    "A:## Project addenda;" "$(mp_seq "$FIXTURE_BASE/m22/prose-h2.md")"
+
+for v in h3-first prose-h3 prose-only h2-first prose-h2; do
+    newstate
+    cp "$FIXTURE_BASE/m22/$v.md" "$FIXTURE_BASE/m22/dest-$v.md"
+    customization_preserve "" "$FIXTURE_BASE/m22/$v.md" "$FIXTURE_BASE/m22/theirs.md" \
+        "CLAUDE.md" "$FIXTURE_BASE/m22/dest-$v.md" trinity >/dev/null
+    assert_eq "M-22 $v -> merged-with-customization (clean)" \
+        "merged-with-customization" "$(last_disp)"
+done
+assert_contains "M-22 (iv) ##-first body reaches DEST" \
+    "$(cat "$FIXTURE_BASE/m22/dest-h2-first.md")" "M22-H2FIRST-BODY"
+# OI-6 containment, the case that needs it: the region stays Shape A, so the
+# enclosed `## ` head is only skipped by the region-span test.
+assert_contains "M-22 (v) seed-body ## section reaches DEST" \
+    "$(cat "$FIXTURE_BASE/m22/dest-prose-h2.md")" "M22-PROSEH2-BODY"
+assert_absent "M-22 (v) notes name no project-owned heading" \
+    "$(last_notes)" "## Client extra section"
+
+# ─────────────────────────────────────────────────────────────────────────
+echo "== M-22b: the seed exception is an EXACT H2 match, not a prefix =="
+# ─────────────────────────────────────────────────────────────────────────
+# A client H2 that merely STARTS WITH the seed name is an ordinary pack-owned
+# H2 and must not inherit the exception. Asserted on the CLASSIFICATION: the
+# disposition here stays a sidecar for an unrelated and correct reason (the
+# client also added an H2 outside any marker), so a verdict assertion would
+# report the tightening as a failure.
+mk m22b
+cp "$FIXTURE_BASE/m22/theirs.md" "$FIXTURE_BASE/m22b/theirs.md"
+cat > "$FIXTURE_BASE/m22b/ours.md" <<'MD'
+# CLAUDE.md
+preamble line
+## Rules
+pack rules body
+## Project addenda
+
+<!-- Project addenda go here. -->
+<!-- BEGIN project-owned -->
+<!-- END project-owned -->
+## Project addenda notes
+<!-- BEGIN project-owned -->
+## Client extra section
+M22B-BODY
+<!-- END project-owned -->
+MD
+assert_eq "M-22b '## Project addenda notes' does not inherit the seed exception" \
+    "A:## Project addenda;B:## Client extra section;" \
+    "$(mp_seq "$FIXTURE_BASE/m22b/ours.md")"
+
+# An H2-FIRST pair is Shape B under every host, so it cannot on its own tell an
+# exact seed match from a prefix one. These two shapes can: under the exact
+# match the ordinary rule applies to `## Project addenda notes` — an H3-first
+# pair is Shape B on its H3, and prose-then-H3 is a partial wrap. Under a prefix
+# match both would be swallowed as seed body.
+cat > "$FIXTURE_BASE/m22b/h3-first.md" <<'MD'
+# CLAUDE.md
+preamble line
+## Rules
+pack rules body
+## Project addenda
+
+<!-- Project addenda go here. -->
+<!-- BEGIN project-owned -->
+<!-- END project-owned -->
+## Project addenda notes
+<!-- BEGIN project-owned -->
+### Client subsection
+M22B-H3-BODY
+<!-- END project-owned -->
+MD
+cat > "$FIXTURE_BASE/m22b/prose-h3.md" <<'MD'
+# CLAUDE.md
+preamble line
+## Rules
+pack rules body
+## Project addenda
+
+<!-- Project addenda go here. -->
+<!-- BEGIN project-owned -->
+<!-- END project-owned -->
+## Project addenda notes
+<!-- BEGIN project-owned -->
+client prose line
+### Client subsection
+M22B-PROSEH3-BODY
+<!-- END project-owned -->
+MD
+assert_eq "M-22b an H3-first pair under it takes the ordinary Shape B rule" \
+    "A:## Project addenda;B:### Client subsection;" \
+    "$(mp_seq "$FIXTURE_BASE/m22b/h3-first.md")"
+assert_eq "M-22b prose-then-H3 under it is a partial wrap, not seed body" \
+    "partial;" "$(mp_errs "$FIXTURE_BASE/m22b/prose-h3.md")"
+assert_eq "M-22b prose-then-H3 region still hosts on its own H2" \
+    "A:## Project addenda;A:## Project addenda notes;" \
+    "$(mp_seq "$FIXTURE_BASE/m22b/prose-h3.md")"
+
+# ─────────────────────────────────────────────────────────────────────────
+echo '== M-23: bash _mp_regions and python _scan_markers classify alike =='
+# ─────────────────────────────────────────────────────────────────────────
+# The two parsers are a stated design invariant and `_scan_markers` is a
+# line-for-line reimplementation of `_mp_regions` with the same test order.
+# Fixing one without the other leaves every other assertion in this file, and
+# `validate-pack.py`, green while the two provably disagree. This is the only
+# leg that catches that.
+for f in "$FIXTURE_BASE/m20/at-position.md" "$FIXTURE_BASE/m20/mid-file.md" \
+         "$FIXTURE_BASE/m20/at-eof.md" "$FIXTURE_BASE/m21/mid-file.md" \
+         "$FIXTURE_BASE/m21/at-eof.md" "$FIXTURE_BASE/m22/h3-first.md" \
+         "$FIXTURE_BASE/m22/prose-h3.md" "$FIXTURE_BASE/m22/prose-only.md" \
+         "$FIXTURE_BASE/m22/h2-first.md" "$FIXTURE_BASE/m22/prose-h2.md" \
+         "$FIXTURE_BASE/m22b/ours.md" "$FIXTURE_BASE/m22b/h3-first.md" \
+         "$FIXTURE_BASE/m22b/prose-h3.md" "$FIXTURE_BASE/m21b/ours.md"; do
+    b_seq="$(mp_seq "$f")"
+    p_seq="$(py_seq "$f")"
+    # A parser that classified nothing would make every comparison trivially
+    # equal, so require a non-empty sequence before comparing.
+    assert_eq "M-23 ${f##*/} bash sequence is non-empty" "yes" \
+        "$([[ -n "$b_seq" ]] && echo yes || echo no)"
+    assert_eq "M-23 ${f##*/} python sequence is non-empty" "yes" \
+        "$([[ -n "$p_seq" ]] && echo yes || echo no)"
+    assert_eq "M-23 ${f##*/} bash and python classify alike" "$b_seq" "$p_seq"
+    assert_eq "M-23 ${f##*/} bash and python report the same defects" \
+        "$(mp_errs "$f")" "$(py_errs "$f")"
+done
+
+# ─────────────────────────────────────────────────────────────────────────
 echo "== Fence S2: merger-side classification of the shared fixture =="
 # ─────────────────────────────────────────────────────────────────────────
 if [[ -f "$FENCE_FX/EXPECTED-TOKENS.tsv" ]]; then

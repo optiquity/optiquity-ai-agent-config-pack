@@ -215,8 +215,12 @@ Pitfalls that route you back to a sidecar (the graft fails loud on each):
 
 - an orphan marker (a BEGIN with no END, or vice versa);
 - nested marker pairs;
-- a `## `/`### ` heading **inside** a Shape A region (that makes it Shape B —
-  wrap the heading too, or move the heading out);
+- a `## `/`### ` heading **after body text inside** a Shape A region — a partial
+  wrap (wrap the heading too, or move the heading out). A heading that is the
+  region's FIRST content is fine: that pair is Shape B. The one carve-out is the
+  `## Project addenda` seed pair, whose Shape A body may carry **H3-and-below**
+  headings anywhere in it — under that exact H2 only, and an H2 opening the pair
+  is a Shape B section even there;
 - a leftover `[CONDITIONAL]` prefix on a kept heading (reconcile it per step b);
 - a marker pair sitting in the preamble above the first heading.
 
