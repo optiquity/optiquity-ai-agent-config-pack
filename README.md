@@ -333,6 +333,6 @@ Web:         [Optiquity, Inc.](https://optiquity.com)
 
 > Created by [David Shane](https://optiquity.com/about/) and formerly
 > "DHS AI Agent Config Pack." Renamed at v10.0 to reflect ownership by
-> Optiquity, Inc. The pack provides the same configuration files and
-> workflows — the name change has no effect on functionality or migration
-> paths.
+> [Optiquity, Inc](https://optiquity.com). The pack provides the same
+> configuration files and workflows — the name change has no effect on
+> functionality or migration paths.
