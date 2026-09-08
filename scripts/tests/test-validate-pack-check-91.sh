@@ -18,7 +18,10 @@
 #       shape (A body-wrap, or B whose own `## ` head opens the pair inside
 #       the addenda H2) satisfies it -> pass (trinity-only)
 #   V-5 asymmetric marker-pair counts          -> WARN (not fail; trinity-only)
-#   V-6 dup H2/H3 name in Shape A + Shape B     -> fail
+#   V-6 dup H2/H3 name in Shape A + Shape B     -> fail (in-region leg);
+#       a Shape B owned name ALSO occurring outside every pair -> fail
+#       (out-of-marker leg); a single-occurrence Shape B section and an
+#       in-place override stay green (the leg's BOUND)
 #   V-7 `[CONDITIONAL]` literal in a trinity    -> fail (trinity-only, O-3)
 #   V-8 malformed `renamed-from` annotation     -> fail (syntactic only)
 #
@@ -169,12 +172,38 @@ if p6 != [("B", "## Project addenda")]:
     failures.append(f"P6 anchor: expected exactly one Shape B region hosted in "
                     f"the addenda H2, got {p6}")
 
+# P7: BOUND on the V-6 out-of-marker leg — a legitimate Shape B section whose
+# name occurs exactly ONCE (inside its pair) must stay green. This is the shape
+# the leg must NOT fire on, and it is the whole false-positive risk: `h2_list`
+# excludes in-region heads, so the intersection driving the leg is empty here.
+# Same for a legitimate override, where the client wraps a real pack section IN
+# PLACE and therefore leaves no out-of-marker occurrence of that name.
+p7_original = ("## Rules\npack rules\n"
+               "<!-- BEGIN project-owned -->\n## My own section\nbody\n"
+               "<!-- END project-owned -->\n" + SEED)
+n, out = run(p7_original)
+if n != 0:
+    failures.append(f"P7 single-occurrence Shape B expected 0 failures, got {n}: {out}")
+
+p7_override = ("<!-- BEGIN project-owned -->\n## Rules\nmy override of the pack section\n"
+               "<!-- END project-owned -->\n" + SEED)
+n, out = run(p7_override)
+if n != 0:
+    failures.append(f"P7 in-place Shape B override expected 0 failures, got {n}: {out}")
+
+# Anchor: both legs must actually exercise a Shape B region — if the classifier
+# ever called these Shape A they would stay green while testing nothing.
+for label, text in (("original", p7_original), ("override", p7_override)):
+    shapes = [r["shape"] for r in tm._scan_markers(text)["regions"]]
+    if "B" not in shapes:
+        failures.append(f"P7 {label} anchor: expected a Shape B region, got {shapes}")
+
 if failures:
     print("FAILURES"); [print(" ", f) for f in failures]; sys.exit(1)
 print("OK")
 PYEOF
 case $? in
-    0) t_pass "POSITIVE: minimal seed, Shape A, Shape B + renamed-from, seed-slot H3, fenced-inert, Shape B seed pair all pass" ;;
+    0) t_pass "POSITIVE: minimal seed, Shape A, Shape B + renamed-from, seed-slot H3, fenced-inert, Shape B seed pair, single-occurrence + in-place-override (V-6 out-of-marker BOUND) all pass" ;;
     *) t_fail "Group 1 POSITIVE cases failed" ;;
 esac
 
@@ -269,6 +298,29 @@ expect_fail("V-6 dup-both-shapes",
             "## Dup\npack\n<!-- BEGIN project-owned -->\nshapeA\n<!-- END project-owned -->\n"
             "<!-- BEGIN project-owned -->\n## Dup\nshapeB\n<!-- END project-owned -->\n" + SEED,
             "appears in both a Shape A and a Shape B")
+
+# V-6 OUT-OF-MARKER leg: one `## ` name BOTH inside a Shape B pair and outside
+# every pair. The in-region leg above compares regions to EACH OTHER and cannot
+# see this, so without the out-of-marker leg the file validates clean while the
+# merge engine drops the out-of-marker copy from the graft. The two parsers are
+# documented to implement the SAME L-4/V-6 rule, so this leg is what keeps them
+# from drifting apart. Merger counterpart: M-21b in
+# scripts/tests/test-marker-preserve-bd136.sh.
+expect_fail("V-6 dup-in-and-out-of-marker",
+            "## Rules\npack rules\n"
+            "## Dup\nan out-of-marker copy of the same heading\n"
+            "<!-- BEGIN project-owned -->\n## Dup\nthe in-marker copy\n"
+            "<!-- END project-owned -->\n" + SEED,
+            "appears BOTH inside a project-owned marker pair and outside every pair")
+
+# V-6 OUT-OF-MARKER leg, CLIENT-ONLY direction: the duplicated name is absent
+# from any pack section. Same defect, and the leg must reach it too.
+expect_fail("V-6 dup-in-and-out-of-marker client-only",
+            "## Rules\npack rules\n"
+            "## Client only\nan out-of-marker copy the client wrote\n"
+            "<!-- BEGIN project-owned -->\n## Client only\nthe in-marker copy\n"
+            "<!-- END project-owned -->\n" + SEED,
+            "appears BOTH inside a project-owned marker pair and outside every pair")
 
 # V-7 `[CONDITIONAL]` literal in a trinity file (O-3 any-literal).
 expect_fail("V-7 conditional-H2",

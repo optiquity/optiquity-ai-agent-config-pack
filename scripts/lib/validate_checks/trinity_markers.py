@@ -37,8 +37,12 @@ merge path.
        seed). [trinity-only]
   V-5  Trinity-symmetry: WARN (never fail) if the real marker-pair count differs
        across CLAUDE / AGENTS / GEMINI. [trinity-only]
-  V-6  No H2/H3 name appears in BOTH Shape A and Shape B (nor twice in Shape B) —
-       the override-mechanism contract (L-4). [all candidates]
+  V-6  No duplicate owned name — the override-mechanism contract (L-4), in two
+       legs. In-region: no H2/H3 name appears in BOTH Shape A and Shape B, nor
+       twice in Shape B. Out-of-marker: no Shape B owned name ALSO occurs
+       outside every pair (two sections of one name; the merger's graft can
+       emit only one, so the out-of-marker copy would be lost silently).
+       [all candidates]
   V-7  No `[CONDITIONAL]` literal appears ANYWHERE in a trinity file (O-3 — the
        strict any-literal reading, not H2-only; the retirement pass removes the
        preamble refs too). [trinity-only]
@@ -355,7 +359,8 @@ def _validate_file(path: Path, label: str, is_trinity: bool) -> bool:
         fail(f"{rel}:V-1/V-2 — {msg}")
         failed = True
 
-    # V-6 — no name in BOTH Shape A and Shape B (nor twice in Shape B).
+    # V-6 (in-region leg) — no name in BOTH Shape A and Shape B (nor twice in
+    # Shape B).
     regions = scan["regions"]
     for i, ri in enumerate(regions):
         if ri["shape"] != "B" or not ri["head"]:
@@ -367,6 +372,23 @@ def _validate_file(path: Path, label: str, is_trinity: bool) -> bool:
                      f"the override contract forbids duplicate names")
                 failed = True
                 break
+
+    # V-6 (out-of-marker leg) — a Shape B owned name that ALSO occurs OUTSIDE
+    # every pair. The loop above compares regions to EACH OTHER, so it can never
+    # see an out-of-marker heading; this leg is what covers that. `h2_list`
+    # EXCLUDES in-region heads, so the intersection IS the defect and a
+    # legitimate single-occurrence Shape B section cannot appear in it.
+    # The merger counterpart is `scripts/lib/marker-preserve.sh`'s OURS-head
+    # loop, which routes the same shape to a reconciliation sidecar: two
+    # sections of one name, of which the graft can emit only one, so the
+    # out-of-marker copy would otherwise be dropped silently.
+    out_of_marker = set(scan["h2_list"])
+    b_owned = {r["head"] for r in regions if r["shape"] == "B" and r["head"]}
+    for head in sorted(b_owned & out_of_marker):
+        fail(f"{rel}:V-6 — heading {head!r} appears BOTH inside a "
+             f"project-owned marker pair and outside every pair — two sections "
+             f"of one name; keep exactly one copy")
+        failed = True
 
     # V-8 — renamed-from syntactic conformance (all candidates).
     for r in regions:

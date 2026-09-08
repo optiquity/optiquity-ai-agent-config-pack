@@ -1,13 +1,13 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "feb8dbb",
-  "checkpoint": "2026-09-08T02:15:00Z",
+  "boundary_commit": "8fe37be",
+  "checkpoint": "2026-09-08T03:40:00Z",
   "active": [
     "BD-294 (launch-gating, the LAST v11.0 client-facing blocker). D5 = the seed-slot exception reclassifies a client's own end-of-file marker blocks and blames their heading as a missing pack section. D3 = the shipped trinity instructs an edit the engine forbids: filling placeholders sidecars the client's work, a marker above the first H2 fails well-formedness, five OPTIONAL comments instruct a deletion the engine silently undoes. C1 engine+parsers -> C1b duplicate gate -> C2 template -> C3 Check 98 -> C4 recipe; C5 design record (parallel); C6 close."
   ],
   "in_flight_agents": [],
   "queue": [
-    "CONSTRAINT for C2: pack-ops/MERGE-STRATEGY.md now sits at EXACTLY its Check 44 ceiling (696, predicate >696) -- C1 took the last line and C2 edits the same file, so C2 pays for any addition by compressing there; re-deriving the ceiling is a governance act needing the user. SERIAL after C5+C1: C1b duplicate gate -> C2 -> C3 (must follow C2) -> C4 -> C6. Then D4-new PACK-FEEDBACK.md (USER DECISION PENDING) -> the two untested install shapes -> GA is a user call.",
+    "SERIAL: C1b (patch pending, ready) -> C2 template, all 4 legs, PLUS folded in from the C1b review: PM-CHAT.md enumerates 2 of the 3 shapes the engine now rejects (one clause; could not ride a pack-only commit). C2 files: the 3 trinity templates, INSTALL-PROCEDURES.md, resolve-merge-conflicts/SKILL.md, PRE-RECONCILE-v10-to-v11.md, PM-CHAT.md, a new test; C2 does NOT touch MERGE-STRATEGY.md -> C3 Check 98 (MUST follow C2) -> C4 recipe -> C6 close. Then D4-new PACK-FEEDBACK.md (USER DECISION PENDING) -> the two untested install shapes -> GA is a user call.",
     "OPEN inside BD-293: run the S5 map-derived install BEFORE the pause decision; EDITED-branch holding collision tests -e only; sweep 4.5 prefix match admits a malformed row; ci-shard-plan.py member list stale; Check 65+67 dead-record reword; the L3 axis-matching commit.",
     "BD-292 (v11.0-targeted, pack-dev tooling only, NOT client-shipped): its own Position says retargeting to v11.1 is a one-word user decision. UNDECIDED.",
     "v11.1 per client framing: G1..G7, N1..N3.",
@@ -23,5 +23,5 @@
     "USER (BD-294, all taken): first section is '## Project Identity'; DELETE the whole how-to banner incl. the 'Copied from' provenance line; the placeholder guard is validate-pack Check 98 on every push; the 5 OPTIONAL comments get the POINTER form, not an inline recipe; reword only, do NOT move the comments below their headings.",
     "USER: dashboard re-render at the END or on request, never a gate."
   ],
-  "cycle_position": "BD-294: C5 LANDED (design record + stale-claim addendum; its file verified tracked at HEAD so C1's citations resolve). C1 landing next in this commit (4 passes: coder -> review -> fix -> final review -> fix; final had no blocker, no must). Then manifest-sync -> commit -> push, because C1 edits a fixture input. Next: C1b duplicate gate."
+  "cycle_position": "BD-294: C5 + C1 landed and CI-green; C1b landing in this commit (coder 2 rounds + review: no blocker, no must; the gate fires on LOSS not on duplication, measured). Next C2 template + the folded PM-CHAT clause -> C3 Check 98 (must follow C2) -> C4 recipe -> C6 close. MERGE-STRATEGY.md has ZERO headroom at its 696-line ceiling."
 }

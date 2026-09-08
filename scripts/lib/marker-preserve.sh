@@ -75,8 +75,11 @@
 #   L-1 / V-2: a partial-wrap (a heading inside a Shape A region that is not
 #     an H3-and-below heading in the exact `## Project addenda` seed-slot)
 #     → fail loud.
-#   L-4 / V-6: an H2/H3 name appearing in BOTH Shape A and Shape B (or twice
-#     in Shape B) → fail loud.
+#   L-4 / V-6: a duplicate owned name → fail loud, in two legs. In-region: an
+#     H2/H3 name appearing in BOTH Shape A and Shape B, or twice in Shape B.
+#     Out-of-marker: a Shape B owned `## ` name that ALSO occurs outside every
+#     region span — two sections of one name, of which the graft can emit only
+#     one, so without this leg the out-of-marker copy is lost silently.
 #   L-10 / O-9: a `renamed-from` name with no canonical match → BASE-aware
 #     soft-classify: retirement (BASE had it, THEIRS dropped it) → benign
 #     soft no-op; typo (BASE never had it) → hard conflict; BASE absent →
@@ -244,7 +247,9 @@ _mp_regions() {
 # The line number lets a caller test whether a head falls inside a marker
 # region span [begin,end] — a marker-enclosed heading is project-owned
 # whatever the region shape, so it is never adjudicated as a pack section.
-# This is the ONE fence/heading predicate; the bare-name form below derives
+# The SAME line number carries the L-4/V-6 out-of-marker duplicate gate, which
+# needs to know that a head matching a Shape B owned name sits OUTSIDE every
+# span. This is the ONE fence/heading predicate; the bare-name form below derives
 # from it, so a fix here cannot be applied to one consumer and missed on the
 # other.
 _mp_h2_list_ln() {
@@ -568,17 +573,37 @@ EOF
 
     while IFS=$'\t' read -r oh_ln oh; do
         [[ -n "$oh" ]] || continue
-        # Skip Shape B owned sections (wholly project-owned), AND any head that
-        # falls INSIDE a marker region span, whatever the shape: a
+        # Classify this head two independent ways: does its line fall INSIDE a
+        # marker region span, and does its text match a Shape B owned name?
+        local in_span=0 sb_name=0
+        for ((i = 0; i < n_reg; i++)); do
+            if [[ "$oh_ln" -ge "${RB[$i]}" && "$oh_ln" -le "${RE[$i]}" ]]; then in_span=1; fi
+            if [[ "${RSHAPE[$i]}" == "B" && "${RHEAD[$i]}" == "$oh" ]]; then sb_name=1; fi
+        done
+
+        # L-4 / V-6, out-of-marker leg: the same `## ` name is BOTH a Shape B
+        # owned heading AND present outside every region span. The file then
+        # holds two sections of one name while the graft can emit only one, so
+        # the out-of-marker copy is dropped under a clean
+        # merged-with-customization with no sidecar — silent content loss. Step 4
+        # above is the in-region leg of this same rule; it compares region heads
+        # to EACH OTHER and so can never see an out-of-marker head, which is why
+        # this leg lives here, where the head line numbers are.
+        if [[ $sb_name -eq 1 && $in_span -eq 0 ]]; then
+            rm -rf "$work"
+            _mp_sidecar_conflict "$base" "$ours" "$theirs" "$rel" "$dest" \
+                "the same heading appears BOTH inside a project-owned marker pair and outside it (L-4/V-6): '${oh}' — keep exactly one copy: delete the out-of-marker copy, or move its content inside the pair"
+            return 0
+        fi
+
+        # Skip any head INSIDE a marker region span, whatever the shape: a
         # marker-enclosed heading is project-owned, so it can never be
         # adjudicated as a pack section (and never fire the L-8 branch below on
-        # a heading the project itself introduced).
-        local is_sb=0
-        for ((i = 0; i < n_reg; i++)); do
-            if [[ "${RSHAPE[$i]}" == "B" && "${RHEAD[$i]}" == "$oh" ]]; then is_sb=1; break; fi
-            if [[ "$oh_ln" -ge "${RB[$i]}" && "$oh_ln" -le "${RE[$i]}" ]]; then is_sb=1; break; fi
-        done
-        [[ $is_sb -eq 1 ]] && continue
+        # a heading the project itself introduced). A Shape B owned head always
+        # lies inside its own region's span, so this test subsumes the by-name
+        # test on every well-formed shape; the ONE shape where the two disagree
+        # is not a skip at all — it is the duplicate gate above.
+        [[ $in_span -eq 1 ]] && continue
 
         # This is a pack section in OURS. It MUST exist in THEIRS (else the
         # pack retired a section the project still carries → conservative

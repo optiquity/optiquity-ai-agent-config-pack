@@ -12,6 +12,9 @@
 #   M-4  new pack content atop a wrapped Shape A (Regime B) -> sidecar; project
 #        content byte-identical (L-2).
 #   M-5  same H2 in Shape A + Shape B -> fail loud (L-4/V-6).
+#   M-21b one `## ` name BOTH inside a Shape B pair and outside every span ->
+#        fail loud (L-4/V-6 out-of-marker leg), sidecar keeps both copies; two
+#        legs (a) the name is a THEIRS pack section, (b) it is client-only.
 #   M-6  unbalanced markers (orphan END) -> fail loud (L-6).
 #   M-7  markered [CONDITIONAL] -> fail loud (L-9, Step-1 hoist reaches it).
 #   M-13 (B1 guard, Regime B): out-of-marker Shape A project edit is NOT
@@ -785,14 +788,19 @@ assert_eq "M-21 (e) at-eof classifies Shape B on its own heading" \
     "$(mp_seq "$FIXTURE_BASE/m21/at-eof.md")"
 
 # ─────────────────────────────────────────────────────────────────────────
-echo "== M-21b: heads are skipped by Shape B name OR by region span =="
+echo "== M-21b: one name BOTH inside a pair and outside it -> fail loud (L-4/V-6) =="
 # ─────────────────────────────────────────────────────────────────────────
-# CHANGE DETECTOR, not a new contract. The OURS-head loop skips a head that
-# matches a Shape B owned name OR that falls inside a region span. The two
-# tests differ on exactly one shape: a name that ALSO occurs outside every
-# region. This leg pins the outcome that shape has today, so that narrowing the
-# skip to the span test alone (which flips it to a sidecar) is a deliberate,
-# visible decision rather than a silent one.
+# CONTRACT. A `## ` name that is a Shape B owned heading AND also occurs
+# outside every region span makes two sections of one name, and the graft can
+# emit only one of them. The out-of-marker copy used to be dropped under a
+# clean merged-with-customization with no sidecar — silent content loss. The
+# out-of-marker leg of L-4/V-6 now routes it to the reconciliation sidecar,
+# which preserves BOTH copies. Two legs, because the two differ in what the
+# out-of-marker copy looks like to the loop:
+#   (a) the duplicated name IS a pack section in THEIRS;
+#   (b) the duplicated name is CLIENT-ONLY (absent from THEIRS) — without the
+#       gate this leg is the one that reaches the graft and silently drops the
+#       client's own section.
 newstate; mk m21b
 cat > "$FIXTURE_BASE/m21b/theirs.md" <<'MD'
 # CLAUDE.md
@@ -813,7 +821,7 @@ preamble line
 ## Rules
 pack rules body
 ## Duplicated
-an out-of-marker copy of the same heading
+M21B-OUT-OF-MARKER
 <!-- BEGIN project-owned -->
 ## Duplicated
 M21B-BODY
@@ -827,10 +835,63 @@ MD
 cp "$FIXTURE_BASE/m21b/ours.md" "$FIXTURE_BASE/m21b/dest.md"
 customization_preserve "" "$FIXTURE_BASE/m21b/ours.md" "$FIXTURE_BASE/m21b/theirs.md" \
     "CLAUDE.md" "$FIXTURE_BASE/m21b/dest.md" trinity >/dev/null
-assert_eq "M-21b a Shape B name that also occurs out-of-marker keeps its skip" \
-    "merged-with-customization" "$(last_disp)"
-assert_contains "M-21b the in-marker project body reaches DEST" \
-    "$(cat "$FIXTURE_BASE/m21b/dest.md")" "M21B-BODY"
+assert_eq "M-21b (a) a Shape B name that also occurs out-of-marker fails loud" \
+    "$NEEDS" "$(last_disp)"
+assert_contains "M-21b (a) the message names the real problem" "$(last_notes)" \
+    "the same heading appears BOTH inside a project-owned marker pair and outside it (L-4/V-6): '## Duplicated'"
+assert_contains "M-21b (a) sidecar preserves the out-of-marker copy" \
+    "$(cat "$FIXTURE_BASE/m21b/dest.md.pre-update")" "M21B-OUT-OF-MARKER"
+assert_contains "M-21b (a) sidecar preserves the in-marker project body" \
+    "$(cat "$FIXTURE_BASE/m21b/dest.md.pre-update")" "M21B-BODY"
+
+# (b) the duplicated name is CLIENT-ONLY — absent from THEIRS. This is the leg
+# that used to lose a whole section the client wrote: with the name skipped and
+# no THEIRS anchor, the out-of-marker copy reached neither the L-8 branch nor
+# the graft. Narrowing the gate to the pack-section case alone reds this leg.
+newstate; mk m21bb
+cat > "$FIXTURE_BASE/m21bb/theirs.md" <<'MD'
+# CLAUDE.md
+preamble line
+## Rules
+pack rules body
+## Project addenda
+
+<!-- Project addenda go here. -->
+<!-- BEGIN project-owned -->
+<!-- END project-owned -->
+MD
+cat > "$FIXTURE_BASE/m21bb/ours.md" <<'MD'
+# CLAUDE.md
+preamble line
+## Rules
+pack rules body
+## Client only
+M21BB-OUT-OF-MARKER
+<!-- BEGIN project-owned -->
+## Client only
+M21BB-BODY
+<!-- END project-owned -->
+## Project addenda
+
+<!-- Project addenda go here. -->
+<!-- BEGIN project-owned -->
+<!-- END project-owned -->
+MD
+cp "$FIXTURE_BASE/m21bb/ours.md" "$FIXTURE_BASE/m21bb/dest.md"
+customization_preserve "" "$FIXTURE_BASE/m21bb/ours.md" "$FIXTURE_BASE/m21bb/theirs.md" \
+    "CLAUDE.md" "$FIXTURE_BASE/m21bb/dest.md" trinity >/dev/null
+assert_eq "M-21b (b) a CLIENT-ONLY duplicated name fails loud" "$NEEDS" "$(last_disp)"
+assert_contains "M-21b (b) the message names the real problem" "$(last_notes)" \
+    "the same heading appears BOTH inside a project-owned marker pair and outside it (L-4/V-6): '## Client only'"
+# The message must NOT be the D5 misdiagnosis that names the client's own
+# heading as a missing pack section — that is what plain span-only skipping
+# emits here, and BD-294 C1 exists to remove it.
+assert_absent "M-21b (b) the message is NOT the D5 missing-pack-section misdiagnosis" \
+    "$(last_notes)" "absent from the new canonical"
+assert_contains "M-21b (b) sidecar preserves the out-of-marker copy" \
+    "$(cat "$FIXTURE_BASE/m21bb/dest.md.pre-update")" "M21BB-OUT-OF-MARKER"
+assert_contains "M-21b (b) sidecar preserves the in-marker project body" \
+    "$(cat "$FIXTURE_BASE/m21bb/dest.md.pre-update")" "M21BB-BODY"
 
 # ─────────────────────────────────────────────────────────────────────────
 echo '== M-21c: a Shape B region carrying a SECOND `## ` head =='
@@ -838,8 +899,8 @@ echo '== M-21c: a Shape B region carrying a SECOND `## ` head =='
 # The most general containment case, and a CONTRACT: the open-side parser has
 # always called a second head inside a Shape B body an owned head, and the
 # OURS-head loop now agrees, because the head falls inside the region span.
-# Only the FIRST head names the region, so the second is skipped by span and by
-# span alone — the name test cannot reach it. Without the span skip the second
+# Only the FIRST head names the region, so the span test is the only thing that
+# can skip the second — no name test reaches it. Without the span skip the second
 # head is adjudicated as a pack section, is absent from THEIRS, and the engine
 # reports a heading the PROJECT introduced as a missing pack section (L-8) and
 # drops BOTH bodies. Narrowing the span skip re-opens exactly that misdiagnosis,

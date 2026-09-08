@@ -214,13 +214,12 @@ The seed slot is the one Shape A body that may carry project headings:
 **H3 and below**, under that **exact** H2. A head after seed body text is
 seed body; an H2 opening the pair is the section it names.
 
-**BASE-preferred, degrade-safe.** The engine reconciles each pack
-section's out-of-marker body under one of two regimes and emits a clean
-`merged-with-customization` graft ONLY when that reconciliation is
-provably safe — otherwise it routes to the SAME sidecar /
-`needs-reconciliation` path the legacy classes use. The worst
-case for a marked trinity is exactly today's behavior (a safe, loud
-sidecar), never a silent overwrite or silent keep.
+**BASE-preferred, degrade-safe.** The engine reconciles each pack section's
+out-of-marker body under one of two regimes and emits a clean
+`merged-with-customization` graft ONLY when that reconciliation is provably
+safe — otherwise it routes to the SAME sidecar / `needs-reconciliation` path
+the legacy classes use. The worst case for a marked trinity is exactly today's
+behavior (a safe, loud sidecar), never a silent overwrite or silent keep.
 
 - **Regime A — BASE present (migrator).** The previous-pack baseline
   (extracted from the pack repo's `v10` git tag) attributes each
@@ -241,24 +240,26 @@ section sequence with the project's Shape B overrides spliced in at their
 canonical position, project-original Shape B sections appended, and each
 Shape A block re-grafted at the tail of its adopted host section.
 
-**`[CONDITIONAL]` retirement (BASE-aware).** A trinity arriving with a
-`## `/`### ` heading carrying the literal `[CONDITIONAL]` prefix is
-adjudicated before the marker branch. BASE present and the section body
-is unedited (base == ours) → the section auto-adopts the pack's
-already-retired canonical (bare heading + `<!-- OPTIONAL: … -->` hint),
-no sidecar. BASE present with a customized `[CONDITIONAL]` body, or BASE
-absent → fail loud to a sidecar with a keep-vs-delete message (the
-literal prefix must not remain).
+**`[CONDITIONAL]` retirement (BASE-aware).** A trinity arriving with a `##
+`/`### ` heading carrying the literal `[CONDITIONAL]` prefix is adjudicated
+before the marker branch. BASE present and the section body is unedited (base
+== ours) → the section auto-adopts the pack's already-retired canonical (bare
+heading + `<!-- OPTIONAL: … -->` hint), no sidecar. BASE present with a
+customized `[CONDITIONAL]` body, or BASE absent → fail loud to a sidecar with
+a keep-vs-delete message (the literal prefix must not remain).
 
-**`renamed-from` with no canonical match (BASE-aware soft-classify).**
-BASE proves the named section existed and the new pack dropped it
-(retirement) → benign soft no-op; BASE never had it (typo) → hard
-conflict; BASE absent → conservative conflict whose message names the
-retirement possibility.
+**`renamed-from` with no canonical match (BASE-aware soft-classify).** BASE
+proves the named section existed and the new pack dropped it (retirement) →
+benign soft no-op; BASE never had it (typo) → hard conflict; BASE absent →
+conservative conflict whose message names the retirement possibility.
 
-**What's preserved:** every project marker region, byte-identical —
-Shape A additions inside a pack section and whole Shape B project
-sections alike.
+**Duplicate owned name (L-4/V-6).** A name in both Shape A and Shape B, or
+twice in Shape B, fails loud — as does a Shape B owned `## ` name that ALSO
+occurs outside every pair (two sections of one name; the graft emits one).
+Keep exactly one copy.
+
+**What's preserved:** every project marker region, byte-identical — Shape A
+additions inside a pack section and whole Shape B project sections alike.
 
 **What gets updated:** the pack-owned skeleton (headings + out-of-marker
 canonical body) when it evolved between the baseline and the new pack.
@@ -562,12 +563,11 @@ or `removed-by-pack-customized` paths), the suffix is:
 - `scripts/migrate-v10-to-v11.sh`: `<file>.v10-customized`
 - `init-project.sh --update`: `<file>.pre-update`
 
-Sidecars are **single-slot**. If `--update` finds prior `.pre-update`
-sidecars in the working tree it refuses to run — the user must
-reconcile (edit the destination, remove the sidecar) before re-running.
-This prevents a second run from silently overwriting unreconciled
-content. The migrator's `S1` stage similarly refuses if its backup
-directory already exists.
+Sidecars are **single-slot**. If `--update` finds prior `.pre-update` sidecars
+in the working tree it refuses to run — the user must reconcile (edit the
+destination, remove the sidecar) before re-running. This prevents a second run
+from silently overwriting unreconciled content. The migrator's `S1` stage
+similarly refuses if its backup directory already exists.
 
 ---
 
