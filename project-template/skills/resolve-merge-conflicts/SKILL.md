@@ -212,6 +212,18 @@ empty-BASE consumer.
      place.
    - **Shape B** — a whole project-owned section (new, renamed, or an override):
      wrap the heading line AND the body.
+   - **Prefer the seed pair the pack already ships.** The v11 trinity ships an
+     empty project-owned pair around every value it asks you to fill — the
+     identity lines under `## Project Identity`, and each bracketed placeholder
+     line in the sections that carry one. Put the matching customization INSIDE
+     that shipped pair rather than opening a new one; the placeholder line it
+     replaces IS the value you are filling in.
+   - **An optional section you do not want is SUPPRESSED, not deleted.** Give it
+     a same-name Shape B pair with a one-line body of your own. A raw deletion is
+     silently undone — the pack spine restores the section on the next update —
+     so deletion loses the intent with no message. The full authoring procedure
+     is in `docs/pack/PM-CHAT.md` § "How to add project-owned content to trinity
+     files".
 3. Preserve every customization BYTE-IDENTICALLY inside its marker — this is what
    the completeness gate checks and what lets the fold auto-graft on the next
    install or migration.

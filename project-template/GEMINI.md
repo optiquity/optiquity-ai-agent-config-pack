@@ -1,26 +1,11 @@
 # GEMINI.md
 
-<!--
-HOW TO USE THIS TEMPLATE
+## Project Identity
 
-This is the Antigravity CLI context file for your project. It is loaded
-automatically by Antigravity CLI (`agy`) at session start via the GEMINI.md
-hierarchy (Antigravity reads GEMINI.md / AGENTS.md for backward compatibility).
-
-Fill in [PROJECT_NAME], [PLATFORM_TARGETS], and [TRANSPORT] during project setup.
-Remove this comment block after filling in the placeholders.
-
-This file is the Antigravity CLI equivalent of CLAUDE.md. Both files should
-express the same project rules — only tool-specific operating notes differ.
--->
-
----
-*Copied from: project-template/GEMINI.md — AI Agent Config Pack v11*
-*Fill in placeholders and remove this block.*
----
-
+<!-- BEGIN project-owned -->
 **[PROJECT_NAME]** targets [PLATFORM_TARGETS].
 Transport: [TRANSPORT] (e.g., gRPC + Proto3 for first-party; REST for third-party).
+<!-- END project-owned -->
 
 ## Quick reference
 
@@ -51,9 +36,11 @@ Default preference only:
 
 ## Platform and stack defaults
 
+<!-- BEGIN project-owned -->
 [PLATFORM_DEFAULTS — fill in per project type]
+<!-- END project-owned -->
 
-<!-- OPTIONAL: keep this section if your project targets iOS 26 / macOS 26; delete the entire section if not applicable -->
+<!-- OPTIONAL: keep this section if your project targets iOS 26 / macOS 26. If it does not apply, suppress it — do not delete it; see docs/pack/PM-CHAT.md § "How to add project-owned content to trinity files". -->
 ## iOS 26 / Xcode 26.3 platform features
 
 - **Liquid Glass** is the current iOS 26 / macOS 26 design language for materials and visual effects. Use `.glassEffect()` and related modifiers rather than custom `Material` or `UIVisualEffectView` implementations.
@@ -76,20 +63,26 @@ These rules apply regardless of which architecture pattern this project uses.
 - Services are stateless by default. Stateful services explicitly document their state variables, threading guarantees, and invalidation policy.
 - Navigation logic lives outside view and view-model types. Use Coordinator, NavigationStack with a typed path, or a Router depending on the chosen pattern.
 
-<!-- OPTIONAL: keep this section if your project targets a specific platform with its own architecture rules; delete the entire section if not applicable -->
+<!-- OPTIONAL: keep this section if your project targets a specific platform with its own architecture rules. If it does not apply, suppress it — do not delete it; see docs/pack/PM-CHAT.md § "How to add project-owned content to trinity files". -->
 ## Architecture rules — platform-specific
 
+<!-- BEGIN project-owned -->
 [PLATFORM_ARCHITECTURE — fill in from loaded skills]
+<!-- END project-owned -->
 
-<!-- OPTIONAL: keep this section if your project targets a specific language with its own coding rules; delete the entire section if not applicable -->
+<!-- OPTIONAL: keep this section if your project targets a specific language with its own coding rules. If it does not apply, suppress it — do not delete it; see docs/pack/PM-CHAT.md § "How to add project-owned content to trinity files". -->
 ## Language-specific coding rules
 
+<!-- BEGIN project-owned -->
 [LANGUAGE_RULES — fill in from loaded skills]
+<!-- END project-owned -->
 
-<!-- OPTIONAL: keep this section if your project targets gRPC / Proto3; delete the entire section if not applicable -->
+<!-- OPTIONAL: keep this section if your project targets gRPC / Proto3. If it does not apply, suppress it — do not delete it; see docs/pack/PM-CHAT.md § "How to add project-owned content to trinity files". -->
 ## gRPC and Proto3 rules
 
-[GRPC_RULES — fill in from grpc-patterns skill, or delete section]
+<!-- BEGIN project-owned -->
+[GRPC_RULES — fill in from grpc-patterns skill]
+<!-- END project-owned -->
 
 ## Security
 
@@ -97,7 +90,9 @@ These rules apply regardless of which architecture pattern this project uses.
 - Validate all data received from the network before using it in domain logic or UI.
 - TLS required for all gRPC connections. Do not disable certificate validation outside development.
 
+<!-- BEGIN project-owned -->
 [PLATFORM_SECURITY — fill in from security-patterns skill]
+<!-- END project-owned -->
 
 ## Liskov Substitution Principle
 
@@ -161,7 +156,9 @@ Before adding any third-party framework or API:
 - Use integration tests for storage, networking adapters, and module seams.
 - Use protocol-based test doubles for service stubs. Never hit real endpoints in unit or integration tests.
 
+<!-- BEGIN project-owned -->
 [PLATFORM_TESTING — fill in from loaded skills]
+<!-- END project-owned -->
 
 ## Refactoring policy
 
@@ -344,7 +341,7 @@ language you are writing (`//` for Swift/C/C++/Objective-C, `#` for Python):
 - When citing a code location in a report, use the symbol name not the line number.
   Line numbers drift with every edit; symbol names are stable.
 
-<!-- OPTIONAL: keep this section if your project targets Swift / gRPC; delete the entire section if not applicable -->
+<!-- OPTIONAL: keep this section if your project targets Swift / gRPC. If it does not apply, suppress it — do not delete it; see docs/pack/PM-CHAT.md § "How to add project-owned content to trinity files". -->
 ## Anti-patterns — never introduce these
 
 - Massive view controllers or God ViewModels accumulating unrelated logic.
@@ -358,7 +355,9 @@ language you are writing (`//` for Swift/C/C++/Objective-C, `#` for Python):
 - Editing generated Protobuf or gRPC code by hand.
 - Branching on concrete types to discover what an abstraction supports, instead of querying a capability value or interface.
 
+<!-- BEGIN project-owned -->
 [PLATFORM_ANTIPATTERNS — fill in from loaded skills]
+<!-- END project-owned -->
 
 ## Project rules
 

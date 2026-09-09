@@ -191,11 +191,14 @@ its heading). The PM chat will fill most of them in during kickoff
    three files.
 2. Fill `[PLATFORM_DEFAULTS]` for your project type (examples in the
    HTML comments inside each file).
-3. Delete the optional sections that don't apply — each is preceded by an
-   `<!-- OPTIONAL: keep this section … -->` hint (e.g., remove the iOS
-   section for a Python-only server project). If you keep and customize
-   one, wrap it in a project-owned marker pair (**Shape B**) so your edits
-   survive updates — see **Customizing the trinity files** above.
+3. Suppress the optional sections that don't apply — each is preceded by an
+   `<!-- OPTIONAL: keep this section … -->` hint (e.g., the iOS section in a
+   Python-only server project). **Suppress, don't delete:** give the section
+   a same-name project-owned marker pair (**Shape B**) with a one-line body
+   of your own. A plain deletion is silently undone — the next update
+   restores the section from the pack, with no message. The same Shape B
+   wrap is what makes a section you keep and customize survive updates —
+   see **Customizing the trinity files** above.
 4. Leave `[PLATFORM_ARCHITECTURE]`, `[LANGUAGE_RULES]`, `[GRPC_RULES]`,
    `[PLATFORM_SECURITY]`, `[PLATFORM_TESTING]`,
    `[PLATFORM_ANTIPATTERNS]` for the PM chat to fill during kickoff

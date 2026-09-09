@@ -1,28 +1,11 @@
 # AGENTS.md
 
-<!--
-HOW TO USE THIS TEMPLATE
+## Project Identity
 
-This is the Codex CLI context file for your project. It is loaded automatically
-by Codex CLI at session start.
-
-Fill in [PROJECT_NAME], [PLATFORM_TARGETS], and [TRANSPORT] during project setup.
-Fill in or remove the optional sections (each marked with an `OPTIONAL:` HTML comment above the heading).
-Remove this comment block after filling in the placeholders.
-
-This file is the Codex equivalent of CLAUDE.md and GEMINI.md. All three files
-should express the same project rules — only tool-specific operating notes differ.
-The trinity rule applies: H2 names and order match CLAUDE.md / GEMINI.md;
-bodies may be more concise here, since the loaded skills carry the full detail.
--->
-
----
-*Copied from: project-template/AGENTS.md — AI Agent Config Pack v11*
-*Fill in placeholders and remove this block.*
----
-
+<!-- BEGIN project-owned -->
 **[PROJECT_NAME]** targets [PLATFORM_TARGETS].
 Transport: [TRANSPORT] (e.g., gRPC + Proto3 for first-party; REST for third-party).
+<!-- END project-owned -->
 
 ## Quick reference
 
@@ -53,9 +36,11 @@ Default preference only:
 
 ## Platform and stack defaults
 
+<!-- BEGIN project-owned -->
 [PLATFORM_DEFAULTS — fill in per project type]
+<!-- END project-owned -->
 
-<!-- OPTIONAL: keep this section if your project targets iOS 26 / macOS 26; delete the entire section if not applicable -->
+<!-- OPTIONAL: keep this section if your project targets iOS 26 / macOS 26. If it does not apply, suppress it — do not delete it; see docs/pack/PM-CHAT.md § "How to add project-owned content to trinity files". -->
 ## iOS 26 / Xcode 26.3 platform features
 
 - **Liquid Glass** is the current iOS 26 / macOS 26 design language. Use `.glassEffect()` and related modifiers.
@@ -77,20 +62,26 @@ These rules apply regardless of which architecture pattern this project uses.
 - Services are stateless by default. Stateful services document state, threading, and invalidation.
 - Navigation logic lives outside view and view-model types.
 
-<!-- OPTIONAL: keep this section if your project targets a specific platform with its own architecture rules; delete the entire section if not applicable -->
+<!-- OPTIONAL: keep this section if your project targets a specific platform with its own architecture rules. If it does not apply, suppress it — do not delete it; see docs/pack/PM-CHAT.md § "How to add project-owned content to trinity files". -->
 ## Architecture rules — platform-specific
 
+<!-- BEGIN project-owned -->
 [PLATFORM_ARCHITECTURE — fill in from loaded skills]
+<!-- END project-owned -->
 
-<!-- OPTIONAL: keep this section if your project targets a specific language with its own coding rules; delete the entire section if not applicable -->
+<!-- OPTIONAL: keep this section if your project targets a specific language with its own coding rules. If it does not apply, suppress it — do not delete it; see docs/pack/PM-CHAT.md § "How to add project-owned content to trinity files". -->
 ## Language-specific coding rules
 
+<!-- BEGIN project-owned -->
 [LANGUAGE_RULES — fill in from loaded skills]
+<!-- END project-owned -->
 
-<!-- OPTIONAL: keep this section if your project targets gRPC / Proto3; delete the entire section if not applicable -->
+<!-- OPTIONAL: keep this section if your project targets gRPC / Proto3. If it does not apply, suppress it — do not delete it; see docs/pack/PM-CHAT.md § "How to add project-owned content to trinity files". -->
 ## gRPC and Proto3 rules
 
-[GRPC_RULES — fill in from grpc-patterns skill, or delete section]
+<!-- BEGIN project-owned -->
+[GRPC_RULES — fill in from grpc-patterns skill]
+<!-- END project-owned -->
 
 ## Security
 
@@ -98,7 +89,9 @@ These rules apply regardless of which architecture pattern this project uses.
 - Validate data received from the network before using it in domain logic or UI.
 - TLS required for all gRPC connections. Do not disable certificate validation outside development.
 
+<!-- BEGIN project-owned -->
 [PLATFORM_SECURITY — fill in from security-patterns skill]
+<!-- END project-owned -->
 
 ## Liskov Substitution Principle
 
@@ -150,7 +143,9 @@ together when both are present.
 - Use protocol-based test doubles. Never hit real endpoints in unit or integration tests.
 - Prefer unit tests for domain logic. Integration tests at module seams.
 
+<!-- BEGIN project-owned -->
 [PLATFORM_TESTING — fill in from loaded skills]
+<!-- END project-owned -->
 
 ## Refactoring policy
 
@@ -328,7 +323,7 @@ When citing a code location in a report, use the symbol name not the line number
 | `docs-researcher` | Read only | Write anything |
 | `repo-ops` | Read only | Write anything |
 
-<!-- OPTIONAL: keep this section if your project targets Swift / gRPC; delete the entire section if not applicable -->
+<!-- OPTIONAL: keep this section if your project targets Swift / gRPC. If it does not apply, suppress it — do not delete it; see docs/pack/PM-CHAT.md § "How to add project-owned content to trinity files". -->
 ## Anti-patterns — never introduce these
 
 - Calling gRPC stubs directly from ViewModels or Views.
@@ -340,7 +335,9 @@ When citing a code location in a report, use the symbol name not the line number
 - Editing generated Protobuf or gRPC code by hand.
 - Branching on concrete types to discover what an abstraction supports, instead of querying a capability value or interface.
 
+<!-- BEGIN project-owned -->
 [PLATFORM_ANTIPATTERNS — fill in from loaded skills]
+<!-- END project-owned -->
 
 ## Project rules
 

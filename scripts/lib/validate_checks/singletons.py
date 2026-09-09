@@ -910,9 +910,6 @@ def check_trinity_no_scaffolding_comments(
 
     The pack ships trinity files with two legitimate HTML comment
     blocks:
-      - The file-level `<!-- HOW TO USE THIS TEMPLATE -->` at top
-        (above the first H2). Removed by Procedure 5-C.2 preamble
-        step on migration.
       - The `<!-- Project addenda go here ... -->` marker before
         the empty `## Project addenda` H2. Preserved by design so
         the migration tooling can reliably locate the addenda
@@ -952,7 +949,15 @@ def check_trinity_no_scaffolding_comments(
     print(f"\n── Check 19 [{label}]: Trinity templates free of body scaffolding (BD-059, BD-183) ──")
     import re
     ALLOWED_OPENINGS = (
-        "HOW TO USE THIS TEMPLATE",
+        # `HOW TO USE THIS TEMPLATE` is deliberately ABSENT. It was removed
+        # when the trinity templates stopped shipping that block; measured at
+        # removal, 0 instances remained on either surface this check runs
+        # against (project-template + pack-root), so the entry permitted a
+        # re-introduction it no longer had any legitimate instance to protect.
+        # Per `ci-guard-measure-then-bound` an allowlist is sized EXACTLY to
+        # the legitimate set. Do not re-add it without first measuring a
+        # legitimate instance back onto one of those surfaces; the negative
+        # leg in scripts/tests/test-validate-pack-check-19.sh pins that.
         "Project addenda go here",
         "Trinity-rule exception",
         # Guardrail 2 (BD-173 H.13) per-line fence markers in trinity

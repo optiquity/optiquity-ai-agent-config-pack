@@ -1427,9 +1427,9 @@ Each name in `renamed-from` must be an exact heading line — the `## ` or `### 
 prefix included, double-quoted, byte-for-byte as the pack ships it.
 
 **One name, one place (P-4 / L-4).** A heading name may appear only once per
-file — never in both a Shape A and a Shape B region, and never in two Shape B
-regions. A duplicate name makes the override ambiguous, and the update rejects
-the file.
+file — never in both a Shape A and a Shape B region, never in two Shape B
+regions, and never once inside a pair and once outside every pair. A duplicate
+name makes the override ambiguous, and the update rejects the file.
 
 ### Retiring a former-optional section (P-6)
 
@@ -1442,7 +1442,11 @@ decide per section:
 - **Keep it** → rename it to a bare heading for your project and wrap the whole
   section (heading + body) in Shape B; add a `renamed-from` annotation naming
   the old `## [CONDITIONAL] ...` heading if you keep custom content.
-- **Drop it** → delete the entire section from all three trinity files.
+- **Drop it** → rename it to the pack's bare v11 heading and wrap heading +
+  body in a **same-name** Shape B pair with a one-line body of your own — the
+  P-4 / P-8 override, which suppresses the pack version. Do this in all three
+  trinity files. Deleting the section instead is silently undone: the next
+  update restores it under its bare v11 name, with no message.
 
 The literal `[CONDITIONAL]` prefix must never remain in a committed file.
 

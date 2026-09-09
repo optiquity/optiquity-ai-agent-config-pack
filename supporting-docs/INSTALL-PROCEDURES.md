@@ -571,9 +571,13 @@ tool-specific.
    *v11+ — the `[CONDITIONAL]` prefix is retired pack-wide.* From v11 on, the
    pack no longer ships the `[CONDITIONAL]` prefix: these optional sections
    ship as bare H2s, each preceded by an
-   `<!-- OPTIONAL: keep this section if your project targets <X>; delete the entire section if not applicable -->`
+   `<!-- OPTIONAL: keep this section if your project targets <X>. If it does not apply, suppress it — do not delete it; see docs/pack/PM-CHAT.md § "How to add project-owned content to trinity files". -->`
    hint. A v11 (or migrated v10→v11) trinity file therefore has no prefix to
-   strip — step 5 applies only to legacy v10-templated content. When a
+   strip — step 5 applies only to legacy v10-templated content. A v11 optional
+   section that does not apply is **suppressed, not deleted**: give it a
+   same-name Shape B pair with a one-line body of your own. Deleting the
+   heading and body instead is silently undone — the pack spine restores the
+   section on the next update, with a clean disposition and no message. When a
    project keeps and customizes an optional section and wants the edits to
    survive future pack updates byte-for-byte, it wraps the whole section in a
    project-owned marker pair (`<!-- BEGIN project-owned -->` /

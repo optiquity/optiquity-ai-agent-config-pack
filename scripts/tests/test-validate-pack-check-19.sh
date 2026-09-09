@@ -129,16 +129,39 @@ if "free of body-section scaffolding" not in out:
 if "[synth-pack-root-style]" not in out:
     failures.append(f"T1 label not threaded: {out}")
 
-# T2: PASS — three legitimate HTML comment types (HOW TO USE TEMPLATE +
-# Project addenda go here + Trinity-rule exception).
-claude = ("<!-- HOW TO USE THIS TEMPLATE\nFoo bar baz.\n-->\n\n"
-          "## Project addenda\n\n"
+# T2: PASS — the two legitimate HTML comment types (Project addenda go here
+# + Trinity-rule exception). `HOW TO USE THIS TEMPLATE` is NOT among them: the
+# trinity templates stopped shipping that block, and it left ALLOWED_OPENINGS
+# in the same change. T2b below pins the resulting contract.
+claude = ("## Project addenda\n\n"
           "<!-- Project addenda go here. -->\n")
 agents = claude
 gemini = (claude + "\n<!-- Trinity-rule exception: Gemini-intrinsic H2s -->\n")
 fc, out = run_check19(claude, agents, gemini, label='synth-template-style')
 if fc != 0:
     failures.append(f"T2 (legit comments PASS) expected 0 failures, got {fc}: {out}")
+
+# T2b: FAIL — a re-introduced `<!-- HOW TO USE THIS TEMPLATE -->` block is
+# caught, in all three files, on BOTH surfaces Check 19 actually runs against.
+#
+# Run under the REAL labels rather than a synthetic one. `project-template` is
+# the only label in `_CHECK_19_MARKER_SURFACES`, so it is the only one carrying
+# the widened admission set; asserting a synthetic label would leave pack-root
+# — which ships zero markers and keeps the strict base allowlist — unpinned.
+# pack-root is also the surface no template test covers, so this is its only
+# guard against the block returning.
+howto = ("<!-- HOW TO USE THIS TEMPLATE\nFoo bar baz.\n-->\n\n"
+         "## Project addenda\n\n"
+         "<!-- Project addenda go here. -->\n")
+for _surface in ('project-template', 'pack-root'):
+    fc, out = run_check19(howto, howto, howto, label=_surface)
+    if fc != 3:
+        failures.append(
+            f"T2b ({_surface}: HOW-TO block must FAIL in all 3 files) "
+            f"expected 3 failures, got {fc}: {out}")
+    if 'HOW TO USE THIS TEMPLATE' not in out:
+        failures.append(
+            f"T2b ({_surface}) failure message does not name the offending block: {out}")
 
 # T3: PASS — explicit project-template label preserves prior behavior.
 fc, out = run_check19(no_comments, no_comments, no_comments, label='project-template')
@@ -155,7 +178,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "Check 19 PASS paths: no comments + allowed scaffolding + label threading" ;;
+    0) t_pass "Check 19 PASS paths: no comments + allowed scaffolding + label threading; and the retired HOW-TO block now FAILs on both real surfaces" ;;
     *) t_fail "Group 1 Check 19 PASS tests failed" ;;
 esac
 

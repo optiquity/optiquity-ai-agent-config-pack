@@ -180,6 +180,13 @@ compares what remains against v10; **any** stray out-of-marker byte — includin
 a single blank line — flips a clean graft to a pause. Do not leave edits sitting
 in a pack section's body; move them inside a marker pair (step d).
 
+**Where your identity values go.** The v11 preamble is bare — the H1 line and
+nothing else — and the graft takes the pack's preamble verbatim, so no value
+survives there. Your project name, platform targets and transport line belong in
+the shipped project-owned pair under the v11 file's first section,
+`## Project Identity`. Move them there as part of step (d) rather than leaving
+them above the first `## ` heading.
+
 ### (d) Fold your additions into markers
 
 Two shapes:
@@ -214,7 +221,12 @@ Two shapes:
 Pitfalls that route you back to a sidecar (the graft fails loud on each):
 
 - an orphan marker (a BEGIN with no END, or vice versa);
-- nested marker pairs;
+- nested marker pairs. The v11 trinity already ships an empty pair inside
+  several sections, so Shape-B-wrapping such a section while KEEPING its pack
+  body nests the shipped pair and fails loud
+  (`nested BEGIN marker at line N (region still open from line M)`). Replace the
+  body with your own when you wrap the whole section — the shipped inner pair
+  goes with the body you replaced;
 - a `## `/`### ` heading **after body text inside** a Shape A region — a partial
   wrap (wrap the heading too, or move the heading out). A heading that is the
   region's FIRST content is fine: that pair is Shape B. The one carve-out is the

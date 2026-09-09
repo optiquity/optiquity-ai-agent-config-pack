@@ -234,9 +234,11 @@ the rest during kickoff (Step 10):
 1. Fill `[PROJECT_NAME]`, `[PLATFORM_TARGETS]`, `[TRANSPORT]` in all
    three files.
 2. Fill `[PLATFORM_DEFAULTS]` for your project type.
-3. Delete the optional (`<!-- OPTIONAL: … -->`-hinted) sections that don't
-   apply; if you keep and customize one, wrap it as Shape B (see
-   **Customizing the trinity files** above).
+3. Suppress the optional (`<!-- OPTIONAL: … -->`-hinted) sections that don't
+   apply — give each a same-name Shape B pair with a one-line body of your
+   own rather than deleting it, since a plain deletion is silently undone on
+   the next update; if you keep and customize one, wrap it as Shape B too
+   (see **Customizing the trinity files** above).
 4. Leave `[PLATFORM_ARCHITECTURE]`, `[LANGUAGE_RULES]`, `[GRPC_RULES]`,
    `[PLATFORM_SECURITY]`, `[PLATFORM_TESTING]`,
    `[PLATFORM_ANTIPATTERNS]` for the PM chat.
@@ -347,7 +349,10 @@ the kickoff workflow:
    - Where your existing architecture diverges (noted for your
      review — no automatic changes).
    - Any optional sections (each `<!-- OPTIONAL: … -->`-hinted) in the
-     context files that your project does not use (candidates for removal).
+     context files that your project does not use (candidates for
+     suppression — give each a same-name Shape B pair as in Step 4
+     rather than deleting it; a plain deletion is silently undone on
+     the next update).
 4. Surfaces these decisions for your approval before committing.
 
 Commit the trinity-file placeholder fills and any small doc updates

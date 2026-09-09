@@ -1302,6 +1302,11 @@ esac
 
 printf "\n=== Group 9: BD-288 self-tree carve-out necessity (real tree) ===\n"
 
+# Single source for the expected banner population: interpolated into BOTH
+# the Python assertion below and the PASS label at the end of this group, so
+# the assertion and its human-readable label cannot drift apart.
+EXPECTED_BANNERS=2
+
 python3 <<EOF
 import sys, os
 sys.path.insert(0, '$REPO_ROOT/scripts')
@@ -1315,7 +1320,9 @@ failures = []
 # The banner population is a hand-authored set with no generator, so its
 # SIZE is pinned here in lock-step. A new *Copied from:* banner is a
 # reviewable event: add the file and update this count in the same change.
-EXPECTED_BANNERS = 5
+# The three trinity templates stopped shipping their banner when their
+# preamble became bare, leaving PACK-FEEDBACK.md and PM-CHAT.md.
+EXPECTED_BANNERS = $EXPECTED_BANNERS
 
 exts = set(mod._CHECK_40_FILE_EXTS.split("|")) | set(mod._CHECK_43_EXTRA_WALK_SUFFIXES)
 carved = []
@@ -1395,7 +1402,7 @@ if failures:
 print("OK carved=%d residue=%d" % (len(carved), residue))
 EOF
 case $? in
-    0) t_pass "BD-288 self-tree carve-out is load-bearing on the real tree (removing it FAILs the 5 self-provenance banners) and the post-STRIP residue is 0" ;;
+    0) t_pass "BD-288 self-tree carve-out is load-bearing on the real tree (removing it FAILs the $EXPECTED_BANNERS self-provenance banners) and the post-STRIP residue is 0" ;;
     *) t_fail "BD-288 self-tree carve-out necessity / residue assertion failed (see Python output)" ;;
 esac
 
