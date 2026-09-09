@@ -2,17 +2,26 @@
 # scripts/tests/test-validate-pack-check-83.sh — synthetic tests for Check 83
 # (wired-test CI-environment fragility guard, BD-222).
 #
-# Check 83 statically scans every CI-WIRED test script for three
-# CI-environment-fragile bug classes that took BD-219's first sharded CI run red:
+# Check 83 statically scans every CI-WIRED test script for four
+# CI-environment-fragile bug classes that took a sharded CI run red:
 #   (a) a HARDCODED absolute dev/home path (a /Users or /home root, homebrew, or
 #       a var-folders temp dir) that exists on the dev box but not on the runner,
 #   (b) a direct un-shimmed live-gh call (real gh without a fake-gh-on-PATH shim),
 #   (c) the double-zero failure-masking idiom (a counting grep whose non-match is
-#       swallowed by a trailing echo-zero on the OR arm).
+#       swallowed by a trailing echo-zero on the OR arm),
+#   (d) a shell-active construct (a backtick or a dollar-paren) inside an
+#       UNQUOTED heredoc body — the BD-294 class. An unquoted delimiter makes the
+#       whole body shell-expanded, so what reads as inert payload is a command
+#       substitution the shell EXECUTES. bash 5 (the CI runner) aborts the
+#       command and reds the group; bash 3.2 (macOS) substitutes empty and exits
+#       0, so a dev box goes GREEN on the very defect that reds CI, and `bash -n`
+#       sees neither (a heredoc body is not parsed until expansion).
 #
 # NOTE: this header (and every comment / heredoc line below) deliberately AVOIDS
-# writing any of the three bad patterns CONTIGUOUSLY — legs (a) and (c) scan ALL
-# lines (comments included), so a contiguous literal here would flag THIS file.
+# writing any of the four bad patterns CONTIGUOUSLY — legs (a) and (c) scan ALL
+# lines (comments included), so a contiguous literal here would flag THIS file;
+# leg (d) additionally scans every shell-EXPANDED payload (an unquoted heredoc
+# body and a double-quoted `python3 -c` body), which includes Group 0 below.
 # The BITE payloads are assembled from fragments at runtime (see Group 2).
 # Candidate set = raw three-glob (scripts/test*.sh + scripts/tests/*.sh +
 # scripts/tests/fixture-dependent/*.sh) MINUS scripts/ci-test-wiring-allowlist.txt
@@ -31,6 +40,9 @@
 #   Group 1: Real-state-at-HEAD PASS (census 0/0/0 over the allowlist-subtracted set)
 #   Group 2: The BITEs — each leg FAILs on its assembled /tmp fixture
 #   Group 2b: The shim NEGATIVE control — a shimmed direct-gh fixture PASSes leg (b)
+#   Group 2d-2h: leg (d) negative controls — a QUOTED heredoc, the opt-out
+#             pragma, a diff3 marker in a string, and a SINGLE-quoted `-c`
+#             body are all inert and must NOT fire
 #   Group 3: The load-bearing subtraction — one-file delta + raw-glob would-FAIL
 #   Group 4: Self-guard — Check 83 over HEAD does not flag THIS test file
 #   Group 5: End-to-end validate-pack.py --only-check 83 on HEAD
@@ -68,7 +80,8 @@ import validate_checks.wired_test_fragility  # noqa: F401
 spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
-required = ['check_wired_test_ci_fragility', 'LEG_A', 'HOME_ABS', 'GH_EXEC', 'SHIM', 'LEG_C']
+required = ['check_wired_test_ci_fragility', 'LEG_A', 'HOME_ABS', 'GH_EXEC', 'SHIM', 'LEG_C',
+            'LEG_D_OPEN', 'LEG_D_ACTIVE', 'LEG_D_PRAGMA', 'LEG_D_DASHC']
 missing = [n for n in required if not hasattr(mod, n)]
 if missing:
     print('FAIL_MISSING ' + ' '.join(missing)); sys.exit(1)
@@ -169,6 +182,45 @@ BAD_B = "gh" + " label create foo --force"
 BAD_C = "x=$(grep " + "-c bar f " + "|| ec" + "ho 0)"
 # A fake-gh shim installer (assembled) for the 2b negative control.
 SHIM_INSTALL = "prin" + "tf '#!/bin/sh\\n' > " + '"$BIN/' + "gh" + '"'
+# leg (d) BD-294: a shell-active construct inside an UNQUOTED heredoc. BT and
+# SUB are built from chr()/concat so this file never carries the contiguous
+# bytes (the self-guard discipline above), and HD_OPEN/HD_END keep the
+# heredoc-operator token out of this file's literal source too.
+BT = chr(96)                       # backtick
+SUB = "$" + "("                    # dollar-paren
+HD_OPEN = "<" + "<EOF"             # UNQUOTED heredoc operator
+HD_OPEN_Q = "<" + "<'EOF'"         # QUOTED heredoc operator (inert body)
+PRAGMA = "# ci-fragility: allow-" + "shell-active-heredoc"
+# The exact BD-294 shape: a backticked HTML snippet in a Python comment.
+BAD_D = ("python3 " + HD_OPEN + "\n"
+         "# a re-introduced " + BT + "<!-- HOW TO USE THIS TEMPLATE -->" + BT + " block\n"
+         "print('x')\n"
+         "EOF")
+# Same bytes, QUOTED delimiter — inert, must NOT fire (2d control).
+OK_D_QUOTED = ("python3 " + HD_OPEN_Q + "\n"
+               "# a " + BT + "<!-- HOW TO USE THIS TEMPLATE -->" + BT + " mention\n"
+               "print('x')\n"
+               "EOF")
+# An intentional substitution carrying the opt-out pragma (2e control).
+OK_D_PRAGMA = ("read -r A " + HD_OPEN + "  " + PRAGMA + "\n"
+               + SUB + "printf x)\n"
+               "EOF")
+# A diff3 conflict marker in a string is NOT a heredoc operator (2f control).
+OK_D_DIFF3 = ('assert_contains "m" "$d" "' + "<" * 7 + ' your customization"')
+# The SECOND shell-expanded payload shape: a DOUBLE-quoted `python3 -c "…"`
+# body. BD-294 found a REAL instance of the class here that a heredoc-only
+# guard misses (test-validate-pack-check-92.sh was executing a backticked
+# `!= 89` out of a Python comment on every run).
+DQ = chr(34)
+BAD_D_DASHC = ("python3 -c " + DQ + "\n"
+               "# a hardcoded " + BT + "!= 89" + BT + " note\n"
+               "print('x')\n"
+               + DQ)
+# Same bytes under a SINGLE-quoted -c body — inert, must NOT fire (2h control).
+OK_D_DASHC_SQ = ("python3 -c '\n"
+                 "# a hardcoded " + BT + "!= 89" + BT + " note\n"
+                 "print(1)\n"
+                 "'")
 
 def run_check(files):
     """files: dict {basename: body} staged under scripts/tests/ in a tmp tree
@@ -235,6 +287,60 @@ n, cap = run_check({"test-comment-gh.sh": comment_gh, "test-clean.sh": PLAIN})
 if n != 0:
     failures.append(f"2c comment-only gh expected 0 failures (strip helper), got {n}: {cap}")
 
+# ── Leg (d), BD-294. The guard must fail in BOTH directions: fire on a
+# shell-active construct in an UNQUOTED heredoc, stay silent on every inert
+# shape. This class is INVISIBLE on macOS (bash 3.2 substitutes empty and
+# exits 0 where bash 5 aborts the command) and invisible to `bash -n`, so
+# these assertions are the only thing that reds it on a dev box.
+def _leg_d_fired(cap):
+    """True iff a FAIL line names leg (d). The OK summary also names the
+    legs, so a bare substring test over the whole capture is ambiguous."""
+    return any("leg (d)" in ln for ln in cap.splitlines()
+               if ln.strip().startswith("FAIL"))
+
+# BITE (d): a backtick inside an UNQUOTED heredoc FAILs leg (d).
+n, cap = run_check({"test-bad-d.sh": "#!/usr/bin/env bash\n" + BAD_D + "\nexit 0\n",
+                    "test-clean.sh": PLAIN})
+if n < 1 or not _leg_d_fired(cap):
+    failures.append(f"BITE (d) expected >=1 failure naming leg (d), got {n}: {cap}")
+
+# 2d: the SAME bytes under a QUOTED delimiter are inert — must NOT fire.
+n, cap = run_check({"test-quoted-d.sh": "#!/usr/bin/env bash\n" + OK_D_QUOTED + "\nexit 0\n",
+                    "test-clean.sh": PLAIN})
+if n != 0 or _leg_d_fired(cap):
+    failures.append(f"2d quoted-delimiter control expected 0 leg-(d) failures, got {n}: {cap}")
+
+# 2e: the opt-out pragma on the opening line exempts an intentional substitution.
+n, cap = run_check({"test-pragma-d.sh": "#!/usr/bin/env bash\n" + OK_D_PRAGMA + "\nexit 0\n",
+                    "test-clean.sh": PLAIN})
+if n != 0 or _leg_d_fired(cap):
+    failures.append(f"2e pragma control expected 0 leg-(d) failures, got {n}: {cap}")
+
+# 2f: a diff3 conflict marker in a string is NOT a heredoc operator. This is a
+# REGRESSION control: the census's first parser matched a `<< word` out of
+# "<<<<<<< your customization" and then swallowed 1136 lines as a heredoc body.
+n, cap = run_check({"test-diff3-d.sh": "#!/usr/bin/env bash\n" + OK_D_DIFF3
+                                       + "\necho " + BT + "date" + BT + "\nexit 0\n",
+                    "test-clean.sh": PLAIN})
+if n != 0 or _leg_d_fired(cap):
+    failures.append(f"2f diff3-marker control expected 0 leg-(d) failures, got {n}: {cap}")
+
+# 2g: leg (d) second shape — a backtick inside a DOUBLE-quoted `python3 -c "…"`
+# body FAILs. A double-quoted shell string is expanded just like an unquoted
+# heredoc; this is the shape the BD-294 census caught in test-92.
+n, cap = run_check({"test-bad-dashc.sh": "#!/usr/bin/env bash\n" + BAD_D_DASHC + "\nexit 0\n",
+                    "test-clean.sh": PLAIN})
+if n < 1 or not _leg_d_fired(cap):
+    failures.append(f"2g -c double-quoted BITE expected >=1 leg-(d) failure, got {n}: {cap}")
+if "python3 -c" not in cap:
+    failures.append(f"2g failure message does not name the -c shape: {cap}")
+
+# 2h: the SAME bytes in a SINGLE-quoted -c body are inert — must NOT fire.
+n, cap = run_check({"test-sq-dashc.sh": "#!/usr/bin/env bash\n" + OK_D_DASHC_SQ + "\nexit 0\n",
+                    "test-clean.sh": PLAIN})
+if n != 0 or _leg_d_fired(cap):
+    failures.append(f"2h single-quoted -c control expected 0 leg-(d) failures, got {n}: {cap}")
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -243,8 +349,8 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "BITE 3/3 (legs a/b/c FAIL on assembled fixtures) + shim negative control PASSes + comment-gh no-FP" ;;
-    *) t_fail "BITE / shim-control tests failed (see Python output above)" ;;
+    0) t_pass "BITE 5/5 (legs a/b/c/d heredoc + d -c FAIL on assembled fixtures) + shim/comment-gh no-FP + leg-(d) quoted/pragma/diff3/single-quoted negative controls" ;;
+    *) t_fail "BITE / shim-control / leg-(d) control tests failed (see Python output above)" ;;
 esac
 
 # ─────────────────────────────────────────────────────────────────

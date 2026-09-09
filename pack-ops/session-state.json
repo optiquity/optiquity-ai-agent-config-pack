@@ -1,13 +1,13 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "0b77690",
-  "checkpoint": "2026-09-09T00:30:00Z",
+  "boundary_commit": "08e2fd4",
+  "checkpoint": "2026-09-09T16:00:00Z",
   "active": [
     "BD-294 (launch-gating, the LAST v11.0 client-facing blocker). D5 = the seed-slot exception reclassifies a client's own end-of-file marker blocks and blames their heading as a missing pack section. D3 = the shipped trinity instructs an edit the engine forbids: filling placeholders sidecars the client's work, a marker above the first H2 fails well-formedness, five OPTIONAL comments instruct a deletion the engine silently undoes. C1 engine+parsers -> C1b duplicate gate -> C2 template -> C3 Check 98 -> C4 recipe; C5 design record (parallel); C6 close."
   ],
   "in_flight_agents": [],
   "queue": [
-    "SERIAL: C2 (patch pending) -> C3 Check 98 (MUST follow C2: 54 findings on today's tree) -> C4 remediation recipe -> C6 close, which also records in BD-294 the census method this entry proved necessary: wrap-immune, inflection-complete, run on FLATTENED text, cross-checked with a second engine, never the shell grep wrapper. Then D4-new PACK-FEEDBACK.md (USER DECISION PENDING) -> the two untested install shapes -> GA is a user call.",
+    "SERIAL: CI hotfix (running) -> C3 Check 98 (MUST follow C2: 54 findings against the pre-C2 tree) -> C4 remediation recipe -> C6 close, which also records the census method and the heredoc-portability lesson in BD-294. Then D4-new PACK-FEEDBACK.md (USER DECISION PENDING) -> the two untested install shapes -> GA is a user call.",
     "OPEN inside BD-293: run the S5 map-derived install BEFORE the pause decision; EDITED-branch holding collision tests -e only; sweep 4.5 prefix match admits a malformed row; ci-shard-plan.py member list stale; Check 65+67 dead-record reword; the L3 axis-matching commit.",
     "BD-292 (v11.0-targeted, pack-dev tooling only, NOT client-shipped): its own Position says retargeting to v11.1 is a one-word user decision. UNDECIDED.",
     "v11.1 per client framing: G1..G7, N1..N3.",
@@ -21,7 +21,8 @@
     "Standing: PUBLIC-BOUND PACK; the commit-gate token is written in a SEPARATE bash call BEFORE git commit (a combined call is denied, and the token expires in 120s); session-state COMPACT; modes review=itemized intervention=full isolation=full; manifest is run -> COMMIT its result -> push, never collapsed. zsh: brace ${VAR} before ':' in any ref or path.",
     "USER (HARD): finish BD-293 + BD-294, then STOP. NO NEW BD ENTRIES, ever. Everything lands inside those two or is reported as not done.",
     "USER (BD-294, all taken): first section is '## Project Identity'; DELETE the whole how-to banner incl. the 'Copied from' provenance line; the placeholder guard is validate-pack Check 98 on every push; the 5 OPTIONAL comments get the POINTER form, not an inline recipe; reword only, do NOT move the comments below their headings.",
-    "USER: dashboard re-render at the END or on request, never a gate."
+    "USER: dashboard re-render at the END or on request, never a gate.",
+    "LESSON (record in BD-294 at C6): a local macOS battery CANNOT detect shell-active constructs inside an unquoted heredoc -- bash 3.2 tolerates what bash 5 rejects and `bash -n` never parses the body. Green locally is not green in CI for this class."
   ],
-  "cycle_position": "BD-294: C5, C1, C1b landed + CI-green. C2 landing in this commit -- the client-facing fix (coder 2 rounds, 2 reviews, 3 fix passes; 0/10 filled values surviving -> 9/9, 0 placeholders restored). Next C3 Check 98 (MUST follow C2: it reports 54 findings against the pre-C2 tree) -> C4 remediation recipe -> C6 close. C2 edits fixture inputs, so manifest-sync runs before the push."
+  "cycle_position": "BD-294: C5, C1, C1b, C2 all LANDED. C2's CI run failed on a shell-portability defect in one test file, not a product defect; the hotfix lands in this commit and Check 83 gains a leg that catches the class against real history. Next C3 Check 98 (MUST follow C2) -> C4 recipe -> C6 close."
 }

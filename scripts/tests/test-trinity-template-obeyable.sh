@@ -291,7 +291,7 @@ CANON="$TEMPLATE_DIR/CLAUDE.md"
 OPT_HEADING='## gRPC and Proto3 rules'
 
 # Locate the OPTIONAL comment, its heading, and the next H2 after it.
-read -r OPT_LN HEAD_LN NEXT_LN <<EOF
+read -r OPT_LN HEAD_LN NEXT_LN <<EOF  # ci-fragility: allow-shell-active-heredoc
 $(awk -v h="$OPT_HEADING" '
     /^<!-- OPTIONAL:/ { last_opt = NR }
     $0 == h { head = NR; opt = last_opt; next }

@@ -47,11 +47,11 @@ t_fail() {
 
 printf "\n=== Group 0: Module import + Check 19 signature ===\n"
 
-python3 -c "
-import sys, inspect
-sys.path.insert(0, '$REPO_ROOT/scripts')
+REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 - <<'EOF' > /tmp/vp-check19-import.out 2>&1
+import os, sys, inspect
+sys.path.insert(0, os.environ['REPO_ROOT'] + '/scripts')
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', os.environ['VALIDATE'])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -67,13 +67,13 @@ if 'trinity_root' not in params or 'label' not in params:
 defaults = {n: p.default for n, p in sig.parameters.items()
             if p.default is not inspect.Parameter.empty}
 if defaults.get('trinity_root') is not None:
-    print(f'FAIL_DEF_C19 expected trinity_root default None; got {defaults.get(\"trinity_root\")!r}')
+    print(f'FAIL_DEF_C19 expected trinity_root default None; got {defaults.get("trinity_root")!r}')
     sys.exit(1)
 if defaults.get('label') != 'project-template':
-    print(f'FAIL_DEF_C19 expected label default project-template; got {defaults.get(\"label\")!r}')
+    print(f'FAIL_DEF_C19 expected label default project-template; got {defaults.get("label")!r}')
     sys.exit(1)
 print('OK')
-" > /tmp/vp-check19-import.out 2>&1
+EOF
 
 if grep -q "^OK$" /tmp/vp-check19-import.out; then
     t_pass "validate-pack.py imports + Check 19 signature accepts (trinity_root, label) with sentinel-None default"
@@ -88,11 +88,11 @@ fi
 
 printf "\n=== Group 1: Check 19 PASS paths (no body scaffolding) ===\n"
 
-python3 <<EOF
-import sys, tempfile, pathlib, shutil, io, contextlib
-sys.path.insert(0, '$REPO_ROOT/scripts')
+REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 - <<'EOF'
+import os, sys, tempfile, pathlib, shutil, io, contextlib
+sys.path.insert(0, os.environ['REPO_ROOT'] + '/scripts')
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', os.environ['VALIDATE'])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -188,11 +188,11 @@ esac
 
 printf "\n=== Group 2: Check 19 FAIL paths (body scaffolding present) ===\n"
 
-python3 <<EOF
-import sys, tempfile, pathlib, shutil, io, contextlib
-sys.path.insert(0, '$REPO_ROOT/scripts')
+REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 - <<'EOF'
+import os, sys, tempfile, pathlib, shutil, io, contextlib
+sys.path.insert(0, os.environ['REPO_ROOT'] + '/scripts')
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', os.environ['VALIDATE'])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -288,11 +288,11 @@ esac
 
 printf "\n=== Group 3: Override 9 — Check 19 invocations independent (no cross-location coupling) ===\n"
 
-python3 <<EOF
-import sys, tempfile, pathlib, shutil, io, contextlib
-sys.path.insert(0, '$REPO_ROOT/scripts')
+REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 - <<'EOF'
+import os, sys, tempfile, pathlib, shutil, io, contextlib
+sys.path.insert(0, os.environ['REPO_ROOT'] + '/scripts')
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', os.environ['VALIDATE'])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -382,11 +382,11 @@ esac
 
 printf "\n=== Group 4: Backward compatibility (default args for Check 19) ===\n"
 
-python3 <<EOF
-import sys, io, contextlib
-sys.path.insert(0, '$REPO_ROOT/scripts')
+REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 - <<'EOF'
+import os, sys, io, contextlib
+sys.path.insert(0, os.environ['REPO_ROOT'] + '/scripts')
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', os.environ['VALIDATE'])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 

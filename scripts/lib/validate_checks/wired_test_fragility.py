@@ -3,8 +3,8 @@ fragility guard (BD-222).
 
 This module owns ONE genuinely-isolated check body (Check 83,
 `check_wired_test_ci_fragility`) — the standing anti-drift guard that statically
-scans every CI-WIRED test script for the three CI-environment-fragile bug classes
-that took BD-219's first sharded CI run red, so the class cannot silently recur:
+scans every CI-WIRED test script for the CI-environment-fragile bug classes
+that took a sharded CI run red, so the class cannot silently recur:
 
   (a) a HARDCODED absolute dev/home path (`/Users/…`, `/home/…`, `/opt/homebrew/`,
       `/private/var/folders/`, `/var/folders/`, a quoted `"$HOME/…"` literal) that
@@ -13,6 +13,25 @@ that took BD-219's first sharded CI run red, so the class cannot silently recur:
       without a fake-`gh`-on-PATH shim, so it passes only because the dev box's
       `gh` is authenticated and fails on CI's unauthenticated runner);
   (c) the `grep -c … || echo 0` "double-zero" failure-masking idiom.
+  (d) a SHELL-ACTIVE construct (a backtick or a `$(`) inside an UNQUOTED heredoc
+      body — the BD-294 class. An unquoted heredoc delimiter (`<<EOF`, not
+      `<<'EOF'`) makes the WHOLE body shell-expanded, so a backtick in what reads
+      as inert payload — a Python comment, a prose sentence, a markdown snippet —
+      is a command substitution the shell EXECUTES. Two ways it bites, and the
+      severity is why leg (d) scans the payload legs (a)/(c) already scan:
+        • PARSE-ABORT: if the backticked text is not valid shell, bash ABORTS the
+          whole command. The bash version decides whether that is fatal — bash 5
+          (the Ubuntu CI runner) returns non-zero so the test group FAILs, while
+          bash 3.2 (macOS) substitutes empty and continues with status 0. A dev
+          box therefore goes GREEN on the very defect that takes CI RED.
+        • SILENT INJECTION: if the backticked text IS a runnable command, its
+          stdout is spliced into the payload with no error at all, on every
+          platform.
+      Both are invisible to `bash -n`, which does not parse a heredoc body.
+      The fix is a QUOTED delimiter (`<<'EOF'`) with values passed through the
+      ENVIRONMENT and read via `os.environ` — the idiom already used by
+      `test-install-map.sh`, `test-validate-pack-check-16.sh` and this check's
+      own `test-validate-pack-check-83.sh`.
 
 The guard is a NEW genuinely-isolated check per the FIRM own-module-per-new-check
 convention (`scripts/lib/validate_checks/README.md` § "The FIRM CONVENTION"):
@@ -42,7 +61,40 @@ Leg-specific scan scope: legs (a) and (c) scan ALL lines (a hardcoded path or a
 `grep -c…||echo 0` idiom is a bug even inside a heredoc/comment — BD-219's path was
 in a heredoc that looked like a comment); leg (b) strips comments+strings FIRST
 (the measured comment false-positives) and its verdict is per-FILE (a file FAILs
-iff a direct `gh`-exec token survives strip AND no fake-`gh` shim is installed).
+iff a direct `gh`-exec token survives strip AND no fake-`gh` shim is installed);
+leg (d) scans ONLY the two SHELL-EXPANDED payload shapes — an UNQUOTED heredoc
+body and a DOUBLE-quoted `python3 -c "…"` body. The inert forms (a
+quoted-delimiter heredoc, a single-quoted `-c '…'`) are not scanned at all.
+Covering BOTH shapes is evidence-driven, not symmetry-for-its-own-sake: the
+BD-294 census found a SECOND live instance of the class in the `-c "…"` shape
+(`test-validate-pack-check-92.sh` was executing a backticked `!= 89` out of a
+Python comment on every run), which a heredoc-only guard would have missed.
+
+Leg (d) measure-then-bound (`ci-guard-measure-then-bound`), measured over the
+143-file candidate set at the BD-294 hotfix: 102 unquoted heredocs / 525 quoted
+plus 84 double-quoted `-c` bodies / 29 single-quoted; 6 shell-active hits —
+5 DEFECT (4 `test-validate-pack-check-19.sh` backticks that took CI red, and
+1 `test-validate-pack-check-92.sh` backtick pair in the `-c "…"` shape; both
+files fixed in the same change by converting every payload region to a quoted
+delimiter + `os.environ`) and 1 KEEP
+(`test-trinity-template-obeyable.sh`, a `read … <<EOF` wrapping `$(awk …)` where
+the substitution IS the payload and a quoted delimiter would defeat the point).
+The KEEP is exempted by an INLINE PRAGMA on the heredoc's OPENING line
+(`ci-fragility: allow-shell-active-heredoc`) rather than by a path:line entry in
+`ci-fragility-allowlist.txt`, for three reasons: (1) a line number DRIFTS and the
+pack forbids line-number cross-references; (2) the existing file-level allowlist
+`continue`s the WHOLE file, which would blind that file to legs (a)/(b)/(c) too —
+a real blind spot; (3) the pragma travels WITH the code and documents itself at
+the site. Exemption count is therefore exactly 1, and it is greppable:
+`git grep -n "allow-shell-active-heredoc"`.
+
+Leg (d) does NOT flag a bare `$VAR` / `${VAR}` interpolation. Measured basis:
+interpolating `$REPO_ROOT` / `$VALIDATE` is the REASON ~all 102 unquoted heredocs
+are unquoted, so banning it would ban the construct rather than bound it, and
+"intended vs accidental interpolation" is not mechanically decidable. The
+severity split is the justification: a bare `$VAR` can only interpolate an
+unintended VALUE, whereas a backtick / `$(` EXECUTES A COMMAND and can abort the
+parse. Leg (d) bounds the executable class.
 
 An OPTIONAL second allowlist `scripts/ci-fragility-allowlist.txt` is supported
 (absent = empty exemption set, per the `load_allowlist()` missing-file precedent),
@@ -100,6 +152,112 @@ SHIM = re.compile(r'(?:cat|printf|tee|echo)\b[^\n]*>\s*["\']?\S*?/gh["\']?'
 # Scanned on ALL lines (a literal is a bug even in a heredoc).
 LEG_C = re.compile(r'grep\s+(?:-c[A-Za-z]*|--count)\b.*\|\|\s*(?:echo|printf)\s+["\']?0\b')
 
+# ── Leg (d) — shell-active construct inside an UNQUOTED heredoc (BD-294). ─────
+# LEG_D_OPEN matches a heredoc REDIRECTION OPERATOR and captures whether the
+# delimiter is quoted. Groups: 1 = `-` for the tab-stripping `<<-` form,
+# 2 = a backslash-escaped delimiter (`<<\EOF`, quoted), 3 = the quote char
+# (`'`/`"`, quoted) or empty (UNQUOTED — the scanned case), 4 = the delimiter.
+#   `(?<!<)` + `(?!<)` exclude the `<<<` here-string AND the 7-char `<<<<<<<`
+#   diff3 conflict marker. That exclusion is LOAD-BEARING, not defensive: the
+#   census's first parser matched `<< your` out of the literal string
+#   "<<<<<<< your customization" in test-customization-preserve.sh and then
+#   swallowed 1136 lines of ordinary shell as a "heredoc body".
+LEG_D_OPEN = re.compile(
+    r"(?<!<)<<(-?)(?!<)\s*(\\?)(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\3")
+
+# The shell-active constructs. A backtick or a `$(` inside an EXPANDED heredoc
+# body is a command substitution the shell runs. `(?<!\\)` honours an escaped
+# literal (`\`` / `\$(`), which is already inert.
+LEG_D_ACTIVE = re.compile(r"(?<!\\)`|(?<!\\)\$\(")
+
+# The inline opt-out, placed on the heredoc's OPENING line. Sized to the
+# measured KEEP set (exactly 1 occurrence in the tree at landing).
+LEG_D_PRAGMA = re.compile(r"ci-fragility:\s*allow-shell-active-heredoc")
+
+# The SECOND shell-expanded payload shape: `python3 -c "…"`. A double-quoted
+# shell string is expanded exactly like an unquoted heredoc body, so a backtick
+# in it is equally a command substitution. This sub-leg is NOT hypothetical: the
+# BD-294 census found a REAL second instance of the class here
+# (`test-validate-pack-check-92.sh`, a backticked `!= 89` inside a Python comment
+# that the shell was executing on every run — "!=: command not found" on stderr,
+# exit 0, silently splicing empty into the payload). A SINGLE-quoted `-c '…'`
+# body is inert and is not matched.
+LEG_D_DASHC = re.compile(r"(?:python3?|python)\s+-c\s+\"")
+
+
+def _dashc_active_hits(text):
+    """Yield (lineno, snippet) for every shell-active construct inside a
+    DOUBLE-quoted `python3 -c "…"` body (leg (d), second shape).
+
+    The body extent is walked CHARACTER-wise honouring backslash escapes (the
+    bodies routinely carry `\\"` inner quotes), not by a line heuristic — a
+    line-based scan mis-tracks multi-line bodies and both over- and
+    under-reports. An unterminated body means the parse lost sync: it is
+    SKIPPED (lenient), never reported.
+    """
+    pos = 0
+    n = len(text)
+    while True:
+        m = LEG_D_DASHC.search(text, pos)
+        if not m:
+            return
+        start = m.end()               # first char INSIDE the quoted body
+        i, closed = start, False
+        while i < n:
+            c = text[i]
+            if c == "\\":             # escape consumes the next char
+                i += 2
+                continue
+            if c == '"':
+                closed = True
+                break
+            i += 1
+        if not closed:
+            return                    # lost sync — stop scanning this file
+        open_line = text.count("\n", 0, m.start()) + 1
+        if not LEG_D_PRAGMA.search(text[m.start():start]):
+            for mm in LEG_D_ACTIVE.finditer(text[start:i]):
+                lineno = text.count("\n", 0, start + mm.start()) + 1
+                yield (lineno, open_line)
+        pos = i + 1
+
+
+def _unquoted_heredoc_active_hits(lines):
+    """Yield (body_lineno, body_text, open_lineno) for every shell-active
+    construct inside an UNQUOTED heredoc body (leg (d)).
+
+    Bodies of QUOTED-delimiter heredocs are inert and are skipped wholesale.
+    An opening line carrying the LEG_D_PRAGMA exempts that one heredoc.
+
+    Heredoc bodies are NOT shell commands, so a nested `<<` inside a body is
+    data, never a new operator — the body is consumed without re-scanning for
+    operators. An UNTERMINATED heredoc means the parse has lost sync; it yields
+    NOTHING (lenient) rather than emitting hits the parser cannot stand behind.
+    """
+    i, n = 0, len(lines)
+    while i < n:
+        opens = []
+        for m in LEG_D_OPEN.finditer(lines[i]):
+            dash, backslash, quote, delim = m.groups()
+            opens.append((delim, bool(backslash or quote), dash == "-", i + 1,
+                          bool(LEG_D_PRAGMA.search(lines[i]))))
+        i += 1
+        for delim, quoted, dashed, open_ln, pragma in opens:
+            body, closed = [], False
+            while i < n:
+                # A `<<-` terminator may be indented with TABS only.
+                probe = lines[i].lstrip("\t") if dashed else lines[i]
+                if probe == delim:
+                    closed, i = True, i + 1
+                    break
+                body.append((i + 1, lines[i]))
+                i += 1
+            if quoted or pragma or not closed:
+                continue
+            for ln, text in body:
+                if LEG_D_ACTIVE.search(text):
+                    yield (ln, text, open_ln)
+
 
 def _strip_comments_strings(line):
     """Blank out a shell line's comment tail + quoted-string CONTENTS (leg (b)
@@ -136,9 +294,10 @@ def _strip_comments_strings(line):
 def check_wired_test_ci_fragility():
     """Check 83 — wired-test CI-environment fragility guard (BD-222).
 
-    Statically scan every CI-WIRED test script for three CI-environment-fragile
+    Statically scan every CI-WIRED test script for four CI-environment-fragile
     bug classes — (a) hardcoded dev/home paths, (b) direct un-shimmed live-`gh`
-    calls, (c) the `grep -c … || echo 0` double-zero idiom — so the BD-219 CI-red
+    calls, (c) the `grep -c … || echo 0` double-zero idiom, (d) a shell-active
+    construct (backtick / `$(`) inside an UNQUOTED heredoc body — so the CI-red
     class is caught at validate-pack/PR time, before push.
 
     Candidate set = the CI-wired set = raw three-glob (scripts/test*.sh +
@@ -146,6 +305,13 @@ def check_wired_test_ci_fragility():
     scripts/ci-test-wiring-allowlist.txt (Check-42 mirror). An optional
     scripts/ci-fragility-allowlist.txt exempts a legitimate hit (absent = empty
     set; no file at landing). SKIP-lenient if no test*.sh on disk.
+
+    Leg (d) is the BD-294 class and the reason this guard must exist at all: the
+    defect is INVISIBLE to a macOS dev box. bash 3.2 substitutes empty and exits
+    0 on an unparseable command substitution, while bash 5 (the CI runner) aborts
+    the command and reds the group — and `bash -n` sees neither, because a
+    heredoc body is not parsed until expansion. Leg (d)'s exemption is an inline
+    pragma on the heredoc's opening line, NOT a path:line allowlist entry.
 
     Cheap (ci-check-runtime-compounding): three dir globs + one small allowlist
     parse + a read-once regex pass over the small wired set; no subprocess.
@@ -241,6 +407,43 @@ def check_wired_test_ci_fragility():
                     f"branch on grep's own exit status instead."
                 )
 
+        # ── Leg (d): scan ONLY UNQUOTED heredoc bodies (a quoted-delimiter body
+        # is inert). Report per-line, naming the heredoc that opened the body.
+        for ln, text, open_ln in _unquoted_heredoc_active_hits(lines):
+            problems = True
+            fail(
+                f"{rel}:{ln} — leg (d) SHELL-ACTIVE construct (backtick or `$(`) "
+                f"inside the UNQUOTED heredoc opened at line {open_ln}. The "
+                f"unquoted delimiter makes the whole body shell-expanded, so this "
+                f"is a command substitution the shell EXECUTES — not inert text. "
+                f"On bash 5 (the CI runner) an unparseable substitution ABORTS the "
+                f"command and reds the group; on bash 3.2 (macOS) it substitutes "
+                f"empty and exits 0, so the dev box goes green on the very defect "
+                f"that reds CI. `bash -n` cannot see it either (a heredoc body is "
+                f"not parsed until expansion). Fix: quote the delimiter "
+                f"(`<<'EOF'`) and pass values through the ENVIRONMENT, reading "
+                f"them with os.environ (see test-validate-pack-check-16.sh). If "
+                f"the substitution IS the intended payload, mark the opening line "
+                f"`# ci-fragility: allow-shell-active-heredoc`. "
+                f"Offending line: {text.strip()[:80]}"
+            )
+
+        # ── Leg (d), second shape: a DOUBLE-quoted `python3 -c "…"` body is
+        # shell-expanded exactly like an unquoted heredoc body.
+        for ln, open_ln in _dashc_active_hits(text):
+            problems = True
+            fail(
+                f"{rel}:{ln} — leg (d) SHELL-ACTIVE construct (backtick or `$(`) "
+                f"inside the DOUBLE-quoted `python3 -c \"…\"` body opened at line "
+                f"{open_ln}. A double-quoted shell string is expanded just like "
+                f"an unquoted heredoc, so this is a command substitution the "
+                f"shell EXECUTES — it runs on every invocation and splices its "
+                f"output (or empty, plus a 'command not found' on stderr) into "
+                f"the payload. Fix: use a QUOTED heredoc (`python3 - <<'EOF'`) "
+                f"and pass values through the ENVIRONMENT, reading them with "
+                f"os.environ (see test-validate-pack-check-16.sh)."
+            )
+
         # ── Leg (b): strip comments+strings FIRST, then decide per-FILE (FAIL iff
         # a direct gh-exec token survives strip AND no fake-gh shim is installed).
         stripped = [_strip_comments_strings(ln) for ln in lines]
@@ -263,9 +466,11 @@ def check_wired_test_ci_fragility():
             f"Check 83 — no CI-environment-fragile idiom in the "
             f"{len(candidate)} CI-wired test script(s): 0 hardcoded dev/home "
             f"paths (a), 0 un-shimmed live-`gh` files (b), 0 double-zero idioms "
-            f"(c). (Scan set = raw three-glob − ci-test-wiring-allowlist.txt; "
-            f"the unauthenticated CI `tests` runner is the transitive-`gh` "
-            f"backstop.)"
+            f"(c), 0 shell-active constructs in a shell-expanded payload — "
+            f"unquoted heredoc or double-quoted `python3 -c` body (d). (Scan set "
+            f"= raw three-glob − ci-test-wiring-allowlist.txt; the "
+            f"unauthenticated CI `tests` runner is the transitive-`gh` backstop; "
+            f"(d) is the macOS-invisible bash-3.2-vs-5 class.)"
         )
 
 
@@ -287,6 +492,10 @@ __all__ = [
     "GH_EXEC",
     "SHIM",
     "LEG_C",
+    "LEG_D_OPEN",
+    "LEG_D_ACTIVE",
+    "LEG_D_PRAGMA",
+    "LEG_D_DASHC",
     # ── The check body (Check 83, resolved by bare name in _build_check_registry) ──
     "check_wired_test_ci_fragility",
 ]

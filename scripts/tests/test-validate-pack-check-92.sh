@@ -78,11 +78,11 @@ t_fail() {
 
 printf "\n=== Group 0: Module import + Check 92 symbol registration ===\n"
 
-python3 -c "
-import sys
-sys.path.insert(0, '$REPO_ROOT/scripts')
+REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 - <<'EOF' > /tmp/vp-check92-import.out 2>&1
+import os, sys
+sys.path.insert(0, os.environ['REPO_ROOT'] + '/scripts')
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', os.environ['VALIDATE'])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 if not hasattr(mod, 'check_mktemp_t_portability'):
@@ -99,7 +99,7 @@ if 92 not in nums:
 if len(mod._build_check_registry()) != mod.CHECK_REGISTRY_EXPECTED_COUNT:
     print('FAIL_COUNT_MISMATCH'); sys.exit(1)
 print('OK')
-" > /tmp/vp-check92-import.out 2>&1
+EOF
 
 if grep -q "^OK$" /tmp/vp-check92-import.out; then
     t_pass "validate-pack.py imports + Check 92 registered + DYNAMIC count invariant holds"
