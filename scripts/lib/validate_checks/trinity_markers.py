@@ -1,5 +1,13 @@
-"""validate_checks.trinity_markers — Check 91: trinity marker-section
-well-formedness (BD-136).
+"""validate_checks.trinity_markers — trinity marker checks: Check 91
+(marker-section well-formedness, BD-136) and Check 98 (shipped client-editable
+content is marker-backed, BD-294).
+
+Check 91 asks whether the marker pairs that EXIST are well-formed. Check 98 asks
+the complementary question — whether the shipped editable content the client is
+told to touch is BACKED by a pair at all, and whether any shipped line instructs
+an edit the graft engine would silently undo. The two share this module's single
+`_scan_markers` pass (one marker parser, one fence predicate); Check 98's own
+section sits at the foot of the file with its full rationale.
 
 The CLIENT trinity (`project-template/{CLAUDE,AGENTS,GEMINI}.md`) wraps its
 project-owned customizations in `<!-- BEGIN project-owned -->` …
@@ -72,6 +80,7 @@ no subprocess-per-row. SKIP-lenient for the docs/pack leg off a git work tree
 (a scratch trinity_root outside REPO_ROOT skips it entirely).
 """
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -136,6 +145,11 @@ def _scan_markers(text: str) -> dict:
       h2_list            ordered rstripped `## ` heading lines (fence-aware)
       real_pairs         count of BEGIN…END matched pairs (any shape)
       unterminated_fence line number of an unclosed ``` fence at EOF, else 0
+      fenced             set of 1-based line numbers inside a ``` fence (the
+                         fence delimiter lines included). Check 98 consumes it
+                         so the module carries ONE fence parser, not two — the
+                         same single-predicate discipline the S2 cross-check
+                         applies across the Python/bash pair.
 
     The Shape classification MIRRORS the bash merger's `_mp_regions`: the
     exact `## Project addenda` seed slot is Shape A even with inner
@@ -163,9 +177,11 @@ def _scan_markers(text: str) -> dict:
     errors = []
     h2_list = []
     real_pairs = 0
+    fenced = set()
 
     for i, raw in enumerate(text.splitlines(), start=1):
         if raw.lstrip().startswith("```"):
+            fenced.add(i)
             if not infence:
                 infence, fence_open_ln = True, i
             else:
@@ -174,6 +190,7 @@ def _scan_markers(text: str) -> dict:
                 region["sawbody"] = True   # fenced content counts as body
             continue
         if infence:
+            fenced.add(i)
             if region is not None:
                 region["sawbody"] = True
             continue
@@ -262,7 +279,8 @@ def _scan_markers(text: str) -> dict:
 
     return {"regions": regions, "errors": errors, "h2_list": h2_list,
             "real_pairs": real_pairs,
-            "unterminated_fence": fence_open_ln if infence else 0}
+            "unterminated_fence": fence_open_ln if infence else 0,
+            "fenced": fenced}
 
 
 def _check_renamed_from_syntax(begin_raw: str):
@@ -473,4 +491,294 @@ def check_trinity_marker_wellformed(
            f"project-owned marker pairs well-formed (V-1..V-8)")
 
 
-__all__ = ["check_trinity_marker_wellformed"]
+# ═══════════════════════════════════════════════════════════════════════════
+# Check 98 — shipped client-editable trinity content must be marker-backed
+# (BD-294 D3). Self-contained unit: constants, helpers, check body.
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# WHY: the shipped `project-template/{CLAUDE,AGENTS,GEMINI}.md` are grafted into
+# a client's live trinity by `scripts/lib/marker-preserve.sh`. That engine keeps
+# ONLY what sits inside a `<!-- BEGIN project-owned -->` … `<!-- END
+# project-owned -->` pair. So two shipped shapes are un-obeyable by construction:
+#
+#   (1) a fill-in placeholder OUTSIDE a pair — the client's filled-in value is
+#       not marker-backed, so the next graft silently reverts it to the
+#       placeholder; and
+#   (2) an instruction telling the client to DELETE shipped pack content — the
+#       graft restores whatever the client deleted, so the instruction cannot be
+#       honoured (and a whole-section deletion that also takes the preceding
+#       `OPTIONAL:` comment sidecars the WRONG section).
+#
+# The guard runs at push time so the shape is caught when it is AUTHORED, not
+# when a client hits it. The suppress-not-delete alternative the shipped
+# comments now name lives in `project-template/docs/pack/PM-CHAT.md` § "How to
+# add project-owned content to trinity files".
+#
+# measure-then-bound (`ci-guard-measure-then-bound`): the matching logic was run
+# over the real trinity BEFORE the guard was written. Pre-remediation bytes: 57
+# findings across the three files (30 unbacked-placeholder lines + 27
+# unhonourable-instruction lines). Every one classified STRIP (a real defect,
+# all fixed in the same BD); the KEEP set is 0, so there is NO allowlist constant
+# at all — an absent allowlist cannot grow. Post-remediation: 0.
+#
+# absence-of-backing (`declare-verify-backing`): leg 1 keys on the placeholder
+# being OUTSIDE a pair, not on pairs existing somewhere in the file. Strip the
+# pair from around a placeholder and the guard FAILs — that mutant is asserted in
+# `scripts/tests/test-validate-pack-check-98.sh`.
+#
+# Cost (`ci-check-runtime-compounding`): ONE `git ls-files` subprocess, then one
+# read + one linear pass per file over 3 files (~1600 lines). No filesystem walk,
+# no rglob, no subprocess-per-file. Fence state comes from the module's single
+# `_scan_markers` pass, so the module carries ONE fence parser, not two.
+
+# The negative lookahead excludes an inline markdown LINK whose text is an
+# ALL-CAPS token (`[CLAUDE.md](./CLAUDE.md)`, `[MERGE-STRATEGY](…)`) — a link is
+# a cross-reference, not a fill-in slot. Measured: the shipped placeholder
+# census is 30 either way, and a line carrying BOTH still reports only the
+# placeholder (`[^\]\n]` cannot cross a `]`, so a later link on the same line
+# cannot suppress an earlier placeholder). KNOWN residual false-positive class:
+# a bracketed ALL-CAPS acronym with no link target (`[README]`) is
+# byte-indistinguishable from a bare placeholder (`[TRANSPORT]`) and is still
+# flagged. That is the fail-loud reading; the remedy is a deliberate edit here,
+# never an allowlist (the measured legitimate set is empty — see the header).
+_C98_PLACEHOLDER_RE = re.compile(r"\[[A-Z][A-Z_]{2,}(?![^\]\n]*\]\()")
+
+# The instruction vocabulary is a pair of MODULE-LEVEL constants (not an inline
+# literal) so the shipped `OPTIONAL:` wording and this guard cannot drift apart
+# unnoticed: the per-check test asserts the built regex matches 0 lines in the
+# shipped files and >0 in a pre-remediation-shaped fixture.
+_C98_DELETION_VERBS = (
+    "delete", "deletes", "deleting", "remove", "removes", "removing",
+    "strip", "strips", "stripping", "erase", "erases", "erasing",
+    "drop", "drops", "dropping", "cut", "excise", "excises", "excising",
+)
+# Bounded to the MEASURED set (`ci-guard-measure-then-bound`): every member was
+# re-run over BOTH the shipped trinity (must stay 0) and the pre-remediation
+# bytes before landing. `file` (singular) is DELIBERATELY ABSENT — it is a
+# common noun in this prose and measured 3 FALSE POSITIVES on the shipped
+# trinity, one per file, all on the destructive-ops line `…`git worktree`
+# (add/remove/prune) — on a file with uncommitted…`. Do not assume coverage of
+# an unlisted noun: widen only after re-measuring both corpora.
+_C98_PACK_CONTENT_NOUNS = (
+    "section", "sections", "subsection", "subsections",
+    "block", "blocks", "heading", "headings", "placeholder", "placeholders",
+    "text", "files", "lines", "paragraph", "content",
+)
+# An instruction NOT to delete is the correct shipped wording, so it is spared —
+# the same negated-sentence carve-out Check 94 LEG 2 applies to the Case-3 KEEP
+# sentence. The set is deliberately tight: `does not` is NOT a member, so
+# "If it does not apply, delete the entire section" still BITEs.
+_C98_NEGATION_TOKENS = (
+    "do not", "don't", "never", "must not", "should not", "shouldn't",
+    "cannot", "can't", "rather than", "instead of", "without",
+)
+_C98_NEG_WINDOW = 24      # chars of lead text searched for a negation
+_C98_GAP = 40             # max chars allowed between the verb and its object
+
+
+def _c98_alt(words):
+    """Regex alternation, longest-first so a `\\b` cannot clip a longer member."""
+    return "|".join(re.escape(w) for w in sorted(words, key=len, reverse=True))
+
+
+# The gap class excludes `.` — a period ends the sentence, which bounds a match
+# to one clause — but ALLOWS a backtick, because a markdown code span between
+# the verb and its object (``delete the `## iOS 26` section``) is the most
+# likely re-introduction wording: the pack backticks section names everywhere.
+# Measured: allowing the backtick adds 0 findings on the shipped trinity and
+# leaves the pre-remediation count at 57. Residual: a code span containing a
+# `.` still blocks the match — the sentence bound wins over the span.
+_C98_INSTRUCTION_RE = re.compile(
+    r"\b(?:" + _c98_alt(_C98_DELETION_VERBS) + r")\b"
+    r"[^.\n]{0," + str(_C98_GAP) + r"}?"
+    r"\b(?:" + _c98_alt(_C98_PACK_CONTENT_NOUNS) + r")\b",
+    re.IGNORECASE)
+_C98_NEGATION_RE = re.compile(
+    r"\b(?:" + _c98_alt(_C98_NEGATION_TOKENS) + r")\b", re.IGNORECASE)
+
+
+def _c98_candidate_files(trinity_root: Path):
+    """Return `(available, paths)` — the git-TRACKED trinity ×3 under `trinity_root`.
+
+    `available` is False when `trinity_root` sits outside REPO_ROOT, when the
+    `git` binary is absent, or when the tree is not a git work tree — all three
+    ⇒ the caller SKIPs lenient (a fresh non-git checkout is never a violation).
+    Enumeration is git-TRACKED (`git ls-files`), NEVER a filesystem walk: an
+    untracked stray `CLAUDE.md` is not shipped, so it is not this guard's
+    business. ONE bounded subprocess. Resolves through the module's REPO_ROOT so
+    a per-check test can monkeypatch it to a scratch repo (the Check 63/93
+    technique).
+    """
+    try:
+        rel = trinity_root.resolve().relative_to(REPO_ROOT.resolve())
+    except ValueError:
+        return (False, [])
+    pathspecs = [(rel / name).as_posix() for name in _TRINITY_NAMES]
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "--"] + pathspecs,
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+    except FileNotFoundError:
+        return (False, [])
+    if result.returncode != 0:
+        return (False, [])
+    return (True, [REPO_ROOT / row.strip()
+                   for row in result.stdout.splitlines() if row.strip()])
+
+
+def _c98_scan_text(text: str):
+    """Return one file's findings: sorted list of (lineno, kind, evidence).
+
+    ONE `_scan_markers` pass supplies BOTH the fenced-line set and the
+    project-owned regions; then one linear pass over the lines.
+
+    LEG 1 `unbacked-placeholder` — a `[UPPER_TOKEN` occurrence on a line that is
+    NOT strictly inside a marker region. Reported once per line (the tokens are
+    listed in the evidence), so the count is a LINE count. A line inside an
+    UNCLOSED pair counts as unbacked: `_scan_markers` emits no region for an
+    orphan BEGIN, which is the fail-loud reading — an unterminated pair backs
+    nothing (Check 91 V-1 reports the orphan itself). A third shape lands the
+    same way: a WELL-FORMED pair opened above the first `## ` heading also
+    yields no region (`_scan_markers` reports it as `nohost`), so its contents
+    are unbacked too — Check 91 fails that shape independently, so it can never
+    ship.
+
+    LEG 2 `unhonourable-instruction` — an affirmative deletion verb aimed at a
+    pack-content noun. Matched on a SLIDING TWO-LINE WINDOW (line i joined to
+    line i+1) so a phrase broken across a hard wrap is still caught; a match
+    whose first character falls in the i+1 half is skipped because window i+1
+    owns it — that attribution rule is what keeps the two-line window from
+    double-counting. Leg 2 does NOT skip marker-backed lines: a seed pair's
+    contents are shipped pack bytes too, so a delete-instruction inside one is
+    just as un-obeyable.
+
+    Both legs skip fenced lines AS ATTRIBUTION SITES: content inside a ``` fence
+    is an illustrative example, not a shipped fill-in slot — the same INERT
+    reading the pinned S2 fence predicate gives markers. Leg 2's WINDOW is the
+    deliberate exception: the i+1 half is taken unconditionally, so a
+    hard-wrapped instruction whose object half lands on a fence opener carrying
+    a language tag is still attributed to the NON-fenced prose line that opened
+    it. An instruction is an instruction however its object is typeset, and that
+    reading is fail-loud (a red CI on a clean tree), never a silent miss.
+    """
+    scan = _scan_markers(text)
+    fenced = scan["fenced"]
+    backed = set()
+    for region in scan["regions"]:
+        backed.update(range(region["begin_ln"] + 1, region["end_ln"]))
+
+    lines = text.splitlines()
+    out = []
+    for i, raw in enumerate(lines, start=1):
+        if i in fenced:
+            continue
+        if i not in backed:
+            tokens = sorted({m.group(0)
+                             for m in _C98_PLACEHOLDER_RE.finditer(raw)})
+            if tokens:
+                out.append((i, "unbacked-placeholder",
+                            ", ".join(t + "…]" for t in tokens)))
+        window = raw + " " + (lines[i] if i < len(lines) else "")
+        for m in _C98_INSTRUCTION_RE.finditer(window):
+            if m.start() > len(raw):
+                continue                      # window i+1 owns this match
+            lead = window[max(0, m.start() - _C98_NEG_WINDOW):m.start()]
+            if _C98_NEGATION_RE.search(lead):
+                continue                      # "do not delete it" is the FIX
+            out.append((i, "unhonourable-instruction", m.group(0)))
+            break                             # one finding per line per leg
+    out.sort()
+    return out
+
+
+def check_trinity_editable_marker_backed(trinity_root, label) -> None:
+    """Check 98 — shipped client-editable trinity content must be marker-backed (BD-294).
+
+    Two legs over the git-TRACKED client trinity (the section header above
+    carries the WHY, the measure-then-bound record, and the cost argument):
+
+      LEG 1  a fill-in placeholder OUTSIDE a `<!-- BEGIN/END project-owned -->`
+             pair — the client's filled-in value would not survive the next
+             graft. Catches the ABSENCE-of-backing instance (a placeholder whose
+             enclosing pair was removed), not merely "pairs exist somewhere".
+      LEG 2  an affirmative instruction to DELETE shipped pack content — the
+             graft restores it, so the instruction cannot be honoured. A negated
+             instruction ("suppress it — do not delete it") is the correct
+             shipped wording and is spared.
+
+    NO allowlist: the measured legitimate set is empty, and an absent allowlist
+    cannot grow. NEVER vacuous: zero tracked trinity files with git AVAILABLE is
+    a FAILURE, not a silent pass — and so is zero READABLE files among tracked
+    ones, because `except OSError: continue` would otherwise let an empty corpus
+    report the all-clear. Lenient: git absent / not a work tree / a root outside
+    REPO_ROOT ⇒ SKIP.
+    """
+    print(f"\n── Check 98: [{label}] shipped client-editable trinity content is "
+          f"marker-backed (BD-294) ──")
+    available, paths = _c98_candidate_files(Path(trinity_root))
+    if not available:
+        ok(f"[{label}] git ls-files unavailable (git absent / not a git work "
+           f"tree / root outside the repo) — skipping (lenient)")
+        return
+    if not paths:
+        fail(f"[{label}] Check 98 — no git-TRACKED trinity file found under "
+             f"{trinity_root} (expected {', '.join(_TRINITY_NAMES)}). The guard "
+             f"refuses to pass vacuously: either the trinity moved and this "
+             f"check's root is stale, or the shipped templates were untracked.")
+        return
+
+    findings = []
+    scanned = 0
+    for path in paths:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue                          # tracked but unreadable — skip
+        scanned += 1
+        for lineno, kind, evidence in _c98_scan_text(text):
+            findings.append((path.name, lineno, kind, evidence))
+
+    if not scanned:
+        fail(f"[{label}] Check 98 — {len(paths)} git-TRACKED trinity file(s) "
+             f"under {trinity_root}, but NONE could be read "
+             f"({', '.join(p.name for p in paths)}). The guard refuses to pass "
+             f"vacuously here too: `except OSError: continue` tolerates one "
+             f"unreadable file so the rest are still scanned, but an EMPTY "
+             f"corpus is 'nothing scanned', never 'nothing wrong' — restore "
+             f"the tracked files in the work tree.")
+        return
+
+    if findings:
+        counts = {}
+        for _, _, kind, _ in findings:
+            counts[kind] = counts.get(kind, 0) + 1
+        detail = "; ".join(f"{n}:{ln} [{k}] {ev}"
+                           for n, ln, k, ev in findings[:20])
+        more = "" if len(findings) <= 20 else f" (+{len(findings) - 20} more)"
+        # `findings` carries one entry per (file, line, LEG), so a line tripping
+        # BOTH legs contributes two. The banner reports both numbers rather than
+        # labelling one as the other: the LINE count is what a maintainer counts
+        # when they open the file, and the FINDING count is what the `{kind: n}`
+        # tally and the `(+N more)` overflow are computed from.
+        n_lines = len({(n, ln) for n, ln, _, _ in findings})
+        fail(
+            f"[{label}] Check 98 — {n_lines} shipped trinity line(s) "
+            f"({len(findings)} finding(s)) the "
+            f"client cannot obey {counts}: {detail}{more}. `unbacked-placeholder` "
+            f"= a fill-in slot outside a `<!-- BEGIN project-owned -->` … "
+            f"`<!-- END project-owned -->` pair, so the client's value is "
+            f"reverted by the next graft — wrap the placeholder in a seed pair. "
+            f"`unhonourable-instruction` = an instruction to delete shipped pack "
+            f"content, which the graft restores — reword it to suppress-not-"
+            f"delete and point at `docs/pack/PM-CHAT.md` § \"How to add "
+            f"project-owned content to trinity files\".")
+        return
+
+    ok(f"[{label}] Check 98 — {scanned} trinity file(s): every fill-in "
+       f"placeholder sits inside a project-owned marker pair and no shipped line "
+       f"instructs a deletion the graft would undo")
+
+
+__all__ = ["check_trinity_marker_wellformed",
+           "check_trinity_editable_marker_backed"]

@@ -96,3 +96,6 @@ scripts/tests/test-migrate-v10-to-v11-interactive.sh	68.0
 # ── Migration-delivers-every-declared-path sweep + Check 97 (offline-confirmed local wall) ──
 scripts/tests/fixture-dependent/test-migration-delivers-install-map.sh	45.0
 scripts/tests/test-validate-pack-check-97.sh	2.0
+#
+# ── Check 98 trinity marker-backed guard (offline-confirmed local wall) ──
+scripts/tests/test-validate-pack-check-98.sh	2.0

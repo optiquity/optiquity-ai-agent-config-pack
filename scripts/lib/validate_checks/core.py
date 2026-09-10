@@ -211,7 +211,13 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # both `cmd_update` and `migrate`; one new registry entry; 97 is the slot
 # BD-293's plan reserved, 95 + 96 belong to BD-289's plan and stay free until
 # it lands): 91 → 92. (Next free numeric ID = 98.)
-CHECK_REGISTRY_EXPECTED_COUNT = 92
+# BD-294 adds Check 98 (shipped client-editable trinity content must be
+# marker-backed — LEG 1 a fill-in placeholder outside every `<!-- BEGIN/END
+# project-owned -->` pair, LEG 2 an affirmative instruction to delete shipped
+# pack content; ONE new registry entry, registered for [project-template] only,
+# NOT double-registered at pack-root): 92 → 93. 95 + 96 remain reserved for
+# BD-289 and stay free until it lands. (Next free numeric ID = 99.)
+CHECK_REGISTRY_EXPECTED_COUNT = 93
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []

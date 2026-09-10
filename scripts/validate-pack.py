@@ -540,7 +540,13 @@ from validate_checks.pack_ops_hygiene import *  # noqa: E402,F403  (BD-224 Check
 # _build_check_registry() so the registry's bare `check_trinity_marker_wellformed`
 # reference resolves at assembly. Single SSOT — the V-1..V-8 body lives only in
 # trinity_markers.py; the facade carries no forked copy.
-from validate_checks.trinity_markers import *  # noqa: E402,F403  (BD-136 Check 91; single SSOT)
+# BD-294 adds Check 98 (check_trinity_editable_marker_backed) to the SAME module
+# — it consumes that module's `_scan_markers` regions + fenced-line set, so a
+# separate module would FORK the marker parser (the two-parser drift BD-294 §R3
+# names). Both names are exported via that module's `__all__`; a check function
+# MISSING from `__all__` would not exist at the registry site below and
+# `_build_check_registry()` would raise NameError on the first run.
+from validate_checks.trinity_markers import *  # noqa: E402,F403  (BD-136 Check 91 + BD-294 Check 98; single SSOT)
 
 # BD-276: Check 92 (check_mktemp_t_portability) lives in its own module
 # (validate_checks.mktemp_portability) per the FIRM own-module-per-new-check
@@ -1485,6 +1491,34 @@ def _build_check_registry():
         # lands.
         (97, "check_install_map_axis_symmetry",
               check_install_map_axis_symmetry, W),
+        # Check 98 — shipped client-editable trinity content must be marker-backed
+        # (BD-294 D3). The graft engine (scripts/lib/marker-preserve.sh) keeps ONLY
+        # what sits inside a `<!-- BEGIN/END project-owned -->` pair, so a shipped
+        # fill-in placeholder OUTSIDE a pair is a value the next `--update`
+        # silently reverts, and a shipped instruction to DELETE pack content is an
+        # instruction the graft undoes. LEG 1 FAILs on a placeholder line outside
+        # every pair — the ABSENCE-of-backing instance (strip the pair, keep the
+        # placeholder, and it BITEs), not merely "pairs exist somewhere"; LEG 2
+        # FAILs on an affirmative deletion verb aimed at a pack-content noun,
+        # matched on a sliding TWO-LINE window so a hard-wrapped phrase cannot slip
+        # through, with the negated form ("suppress it — do not delete it") spared
+        # as the CORRECT shipped wording. NO allowlist — the measured legitimate
+        # set is empty (pre-remediation: 57 findings, ALL defects; post: 0), and an
+        # absent allowlist cannot grow. Zero tracked trinity files with git
+        # available FAILs (never vacuous). git-TRACKED enumeration (git ls-files --
+        # <three paths>), O(lines) over 3 files (~1600 lines), ONE subprocess, no
+        # walk, SKIP-lenient off a work tree.
+        # REGISTERED ONCE, for [project-template] only — INTENTIONALLY breaking the
+        # 16/18/19 double-register pattern (same reasoning as the sole (91, …)
+        # tuple above). The placeholder/graft contract is a project-template
+        # contract: the pack-root trinity is not a template, nobody fills it in and
+        # no graft engine consumes it, so a [pack-root] leg would assert a contract
+        # that does not exist on that surface. It is ONE new registry entry
+        # (92 → 93), NOT two.
+        # Number 98 is the next free integer: 95 + 96 stay reserved for BD-289
+        # (`/backlog/BD-289.md`) and 97 is taken above.
+        (98, "check_trinity_editable_marker_backed[project-template]",
+              lambda: check_trinity_editable_marker_backed(REPO_ROOT / "project-template", "project-template"), W),
     ]
 
 

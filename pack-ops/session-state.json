@@ -1,7 +1,7 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "08e2fd4",
-  "checkpoint": "2026-09-09T16:00:00Z",
+  "boundary_commit": "75c5693",
+  "checkpoint": "2026-09-10T00:20:00Z",
   "active": [
     "BD-294 (launch-gating, the LAST v11.0 client-facing blocker). D5 = the seed-slot exception reclassifies a client's own end-of-file marker blocks and blames their heading as a missing pack section. D3 = the shipped trinity instructs an edit the engine forbids: filling placeholders sidecars the client's work, a marker above the first H2 fails well-formedness, five OPTIONAL comments instruct a deletion the engine silently undoes. C1 engine+parsers -> C1b duplicate gate -> C2 template -> C3 Check 98 -> C4 recipe; C5 design record (parallel); C6 close."
   ],
@@ -24,5 +24,5 @@
     "USER: dashboard re-render at the END or on request, never a gate.",
     "LESSON (record in BD-294 at C6): a local macOS battery CANNOT detect shell-active constructs inside an unquoted heredoc -- bash 3.2 tolerates what bash 5 rejects and `bash -n` never parses the body. Green locally is not green in CI for this class."
   ],
-  "cycle_position": "BD-294: C5, C1, C1b, C2 all LANDED. C2's CI run failed on a shell-portability defect in one test file, not a product defect; the hotfix lands in this commit and Check 83 gains a leg that catches the class against real history. Next C3 Check 98 (MUST follow C2) -> C4 recipe -> C6 close."
+  "cycle_position": "BD-294: C5, C1, C1b, C2 + the CI hotfix landed. C3 (Check 98) landing in this commit -- 4 passes, 2 reviews; it reports 0 on the current tree, 57 on the pre-template bytes, 1 on a planted mutant. Sixteen unfailable guards were found across this entry, the last inside the check itself, which passed vacuously over zero readable files. Next: C4 remediation recipe -> C6 close."
 }
